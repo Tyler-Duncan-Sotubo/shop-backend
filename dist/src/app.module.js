@@ -36,7 +36,6 @@ exports.AppModule = AppModule = __decorate([
                     SEND_GRID_KEY: Joi.string().required(),
                     PASSWORD_RESET_TEMPLATE_ID: Joi.string().required(),
                     VERIFY_TEMPLATE_ID: Joi.string().required(),
-                    INVITE_TEMPLATE_ID: Joi.string().required(),
                     DATABASE_URL: Joi.string().required(),
                     CLIENT_URL: Joi.string().required(),
                     CLIENT_DASHBOARD_URL: Joi.string().required(),

@@ -1,0 +1,118 @@
+import { db } from 'src/drizzle/types/drizzle';
+import { CacheService } from 'src/common/cache/cache.service';
+import { CreateCustomerAddressAdminDto, ListCustomersDto, UpdateCustomerAddressAdminDto, UpdateCustomerAdminDto } from './dto';
+import { CreateCustomerDto } from './dto/register-customer.dto';
+import { TokenGeneratorService } from '../auth/services';
+export declare class AdminCustomersService {
+    private readonly db;
+    private readonly cache;
+    private readonly tokenGeneratorService;
+    constructor(db: db, cache: CacheService, tokenGeneratorService: TokenGeneratorService);
+    private log;
+    private normalizeEmail;
+    private buildDisplayName;
+    adminCreateCustomer(companyId: string, dto: CreateCustomerDto, actorUserId: string | null): Promise<{
+        customer: {
+            id: string;
+            companyId: string;
+            displayName: string;
+            billingEmail: string | null;
+            firstName: string | null;
+            lastName: string | null;
+        };
+        inviteToken: string;
+    }>;
+    createCustomerAddress(companyId: string, customerId: string, dto: CreateCustomerAddressAdminDto, actorUserId: string | null): Promise<{
+        id: string;
+        country: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        firstName: string | null;
+        lastName: string | null;
+        phone: string | null;
+        customerId: string;
+        city: string;
+        postalCode: string | null;
+        state: string | null;
+        label: string | null;
+        line1: string;
+        line2: string | null;
+        isDefaultBilling: boolean;
+        isDefaultShipping: boolean;
+    }>;
+    listCustomers(companyId: string, opts: ListCustomersDto): Promise<{
+        id: string;
+        displayName: string;
+        billingEmail: string | null;
+        phone: string | null;
+        marketingOptIn: boolean;
+        createdAt: Date;
+        isActive: boolean;
+        loginEmail: string | null;
+        isVerified: boolean | null;
+        lastLoginAt: Date | null;
+    }[]>;
+    getCustomer(companyId: string, customerId: string): Promise<{
+        addresses: {
+            id: string;
+            customerId: string;
+            label: string | null;
+            firstName: string | null;
+            lastName: string | null;
+            line1: string;
+            line2: string | null;
+            city: string;
+            state: string | null;
+            postalCode: string | null;
+            country: string;
+            phone: string | null;
+            isDefaultBilling: boolean;
+            isDefaultShipping: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        id: string;
+        companyId: string;
+        displayName: string;
+        billingEmail: string | null;
+        firstName: string | null;
+        lastName: string | null;
+        phone: string | null;
+        marketingOptIn: boolean;
+        createdAt: Date;
+        isActive: boolean;
+        loginEmail: string | null;
+        isVerified: boolean | null;
+        lastLoginAt: Date | null;
+    }>;
+    updateCustomer(companyId: string, customerId: string, dto: UpdateCustomerAdminDto, actorUserId: string | null): Promise<{
+        id: string;
+        displayName: string;
+        billingEmail: string | null;
+        firstName: string | null;
+        lastName: string | null;
+        phone: string | null;
+        marketingOptIn: boolean;
+        isActive: boolean;
+    }>;
+    updateCustomerAddress(companyId: string, customerId: string, addressId: string, dto: UpdateCustomerAddressAdminDto, actorUserId: string | null): Promise<{
+        id: string;
+        companyId: string;
+        customerId: string;
+        label: string | null;
+        firstName: string | null;
+        lastName: string | null;
+        line1: string;
+        line2: string | null;
+        city: string;
+        state: string | null;
+        postalCode: string | null;
+        country: string;
+        phone: string | null;
+        isDefaultBilling: boolean;
+        isDefaultShipping: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+}

@@ -1,0 +1,85 @@
+import { db } from 'src/drizzle/types/drizzle';
+import { PermissionsService } from '../iam/permissions/permissions.service';
+import { CompanySettingsService } from '../company-settings/company-settings.service';
+import { VerificationService } from '../auth/services';
+import { CreateCompanyDto } from './dto/create-company.dto';
+import { UpdateCompanyDto } from './dto/update-company.dto';
+export declare class CompaniesService {
+    private readonly db;
+    private readonly verificationService;
+    private readonly permissionService;
+    private readonly companySettingsService;
+    constructor(db: db, verificationService: VerificationService, permissionService: PermissionsService, companySettingsService: CompanySettingsService);
+    private checkCompanySlugAvailable;
+    private checkUserNotExists;
+    private createCompany;
+    private createUserAndBootstrapCompany;
+    private postRegistration;
+    register(dto: CreateCompanyDto): Promise<{
+        user: {
+            id: string;
+            email: string;
+            companyId: string;
+        };
+        company: {
+            id: string;
+            name: string;
+            slug: string;
+            legalName: string | null;
+            country: string | null;
+            vatNumber: string | null;
+            defaultCurrency: string;
+            timezone: string;
+            defaultLocale: string;
+            billingEmail: string | null;
+            billingCustomerId: string | null;
+            billingProvider: string | null;
+            plan: string;
+            trialEndsAt: Date | null;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
+        };
+    }>;
+    getCompanyById(companyId: string): Promise<{
+        id: string;
+        name: string;
+        slug: string;
+        legalName: string | null;
+        country: string | null;
+        vatNumber: string | null;
+        defaultCurrency: string;
+        timezone: string;
+        defaultLocale: string;
+        billingEmail: string | null;
+        billingCustomerId: string | null;
+        billingProvider: string | null;
+        plan: string;
+        trialEndsAt: Date | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+    }>;
+    updateCompany(companyId: string, dto: UpdateCompanyDto): Promise<{
+        id: string;
+        name: string;
+        slug: string;
+        legalName: string | null;
+        country: string | null;
+        vatNumber: string | null;
+        defaultCurrency: string;
+        timezone: string;
+        defaultLocale: string;
+        billingEmail: string | null;
+        billingCustomerId: string | null;
+        billingProvider: string | null;
+        plan: string;
+        trialEndsAt: Date | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+    }>;
+}

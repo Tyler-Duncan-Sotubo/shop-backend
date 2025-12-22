@@ -1,0 +1,223 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Ip,
+  Param,
+  Patch,
+  Post,
+  Delete,
+  Query,
+  SetMetadata,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
+import { CurrentUser } from 'src/modules/auth/decorator/current-user.decorator';
+import { User } from 'src/common/types/user.type';
+import { BaseController } from 'src/common/interceptor/base.controller';
+import { ProductsService } from '../services/products.service';
+import {
+  CreateProductDto,
+  UpdateProductDto,
+  ProductQueryDto,
+} from '../dtos/products';
+import {
+  mapProductToDetailResponse,
+  mapProductsListToStorefront,
+} from '../mappers/product.mapper';
+import { ApiScopes } from 'src/modules/iam/api-keys/decorators/api-scopes.decorator';
+import { CurrentCompanyId } from 'src/modules/iam/api-keys/decorators/current-company-id.decorator';
+import { ApiKeyGuard } from 'src/modules/iam/api-keys/guard/api-key.guard';
+
+@Controller('catalog/products')
+export class ProductsController extends BaseController {
+  constructor(private readonly productsService: ProductsService) {
+    super();
+  }
+
+  // ----------------- List Products -----------------
+
+  @Get('admin')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['products.read'])
+  listProductsAdmin(
+    @CurrentUser() user: User,
+    @Query() query: ProductQueryDto,
+  ) {
+    return this.productsService.listProductsAdmin(user.companyId, query);
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['products.read'])
+  async listProducts(
+    @CurrentUser() user: User,
+    @Query() query: ProductQueryDto,
+  ) {
+    const products = await this.productsService.listProducts(
+      user.companyId,
+      query,
+    );
+    return products;
+  }
+
+  // ----------------- Storefront -----------------
+  @Get('storefront')
+  @UseGuards(ApiKeyGuard)
+  @ApiScopes('catalog.products.read')
+  async listStorefrontProducts(
+    @CurrentCompanyId() companyId: string,
+    @Query() query: ProductQueryDto,
+  ) {
+    const products = await this.productsService.listProducts(companyId, query);
+    return mapProductsListToStorefront(products as any);
+  }
+
+  @Get('storefront/:slug')
+  @UseGuards(ApiKeyGuard)
+  @ApiScopes('catalog.products.read')
+  async getProductBySlug(
+    @CurrentCompanyId() companyId: string,
+    @Param('slug') slug: string,
+  ) {
+    const product = await this.productsService.getProductWithRelationsBySlug(
+      companyId,
+      slug,
+    );
+    return mapProductToDetailResponse(product as any);
+  }
+
+  @Get('storefront/collections/:slug')
+  @UseGuards(ApiKeyGuard)
+  @ApiScopes('catalog.products.read')
+  async listCollectionProducts(
+    @CurrentCompanyId() companyId: string,
+    @Param('slug') slug: string,
+    @Query() query: ProductQueryDto,
+  ) {
+    const collection =
+      await this.productsService.listCollectionProductsByCategorySlug(
+        companyId,
+        slug,
+        query,
+      );
+    return collection;
+  }
+
+  @UseGuards(ApiKeyGuard)
+  @ApiScopes('catalog.products.read')
+  @Get('storefront/collections/:slug/grouped')
+  async listProductsGroupedByCollectionSlug(
+    @CurrentCompanyId() companyId: string,
+    @Param('slug') slug: string,
+    @Query() query: ProductQueryDto,
+  ) {
+    const groups =
+      await this.productsService.listProductsGroupedUnderParentCategorySlug(
+        companyId,
+        slug,
+        query,
+      );
+
+    return groups.map((group) => ({
+      category: group.category,
+      products: mapProductsListToStorefront(group.products), // ✅ IMPORTANT (no extra .map)
+    }));
+  }
+
+  // ----------------- Get Single Product -----------------
+  @Get(':productId')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['products.read'])
+  async getProduct(
+    @CurrentUser() user: User,
+    @Param('productId') productId: string,
+  ) {
+    const product = await this.productsService.getProductWithRelations(
+      user.companyId,
+      productId,
+    );
+    return mapProductToDetailResponse(product as any);
+  }
+
+  // Optional: product with relations (variants, options, images, categories)
+  @Get(':productId/full')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['products.read'])
+  async getProductWithRelations(
+    @CurrentUser() user: User,
+    @Param('productId') productId: string,
+  ) {
+    const product = await this.productsService.getProductWithRelations(
+      user.companyId,
+      productId,
+    );
+    // You can have a separate mapper for "full" product if you want
+    return mapProductToDetailResponse(product as any);
+  }
+
+  @Get(':productId/edit')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['products.read'])
+  async getProductForEdit(
+    @CurrentUser() user: User,
+    @Param('productId') productId: string,
+  ) {
+    return this.productsService.getProductForEdit(user.companyId, productId);
+  }
+
+  // ----------------- Create Product (draft) -----------------
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['products.create'])
+  async createProduct(
+    @CurrentUser() user: User,
+    @Body() dto: CreateProductDto,
+    @Ip() ip: string,
+  ) {
+    const product = await this.productsService.createProduct(
+      user.companyId,
+      dto,
+      user,
+      ip,
+    );
+    return mapProductToDetailResponse(product as any);
+  }
+
+  // ----------------- Update Product -----------------
+  @Patch(':productId')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['products.update'])
+  async updateProduct(
+    @CurrentUser() user: User,
+    @Param('productId') productId: string,
+    @Body() dto: UpdateProductDto,
+    @Ip() ip: string,
+  ) {
+    const product = await this.productsService.updateProduct(
+      user.companyId,
+      productId,
+      dto,
+      user,
+      ip,
+    );
+    return mapProductToDetailResponse(product as any);
+  }
+
+  // ----------------- Delete Product (soft delete) -----------------
+  @Delete(':productId')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['products.delete'])
+  async deleteProduct(
+    @CurrentUser() user: User,
+    @Param('productId') productId: string,
+    @Ip() ip: string,
+  ) {
+    return this.productsService.deleteProduct(
+      user.companyId,
+      productId,
+      user,
+      ip,
+    );
+  }
+}

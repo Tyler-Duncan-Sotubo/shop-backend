@@ -1,0 +1,76 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1766192281032,
+      "tag": "0000_bent_exiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766253383072,
+      "tag": "0001_deep_redwing",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766262285571,
+      "tag": "0002_stiff_captain_marvel",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1766264161237,
+      "tag": "0003_glamorous_the_hood",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1766265521573,
+      "tag": "0004_fixed_pandemic",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1766276354880,
+      "tag": "0005_famous_stature",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1766277162234,
+      "tag": "0006_cold_silverclaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1766318685117,
+      "tag": "0007_silly_zarek",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1766395259655,
+      "tag": "0008_steep_union_jack",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1766402811059,
+      "tag": "0009_motionless_mac_gargan",
+      "breakpoints": true
+    }
+  ]
+}

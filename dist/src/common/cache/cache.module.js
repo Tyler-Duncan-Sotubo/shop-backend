@@ -1,0 +1,74 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CacheModule = void 0;
+const common_1 = require("@nestjs/common");
+const cache_manager_1 = require("@nestjs/cache-manager");
+const config_1 = require("@nestjs/config");
+const keyv_1 = require("keyv");
+const redis_1 = require("@keyv/redis");
+const cache_service_1 = require("./cache.service");
+let CacheModule = class CacheModule {
+};
+exports.CacheModule = CacheModule;
+exports.CacheModule = CacheModule = __decorate([
+    (0, common_1.Global)(),
+    (0, common_1.Module)({
+        imports: [
+            config_1.ConfigModule.forRoot(),
+            cache_manager_1.CacheModule.registerAsync({
+                isGlobal: true,
+                imports: [config_1.ConfigModule],
+                inject: [config_1.ConfigService],
+                useFactory: async (config) => {
+                    const host = config.get('REDIS_HOST');
+                    const port = Number(config.get('REDIS_PORT') ?? 6379);
+                    const password = config.get('REDIS_PASSWORD') || '';
+                    const db = Number(config.get('REDIS_DB') ?? 0);
+                    const useTls = String(config.get('REDIS_TLS') ?? 'true').toLowerCase() === 'true';
+                    const allowSelfSigned = String(config.get('REDIS_SELF_SIGNED') ?? 'true').toLowerCase() ===
+                        'true';
+                    const prefix = config.get('REDIS_PREFIX') ?? 'app:';
+                    const ttlSeconds = Number(config.get('CACHE_TTL') ?? 7200);
+                    const protocol = useTls ? 'redis' : 'redis';
+                    const auth = password ? `:${encodeURIComponent(password)}@` : '';
+                    const redisUrl = `${protocol}://${auth}${host}:${port}/${db}`;
+                    const tlsish = useTls
+                        ? {
+                            socket: {
+                                tls: true,
+                                rejectUnauthorized: !allowSelfSigned,
+                                keepAlive: 1 << 16,
+                                reconnectStrategy: (retries) => Math.min(1000, retries * 50),
+                            },
+                            tls: { rejectUnauthorized: !allowSelfSigned },
+                        }
+                        : {};
+                    const redisStore = new redis_1.default(redisUrl, {
+                        namespace: prefix,
+                        ...tlsish,
+                    });
+                    redisStore.on('error', (err) => {
+                        console.warn('[redis] store error:', err);
+                    });
+                    const store = new keyv_1.default({ store: redisStore });
+                    store.on('error', (err) => {
+                        console.warn('[keyv] error:', err);
+                    });
+                    return {
+                        stores: [store],
+                        ttl: ttlSeconds * 1000,
+                    };
+                },
+            }),
+        ],
+        providers: [cache_service_1.CacheService],
+        exports: [cache_manager_1.CacheModule, cache_service_1.CacheService],
+    })
+], CacheModule);
+//# sourceMappingURL=cache.module.js.map

@@ -1,0 +1,14 @@
+export declare const companyRoleEnum: import("drizzle-orm/pg-core").PgEnum<["owner", "manager", "staff", "support"]>;
+export declare const customerTypeEnum: import("drizzle-orm/pg-core").PgEnum<["individual", "business"]>;
+export declare const productStatusEnum: import("drizzle-orm/pg-core").PgEnum<["draft", "active", "archived"]>;
+export declare const productTypeEnum: import("drizzle-orm/pg-core").PgEnum<["simple", "variable"]>;
+export declare const productLinkTypeEnum: import("drizzle-orm/pg-core").PgEnum<["related", "upsell", "cross_sell", "accessory"]>;
+export declare const invoiceStatusEnum: import("drizzle-orm/pg-core").PgEnum<["draft", "issued", "partially_paid", "paid", "void"]>;
+export declare const invoiceTypeEnum: import("drizzle-orm/pg-core").PgEnum<["invoice", "credit_note"]>;
+export declare const paymentMethodEnum: import("drizzle-orm/pg-core").PgEnum<["bank_transfer", "pos", "cash", "manual", "gateway"]>;
+export declare const paymentStatusEnum: import("drizzle-orm/pg-core").PgEnum<["pending", "succeeded", "reversed"]>;
+export declare const allocationStatusEnum: import("drizzle-orm/pg-core").PgEnum<["applied", "reversed"]>;
+export type ProductLinkType = (typeof productLinkTypeEnum.enumValues)[number];
+export type ProductType = (typeof productTypeEnum.enumValues)[number];
+export type ProductStatus = (typeof productStatusEnum.enumValues)[number];
+export type CompanyRoleName = (typeof companyRoleEnum.enumValues)[number];

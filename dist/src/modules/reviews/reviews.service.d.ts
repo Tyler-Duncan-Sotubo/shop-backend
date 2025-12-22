@@ -1,0 +1,108 @@
+import { db } from 'src/drizzle/types/drizzle';
+import { CacheService } from 'src/common/cache/cache.service';
+import { AuditService } from 'src/modules/audit/audit.service';
+import { User } from 'src/common/types/user.type';
+import { ReviewQueryDto, UpdateReviewDto } from './dto';
+import { CreateStorefrontReviewDto } from './dto/create-storefront-review.dto';
+import { StorefrontReviewQueryDto } from './dto/storefront-review-query.dto';
+export declare class ReviewsService {
+    private readonly db;
+    private readonly cache;
+    private readonly auditService;
+    constructor(db: db, cache: CacheService, auditService: AuditService);
+    private assertProductBelongsToCompany;
+    private findReviewOrThrow;
+    listReviews(companyId: string, query: ReviewQueryDto): Promise<{
+        items: {
+            id: string;
+            companyId: string;
+            productId: string;
+            storeId: string | null;
+            userId: string | null;
+            authorName: string;
+            authorEmail: string;
+            rating: number;
+            review: string;
+            isApproved: boolean;
+            approvedAt: Date | null;
+            moderatedByUserId: string | null;
+            moderatedAt: Date | null;
+            moderationNote: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
+        }[];
+        total: number;
+        limit: number;
+        offset: number;
+    }>;
+    listReviewsByProduct(companyId: string, productId: string, query?: {
+        limit?: number;
+        offset?: number;
+    }): Promise<{
+        id: string;
+        companyId: string;
+        productId: string;
+        storeId: string | null;
+        userId: string | null;
+        authorName: string;
+        authorEmail: string;
+        rating: number;
+        review: string;
+        isApproved: boolean;
+        approvedAt: Date | null;
+        moderatedByUserId: string | null;
+        moderatedAt: Date | null;
+        moderationNote: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+    }[]>;
+    updateReview(companyId: string, reviewId: string, dto: UpdateReviewDto, user?: User, ip?: string): Promise<{
+        id: string;
+        companyId: string;
+        productId: string;
+        storeId: string | null;
+        userId: string | null;
+        authorName: string;
+        authorEmail: string;
+        rating: number;
+        review: string;
+        isApproved: boolean;
+        approvedAt: Date | null;
+        moderatedByUserId: string | null;
+        moderatedAt: Date | null;
+        moderationNote: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+    }>;
+    createStorefrontReview(companyId: string, productId: string, dto: CreateStorefrontReviewDto, ip?: string, userAgent?: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        companyId: string;
+        storeId: string | null;
+        productId: string;
+        userId: string | null;
+        authorName: string;
+        authorEmail: string;
+        rating: number;
+        review: string;
+        isApproved: boolean;
+        approvedAt: Date | null;
+        moderatedByUserId: string | null;
+        moderatedAt: Date | null;
+        moderationNote: string | null;
+    }>;
+    listStorefrontReviewsByProduct(companyId: string, productId: string, query: StorefrontReviewQueryDto): Promise<{
+        id: string;
+        product_id: string;
+        reviewer: string;
+        reviewer_email: string;
+        rating: number;
+        review: string;
+        date_created: Date;
+    }[]>;
+}

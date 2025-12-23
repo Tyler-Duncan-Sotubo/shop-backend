@@ -14,9 +14,15 @@ export declare class ProductsController extends BaseController {
             slug: any;
             imageUrl: any;
             stock: number;
+            regular_price: string | null;
+            sale_price: string | null;
+            on_sale: boolean;
+            price: string;
+            price_html: string;
             minPrice: number | null;
             maxPrice: number | null;
-            priceLabel: string | null;
+            minSalePrice: number | null;
+            maxSalePrice: number | null;
             categories: {
                 id: string;
                 name: string;
@@ -36,9 +42,15 @@ export declare class ProductsController extends BaseController {
         slug: any;
         imageUrl: any;
         stock: number;
+        regular_price: string | null;
+        sale_price: string | null;
+        on_sale: boolean;
+        price: string;
+        price_html: string;
         minPrice: number | null;
         maxPrice: number | null;
-        priceLabel: string | null;
+        minSalePrice: number | null;
+        maxSalePrice: number | null;
         categories: {
             id: string;
             name: string;

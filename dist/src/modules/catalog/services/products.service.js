@@ -280,16 +280,41 @@ let ProductsService = class ProductsService {
             if (page.length === 0)
                 return [];
             const productIds = page.map((p) => p.id);
+            const rangeLabel = (min, max) => {
+                if (min == null && max == null)
+                    return null;
+                if (min != null && max != null)
+                    return min === max ? `${min}` : `${min} - ${max}`;
+                return `${min ?? max}`;
+            };
             const stockPriceRows = await this.db
                 .select({
                 productId: schema_1.productVariants.productId,
                 stock: (0, drizzle_orm_1.sql) `COALESCE(SUM(${schema_1.inventoryItems.available}), 0)`,
-                minPrice: (0, drizzle_orm_1.sql) `
-            MIN(NULLIF(${schema_1.productVariants.regularPrice}, 0))
-          `,
-                maxPrice: (0, drizzle_orm_1.sql) `
-            MAX(NULLIF(${schema_1.productVariants.regularPrice}, 0))
-          `,
+                minPrice: (0, drizzle_orm_1.sql) `MIN(NULLIF(${schema_1.productVariants.regularPrice}, 0))`,
+                maxPrice: (0, drizzle_orm_1.sql) `MAX(NULLIF(${schema_1.productVariants.regularPrice}, 0))`,
+                minSalePrice: (0, drizzle_orm_1.sql) `
+  MIN(
+    CASE
+      WHEN NULLIF(${schema_1.productVariants.salePrice}, 0) IS NOT NULL
+       AND NULLIF(${schema_1.productVariants.regularPrice}, 0) IS NOT NULL
+       AND ${schema_1.productVariants.salePrice} < ${schema_1.productVariants.regularPrice}
+      THEN ${schema_1.productVariants.salePrice}
+      ELSE NULL
+    END
+  )
+`,
+                maxSalePrice: (0, drizzle_orm_1.sql) `
+  MAX(
+    CASE
+      WHEN NULLIF(${schema_1.productVariants.salePrice}, 0) IS NOT NULL
+       AND NULLIF(${schema_1.productVariants.regularPrice}, 0) IS NOT NULL
+       AND ${schema_1.productVariants.salePrice} < ${schema_1.productVariants.regularPrice}
+      THEN ${schema_1.productVariants.salePrice}
+      ELSE NULL
+    END
+  )
+`,
             })
                 .from(schema_1.productVariants)
                 .leftJoin(schema_1.inventoryItems, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, schema_1.productVariants.id)))
@@ -302,6 +327,8 @@ let ProductsService = class ProductsService {
                     stock: Number(r.stock ?? 0),
                     minPrice: r.minPrice == null ? null : Number(r.minPrice),
                     maxPrice: r.maxPrice == null ? null : Number(r.maxPrice),
+                    minSalePrice: r.minSalePrice == null ? null : Number(r.minSalePrice),
+                    maxSalePrice: r.maxSalePrice == null ? null : Number(r.maxSalePrice),
                 });
             }
             const ratingRows = await this.db
@@ -344,20 +371,19 @@ let ProductsService = class ProductsService {
                     stock: 0,
                     minPrice: null,
                     maxPrice: null,
+                    minSalePrice: null,
+                    maxSalePrice: null,
                 };
-                const ratings = ratingsByProduct.get(p.id) ?? {
-                    ratingCount: 0,
-                    averageRating: 0,
-                };
-                const min = sp.minPrice;
-                const max = sp.maxPrice;
-                let priceLabel = null;
-                if (min != null && max != null)
-                    priceLabel = min === max ? `${min}` : `${min} - ${max}`;
-                else if (max != null)
-                    priceLabel = `${max}`;
-                else if (min != null)
-                    priceLabel = `${min}`;
+                const regularMin = sp.minPrice;
+                const regularMax = sp.maxPrice;
+                const saleMin = sp.minSalePrice;
+                const saleMax = sp.maxSalePrice;
+                const regularLabel = rangeLabel(regularMin, regularMax);
+                const saleLabel = rangeLabel(saleMin, saleMax);
+                const onSale = sp.minSalePrice != null;
+                const price_html = onSale && regularLabel && saleLabel
+                    ? `<del>${regularLabel}</del> <ins>${saleLabel}</ins>`
+                    : (regularLabel ?? '');
                 return {
                     id: p.id,
                     name: p.name,
@@ -366,12 +392,20 @@ let ProductsService = class ProductsService {
                     slug: p.slug,
                     imageUrl: p.imageUrl ?? null,
                     stock: sp.stock,
-                    minPrice: min,
-                    maxPrice: max,
-                    priceLabel,
+                    regular_price: sp.minPrice != null ? String(sp.minPrice) : null,
+                    sale_price: onSale && sp.minSalePrice != null
+                        ? String(sp.minSalePrice)
+                        : null,
+                    on_sale: onSale,
+                    price: String(onSale ? sp.minSalePrice : (sp.minPrice ?? 0)),
+                    price_html,
+                    minPrice: regularMin,
+                    maxPrice: regularMax,
+                    minSalePrice: saleMin,
+                    maxSalePrice: saleMax,
                     categories: catsByProduct.get(p.id) ?? [],
-                    ratingCount: ratings.ratingCount,
-                    averageRating: ratings.averageRating,
+                    ratingCount: ratingsByProduct.get(p.id)?.ratingCount ?? 0,
+                    averageRating: ratingsByProduct.get(p.id)?.averageRating ?? 0,
                 };
             });
         });
@@ -1065,6 +1099,7 @@ let ProductsService = class ProductsService {
         }));
     }
     async listProductsGroupedUnderParentCategorySlug(companyId, parentSlug, query) {
+        console.log('listProductsGroupedUnderParentCategorySlug called with parentSlug:', parentSlug);
         const parent = await this.db
             .select({
             id: schema_1.categories.id,

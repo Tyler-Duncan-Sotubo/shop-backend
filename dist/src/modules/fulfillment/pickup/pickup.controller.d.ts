@@ -36,8 +36,8 @@ export declare class PickupController extends BaseController {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        inventoryLocationId: string;
         state: string;
+        inventoryLocationId: string;
         address: Record<string, any>;
         instructions: string | null;
         leadTimeMinutes: number | null;

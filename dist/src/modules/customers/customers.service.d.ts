@@ -80,12 +80,12 @@ export declare class CustomersService {
         lastName: string | null;
         phone: string | null;
         customerId: string;
-        city: string;
-        postalCode: string | null;
-        state: string | null;
         label: string | null;
         line1: string;
         line2: string | null;
+        city: string;
+        state: string | null;
+        postalCode: string | null;
         isDefaultBilling: boolean;
         isDefaultShipping: boolean;
     }>;

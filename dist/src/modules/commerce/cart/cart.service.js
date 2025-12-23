@@ -497,16 +497,25 @@ let CartService = class CartService {
     resolveVariantPrice(variant) {
         if (!variant)
             return null;
-        const sale = variant.salePrice ?? variant.sale_price ?? null;
-        const regular = variant.regularPrice ?? variant.regular_price ?? null;
-        const price = variant.price ?? null;
-        const onSale = Boolean(variant.onSale ?? variant.on_sale);
-        if (onSale && sale != null && String(sale) !== '')
-            return String(sale);
-        if (regular != null && String(regular) !== '')
-            return String(regular);
-        if (price != null && String(price) !== '')
-            return String(price);
+        const saleRaw = variant.salePrice ?? variant.sale_price ?? null;
+        const regularRaw = variant.regularPrice ?? variant.regular_price ?? null;
+        const priceRaw = variant.price ?? null;
+        const sale = saleRaw != null && String(saleRaw) !== '' ? Number(saleRaw) : null;
+        const regular = regularRaw != null && String(regularRaw) !== ''
+            ? Number(regularRaw)
+            : priceRaw != null && String(priceRaw) !== ''
+                ? Number(priceRaw)
+                : null;
+        if (sale != null &&
+            Number.isFinite(sale) &&
+            regular != null &&
+            sale < regular) {
+            return String(saleRaw);
+        }
+        if (regularRaw != null && String(regularRaw) !== '')
+            return String(regularRaw);
+        if (priceRaw != null && String(priceRaw) !== '')
+            return String(priceRaw);
         return null;
     }
     async assertHasWarehouse(companyId) {

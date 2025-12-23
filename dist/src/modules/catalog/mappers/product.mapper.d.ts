@@ -108,6 +108,11 @@ type ProductListRowStoreFront = {
     averageRating: number | null;
     ratingCount: number | null;
     priceLabel: string;
+    onSale: boolean;
+    salePrice: number | null;
+    saleLabel: string | null;
+    minSalePrice: number | null;
+    maxSalePrice: number | null;
 };
 export declare function mapProductToDetailResponse(product: ProductWithRelations): ProductDetailResponse;
 export declare function mapProductsListToStorefront(rows: ProductListRowStoreFront[]): StorefrontProductDto[];
@@ -117,9 +122,9 @@ export declare function mapProductToCollectionListResponse(product: ProductWithR
     minPrice?: number | null;
     maxPrice?: number | null;
 }): {
-    id: any;
-    name: any;
-    slug: any;
+    id: string;
+    name: string;
+    slug: string;
     permalink: string;
     type: string;
     price: string;
@@ -134,8 +139,20 @@ export declare function mapProductToCollectionListResponse(product: ProductWithR
         alt: any;
     }[];
     tags: never[];
-    categories: any;
-    attributes: any;
+    categories: {
+        id: any;
+        name: any;
+        slug: any;
+    }[];
+    attributes: {
+        id: number;
+        name: string;
+        slug: string;
+        position: number;
+        visible: boolean;
+        variation: boolean;
+        options: string[];
+    }[];
     price_html: string;
 };
 export {};

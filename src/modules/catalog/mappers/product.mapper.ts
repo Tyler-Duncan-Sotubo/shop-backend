@@ -9,7 +9,6 @@ import {
   categories,
   productVariants,
 } from 'src/drizzle/schema';
-
 import { getEffectivePrice } from '../utils/pricing';
 import { StorefrontProductDto } from '../dtos/products/storefront-product.dto';
 
@@ -123,6 +122,11 @@ type ProductListRowStoreFront = {
   ratingCount: number | null;
 
   priceLabel: string;
+  onSale: boolean;
+  salePrice: number | null;
+  saleLabel: string | null;
+  minSalePrice: number | null;
+  maxSalePrice: number | null;
 };
 
 // -----------------------------------------------------------------------------
@@ -416,11 +420,34 @@ export function mapProductToDetailResponse(
 export function mapProductsListToStorefront(
   rows: ProductListRowStoreFront[],
 ): StorefrontProductDto[] {
-  return rows.map((p) => {
-    const min = p.minPrice ?? 0;
-    const max = p.maxPrice ?? 0;
+  const rangeLabel = (min?: number | null, max?: number | null) => {
+    if (min == null && max == null) return '';
+    if (min != null && max != null)
+      return min === max ? `${min}` : `${min} - ${max}`;
+    return `${min ?? max}`;
+  };
 
-    const display = min > 0 ? min : max > 0 ? max : 0;
+  return rows.map((p) => {
+    const regularMin = p.minPrice ?? 0;
+    // const regularMax = p.maxPrice ?? p.minPrice ?? 0;
+
+    const saleMin = p.minSalePrice ?? null;
+    const saleMax = p.maxSalePrice ?? p.minSalePrice ?? null;
+
+    // ✅ compute onSale purely from values
+    const onSale =
+      saleMin != null && saleMin > 0 && regularMin > 0 && saleMin < regularMin;
+
+    const regularLabel = rangeLabel(p.minPrice, p.maxPrice); // works for single too
+    const saleLabel = rangeLabel(saleMin, saleMax); // works for single too
+
+    // ✅ IMPORTANT: price_html must include sale markup when on sale
+    const price_html =
+      onSale && regularLabel && saleLabel
+        ? `<del>${regularLabel}</del> <ins>${saleLabel}</ins>`
+        : regularLabel;
+
+    const current = onSale ? saleMin! : regularMin;
 
     return {
       id: p.id,
@@ -428,18 +455,16 @@ export function mapProductsListToStorefront(
       slug: p.slug,
       permalink: buildPermalink(p.slug),
 
-      price: String(display),
-      regular_price: String(display),
-      sale_price: null,
-      on_sale: false,
+      price: String(current),
+      regular_price: String(regularMin),
+      sale_price: onSale ? String(saleMin) : null,
+      on_sale: onSale,
 
-      price_html: p.priceLabel,
+      price_html,
 
       average_rating: (p.averageRating ?? 0).toFixed(2),
       rating_count: p.ratingCount ?? 0,
-
       images: p.imageUrl ? [{ src: p.imageUrl, alt: p.name }] : [],
-
       tags: (p.categories ?? [])
         .slice(0, 1)
         .map((c) => ({ name: c.name, slug: c.id })),

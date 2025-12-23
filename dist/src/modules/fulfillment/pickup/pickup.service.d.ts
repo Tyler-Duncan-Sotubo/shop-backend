@@ -37,8 +37,8 @@ export declare class PickupService {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        inventoryLocationId: string;
         state: string;
+        inventoryLocationId: string;
         address: Record<string, any>;
         instructions: string | null;
         leadTimeMinutes: number | null;
@@ -51,8 +51,8 @@ export declare class PickupService {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        inventoryLocationId: string;
         state: string;
+        inventoryLocationId: string;
         address: Record<string, any>;
         instructions: string | null;
         leadTimeMinutes: number | null;

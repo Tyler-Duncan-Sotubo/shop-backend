@@ -210,20 +210,34 @@ function mapProductToDetailResponse(product) {
     };
 }
 function mapProductsListToStorefront(rows) {
+    const rangeLabel = (min, max) => {
+        if (min == null && max == null)
+            return '';
+        if (min != null && max != null)
+            return min === max ? `${min}` : `${min} - ${max}`;
+        return `${min ?? max}`;
+    };
     return rows.map((p) => {
-        const min = p.minPrice ?? 0;
-        const max = p.maxPrice ?? 0;
-        const display = min > 0 ? min : max > 0 ? max : 0;
+        const regularMin = p.minPrice ?? 0;
+        const saleMin = p.minSalePrice ?? null;
+        const saleMax = p.maxSalePrice ?? p.minSalePrice ?? null;
+        const onSale = saleMin != null && saleMin > 0 && regularMin > 0 && saleMin < regularMin;
+        const regularLabel = rangeLabel(p.minPrice, p.maxPrice);
+        const saleLabel = rangeLabel(saleMin, saleMax);
+        const price_html = onSale && regularLabel && saleLabel
+            ? `<del>${regularLabel}</del> <ins>${saleLabel}</ins>`
+            : regularLabel;
+        const current = onSale ? saleMin : regularMin;
         return {
             id: p.id,
             name: p.name,
             slug: p.slug,
             permalink: buildPermalink(p.slug),
-            price: String(display),
-            regular_price: String(display),
-            sale_price: null,
-            on_sale: false,
-            price_html: p.priceLabel,
+            price: String(current),
+            regular_price: String(regularMin),
+            sale_price: onSale ? String(saleMin) : null,
+            on_sale: onSale,
+            price_html,
             average_rating: (p.averageRating ?? 0).toFixed(2),
             rating_count: p.ratingCount ?? 0,
             images: p.imageUrl ? [{ src: p.imageUrl, alt: p.name }] : [],

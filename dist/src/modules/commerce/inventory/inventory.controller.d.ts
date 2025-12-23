@@ -180,6 +180,7 @@ export declare class InventoryController extends BaseController {
             productVariantId: string;
             quantity: number;
         }[];
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -188,7 +189,6 @@ export declare class InventoryController extends BaseController {
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
-        status: string;
         completedAt: Date | null;
     }>;
     createTransfer(user: User, dto: CreateTransferDto, ip: string): Promise<{
@@ -199,6 +199,7 @@ export declare class InventoryController extends BaseController {
             productVariantId: string;
             quantity: number;
         }[];
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -207,7 +208,6 @@ export declare class InventoryController extends BaseController {
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
-        status: string;
         completedAt: Date | null;
     }>;
     updateTransferStatus(user: User, transferId: string, dto: UpdateTransferStatusDto, ip: string): Promise<{

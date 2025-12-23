@@ -360,7 +360,7 @@ export class ProductsService {
         'catalog',
         'products',
         JSON.stringify({
-          storeId: storeId ?? null, // ✅ include storeId in cache key
+          storeId: storeId ?? null,
           search: search ?? null,
           status: status ?? null,
           categoryId: categoryId ?? null,
@@ -376,7 +376,6 @@ export class ProductsService {
           eq(products.status, effectiveStatus),
         ];
 
-        // ✅ store scope (only this)
         if (storeId) whereClauses.push(eq(products.storeId, storeId));
 
         if (status === 'archived') {
@@ -406,7 +405,6 @@ export class ProductsService {
             ),
           );
 
-        // ✅ category filter stays the same
         if (categoryId) {
           pageQuery = pageQuery
             .innerJoin(
@@ -437,17 +435,52 @@ export class ProductsService {
 
         const productIds = page.map((p) => p.id);
 
-        // 2) Stock + price aggregates per product (UNCHANGED)
+        // helper: create "min - max" labels
+        const rangeLabel = (
+          min: number | null,
+          max: number | null,
+        ): string | null => {
+          if (min == null && max == null) return null;
+          if (min != null && max != null)
+            return min === max ? `${min}` : `${min} - ${max}`;
+          return `${min ?? max}`;
+        };
+
+        // 2) Stock + price aggregates per product (includes sale range)
         const stockPriceRows = await this.db
           .select({
             productId: productVariants.productId,
             stock: sql<number>`COALESCE(SUM(${inventoryItems.available}), 0)`,
-            minPrice: sql<string | null>`
-            MIN(NULLIF(${productVariants.regularPrice}, 0))
-          `,
-            maxPrice: sql<string | null>`
-            MAX(NULLIF(${productVariants.regularPrice}, 0))
-          `,
+
+            minPrice: sql<
+              string | null
+            >`MIN(NULLIF(${productVariants.regularPrice}, 0))`,
+            maxPrice: sql<
+              string | null
+            >`MAX(NULLIF(${productVariants.regularPrice}, 0))`,
+
+            minSalePrice: sql<string | null>`
+  MIN(
+    CASE
+      WHEN NULLIF(${productVariants.salePrice}, 0) IS NOT NULL
+       AND NULLIF(${productVariants.regularPrice}, 0) IS NOT NULL
+       AND ${productVariants.salePrice} < ${productVariants.regularPrice}
+      THEN ${productVariants.salePrice}
+      ELSE NULL
+    END
+  )
+`,
+            maxSalePrice: sql<string | null>`
+  MAX(
+    CASE
+      WHEN NULLIF(${productVariants.salePrice}, 0) IS NOT NULL
+       AND NULLIF(${productVariants.regularPrice}, 0) IS NOT NULL
+       AND ${productVariants.salePrice} < ${productVariants.regularPrice}
+      THEN ${productVariants.salePrice}
+      ELSE NULL
+    END
+  )
+`,
           })
           .from(productVariants)
           .leftJoin(
@@ -468,7 +501,13 @@ export class ProductsService {
 
         const stockPriceByProduct = new Map<
           string,
-          { stock: number; minPrice: number | null; maxPrice: number | null }
+          {
+            stock: number;
+            minPrice: number | null;
+            maxPrice: number | null;
+            minSalePrice: number | null;
+            maxSalePrice: number | null;
+          }
         >();
 
         for (const r of stockPriceRows) {
@@ -476,10 +515,14 @@ export class ProductsService {
             stock: Number(r.stock ?? 0),
             minPrice: r.minPrice == null ? null : Number(r.minPrice),
             maxPrice: r.maxPrice == null ? null : Number(r.maxPrice),
+            minSalePrice:
+              r.minSalePrice == null ? null : Number(r.minSalePrice),
+            maxSalePrice:
+              r.maxSalePrice == null ? null : Number(r.maxSalePrice),
           });
         }
 
-        // 3) Ratings aggregates per product (bounded to page productIds)
+        // 3) Ratings aggregates
         const ratingRows = await this.db
           .select({
             productId: productReviews.productId,
@@ -504,7 +547,6 @@ export class ProductsService {
           string,
           { ratingCount: number; averageRating: number }
         >();
-
         for (const r of ratingRows) {
           ratingsByProduct.set(r.productId, {
             ratingCount: Number(r.ratingCount ?? 0),
@@ -512,7 +554,7 @@ export class ProductsService {
           });
         }
 
-        // 4) Categories (bounded to page productIds)
+        // 4) Categories
         const catRows = await this.db
           .select({
             productId: productCategories.productId,
@@ -536,7 +578,6 @@ export class ProductsService {
           .execute();
 
         const catsByProduct = new Map<string, { id: string; name: string }[]>();
-
         for (const r of catRows) {
           const list = catsByProduct.get(r.productId) ?? [];
           list.push({ id: r.categoryId, name: r.categoryName });
@@ -549,21 +590,26 @@ export class ProductsService {
             stock: 0,
             minPrice: null,
             maxPrice: null,
+            minSalePrice: null,
+            maxSalePrice: null,
           };
 
-          const ratings = ratingsByProduct.get(p.id) ?? {
-            ratingCount: 0,
-            averageRating: 0,
-          };
+          const regularMin = sp.minPrice;
+          const regularMax = sp.maxPrice;
+          const saleMin = sp.minSalePrice;
+          const saleMax = sp.maxSalePrice;
 
-          const min = sp.minPrice;
-          const max = sp.maxPrice;
+          const regularLabel = rangeLabel(regularMin, regularMax);
+          const saleLabel = rangeLabel(saleMin, saleMax);
 
-          let priceLabel: string | null = null;
-          if (min != null && max != null)
-            priceLabel = min === max ? `${min}` : `${min} - ${max}`;
-          else if (max != null) priceLabel = `${max}`;
-          else if (min != null) priceLabel = `${min}`;
+          // ✅ on sale only if min sale is lower than min regular
+          const onSale = sp.minSalePrice != null;
+
+          // ✅ what your frontend should prefer
+          const price_html =
+            onSale && regularLabel && saleLabel
+              ? `<del>${regularLabel}</del> <ins>${saleLabel}</ins>`
+              : (regularLabel ?? '');
 
           return {
             id: p.id,
@@ -574,14 +620,27 @@ export class ProductsService {
             imageUrl: p.imageUrl ?? null,
 
             stock: sp.stock,
-            minPrice: min,
-            maxPrice: max,
-            priceLabel,
+
+            // Woo-like numeric fields (mins)
+            regular_price: sp.minPrice != null ? String(sp.minPrice) : null,
+            sale_price:
+              onSale && sp.minSalePrice != null
+                ? String(sp.minSalePrice)
+                : null,
+            on_sale: onSale,
+            price: String(onSale ? sp.minSalePrice : (sp.minPrice ?? 0)),
+            price_html,
+
+            // keep these if you still use them elsewhere
+            minPrice: regularMin,
+            maxPrice: regularMax,
+            minSalePrice: saleMin,
+            maxSalePrice: saleMax,
 
             categories: catsByProduct.get(p.id) ?? [],
 
-            ratingCount: ratings.ratingCount,
-            averageRating: ratings.averageRating,
+            ratingCount: ratingsByProduct.get(p.id)?.ratingCount ?? 0,
+            averageRating: ratingsByProduct.get(p.id)?.averageRating ?? 0,
           };
         });
       },
@@ -1644,7 +1703,10 @@ export class ProductsService {
     parentSlug: string,
     query: ProductQueryDto,
   ) {
-    // 0) resolve slug -> parentCategoryId
+    console.log(
+      'listProductsGroupedUnderParentCategorySlug called with parentSlug:',
+      parentSlug,
+    );
     const parent = await this.db
       .select({
         id: categories.id,

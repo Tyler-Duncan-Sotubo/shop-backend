@@ -7,9 +7,11 @@ import { InventoryLedgerService } from '../inventory/services/inventory-ledger.s
 import { ManualOrdersService } from './manual-orders.service';
 import { InvoiceService } from 'src/modules/billing/invoice/invoice.service';
 import { InvoiceTotalsService } from 'src/modules/billing/invoice/invoice-totals.service';
+import { StorefrontOrdersController } from './storefront-orders.controller';
+import { ApiKeysService } from 'src/modules/iam/api-keys/api-keys.service';
 
 @Module({
-  controllers: [OrdersController],
+  controllers: [OrdersController, StorefrontOrdersController],
   providers: [
     OrdersService,
     InventoryStockService,
@@ -18,6 +20,7 @@ import { InvoiceTotalsService } from 'src/modules/billing/invoice/invoice-totals
     ManualOrdersService,
     InvoiceService,
     InvoiceTotalsService,
+    ApiKeysService,
   ],
 })
 export class OrdersModule {}

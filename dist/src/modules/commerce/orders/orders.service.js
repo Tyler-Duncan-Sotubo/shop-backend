@@ -57,6 +57,37 @@ let OrdersService = class OrdersService {
             .execute();
         return { ...order[0], items, events };
     }
+    async getOrderStorefront(companyId, storeId, orderId) {
+        const orderRows = await this.db
+            .select()
+            .from(schema_1.orders)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+            .execute();
+        const order = orderRows?.[0];
+        if (!order)
+            throw new common_1.NotFoundException('Order not found');
+        const rows = await this.db
+            .select({
+            item: schema_1.orderItems,
+            imageUrl: schema_1.productImages.url,
+        })
+            .from(schema_1.orderItems)
+            .leftJoin(schema_1.productVariants, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.id, schema_1.orderItems.variantId)))
+            .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, schema_1.productVariants.imageId)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
+            .execute();
+        const items = rows.map((r) => ({
+            ...r.item,
+            imageUrl: r.imageUrl ?? null,
+        }));
+        const events = await this.db
+            .select()
+            .from(schema_1.orderEvents)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderEvents.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderEvents.orderId, orderId)))
+            .orderBy((0, drizzle_orm_1.desc)(schema_1.orderEvents.createdAt))
+            .execute();
+        return { ...order, items, events };
+    }
     async listOrders(companyId, q) {
         const limit = Math.min(Number(q.limit ?? 50), 200);
         const offset = Number(q.offset ?? 0);

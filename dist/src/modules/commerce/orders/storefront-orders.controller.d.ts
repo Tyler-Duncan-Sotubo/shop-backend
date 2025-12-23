@@ -1,0 +1,68 @@
+import { OrdersService } from '../orders/orders.service';
+export declare class StorefrontOrdersController {
+    private readonly orders;
+    constructor(orders: OrdersService);
+    getById(companyId: string, storeId: string, orderId: string): Promise<{
+        items: {
+            imageUrl: string | null;
+            id: string;
+            companyId: string;
+            orderId: string;
+            productId: string | null;
+            variantId: string | null;
+            sku: string | null;
+            name: string;
+            quantity: number;
+            unitPrice: string;
+            lineTotal: string;
+            unitPriceMinor: number;
+            lineTotalMinor: number;
+            attributes: unknown;
+            createdAt: Date | null;
+        }[];
+        events: {
+            id: string;
+            companyId: string;
+            orderId: string;
+            type: string;
+            fromStatus: string | null;
+            toStatus: string | null;
+            actorUserId: string | null;
+            ipAddress: string | null;
+            message: string | null;
+            meta: unknown;
+            createdAt: Date;
+        }[];
+        id: string;
+        orderNumber: string;
+        companyId: string;
+        storeId: string;
+        checkoutId: string | null;
+        cartId: string | null;
+        status: string;
+        channel: string;
+        currency: string;
+        customerId: string | null;
+        deliveryMethodType: string;
+        pickupLocationId: string | null;
+        shippingZoneId: string | null;
+        selectedShippingRateId: string | null;
+        shippingMethodLabel: string | null;
+        shippingAddress: Record<string, any> | null;
+        billingAddress: Record<string, any> | null;
+        originInventoryLocationId: string | null;
+        shippingQuote: Record<string, any> | null;
+        subtotal: string;
+        discountTotal: string;
+        taxTotal: string;
+        shippingTotal: string;
+        total: string;
+        subtotalMinor: number;
+        discountTotalMinor: number;
+        taxTotalMinor: number;
+        shippingTotalMinor: number;
+        totalMinor: number;
+        createdAt: Date | null;
+        updatedAt: Date | null;
+    }>;
+}

@@ -89,6 +89,74 @@ export class OrdersService {
     return { ...order[0], items, events };
   }
 
+  async getOrderStorefront(
+    companyId: string,
+    storeId: string,
+    orderId: string,
+  ) {
+    const orderRows = await this.db
+      .select()
+      .from(orders)
+      .where(
+        and(
+          eq(orders.companyId, companyId),
+          eq(orders.storeId, storeId), // ✅ store scope
+          eq(orders.id, orderId),
+        ),
+      )
+      .execute();
+
+    const order = orderRows?.[0];
+    if (!order) throw new NotFoundException('Order not found');
+
+    const rows = await this.db
+      .select({
+        item: orderItems,
+        imageUrl: productImages.url,
+      })
+      .from(orderItems)
+      .leftJoin(
+        productVariants,
+        and(
+          eq(productVariants.companyId, companyId),
+          eq(productVariants.id, orderItems.variantId),
+        ),
+      )
+      .leftJoin(
+        productImages,
+        and(
+          eq(productImages.companyId, companyId),
+          eq(productImages.id, productVariants.imageId),
+        ),
+      )
+      .where(
+        and(
+          eq(orderItems.companyId, companyId),
+          eq(orderItems.orderId, orderId),
+        ),
+      )
+      .execute();
+
+    const items = rows.map((r) => ({
+      ...r.item,
+      imageUrl: r.imageUrl ?? null,
+    }));
+
+    const events = await this.db
+      .select()
+      .from(orderEvents)
+      .where(
+        and(
+          eq(orderEvents.companyId, companyId),
+          eq(orderEvents.orderId, orderId),
+        ),
+      )
+      .orderBy(desc(orderEvents.createdAt))
+      .execute();
+
+    return { ...order, items, events };
+  }
+
   // -----------------------
   // GET /orders
   // -----------------------

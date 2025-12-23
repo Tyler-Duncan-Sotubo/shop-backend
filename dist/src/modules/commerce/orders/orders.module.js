@@ -16,12 +16,14 @@ const inventory_ledger_service_1 = require("../inventory/services/inventory-ledg
 const manual_orders_service_1 = require("./manual-orders.service");
 const invoice_service_1 = require("../../billing/invoice/invoice.service");
 const invoice_totals_service_1 = require("../../billing/invoice/invoice-totals.service");
+const storefront_orders_controller_1 = require("./storefront-orders.controller");
+const api_keys_service_1 = require("../../iam/api-keys/api-keys.service");
 let OrdersModule = class OrdersModule {
 };
 exports.OrdersModule = OrdersModule;
 exports.OrdersModule = OrdersModule = __decorate([
     (0, common_1.Module)({
-        controllers: [orders_controller_1.OrdersController],
+        controllers: [orders_controller_1.OrdersController, storefront_orders_controller_1.StorefrontOrdersController],
         providers: [
             orders_service_1.OrdersService,
             inventory_stock_service_1.InventoryStockService,
@@ -30,6 +32,7 @@ exports.OrdersModule = OrdersModule = __decorate([
             manual_orders_service_1.ManualOrdersService,
             invoice_service_1.InvoiceService,
             invoice_totals_service_1.InvoiceTotalsService,
+            api_keys_service_1.ApiKeysService,
         ],
     })
 ], OrdersModule);

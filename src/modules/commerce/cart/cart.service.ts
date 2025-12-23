@@ -42,7 +42,6 @@ export class CartService {
     const cart = await this.db.query.carts.findFirst({
       where: and(eq(carts.companyId, companyId), eq(carts.id, cartId)),
     });
-
     if (!cart) throw new NotFoundException('Cart not found');
     return cart;
   }
@@ -51,6 +50,7 @@ export class CartService {
   // Core getters
   // -----------------------------
   async getCartByIdOrThrow(companyId: string, storeId: string, cartId: string) {
+    console.log('Getting cart by id', { companyId, storeId, cartId });
     const cart = await this.db.query.carts.findFirst({
       where: and(
         eq(carts.companyId, companyId),
@@ -58,7 +58,6 @@ export class CartService {
         eq(carts.id, cartId),
       ),
     });
-
     if (!cart) throw new NotFoundException('Cart not found');
     return cart;
   }
@@ -72,7 +71,6 @@ export class CartService {
         eq(carts.status, 'active' as any),
       ),
     });
-
     if (!cart) throw new NotFoundException('Cart not found');
     return cart;
   }
@@ -545,6 +543,7 @@ export class CartService {
         eq(cartItems.cartId, cartId),
       ),
     });
+
     if (!existing) throw new NotFoundException('Cart item not found');
 
     if (cart.channel === 'pos') {
@@ -588,13 +587,11 @@ export class CartService {
 
     const updated = await this.recalculateTotals(
       companyId,
-      cartId,
       storeId,
+      cartId,
       user,
       ip,
-      {
-        reason: 'UPDATE_QTY',
-      },
+      { reason: 'UPDATE_QTY' },
     );
 
     await this.cache.bumpCompanyVersion(companyId);
@@ -654,13 +651,11 @@ export class CartService {
 
     const updated = await this.recalculateTotals(
       companyId,
-      cartId,
       storeId,
+      cartId,
       user,
       ip,
-      {
-        reason: 'REMOVE_ITEM',
-      },
+      { reason: 'REMOVE_ITEM' },
     );
 
     await this.cache.bumpCompanyVersion(companyId);

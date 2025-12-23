@@ -36,6 +36,7 @@ let CartService = class CartService {
         return cart;
     }
     async getCartByIdOrThrow(companyId, storeId, cartId) {
+        console.log('Getting cart by id', { companyId, storeId, cartId });
         const cart = await this.db.query.carts.findFirst({
             where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.carts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.carts.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.carts.id, cartId)),
         });
@@ -372,9 +373,7 @@ let CartService = class CartService {
             .set({ lastActivityAt: new Date() })
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.carts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.carts.id, cartId)))
             .execute();
-        const updated = await this.recalculateTotals(companyId, cartId, storeId, user, ip, {
-            reason: 'UPDATE_QTY',
-        });
+        const updated = await this.recalculateTotals(companyId, storeId, cartId, user, ip, { reason: 'UPDATE_QTY' });
         await this.cache.bumpCompanyVersion(companyId);
         if (user && ip) {
             await this.auditService.logAction({
@@ -411,9 +410,7 @@ let CartService = class CartService {
             .set({ lastActivityAt: new Date() })
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.carts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.carts.id, cartId)))
             .execute();
-        const updated = await this.recalculateTotals(companyId, cartId, storeId, user, ip, {
-            reason: 'REMOVE_ITEM',
-        });
+        const updated = await this.recalculateTotals(companyId, storeId, cartId, user, ip, { reason: 'REMOVE_ITEM' });
         await this.cache.bumpCompanyVersion(companyId);
         if (user && ip) {
             await this.auditService.logAction({

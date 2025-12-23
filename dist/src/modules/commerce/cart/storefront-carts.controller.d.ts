@@ -5,7 +5,39 @@ import { AuthCustomer } from '../../customers/types/customers';
 export declare class StorefrontCartController extends BaseController {
     private readonly cartService;
     constructor(cartService: CartService);
-    createGuestCart(companyId: string, storeId: string, dto: CreateCartDto, ip: string): Promise<any>;
+    createGuestCart(companyId: string, storeId: string, dto: CreateCartDto, ip: string): Promise<{
+        items: never[];
+        id: string;
+        cartId: number;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        storeId: string;
+        ownerType: "customer" | "guest";
+        customerId: string | null;
+        guestToken: string | null;
+        status: "active" | "converted" | "abandoned" | "expired";
+        currency: string;
+        subtotal: string;
+        discountTotal: string;
+        taxTotal: string;
+        shippingTotal: string;
+        total: string;
+        totalsBreakdown: Record<string, any> | null;
+        metadata: Record<string, any> | null;
+        selectedShippingRateId: string | null;
+        selectedShippingMethodLabel: string | null;
+        lastActivityAt: Date;
+        expiresAt: Date;
+        originInventoryLocationId: string | null;
+        channel: "online" | "pos";
+        fulfillmentMode: string;
+        fulfillmentBreakdown: {
+            originInventoryLocationId?: string | null;
+            mode: "pos_location" | "single_location" | "split";
+        } | null;
+        convertedOrderId: string | null;
+    }>;
     getCart(companyId: string, storeId: string, cartId: string): Promise<{
         items: ({
             id: string;

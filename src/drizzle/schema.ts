@@ -99,3 +99,6 @@ export * from './schema/billing/payment/payment-allocations.schema';
 
 // TAXES
 export * from './schema/billing/tax/taxes.schema';
+
+// BLOG POSTS
+export * from './schema/blog/blog.schema';

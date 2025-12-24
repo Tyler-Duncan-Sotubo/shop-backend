@@ -122,9 +122,9 @@ export declare function mapProductToCollectionListResponse(product: ProductWithR
     minPrice?: number | null;
     maxPrice?: number | null;
 }): {
-    id: string;
-    name: string;
-    slug: string;
+    id: any;
+    name: any;
+    slug: any;
     permalink: string;
     type: string;
     price: string;
@@ -139,20 +139,8 @@ export declare function mapProductToCollectionListResponse(product: ProductWithR
         alt: any;
     }[];
     tags: never[];
-    categories: {
-        id: any;
-        name: any;
-        slug: any;
-    }[];
-    attributes: {
-        id: number;
-        name: string;
-        slug: string;
-        position: number;
-        visible: boolean;
-        variation: boolean;
-        options: string[];
-    }[];
+    categories: any;
+    attributes: any;
     price_html: string;
 };
 export {};

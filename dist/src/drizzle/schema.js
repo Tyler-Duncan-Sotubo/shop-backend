@@ -73,4 +73,5 @@ __exportStar(require("./schema/billing/invoice/invoice-public-links.schema"), ex
 __exportStar(require("./schema/billing/payment/payments.schema"), exports);
 __exportStar(require("./schema/billing/payment/payment-allocations.schema"), exports);
 __exportStar(require("./schema/billing/tax/taxes.schema"), exports);
+__exportStar(require("./schema/blog/blog.schema"), exports);
 //# sourceMappingURL=schema.js.map

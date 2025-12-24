@@ -4,7 +4,7 @@ export declare class StorefrontOrdersController {
     constructor(orders: OrdersService);
     getById(companyId: string, storeId: string, orderId: string): Promise<{
         items: {
-            imageUrl: string | null;
+            imageUrl: any;
             id: string;
             companyId: string;
             orderId: string;
@@ -33,36 +33,5 @@ export declare class StorefrontOrdersController {
             meta: unknown;
             createdAt: Date;
         }[];
-        id: string;
-        orderNumber: string;
-        companyId: string;
-        storeId: string;
-        checkoutId: string | null;
-        cartId: string | null;
-        status: string;
-        channel: string;
-        currency: string;
-        customerId: string | null;
-        deliveryMethodType: string;
-        pickupLocationId: string | null;
-        shippingZoneId: string | null;
-        selectedShippingRateId: string | null;
-        shippingMethodLabel: string | null;
-        shippingAddress: Record<string, any> | null;
-        billingAddress: Record<string, any> | null;
-        originInventoryLocationId: string | null;
-        shippingQuote: Record<string, any> | null;
-        subtotal: string;
-        discountTotal: string;
-        taxTotal: string;
-        shippingTotal: string;
-        total: string;
-        subtotalMinor: number;
-        discountTotalMinor: number;
-        taxTotalMinor: number;
-        shippingTotalMinor: number;
-        totalMinor: number;
-        createdAt: Date | null;
-        updatedAt: Date | null;
     }>;
 }

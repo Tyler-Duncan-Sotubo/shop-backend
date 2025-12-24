@@ -57,3 +57,4 @@ export * from './schema/billing/invoice/invoice-public-links.schema';
 export * from './schema/billing/payment/payments.schema';
 export * from './schema/billing/payment/payment-allocations.schema';
 export * from './schema/billing/tax/taxes.schema';
+export * from './schema/blog/blog.schema';

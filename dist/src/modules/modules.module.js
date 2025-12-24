@@ -28,6 +28,8 @@ const checkout_module_1 = require("./commerce/checkout/checkout.module");
 const reviews_module_1 = require("./reviews/reviews.module");
 const pickup_module_1 = require("./fulfillment/pickup/pickup.module");
 const billing_module_1 = require("./billing/billing.module");
+const blog_module_1 = require("./blog/blog.module");
+const media_module_1 = require("./media/media.module");
 let ModulesModule = class ModulesModule {
 };
 exports.ModulesModule = ModulesModule;
@@ -55,6 +57,8 @@ exports.ModulesModule = ModulesModule = __decorate([
             reviews_module_1.ReviewsModule,
             pickup_module_1.PickupModule,
             billing_module_1.BillingModule,
+            blog_module_1.BlogModule,
+            media_module_1.MediaModule,
         ],
         exports: [
             audit_module_1.AuditModule,

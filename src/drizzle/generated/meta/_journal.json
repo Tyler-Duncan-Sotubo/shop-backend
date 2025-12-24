@@ -71,6 +71,20 @@
       "when": 1766402811059,
       "tag": "0009_motionless_mac_gargan",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1766529454225,
+      "tag": "0010_aromatic_lila_cheney",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1766573277486,
+      "tag": "0011_nervous_lorna_dane",
+      "breakpoints": true
     }
   ]
 }

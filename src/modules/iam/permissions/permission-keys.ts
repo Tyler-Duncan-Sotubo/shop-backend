@@ -185,4 +185,15 @@ export const PermissionKeys = [
   'billing.taxes.create',
   'billing.taxes.update',
   'billing.taxes.delete',
+
+  // Blogs
+  'blog.posts.read',
+  'blog.posts.create',
+  'blog.posts.update',
+  'blog.posts.publish',
+  'blog.posts.delete',
+
+  // Media
+  'media.upload',
+  'media.delete',
 ];

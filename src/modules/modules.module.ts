@@ -19,6 +19,8 @@ import { CheckoutModule } from './commerce/checkout/checkout.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { PickupModule } from './fulfillment/pickup/pickup.module';
 import { BillingModule } from './billing/billing.module';
+import { BlogModule } from './blog/blog.module';
+import { MediaModule } from './media/media.module';
 
 @Global()
 @Module({
@@ -43,6 +45,8 @@ import { BillingModule } from './billing/billing.module';
     ReviewsModule,
     PickupModule,
     BillingModule,
+    BlogModule,
+    MediaModule,
   ],
   exports: [
     AuditModule,

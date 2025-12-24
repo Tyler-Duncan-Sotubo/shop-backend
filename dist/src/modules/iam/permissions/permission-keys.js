@@ -130,5 +130,12 @@ exports.PermissionKeys = [
     'billing.taxes.create',
     'billing.taxes.update',
     'billing.taxes.delete',
+    'blog.posts.read',
+    'blog.posts.create',
+    'blog.posts.update',
+    'blog.posts.publish',
+    'blog.posts.delete',
+    'media.upload',
+    'media.delete',
 ];
 //# sourceMappingURL=permission-keys.js.map

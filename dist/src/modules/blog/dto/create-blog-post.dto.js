@@ -34,6 +34,10 @@ class CreateBlogPostDto {
 }
 exports.CreateBlogPostDto = CreateBlogPostDto;
 __decorate([
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateBlogPostDto.prototype, "storeId", void 0);
+__decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.Length)(3, 220),
     __metadata("design:type", String)

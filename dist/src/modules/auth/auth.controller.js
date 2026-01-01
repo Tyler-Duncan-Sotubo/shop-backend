@@ -47,6 +47,7 @@ let AuthController = class AuthController {
         return this.user.editUserRole(id, dto);
     }
     async login(dto, res, ip) {
+        const isProd = process.env.NODE_ENV === 'production';
         const result = await this.auth.login(dto, ip);
         if ('status' in result) {
             return result;
@@ -54,8 +55,9 @@ let AuthController = class AuthController {
         const { user, backendTokens, permissions } = result;
         res.cookie('Authentication', backendTokens.refreshToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'none',
+            secure: isProd,
+            sameSite: isProd ? 'none' : 'lax',
+            path: '/',
         });
         return {
             success: true,

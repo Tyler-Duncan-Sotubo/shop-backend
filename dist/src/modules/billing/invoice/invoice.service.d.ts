@@ -28,6 +28,7 @@ export declare class InvoiceService {
             companyId: string;
             storeId: string | null;
             orderId: string | null;
+            quoteRequestId: string | null;
             type: "invoice" | "credit_note";
             status: "draft" | "issued" | "partially_paid" | "paid" | "void";
             customerId: string | null;
@@ -111,6 +112,7 @@ export declare class InvoiceService {
             companyId: string;
             storeId: string | null;
             orderId: string | null;
+            quoteRequestId: string | null;
             type: "invoice" | "credit_note";
             status: "draft" | "issued" | "partially_paid" | "paid" | "void";
             customerId: string | null;

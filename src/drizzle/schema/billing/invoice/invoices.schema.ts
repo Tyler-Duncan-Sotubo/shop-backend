@@ -19,6 +19,7 @@ import { companies } from '../../companies/companies.schema';
 import { customers } from '../../customers/customers.schema';
 import { customerAddresses } from '../../customers/customer-addresses.schema';
 import { invoiceSeries } from './invoice-series.schema';
+import { quoteRequests } from '../../quotes/quote-requests.schema';
 
 export const invoices = pgTable(
   'invoices',
@@ -36,6 +37,13 @@ export const invoices = pgTable(
     orderId: uuid('order_id').references(() => orders.id, {
       onDelete: 'set null',
     }),
+
+    quoteRequestId: uuid('quote_request_id').references(
+      () => quoteRequests.id,
+      {
+        onDelete: 'set null',
+      },
+    ),
 
     type: invoiceTypeEnum('type').notNull().default('invoice'),
     status: invoiceStatusEnum('status').notNull().default('draft'),

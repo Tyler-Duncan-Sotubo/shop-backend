@@ -29,12 +29,24 @@ export const productImages = pgTable(
       onDelete: 'set null',
     }),
 
+    // ✅ filename as sent from frontend (optional)
+    fileName: text('file_name'),
+
+    // ✅ NEW: metadata
+    mimeType: text('mime_type'),
+    size: integer('size'), // bytes
+    width: integer('width'), // px
+    height: integer('height'), // px
+
     url: text('url').notNull(),
+
+    // ✅ accessibility
     altText: text('alt_text'),
 
     position: integer('position').notNull().default(1),
 
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+
     deletedAt: timestamp('deleted_at', { mode: 'date' }),
   },
   (table) => [

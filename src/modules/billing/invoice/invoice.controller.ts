@@ -23,11 +23,16 @@ import { InvoiceLineIdParamDto } from './dto/invoice-line-id.param.dto';
 import { UpdateInvoiceLineDto } from './dto/update-invoice-line.dto';
 import { ListInvoicesQueryDto } from './dto/list-invoices.query.dto';
 import { UpdateInvoiceDraftDto } from './dto/update-invoice-draft.dto';
+import { RecordInvoicePaymentDto } from '../payment/dto/record-invoice-payment.dto';
+import { PaymentService } from '../payment/payment.service';
 
 @Controller('invoices')
 @UseGuards(JwtAuthGuard)
 export class InvoiceController extends BaseController {
-  constructor(private readonly invoiceService: InvoiceService) {
+  constructor(
+    private readonly invoiceService: InvoiceService,
+    private readonly paymentService: PaymentService,
+  ) {
     super();
   }
 
@@ -129,5 +134,29 @@ export class InvoiceController extends BaseController {
       user.companyId,
     );
     return { message: 'Invoice series synchronized successfully.' };
+  }
+
+  @Post(':invoiceId/payments')
+  async recordInvoicePayment(
+    @CurrentUser() user: User,
+    @Param() params: InvoiceIdParamDto,
+    @Body() dto: RecordInvoicePaymentDto,
+  ) {
+    console.log('Recording payment for invoice:', dto);
+    return this.paymentService.recordInvoicePayment(
+      {
+        invoiceId: params.invoiceId,
+        amount: dto.amount,
+        currency: dto.currency,
+        method: dto.method,
+        reference: dto.reference ?? null,
+        meta: dto.meta ?? null,
+        evidenceDataUrl: dto.evidenceDataUrl,
+        evidenceFileName: dto.evidenceFileName,
+        evidenceNote: dto.evidenceNote,
+      },
+      user.companyId,
+      user.id,
+    );
   }
 }

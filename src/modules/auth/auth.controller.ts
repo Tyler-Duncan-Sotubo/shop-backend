@@ -85,6 +85,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
     @Ip() ip: string,
   ) {
+    const isProd = process.env.NODE_ENV === 'production';
     const result = await this.auth.login(dto, ip);
     if ('status' in result) {
       return result; // short-circuit for 2FA setup/verify
@@ -95,8 +96,9 @@ export class AuthController {
     // Set cookie or headers as needed:
     res.cookie('Authentication', backendTokens.refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: isProd, // ✅ only true on https
+      sameSite: isProd ? 'none' : 'lax',
+      path: '/',
     });
     return {
       success: true,

@@ -5,6 +5,7 @@ import { InvoiceTemplatesModule } from './invoice-templates/invoice-templates.mo
 import { InvoicePdfService } from './invoice-templates/invoice-pdf.service';
 import { AwsService } from 'src/common/aws/aws.service';
 import { InvoiceTotalsService } from './invoice-totals.service';
+import { PaymentService } from '../payment/payment.service';
 
 @Module({
   controllers: [InvoiceController],
@@ -13,7 +14,16 @@ import { InvoiceTotalsService } from './invoice-totals.service';
     InvoicePdfService,
     AwsService,
     InvoiceTotalsService,
+    PaymentService,
   ],
   imports: [InvoiceTemplatesModule],
+  exports: [
+    InvoiceService,
+    InvoiceService,
+    InvoicePdfService,
+    AwsService,
+    InvoiceTotalsService,
+    PaymentService,
+  ],
 })
 export class InvoiceModule {}

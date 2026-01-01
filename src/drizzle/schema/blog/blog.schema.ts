@@ -22,6 +22,8 @@ export const blogPosts = pgTable(
     title: varchar('title', { length: 220 }).notNull(),
     slug: varchar('slug', { length: 240 }).notNull(),
 
+    storeId: uuid('store_id').notNull(),
+
     excerpt: varchar('excerpt', { length: 400 }),
     coverImageUrl: text('cover_image_url'),
 

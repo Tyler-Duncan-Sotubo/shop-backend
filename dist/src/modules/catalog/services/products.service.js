@@ -67,6 +67,26 @@ let ProductsService = class ProductsService {
             throw new common_1.ConflictException(`Slug "${slug}" already exists for company`);
         }
     }
+    sanitizeFileName(name) {
+        const raw = (name ?? '').trim();
+        if (!raw)
+            return null;
+        return raw
+            .replace(/[/\\]/g, '-')
+            .replace(/\s+/g, '-')
+            .replace(/[^a-zA-Z0-9._-]/g, '');
+    }
+    extractStorageKeyFromUrl(url) {
+        if (!url)
+            return null;
+        try {
+            const u = new URL(url);
+            return u.pathname.replace(/^\//, '');
+        }
+        catch {
+            return null;
+        }
+    }
     async createProduct(companyId, dto, user, ip) {
         await this.assertCompanyExists(companyId);
         const slug = (0, slugify_1.slugify)(dto.slug ?? dto.name);
@@ -92,7 +112,41 @@ let ProductsService = class ProductsService {
                 .returning()
                 .execute();
             if (dto.base64Image) {
-                const fileName = `${product.id}-default-${Date.now()}.jpg`;
+                const mimeType = (dto.imageMimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+                const safeProvidedName = this.sanitizeFileName(dto.imageFileName);
+                const extFromMime = mimeType.startsWith('image/')
+                    ? `.${mimeType.split('/')[1] || 'jpg'}`
+                    : '.bin';
+                const fallbackName = `${product.id}-default-${Date.now()}${extFromMime}`;
+                const fileName = safeProvidedName && safeProvidedName.includes('.')
+                    ? safeProvidedName
+                    : safeProvidedName
+                        ? `${safeProvidedName}${extFromMime}`
+                        : fallbackName;
+                const normalized = dto.base64Image.includes(',')
+                    ? dto.base64Image.split(',')[1]
+                    : dto.base64Image;
+                let buffer;
+                try {
+                    buffer = Buffer.from(normalized, 'base64');
+                }
+                catch {
+                    throw new common_1.BadRequestException('Invalid base64Image');
+                }
+                const size = buffer.byteLength;
+                let width = null;
+                let height = null;
+                if (mimeType.startsWith('image/')) {
+                    try {
+                        const sharpMod = await Promise.resolve().then(() => require('sharp'));
+                        const sharpFn = sharpMod.default ?? sharpMod;
+                        const meta = await sharpFn(buffer).metadata();
+                        width = meta.width ?? null;
+                        height = meta.height ?? null;
+                    }
+                    catch {
+                    }
+                }
                 const url = await this.aws.uploadImageToS3(companyId, fileName, dto.base64Image);
                 const [img] = await tx
                     .insert(schema_1.productImages)
@@ -102,6 +156,11 @@ let ProductsService = class ProductsService {
                     variantId: null,
                     url,
                     altText: dto.imageAltText ?? `${product.name} product image`,
+                    fileName,
+                    mimeType,
+                    size,
+                    width,
+                    height,
                     position: 0,
                 })
                     .returning()
@@ -222,12 +281,12 @@ let ProductsService = class ProductsService {
                 count = Number(basicCount) || 0;
             }
             const total = Number(count) || 0;
-            const items = await this.listProducts(companyId, query);
+            const items = await this.listProducts(companyId, storeId, query);
             return { items, total, limit, offset };
         });
     }
-    async listProducts(companyId, query) {
-        const { search, status, categoryId, storeId, limit = 50, offset = 0, } = query;
+    async listProducts(companyId, storeId, query) {
+        const { search, status, categoryId, limit = 50, offset = 0 } = query;
         return this.cache.getOrSetVersioned(companyId, [
             'catalog',
             'products',
@@ -601,11 +660,50 @@ let ProductsService = class ProductsService {
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, productId)))
                 .returning()
                 .execute();
-            if (!p) {
+            if (!p)
                 throw new common_1.NotFoundException('Product not found');
-            }
             if (dto.base64Image) {
-                const fileName = `${productId}-default-${Date.now()}.jpg`;
+                const mimeType = (dto.imageMimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+                const safeProvidedName = this.sanitizeFileName(dto.imageFileName);
+                const extFromMime = mimeType.startsWith('image/')
+                    ? `.${mimeType.split('/')[1] || 'jpg'}`
+                    : '.bin';
+                const fallbackName = `${productId}-default-${Date.now()}${extFromMime}`;
+                const fileName = safeProvidedName && safeProvidedName.includes('.')
+                    ? safeProvidedName
+                    : safeProvidedName
+                        ? `${safeProvidedName}${extFromMime}`
+                        : fallbackName;
+                const normalized = dto.base64Image.includes(',')
+                    ? dto.base64Image.split(',')[1]
+                    : dto.base64Image;
+                let buffer;
+                try {
+                    buffer = Buffer.from(normalized, 'base64');
+                }
+                catch {
+                    throw new common_1.BadRequestException('Invalid base64Image');
+                }
+                const size = buffer.byteLength;
+                let width = null;
+                let height = null;
+                if (mimeType.startsWith('image/')) {
+                    try {
+                        const sharpMod = await Promise.resolve().then(() => require('sharp'));
+                        const sharpFn = sharpMod.default ?? sharpMod;
+                        const meta = await sharpFn(buffer).metadata();
+                        width = meta.width ?? null;
+                        height = meta.height ?? null;
+                    }
+                    catch {
+                    }
+                }
+                const currentDefaultImageId = existing.defaultImageId ?? null;
+                const currentDefaultImage = currentDefaultImageId
+                    ? await tx.query.productImages.findFirst({
+                        where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, currentDefaultImageId), (0, drizzle_orm_1.isNull)(schema_1.productImages.deletedAt)),
+                    })
+                    : null;
                 const url = await this.aws.uploadImageToS3(companyId, fileName, dto.base64Image);
                 const [img] = await tx
                     .insert(schema_1.productImages)
@@ -615,6 +713,11 @@ let ProductsService = class ProductsService {
                     variantId: null,
                     url,
                     altText: dto.imageAltText ?? `${existing.name} product image`,
+                    fileName,
+                    mimeType,
+                    size,
+                    width,
+                    height,
                     position: 0,
                 })
                     .returning()
@@ -623,6 +726,16 @@ let ProductsService = class ProductsService {
                     .update(schema_1.products)
                     .set({ defaultImageId: img.id, updatedAt: new Date() })
                     .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, existing.id)));
+                if (currentDefaultImage?.url && currentDefaultImage.url !== url) {
+                    const oldKey = this.extractStorageKeyFromUrl(currentDefaultImage.url);
+                    if (oldKey) {
+                        try {
+                            await this.aws.deleteFromS3(oldKey);
+                        }
+                        catch {
+                        }
+                    }
+                }
             }
             if (dto.categoryIds) {
                 const uniqueCategoryIds = Array.from(new Set(dto.categoryIds ?? []));
@@ -801,12 +914,13 @@ let ProductsService = class ProductsService {
         }
         return inserted;
     }
-    async getCategoryAndDescendantIds(companyId, categoryId) {
+    async getCategoryAndDescendantIds(companyId, storeId, categoryId) {
         const res = await this.db.execute((0, drizzle_orm_1.sql) `
     WITH RECURSIVE subcats AS (
       SELECT id
       FROM ${schema_1.categories}
       WHERE company_id = ${companyId}
+        AND store_id = ${storeId}
         AND id = ${categoryId}
         AND deleted_at IS NULL
 
@@ -816,6 +930,7 @@ let ProductsService = class ProductsService {
       FROM ${schema_1.categories} c
       JOIN subcats s ON c.parent_id = s.id
       WHERE c.company_id = ${companyId}
+        AND c.store_id = ${storeId}
         AND c.deleted_at IS NULL
     )
     SELECT id FROM subcats
@@ -823,7 +938,7 @@ let ProductsService = class ProductsService {
         const ids = res.rows?.map((r) => r.id) ?? [categoryId];
         return ids;
     }
-    async listCollectionProductsByCategorySlug(companyId, categorySlug, query) {
+    async listCollectionProductsByCategorySlug(companyId, storeId, categorySlug, query) {
         const { search, status, limit = 12, offset = 0 } = query;
         const effectiveStatus = status ?? 'active';
         const attr = query.attr ?? {};
@@ -835,6 +950,7 @@ let ProductsService = class ProductsService {
             'collections',
             'products',
             'byCategorySlug',
+            storeId,
             categorySlug,
             JSON.stringify({
                 search: search ?? null,
@@ -846,20 +962,21 @@ let ProductsService = class ProductsService {
         ];
         return this.cache.getOrSetVersioned(companyId, cacheKey, async () => {
             const category = await this.db.query.categories.findFirst({
-                where: (c, { and, eq, isNull }) => and(eq(c.companyId, companyId), eq(c.slug, categorySlug), isNull(c.deletedAt)),
+                where: (c, { and, eq, isNull }) => and(eq(c.companyId, companyId), eq(c.storeId, storeId), eq(c.slug, categorySlug), isNull(c.deletedAt)),
                 columns: { id: true },
             });
             if (!category)
                 return [];
             const hasChild = await this.db.query.categories.findFirst({
-                where: (c, { and, eq, isNull }) => and(eq(c.companyId, companyId), eq(c.parentId, category.id), isNull(c.deletedAt)),
+                where: (c, { and, eq, isNull }) => and(eq(c.companyId, companyId), eq(c.storeId, storeId), eq(c.parentId, category.id), isNull(c.deletedAt)),
                 columns: { id: true },
             });
             const categoryIds = hasChild
-                ? await this.getCategoryAndDescendantIds(companyId, category.id)
+                ? await this.getCategoryAndDescendantIds(companyId, storeId, category.id)
                 : [category.id];
             const whereSql = [
                 (0, drizzle_orm_1.sql) `${schema_1.products.companyId} = ${companyId}`,
+                (0, drizzle_orm_1.sql) `${schema_1.products.storeId} = ${storeId}`,
                 (0, drizzle_orm_1.sql) `${schema_1.products.status} = ${effectiveStatus}`,
                 (0, drizzle_orm_1.sql) `${schema_1.products.deletedAt} IS NULL`,
                 (0, drizzle_orm_1.sql) `EXISTS (
@@ -899,7 +1016,7 @@ let ProductsService = class ProductsService {
             if (productIds.length === 0)
                 return [];
             const fullProducts = await this.db.query.products.findMany({
-                where: (p, { and, eq, inArray, isNull }) => and(eq(p.companyId, companyId), inArray(p.id, productIds), isNull(p.deletedAt)),
+                where: (p, { and, eq, inArray, isNull }) => and(eq(p.companyId, companyId), eq(p.storeId, storeId), inArray(p.id, productIds), isNull(p.deletedAt)),
                 with: {
                     defaultImage: true,
                     images: true,
@@ -966,7 +1083,7 @@ let ProductsService = class ProductsService {
             });
         });
     }
-    async listProductsGroupedUnderParentCategory(companyId, parentCategoryId, query) {
+    async listProductsGroupedUnderParentCategory(companyId, storeId, parentCategoryId, query) {
         const { status, search, limit = 8, offset = 0 } = query;
         const effectiveStatus = status ?? 'active';
         const childCats = await this.db
@@ -976,7 +1093,7 @@ let ProductsService = class ProductsService {
             slug: schema_1.categories.slug,
         })
             .from(schema_1.categories)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.parentId, parentCategoryId), (0, drizzle_orm_1.sql) `${schema_1.categories.deletedAt} IS NULL`))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.categories.parentId, parentCategoryId), (0, drizzle_orm_1.sql) `${schema_1.categories.deletedAt} IS NULL`))
             .orderBy(schema_1.categories.name)
             .execute();
         if (childCats.length === 0) {
@@ -998,6 +1115,7 @@ let ProductsService = class ProductsService {
        AND p.id = pc.product_id
       WHERE pc.company_id = ${companyId}
         AND pc.category_id IN (${drizzle_orm_1.sql.join(childCatIds.map((id) => (0, drizzle_orm_1.sql) `${id}`), (0, drizzle_orm_1.sql) `, `)})
+        AND p.store_id = ${storeId}
         AND p.status = ${effectiveStatus}
         AND p.deleted_at IS NULL
         ${search ? (0, drizzle_orm_1.sql) `AND p.name ILIKE ${`%${search}%`}` : (0, drizzle_orm_1.sql) ``}
@@ -1022,7 +1140,7 @@ let ProductsService = class ProductsService {
         })
             .from(schema_1.products)
             .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, schema_1.products.companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, schema_1.products.defaultImageId)))
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.products.id, productIds)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.storeId, storeId), (0, drizzle_orm_1.inArray)(schema_1.products.id, productIds)))
             .execute();
         const baseById = new Map(base.map((p) => [p.id, p]));
         const stockPriceRows = await this.db
@@ -1098,20 +1216,20 @@ let ProductsService = class ProductsService {
             products: productsByCategory.get(c.id) ?? [],
         }));
     }
-    async listProductsGroupedUnderParentCategorySlug(companyId, parentSlug, query) {
+    async listProductsGroupedUnderParentCategorySlug(companyId, storeId, parentSlug, query) {
         console.log('listProductsGroupedUnderParentCategorySlug called with parentSlug:', parentSlug);
         const parent = await this.db
             .select({
             id: schema_1.categories.id,
         })
             .from(schema_1.categories)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.slug, parentSlug), (0, drizzle_orm_1.sql) `${schema_1.categories.deletedAt} IS NULL`))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.categories.slug, parentSlug), (0, drizzle_orm_1.sql) `${schema_1.categories.deletedAt} IS NULL`))
             .limit(1)
             .execute()
             .then((r) => r[0]);
         if (!parent?.id)
             return [];
-        return this.listProductsGroupedUnderParentCategory(companyId, parent.id, query);
+        return this.listProductsGroupedUnderParentCategory(companyId, storeId, parent.id, query);
     }
 };
 exports.ProductsService = ProductsService;

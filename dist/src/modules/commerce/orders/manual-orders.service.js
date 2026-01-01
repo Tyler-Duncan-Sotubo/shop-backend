@@ -175,7 +175,7 @@ let ManualOrdersService = class ManualOrdersService {
             if (!Number.isFinite(unitPrice) || unitPrice < 0) {
                 throw new common_1.BadRequestException('unitPrice must be a non-negative number');
             }
-            await this.stock.releaseReservationInTx(tx, companyId, origin, input.variantId, qty);
+            await this.stock.reserveForOrderInTx(tx, companyId, input.orderId, origin, input.variantId, qty);
             const lineTotal = unitPrice * qty;
             const [createdItem] = await tx
                 .insert(schema_1.orderItems)
@@ -421,15 +421,6 @@ let ManualOrdersService = class ManualOrdersService {
             if (before.status !== 'draft') {
                 throw new common_1.BadRequestException('Only draft orders can be submitted');
             }
-            if (before.status === 'pending_payment') {
-                const inv = await this.invoiceService.createDraftFromOrder({
-                    orderId,
-                    storeId: before.storeId ?? null,
-                    currency: before.currency,
-                    type: 'invoice',
-                }, companyId, { tx });
-                return { order: before, invoice: inv };
-            }
             const items = await tx
                 .select({ id: schema_1.orderItems.id })
                 .from(schema_1.orderItems)
@@ -471,7 +462,13 @@ let ManualOrdersService = class ManualOrdersService {
                     },
                 });
             }
-            return after;
+            const invoice = await this.invoiceService.createDraftFromOrder({
+                orderId,
+                storeId: before.storeId ?? null,
+                currency: before.currency,
+                type: 'invoice',
+            }, companyId, { tx });
+            return { order: after, invoice };
         };
         const result = outerTx
             ? await run(outerTx)

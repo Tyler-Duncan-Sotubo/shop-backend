@@ -33,7 +33,10 @@ export declare class ManualOrdersService {
     }>;
     submitForPayment(companyId: string, orderId: string, actor?: User, ip?: string, ctx?: {
         tx?: TxOrDb;
-    }): Promise<any>;
+    }): Promise<{
+        order: any;
+        invoice: any;
+    }>;
     private isEditableStatus;
     private recalculateTotalsInTx;
     deleteManualOrder(companyId: string, orderId: string, actor?: User, ip?: string): Promise<{

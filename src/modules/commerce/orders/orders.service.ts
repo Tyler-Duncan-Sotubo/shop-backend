@@ -16,6 +16,7 @@ import {
   productImages,
   productVariants,
   orderEvents,
+  invoices,
 } from 'src/drizzle/schema';
 import { ListOrdersDto } from './dto/list-orders.dto';
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
@@ -220,7 +221,7 @@ export class OrdersService {
 
       const [after] = await tx
         .update(orders)
-        .set({ status: 'paid', updatedAt: new Date() })
+        .set({ status: 'paid', updatedAt: new Date(), paidAt: new Date() })
         .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
         .returning()
         .execute();
@@ -256,12 +257,34 @@ export class OrdersService {
         .execute();
 
       if (!before) throw new NotFoundException('Order not found');
+
       if (before.status !== 'pending_payment') {
         throw new BadRequestException(
           'Only pending_payment orders can be cancelled',
         );
       }
 
+      // ✅ 1) Find invoice for this order
+      const [inv] = await tx
+        .select({ id: invoices.id, paidMinor: invoices.paidMinor })
+        .from(invoices)
+        .where(
+          and(eq(invoices.companyId, companyId), eq(invoices.orderId, orderId)),
+        )
+        .execute();
+
+      // If you always have an invoice, you can throw instead
+      if (!inv) throw new BadRequestException('Order has no invoice');
+
+      const paidMinor = Number(inv.paidMinor ?? 0);
+
+      if (paidMinor > 0) {
+        throw new BadRequestException(
+          `Cannot cancel order with paid invoice amount: ${paidMinor}`,
+        );
+      }
+
+      // ... your existing reservation release logic
       const items = await tx
         .select()
         .from(orderItems)

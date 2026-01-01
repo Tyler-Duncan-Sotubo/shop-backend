@@ -38,6 +38,8 @@ export declare class ProductsService {
         [x: string]: any;
     }>;
     ensureSlugUnique(companyId: string, slug: string, excludeId?: string): Promise<void>;
+    private sanitizeFileName;
+    private extractStorageKeyFromUrl;
     createProduct(companyId: string, dto: CreateProductDto, user?: User, ip?: string): Promise<any>;
     listProductsAdmin(companyId: string, query: ProductQueryDto): Promise<{
         items: {
@@ -68,7 +70,7 @@ export declare class ProductsService {
         limit: number;
         offset: number;
     }>;
-    listProducts(companyId: string, query: ProductQueryDto): Promise<{
+    listProducts(companyId: string, storeId: string, query: ProductQueryDto): Promise<{
         id: any;
         name: any;
         createdAt: any;
@@ -136,7 +138,7 @@ export declare class ProductsService {
         categoryId: string;
     }[]>;
     private getCategoryAndDescendantIds;
-    listCollectionProductsByCategorySlug(companyId: string, categorySlug: string, query: ProductQueryDto): Promise<{
+    listCollectionProductsByCategorySlug(companyId: string, storeId: string, categorySlug: string, query: ProductQueryDto): Promise<{
         id: any;
         name: any;
         slug: any;
@@ -158,7 +160,7 @@ export declare class ProductsService {
         attributes: any;
         price_html: string;
     }[]>;
-    listProductsGroupedUnderParentCategory(companyId: string, parentCategoryId: string, query: ProductQueryDto): Promise<{
+    listProductsGroupedUnderParentCategory(companyId: string, storeId: string, parentCategoryId: string, query: ProductQueryDto): Promise<{
         category: {
             id: any;
             name: any;
@@ -170,7 +172,7 @@ export declare class ProductsService {
         };
         products: any[];
     }[]>;
-    listProductsGroupedUnderParentCategorySlug(companyId: string, parentSlug: string, query: ProductQueryDto): Promise<{
+    listProductsGroupedUnderParentCategorySlug(companyId: string, storeId: string, parentSlug: string, query: ProductQueryDto): Promise<{
         category: {
             id: any;
             name: any;

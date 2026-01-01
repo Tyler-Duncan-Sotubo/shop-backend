@@ -1,4 +1,9 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import { db } from 'src/drizzle/types/drizzle';
@@ -109,6 +114,28 @@ export class ImagesService {
     return (last?.position ?? 0) + 1;
   }
 
+  // helpers (copy from MediaService or keep locally)
+  private extractStorageKeyFromUrl(url?: string | null) {
+    if (!url) return null;
+    try {
+      const u = new URL(url);
+      return u.pathname.replace(/^\//, '');
+    } catch {
+      return null;
+    }
+  }
+
+  private sanitizeFileName(name?: string | null) {
+    const raw = (name ?? '').trim();
+    if (!raw) return null;
+
+    // simple sanitize: keep it filesystem-safe-ish
+    return raw
+      .replace(/[/\\]/g, '-') // no path traversal
+      .replace(/\s+/g, '-') // spaces -> dashes
+      .replace(/[^a-zA-Z0-9._-]/g, ''); // drop weird chars
+  }
+
   // --------------------- Create Image ---------------------
 
   async createImage(
@@ -127,18 +154,83 @@ export class ImagesService {
       await this.assertVariantBelongsToCompany(companyId, dto.variantId);
     }
 
-    // Upload base64 to S3
-    const fileName = `${productId}-${Date.now()}.jpg`;
+    // ------------------------------------------------------------
+    // 1) Normalize incoming fields (match MediaService behavior)
+    // ------------------------------------------------------------
+    const mimeType = (dto.mimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+
+    const safeProvidedName = this.sanitizeFileName(dto.fileName);
+    const extFromMime = mimeType.startsWith('image/')
+      ? `.${mimeType.split('/')[1] || 'jpg'}`
+      : '.bin';
+
+    // Ensure the filename has an extension
+    const fileNameBase =
+      safeProvidedName ?? `${productId}-${Date.now()}${extFromMime}`;
+
+    const fileName = fileNameBase.includes('.')
+      ? fileNameBase
+      : `${fileNameBase}${extFromMime}`;
+
+    // ------------------------------------------------------------
+    // 2) Decode base64 for size + dimensions (optional)
+    // ------------------------------------------------------------
+    const normalized = dto.base64Image.includes(',')
+      ? dto.base64Image.split(',')[1]
+      : dto.base64Image;
+
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(normalized, 'base64');
+    } catch {
+      throw new BadRequestException('Invalid base64Image');
+    }
+
+    const size = buffer.byteLength;
+
+    let width: number | null = null;
+    let height: number | null = null;
+
+    if (mimeType.startsWith('image/')) {
+      try {
+        const sharpMod = await import('sharp');
+        const sharpFn: any = (sharpMod as any).default ?? sharpMod;
+        const meta = await sharpFn(buffer).metadata();
+        width = meta.width ?? null;
+        height = meta.height ?? null;
+      } catch {
+        // non-fatal (same behavior as MediaService)
+      }
+    }
+
+    // ------------------------------------------------------------
+    // 3) Upload to S3 using *provided* filename + mimetype
+    //    (If your aws.uploadImageToS3 can accept mimetype, pass it)
+    // ------------------------------------------------------------
     const url = await this.aws.uploadImageToS3(
       companyId,
       fileName,
       dto.base64Image,
+      // optional if your method supports it:
+      // mimeType,
     );
 
-    let image;
+    let image: any;
 
+    // ------------------------------------------------------------
+    // 4) DB write: upsert variant image OR insert gallery image
+    // ------------------------------------------------------------
     if (dto.variantId) {
-      // ✅ one image per variant: update if exists, else insert
+      // Load existing row (to delete old file if we replace it)
+      const existing = await tx.query.productImages.findFirst({
+        where: and(
+          eq(productImages.companyId, companyId),
+          eq(productImages.productId, productId),
+          eq(productImages.variantId, dto.variantId),
+          isNull(productImages.deletedAt),
+        ),
+      });
+
       const [upserted] = await tx
         .insert(productImages)
         .values({
@@ -147,11 +239,16 @@ export class ImagesService {
           variantId: dto.variantId,
           url,
           altText: dto.altText ?? null,
-          // position usually irrelevant for variant image; keep null or 0 if you prefer
           position: dto.position ?? 0,
+
+          // ✅ new fields (remove if not in schema)
+          fileName,
+          mimeType,
+          size,
+          width,
+          height,
         })
         .onConflictDoUpdate({
-          // must match your unique index columns
           target: [
             productImages.companyId,
             productImages.productId,
@@ -161,14 +258,33 @@ export class ImagesService {
             url: sql`excluded.url`,
             altText: sql`excluded.alt_text`,
             position: sql`excluded.position`,
+
+            // ✅ new fields (remove if not in schema)
+            fileName: sql`excluded.file_name`,
+            mimeType: sql`excluded.mime_type`,
+            size: sql`excluded.size`,
+            width: sql`excluded.width`,
+            height: sql`excluded.height`,
           },
         })
         .returning()
         .execute();
 
       image = upserted;
+
+      // ✅ delete old s3 object AFTER successful upsert (avoid breaking if upload fails)
+      if (existing?.url && existing.url !== url) {
+        const oldKey = this.extractStorageKeyFromUrl(existing.url);
+        if (oldKey) {
+          // best-effort delete; don't block the request if it fails
+          try {
+            await this.aws.deleteFromS3(oldKey);
+          } catch {
+            // optionally log
+          }
+        }
+      }
     } else {
-      // ✅ product gallery image: allow many, keep ordering
       const position = await this.getNextImagePosition(
         companyId,
         productId,
@@ -184,6 +300,13 @@ export class ImagesService {
           altText: dto.altText ?? null,
           position: dto.position ?? position,
           variantId: null,
+
+          // ✅ new fields (remove if not in schema)
+          fileName,
+          mimeType,
+          size,
+          width,
+          height,
         })
         .returning()
         .execute();
@@ -191,10 +314,10 @@ export class ImagesService {
       image = inserted;
     }
 
-    // after `image = upserted/inserted;`
-
+    // ------------------------------------------------------------
+    // 5) Update pointers (variant.imageId or product.defaultImageId)
+    // ------------------------------------------------------------
     if (dto.variantId) {
-      // ✅ make variant point at this image
       await tx
         .update(productVariants)
         .set({ imageId: image.id, updatedAt: new Date() })
@@ -205,8 +328,6 @@ export class ImagesService {
           ),
         );
     } else {
-      // ✅ if no default image yet, set the product hero
-      // (or set it when position === 0 if you prefer)
       await tx
         .update(products)
         .set({ defaultImageId: image.id, updatedAt: new Date() })
@@ -214,18 +335,21 @@ export class ImagesService {
           and(
             eq(products.companyId, companyId),
             eq(products.id, productId),
-            isNull(products.defaultImageId), // only set if missing
+            isNull(products.defaultImageId),
           ),
         );
     }
 
+    // ------------------------------------------------------------
+    // 6) Cache + audit (same as you had)
+    // ------------------------------------------------------------
     if (!opts?.skipCacheBump) {
       await this.cache.bumpCompanyVersion(companyId);
     }
 
     if (!opts?.skipAudit && user && ip) {
       await this.audit.logAction({
-        action: 'create', // you might want 'update' if conflict happened; see note below
+        action: 'create',
         entity: 'product_image',
         entityId: image.id,
         userId: user.id,
@@ -237,7 +361,12 @@ export class ImagesService {
           productId,
           variantId: dto.variantId ?? null,
           url,
-          altText: dto.altText,
+          altText: dto.altText ?? null,
+          fileName,
+          mimeType,
+          size,
+          width,
+          height,
         },
       });
     }

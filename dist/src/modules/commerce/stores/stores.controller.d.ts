@@ -27,6 +27,8 @@ export declare class StoresController extends BaseController {
             companyId: string;
             name: string;
             slug: string;
+            imageUrl: string | null;
+            imageAltText: string | null;
             defaultCurrency: string;
             defaultLocale: string;
             isActive: boolean;
@@ -40,6 +42,8 @@ export declare class StoresController extends BaseController {
         companyId: string;
         name: string;
         slug: string;
+        imageUrl: string | null;
+        imageAltText: string | null;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
@@ -50,32 +54,38 @@ export declare class StoresController extends BaseController {
     createStore(user: User, dto: CreateStoreDto, ip: string): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
         slug: string;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
+        imageUrl: string | null;
+        imageAltText: string | null;
     }>;
     getStoreById(user: User, storeId: string): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
         slug: string;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
-        createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
+        imageUrl: string | null;
+        imageAltText: string | null;
     }>;
     updateStore(user: User, storeId: string, dto: UpdateStoreDto, ip: string): Promise<{
         id: string;
         companyId: string;
         name: string;
         slug: string;
+        imageUrl: string | null;
+        imageAltText: string | null;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;

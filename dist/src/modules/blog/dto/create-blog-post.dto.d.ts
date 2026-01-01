@@ -7,6 +7,7 @@ export declare class BlogPostProductDto {
     sortOrder?: number;
 }
 export declare class CreateBlogPostDto {
+    storeId: string;
     title: string;
     slug: string;
     excerpt?: string;

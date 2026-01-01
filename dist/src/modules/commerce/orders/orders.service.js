@@ -124,7 +124,7 @@ let OrdersService = class OrdersService {
             }
             const [after] = await tx
                 .update(schema_1.orders)
-                .set({ status: 'paid', updatedAt: new Date() })
+                .set({ status: 'paid', updatedAt: new Date(), paidAt: new Date() })
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
                 .returning()
                 .execute();
@@ -155,6 +155,17 @@ let OrdersService = class OrdersService {
                 throw new common_1.NotFoundException('Order not found');
             if (before.status !== 'pending_payment') {
                 throw new common_1.BadRequestException('Only pending_payment orders can be cancelled');
+            }
+            const [inv] = await tx
+                .select({ id: schema_1.invoices.id, paidMinor: schema_1.invoices.paidMinor })
+                .from(schema_1.invoices)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.orderId, orderId)))
+                .execute();
+            if (!inv)
+                throw new common_1.BadRequestException('Order has no invoice');
+            const paidMinor = Number(inv.paidMinor ?? 0);
+            if (paidMinor > 0) {
+                throw new common_1.BadRequestException(`Cannot cancel order with paid invoice amount: ${paidMinor}`);
             }
             const items = await tx
                 .select()

@@ -29,6 +29,8 @@ export declare class ImagesService {
         [x: string]: any;
     }[]>;
     private getNextImagePosition;
+    private extractStorageKeyFromUrl;
+    private sanitizeFileName;
     createImage(companyId: string, productId: string, dto: CreateImageDto, user?: User, ip?: string, opts?: CreateImageOptions): Promise<any>;
     createDefaultProductImage(companyId: string, productId: string, dto: CreateImageDto, user?: User, ip?: string, opts?: CreateImageOptions): Promise<any>;
     updateImage(companyId: string, imageId: string, dto: UpdateImageDto, user?: User, ip?: string): Promise<{

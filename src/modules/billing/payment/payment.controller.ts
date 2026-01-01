@@ -2,8 +2,9 @@
 import {
   Body,
   Controller,
-  Param,
+  Get,
   Post,
+  Query,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
@@ -13,11 +14,7 @@ import { User } from 'src/common/types/user.type';
 import { BaseController } from 'src/common/interceptor/base.controller';
 import { PaymentService } from './payment.service';
 import { PaystackSuccessDto } from './dto/paystack-success.dto';
-import { RecordBankTransferDto } from './dto/record-bank-transfer.dto';
-import {
-  ConfirmBankTransferDto,
-  PaymentIdParamDto,
-} from './dto/confirm-bank-transfer.dto';
+import { ListPaymentsQueryDto } from './dto/payment-list.dto';
 
 @Controller('payments')
 @UseGuards(JwtAuthGuard)
@@ -39,27 +36,11 @@ export class PaymentController extends BaseController {
     );
   }
 
-  @Post('bank-transfer')
-  @SetMetadata('permissions', ['billing.payments.bankTransfer.create'])
-  async recordBankTransfer(
+  @Get()
+  listPayments(
     @CurrentUser() user: User,
-    @Body() dto: RecordBankTransferDto,
+    @Query() query: ListPaymentsQueryDto,
   ) {
-    return this.paymentsService.recordBankTransfer(dto, user.companyId);
-  }
-
-  @Post('bank-transfer/:paymentId/confirm')
-  @SetMetadata('permissions', ['billing.payments.bankTransfer.confirm'])
-  async confirmBankTransferAndApply(
-    @CurrentUser() user: User,
-    @Param() params: PaymentIdParamDto,
-    @Body() dto: ConfirmBankTransferDto,
-  ) {
-    return this.paymentsService.confirmBankTransferAndApply(
-      params.paymentId,
-      dto,
-      user.companyId,
-      user.id,
-    );
+    return this.paymentsService.listPayments(user.companyId, query);
   }
 }

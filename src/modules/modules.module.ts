@@ -21,6 +21,9 @@ import { PickupModule } from './fulfillment/pickup/pickup.module';
 import { BillingModule } from './billing/billing.module';
 import { BlogModule } from './blog/blog.module';
 import { MediaModule } from './media/media.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { StorefrontConfigModule } from './commerce/storefront-config/storefront-config.module';
+import { QuoteModule } from './commerce/quote/quote.module';
 
 @Global()
 @Module({
@@ -47,6 +50,9 @@ import { MediaModule } from './media/media.module';
     BillingModule,
     BlogModule,
     MediaModule,
+    AnalyticsModule,
+    StorefrontConfigModule,
+    QuoteModule,
   ],
   exports: [
     AuditModule,

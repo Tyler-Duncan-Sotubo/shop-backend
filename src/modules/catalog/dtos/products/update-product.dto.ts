@@ -75,4 +75,12 @@ export class UpdateProductDto {
   @IsOptional()
   @IsString()
   imageAltText?: string;
+
+  @IsOptional()
+  @IsString()
+  imageFileName?: string;
+
+  @IsOptional()
+  @IsString()
+  imageMimeType?: string;
 }

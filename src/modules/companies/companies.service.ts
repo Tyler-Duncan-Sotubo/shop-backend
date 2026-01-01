@@ -14,6 +14,7 @@ import { CompanySettingsService } from '../company-settings/company-settings.ser
 import { VerificationService } from '../auth/services';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { InvoiceService } from '../billing/invoice/invoice.service';
 
 @Injectable()
 export class CompaniesService {
@@ -22,6 +23,7 @@ export class CompaniesService {
     private readonly verificationService: VerificationService,
     private readonly permissionService: PermissionsService,
     private readonly companySettingsService: CompanySettingsService,
+    private readonly invoiceService: InvoiceService,
   ) {}
 
   // ------ helpers ------
@@ -135,6 +137,8 @@ export class CompaniesService {
 
     // 2) enqueue permission seeding for this company (async)
     await this.permissionService.seedDefaultPermissionsForCompany(company.id);
+
+    await this.invoiceService.seedDefaultInvoiceSeriesForCompany(company.id);
   }
 
   // ------ public: registration ------

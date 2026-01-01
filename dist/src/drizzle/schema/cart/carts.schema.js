@@ -26,6 +26,10 @@ exports.carts = (0, pg_core_1.pgTable)('carts', {
         onDelete: 'set null',
     }),
     guestToken: (0, pg_core_1.varchar)('guest_token', { length: 255 }),
+    guestRefreshTokenHash: (0, pg_core_1.varchar)('guest_refresh_token_hash', { length: 255 }),
+    guestRefreshTokenExpiresAt: (0, pg_core_1.timestamp)('guest_refresh_token_expires_at', {
+        withTimezone: true,
+    }),
     status: (0, cart_enums_1.cartStatusEnum)('status').notNull().default('active'),
     currency: (0, pg_core_1.varchar)('currency', { length: 3 }).notNull().default('GBP'),
     subtotal: (0, pg_core_1.numeric)('subtotal', { precision: 12, scale: 2 })

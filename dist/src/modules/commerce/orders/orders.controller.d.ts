@@ -67,4 +67,8 @@ export declare class OrdersController extends BaseController {
     deleteManual(user: User, orderId: string, ip: string): Promise<{
         deleted: boolean;
     }>;
+    submitForPayment(user: User, orderId: string, ip: string): Promise<{
+        order: any;
+        invoice: any;
+    }>;
 }

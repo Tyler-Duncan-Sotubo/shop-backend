@@ -13,6 +13,8 @@ import { AuditService } from 'src/modules/audit/audit.service';
 import { User } from 'src/common/types/user.type';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { CompanySettingsService } from '../../company-settings/company-settings.service';
+import { AwsService } from 'src/common/aws/aws.service';
+import { UpdateStoreDto } from './dto/update-store.dto';
 
 @Injectable()
 export class StoresService {
@@ -21,6 +23,7 @@ export class StoresService {
     private readonly cache: CacheService,
     private readonly auditService: AuditService,
     private readonly companySettingsService: CompanySettingsService,
+    private readonly aws: AwsService,
   ) {}
 
   // --------------------------------------------------------------------------
@@ -72,18 +75,51 @@ export class StoresService {
   ) {
     await this.ensureSlugUniqueForCompany(companyId, payload.slug);
 
-    const [store] = await this.db
-      .insert(stores)
-      .values({
-        companyId,
-        name: payload.name,
-        slug: payload.slug,
-        defaultCurrency: payload.defaultCurrency ?? 'NGN',
-        defaultLocale: payload.defaultLocale ?? 'en-US',
-        isActive: payload.isActive ?? true,
-      })
-      .returning()
-      .execute();
+    const created = await this.db.transaction(async (tx) => {
+      const [store] = await tx
+        .insert(stores)
+        .values({
+          companyId,
+          name: payload.name,
+          slug: payload.slug,
+          defaultCurrency: payload.defaultCurrency ?? 'NGN',
+          defaultLocale: payload.defaultLocale ?? 'en-US',
+          isActive: payload.isActive ?? true,
+
+          // optionally set null first; we'll update after upload
+          imageUrl: null,
+          imageAltText: payload.imageAltText ?? null,
+        })
+        .returning()
+        .execute();
+
+      // ✅ upload if base64 provided
+      if (payload.base64Image) {
+        const fileName = `${store.id}-cover-${Date.now()}.jpg`;
+
+        // Uses the SAME upload helper you already use in product create
+        const url = await this.aws.uploadImageToS3(
+          companyId,
+          fileName,
+          payload.base64Image,
+        );
+
+        const [updated] = await tx
+          .update(stores)
+          .set({
+            imageUrl: url,
+            imageAltText: payload.imageAltText ?? `${store.name} cover image`,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(stores.companyId, companyId), eq(stores.id, store.id)))
+          .returning()
+          .execute();
+
+        return updated ?? store;
+      }
+
+      return store;
+    });
 
     await this.cache.bumpCompanyVersion(companyId);
 
@@ -91,15 +127,16 @@ export class StoresService {
       await this.auditService.logAction({
         action: 'create',
         entity: 'store',
-        entityId: store.id,
+        entityId: created.id,
         userId: user.id,
         ipAddress: ip,
         details: 'Created store',
         changes: {
           companyId,
-          storeId: store.id,
-          name: store.name,
-          slug: store.slug,
+          storeId: created.id,
+          name: created.name,
+          slug: created.slug,
+          imageUrl: created.imageUrl ?? null,
         },
       });
     }
@@ -110,7 +147,7 @@ export class StoresService {
       true,
     );
 
-    return store;
+    return created;
   }
 
   async getStoresByCompany(companyId: string) {
@@ -142,13 +179,7 @@ export class StoresService {
   async updateStore(
     companyId: string,
     storeId: string,
-    payload: {
-      name?: string;
-      slug?: string;
-      defaultCurrency?: string;
-      defaultLocale?: string;
-      isActive?: boolean;
-    },
+    payload: UpdateStoreDto,
     user?: User,
     ip?: string,
   ) {
@@ -158,23 +189,62 @@ export class StoresService {
       await this.ensureSlugUniqueForCompany(companyId, payload.slug, storeId);
     }
 
-    const [updated] = await this.db
-      .update(stores)
-      .set({
-        name: payload.name ?? existing.name,
-        slug: payload.slug ?? existing.slug,
-        defaultCurrency: payload.defaultCurrency ?? existing.defaultCurrency,
-        defaultLocale: payload.defaultLocale ?? existing.defaultLocale,
-        isActive:
-          payload.isActive === undefined ? existing.isActive : payload.isActive,
-      })
-      .where(and(eq(stores.companyId, companyId), eq(stores.id, storeId)))
-      .returning()
-      .execute();
+    const updated = await this.db.transaction(async (tx) => {
+      // 1) If base64 image exists, upload first and set the url
+      let uploadedUrl: string | null | undefined = undefined;
 
-    if (!updated) {
-      throw new NotFoundException('Store not found');
-    }
+      if (payload.base64Image) {
+        const fileName = `${storeId}-cover-${Date.now()}.jpg`;
+
+        uploadedUrl = await this.aws.uploadImageToS3(
+          companyId,
+          fileName,
+          payload.base64Image,
+        );
+      }
+
+      // 2) handle removeImage (optional)
+      const nextImageUrl =
+        payload.removeImage === true
+          ? null
+          : uploadedUrl !== undefined
+            ? uploadedUrl
+            : (existing.imageUrl ?? null);
+
+      const nextAlt =
+        payload.removeImage === true
+          ? null
+          : payload.imageAltText !== undefined
+            ? payload.imageAltText
+            : ((existing as any).imageAltText ?? null);
+
+      const [row] = await tx
+        .update(stores)
+        .set({
+          name: payload.name ?? existing.name,
+          slug: payload.slug ?? existing.slug,
+          defaultCurrency: payload.defaultCurrency ?? existing.defaultCurrency,
+          defaultLocale: payload.defaultLocale ?? existing.defaultLocale,
+          isActive:
+            payload.isActive === undefined
+              ? existing.isActive
+              : payload.isActive,
+
+          // ✅ NEW fields
+          imageUrl: nextImageUrl,
+          // remove this line if you don't have imageAltText column
+          imageAltText: nextAlt,
+
+          // remove if you don't have updatedAt
+          updatedAt: new Date(),
+        })
+        .where(and(eq(stores.companyId, companyId), eq(stores.id, storeId)))
+        .returning()
+        .execute();
+
+      if (!row) throw new NotFoundException('Store not found');
+      return row;
+    });
 
     await this.cache.bumpCompanyVersion(companyId);
 
@@ -195,6 +265,8 @@ export class StoresService {
             defaultCurrency: existing.defaultCurrency,
             defaultLocale: existing.defaultLocale,
             isActive: existing.isActive,
+            imageUrl: existing.imageUrl ?? null,
+            imageAltText: (existing as any).imageAltText ?? null,
           },
           after: {
             name: updated.name,
@@ -202,6 +274,8 @@ export class StoresService {
             defaultCurrency: updated.defaultCurrency,
             defaultLocale: updated.defaultLocale,
             isActive: updated.isActive,
+            imageUrl: updated.imageUrl ?? null,
+            imageAltText: (updated as any).imageAltText ?? null,
           },
         },
       });

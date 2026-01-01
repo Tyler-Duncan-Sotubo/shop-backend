@@ -17,10 +17,14 @@ export declare class AdminCustomersController extends BaseController {
         };
         inviteToken: string;
     }>;
+    bulkCreateCustomers(rows: any[], user: User, storeId: string | null): Promise<{
+        insertedCount: any;
+        items: any;
+    }>;
     createAddress(user: User, customerId: string, dto: CreateCustomerAddressAdminDto): Promise<{
         id: string;
-        country: string;
         createdAt: Date;
+        country: string;
         updatedAt: Date;
         companyId: string;
         firstName: string | null;
@@ -57,7 +61,9 @@ export declare class AdminCustomersController extends BaseController {
     }>;
     list(user: User, dto: ListCustomersDto): Promise<{
         id: string;
-        displayName: string;
+        displayName: string | null;
+        firstName: string | null;
+        lastName: string | null;
         billingEmail: string | null;
         phone: string | null;
         marketingOptIn: boolean;

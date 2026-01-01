@@ -23,6 +23,11 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
+], ListCustomersDto.prototype, "storeId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
 ], ListCustomersDto.prototype, "search", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -35,7 +40,7 @@ __decorate([
     (0, class_transformer_1.Type)(() => Number),
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(1),
-    (0, class_validator_1.Max)(200),
+    (0, class_validator_1.Max)(5000),
     __metadata("design:type", Number)
 ], ListCustomersDto.prototype, "limit", void 0);
 __decorate([

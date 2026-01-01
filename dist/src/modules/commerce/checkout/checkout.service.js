@@ -220,7 +220,6 @@ let CheckoutService = class CheckoutService {
                 weightKg: it.metadata?.weightKg ?? 0,
             })));
         const zone = await this.zones.resolveZone(companyId, checkout.storeId, dto.countryCode, dto.state, dto.area);
-        console.log('Resolved shipping zone:', zone);
         if (!zone)
             throw new common_1.BadRequestException('No shipping zone matches destination');
         let rate = null;

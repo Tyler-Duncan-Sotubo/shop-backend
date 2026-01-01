@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { and, eq, ilike, or } from 'drizzle-orm';
+import { and, eq, ilike, inArray, or } from 'drizzle-orm';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import { db } from 'src/drizzle/types/drizzle';
 import {
@@ -23,6 +23,18 @@ import {
 } from './dto';
 import { CreateCustomerDto } from './dto/register-customer.dto';
 import { TokenGeneratorService } from '../auth/services';
+import { BulkCustomerRowDto } from './dto/bulk-customer-row.dto';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+
+type Derived = {
+  canLogin: boolean;
+  loginEmail: string | null; // real or temp
+  isTempEmail: boolean;
+  tempPassword: string | null;
+  normalizedPhone: string | null;
+  rawEmail: string | null; // real email only (billing)
+};
 
 @Injectable()
 export class AdminCustomersService {
@@ -68,6 +80,329 @@ export class AdminCustomersService {
     const last = (dto.lastName ?? '').trim();
     const name = `${first} ${last}`.trim();
     return name.length > 0 ? name : this.normalizeEmail(dto.email);
+  }
+
+  private generateTempPassword() {
+    // simple + strong enough; swap for something else if you prefer
+    // e.g. 12 chars with letters+numbers
+    const alphabet =
+      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    let out = '';
+    for (let i = 0; i < 12; i++)
+      out += alphabet[Math.floor(Math.random() * alphabet.length)];
+    return out;
+  }
+
+  private normalizePhone(phone: string) {
+    // keep digits + leading +
+    return phone.trim().replace(/[^\d+]/g, '');
+  }
+
+  private makeTempEmailFromPhone(companyId: string, phone: string) {
+    const p = this.normalizePhone(phone);
+    // include companyId to reduce collision risk across tenants (optional)
+    return `${p}.${companyId}@temp.yourapp.local`.toLowerCase();
+  }
+
+  private async mapLimit<T, R>(
+    items: T[],
+    limit: number,
+    fn: (item: T, idx: number) => Promise<R>,
+  ): Promise<R[]> {
+    const out = new Array<R>(items.length);
+    let i = 0;
+
+    const workers = Array.from(
+      { length: Math.min(limit, items.length) },
+      async () => {
+        while (true) {
+          const cur = i++;
+          if (cur >= items.length) break;
+          out[cur] = await fn(items[cur], cur);
+        }
+      },
+    );
+
+    await Promise.all(workers);
+    return out;
+  }
+
+  private chunk<T>(arr: T[], size: number): T[][] {
+    const res: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) res.push(arr.slice(i, i + size));
+    return res;
+  }
+
+  async bulkCreateCustomers(
+    this: any,
+    companyId: string,
+    storeId: string | null,
+    rows: any[],
+    actorUserId: string | null,
+  ) {
+    if (!rows?.length) throw new BadRequestException('No rows provided.');
+
+    const dtos: BulkCustomerRowDto[] = new Array(rows.length);
+    const derived: Derived[] = new Array(rows.length);
+
+    // In-file duplicate detection in one pass
+    const seenEmail = new Map<string, number>(); // email -> first row index
+    const seenPhone = new Map<string, number>(); // phone -> first row index
+    const dupEmails: string[] = [];
+    const dupPhones: string[] = [];
+
+    // 1) Parse + validate + derive + dedupe (single pass)
+    // Validation is async; do it concurrently with a sensible cap.
+    // If you expect huge files, increase cap modestly (e.g., 50-200) depending on your env.
+    const indices = rows.map((_, i) => i);
+
+    await this.mapLimit(indices, 50, async (idx) => {
+      const row = rows[idx];
+
+      const dto = plainToInstance(BulkCustomerRowDto, {
+        firstName: row['First Name'] ?? row['firstName'] ?? row['first_name'],
+        lastName: row['Last Name'] ?? row['lastName'] ?? row['last_name'],
+        email: row['Email'] ?? row['email'],
+        phone: row['Phone'] ?? row['phone'],
+        address: row['Address'] ?? row['address'],
+      });
+
+      const errors = await validate(dto);
+      if (errors.length) {
+        // include row index for faster debugging
+        throw new BadRequestException(
+          `Invalid data in bulk upload (row ${idx + 1}): ` +
+            JSON.stringify(errors),
+        );
+      }
+
+      const rawEmail = (dto.email ?? '').trim();
+      const rawPhone = (dto.phone ?? '').trim();
+      const normalizedPhone = rawPhone ? this.normalizePhone(rawPhone) : null;
+
+      const canLogin = Boolean(rawEmail || normalizedPhone);
+
+      const loginEmail = !canLogin
+        ? null
+        : rawEmail
+          ? this.normalizeEmail(rawEmail)
+          : this.makeTempEmailFromPhone(companyId, normalizedPhone!);
+
+      const isTempEmail = canLogin && !rawEmail && !!normalizedPhone;
+      const tempPassword = canLogin ? this.generateTempPassword() : null;
+
+      // Keep dto.email as the loginEmail ONLY when we can login; otherwise undefined
+      dto.email = loginEmail ?? undefined;
+
+      dtos[idx] = dto;
+      derived[idx] = {
+        canLogin,
+        loginEmail,
+        isTempEmail,
+        tempPassword,
+        normalizedPhone,
+        rawEmail: rawEmail ? this.normalizeEmail(rawEmail) : null,
+      };
+
+      // dedupe by loginEmail (only when loginEmail exists)
+      if (loginEmail) {
+        const first = seenEmail.get(loginEmail);
+        if (first !== undefined) dupEmails.push(loginEmail);
+        else seenEmail.set(loginEmail, idx);
+      }
+
+      // dedupe by normalizedPhone (optional but recommended)
+      if (normalizedPhone) {
+        const first = seenPhone.get(normalizedPhone);
+        if (first !== undefined) dupPhones.push(normalizedPhone);
+        else seenPhone.set(normalizedPhone, idx);
+      }
+    });
+
+    if (dupEmails.length) {
+      // unique duplicates for cleaner error
+      const unique = [...new Set(dupEmails)];
+      throw new BadRequestException(
+        `Duplicate login emails in file: ${unique.join(', ')}`,
+      );
+    }
+    if (dupPhones.length) {
+      const unique = [...new Set(dupPhones)];
+      throw new BadRequestException(
+        `Duplicate phone numbers in file: ${unique.join(', ')}`,
+      );
+    }
+
+    // 2) DB duplicate check (credentials are canonical for login)
+    const loginEmails = derived
+      .filter((d) => d.loginEmail)
+      .map((d) => d.loginEmail!) as string[];
+
+    // For very large imports, chunk the IN-list to avoid query limits
+    const EMAIL_CHUNK = 5000;
+
+    if (loginEmails.length) {
+      for (const part of this.chunk(loginEmails, EMAIL_CHUNK)) {
+        const existing = await this.db
+          .select({ email: customerCredentials.email })
+          .from(customerCredentials)
+          .where(
+            and(
+              eq(customerCredentials.companyId, companyId),
+              inArray(customerCredentials.email, part),
+            ),
+          )
+          .execute();
+
+        if (existing.length) {
+          throw new BadRequestException(
+            `Customers already exist for emails: ${existing.map((r) => r.email).join(', ')}`,
+          );
+        }
+      }
+    }
+
+    // 3) Transaction: batch insert customers + creds + addresses + audit logs
+    const inserted = await this.db.transaction(async (trx) => {
+      // 3a) customers
+      const customerRows = await trx
+        .insert(customers)
+        .values(
+          dtos.map((d, i) => ({
+            companyId,
+            storeId,
+            displayName: this.buildDisplayName({
+              firstName: d.firstName,
+              lastName: d.lastName,
+              // display fallback: use real email if any, else phone, else fallback word
+              email: derived[i].rawEmail ?? d.phone ?? 'customer',
+            }),
+            type: 'individual' as const,
+            firstName: d.firstName ?? null,
+            lastName: d.lastName ?? null,
+            billingEmail: derived[i].rawEmail ?? null,
+            phone: d.phone ?? null,
+            marketingOptIn: false,
+            isActive: true,
+          })),
+        )
+        .returning({
+          id: customers.id,
+          displayName: customers.displayName,
+          billingEmail: customers.billingEmail,
+          firstName: customers.firstName,
+          lastName: customers.lastName,
+          phone: customers.phone,
+        })
+        .execute();
+
+      // 3b) credentials (concurrency-limit bcrypt; don’t do it sequentially)
+      const credInputs = derived
+        .map((d, i) => ({ d, i }))
+        .filter(({ d }) => d.canLogin && d.loginEmail && d.tempPassword);
+
+      // tune based on CPU cores; 8–32 is common
+      const BCRYPT_CONCURRENCY = 16;
+
+      const credentialValues = await this.mapLimit(
+        credInputs,
+        BCRYPT_CONCURRENCY,
+        async ({ d, i }) => {
+          const passwordHash = await bcrypt.hash(d.tempPassword!, 10);
+          return {
+            companyId,
+            customerId: customerRows[i].id,
+            email: d.loginEmail!,
+            passwordHash,
+            isVerified: true,
+            inviteTokenHash: null,
+            inviteExpiresAt: null,
+          };
+        },
+      );
+
+      if (credentialValues.length) {
+        await trx
+          .insert(customerCredentials)
+          .values(credentialValues)
+          .execute();
+      }
+
+      // 3c) addresses (only where present)
+      const addressValues = dtos
+        .map((d, i) => ({ d, i }))
+        .filter(({ d }) => d.address?.trim())
+        .map(({ d, i }) => ({
+          companyId,
+          customerId: customerRows[i].id,
+          label: 'Default',
+          firstName: d.firstName ?? null,
+          lastName: d.lastName ?? null,
+          line1: d.address!.trim(),
+          line2: null,
+          city: 'city',
+          state: null,
+          postalCode: null,
+          country: 'Nigeria',
+          phone: d.phone ?? null,
+          isDefaultBilling: true,
+          isDefaultShipping: true,
+        }));
+
+      if (addressValues.length) {
+        await trx.insert(customerAddresses).values(addressValues).execute();
+      }
+
+      // 3d) audit logs: batch insert instead of per-row awaits
+      // If your this.log() writes to DB, replace it with a bulk insert here.
+      // Example assumes an auditLogs table; adapt to your implementation.
+      const auditValues = customerRows.map((c, i) => ({
+        companyId,
+        actorUserId,
+        entity: 'customer',
+        entityId: c.id,
+        action: 'admin_bulk_created',
+        changes: {
+          loginEmail: derived[i].loginEmail ?? null,
+          canLogin: derived[i].canLogin,
+          isTempEmail: derived[i].isTempEmail,
+          displayName: c.displayName,
+        },
+        // createdAt: new Date(), etc
+      }));
+
+      // If you *must* use this.log(), at least run them concurrently:
+      // await Promise.all(customerRows.map((c, i) => this.log(companyId, actorUserId, {...})));
+      // But DB bulk insert is best:
+      if (trx.insert && this.auditLogs) {
+        await trx.insert(this.auditLogs).values(auditValues).execute();
+      } else {
+        // fallback if you only have this.log()
+        await Promise.all(
+          customerRows.map((c, i) =>
+            this.log(companyId, actorUserId, {
+              entity: 'customer',
+              entityId: c.id,
+              action: 'admin_bulk_created',
+              changes: auditValues[i].changes,
+            }),
+          ),
+        );
+      }
+
+      // 3e) return aligned results
+      return customerRows.map((c, i) => ({
+        customer: c,
+        canLogin: derived[i].canLogin,
+        loginEmail: derived[i].loginEmail,
+        tempPassword: derived[i].tempPassword, // return so caller can show/send it
+        isTempEmail: derived[i].isTempEmail,
+      }));
+    });
+
+    await this.cache.bumpCompanyVersion(companyId);
+
+    return { insertedCount: inserted.length, items: inserted };
   }
 
   /**
@@ -255,7 +590,9 @@ export class AdminCustomersService {
     return this.db
       .select({
         id: customers.id,
-        displayName: customers.displayName,
+        displayName: customers.firstName,
+        firstName: customers.firstName,
+        lastName: customers.lastName,
         billingEmail: customers.billingEmail,
         phone: customers.phone,
         marketingOptIn: customers.marketingOptIn,
@@ -278,6 +615,7 @@ export class AdminCustomersService {
       .where(
         and(
           eq(customers.companyId, companyId),
+          opts.storeId ? eq(customers.storeId, opts.storeId) : undefined,
           ...(opts.includeInactive ? [] : [eq(customers.isActive, true)]),
           ...(s
             ? [

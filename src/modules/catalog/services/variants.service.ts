@@ -450,6 +450,8 @@ export class VariantsService {
 
       if (!updated) throw new NotFoundException('Variant not found');
 
+      console.log('filename', dto.imageFileName);
+
       // 2) image (use your ImagesService.createImage)
       let createdImage: any = null;
       if (shouldCreateImage) {
@@ -460,6 +462,8 @@ export class VariantsService {
             base64Image: dto.base64Image!,
             altText: dto.imageAltText,
             variantId: updated.id,
+            fileName: dto.imageFileName,
+            mimeType: dto.imageMimeType,
           },
           user,
           ip,

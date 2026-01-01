@@ -20,6 +20,7 @@ import { companies } from '../companies/companies.schema';
 import { stores } from '../stores/stores.schema';
 import { checkouts } from '../checkout/checkouts.schema';
 import { carts } from '../cart/carts.schema';
+import { quoteRequests } from '../quotes/quote-requests.schema';
 
 export const orders = pgTable(
   'orders',
@@ -38,6 +39,13 @@ export const orders = pgTable(
     checkoutId: uuid('checkout_id').references(() => checkouts.id, {
       onDelete: 'cascade',
     }),
+
+    quoteRequestId: uuid('quote_request_id').references(
+      () => quoteRequests.id,
+      {
+        onDelete: 'set null',
+      },
+    ),
 
     cartId: uuid('cart_id').references(() => carts.id, { onDelete: 'cascade' }),
 
@@ -77,6 +85,8 @@ export const orders = pgTable(
     ),
 
     shippingQuote: jsonb('shipping_quote').$type<Record<string, any>>(),
+
+    paidAt: timestamp('paid_at', { withTimezone: true }),
 
     // -----------------------------
     // Existing (major units) - keep for now
@@ -125,6 +135,16 @@ export const orders = pgTable(
 
     // ✅ helpful for finance/reporting and billing pipelines
     index('orders_company_created_idx').on(t.companyId, t.createdAt),
+    index('orders_company_store_created_idx').on(
+      t.companyId,
+      t.storeId,
+      t.createdAt,
+    ),
+    index('orders_company_status_created_idx').on(
+      t.companyId,
+      t.status,
+      t.createdAt,
+    ),
   ],
 );
 

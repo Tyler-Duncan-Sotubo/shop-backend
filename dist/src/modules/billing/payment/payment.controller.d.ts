@@ -2,58 +2,22 @@ import { User } from 'src/common/types/user.type';
 import { BaseController } from 'src/common/interceptor/base.controller';
 import { PaymentService } from './payment.service';
 import { PaystackSuccessDto } from './dto/paystack-success.dto';
-import { RecordBankTransferDto } from './dto/record-bank-transfer.dto';
-import { ConfirmBankTransferDto, PaymentIdParamDto } from './dto/confirm-bank-transfer.dto';
+import { ListPaymentsQueryDto } from './dto/payment-list.dto';
 export declare class PaymentController extends BaseController {
     private readonly paymentsService;
     constructor(paymentsService: PaymentService);
     handlePaystackSuccess(user: User, dto: PaystackSuccessDto): Promise<{
-        invoice: {
-            id: string;
-            companyId: string;
-            storeId: string | null;
-            orderId: string | null;
-            type: "invoice" | "credit_note";
-            status: "draft" | "issued" | "partially_paid" | "paid" | "void";
-            customerId: string | null;
-            billingAddressId: string | null;
-            shippingAddressId: string | null;
-            customerSnapshot: unknown;
-            supplierSnapshot: unknown;
-            seriesId: string | null;
-            sequenceNumber: number | null;
-            number: string | null;
-            issuedAt: Date | null;
-            dueAt: Date | null;
-            currency: string;
-            exchangeRate: string | null;
-            subtotalMinor: number;
-            discountMinor: number;
-            shippingMinor: number;
-            taxMinor: number;
-            adjustmentMinor: number;
-            roundingMinor: number;
-            totalMinor: number;
-            paidMinor: number;
-            balanceMinor: number;
-            lockedAt: Date | null;
-            voidedAt: Date | null;
-            voidReason: string | null;
-            meta: unknown;
-            createdAt: Date;
-            updatedAt: Date;
-        };
-        paymentId: any;
-    }>;
-    recordBankTransfer(user: User, dto: RecordBankTransferDto): Promise<{
         paymentId: string;
-    }>;
-    confirmBankTransferAndApply(user: User, params: PaymentIdParamDto, dto: ConfirmBankTransferDto): Promise<{
+        alreadyProcessed: boolean;
+        invoice?: undefined;
+        receipt?: undefined;
+    } | {
         invoice: {
             id: string;
             companyId: string;
             storeId: string | null;
             orderId: string | null;
+            quoteRequestId: string | null;
             type: "invoice" | "credit_note";
             status: "draft" | "issued" | "partially_paid" | "paid" | "void";
             customerId: string | null;
@@ -84,5 +48,28 @@ export declare class PaymentController extends BaseController {
             createdAt: Date;
             updatedAt: Date;
         };
+        paymentId: string;
+        receipt: any;
+        alreadyProcessed: boolean;
     }>;
+    listPayments(user: User, query: ListPaymentsQueryDto): Promise<{
+        id: string;
+        companyId: string;
+        orderId: string | null;
+        invoiceId: string | null;
+        method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+        status: "pending" | "succeeded" | "reversed";
+        currency: string;
+        amountMinor: number;
+        reference: string | null;
+        provider: string | null;
+        providerRef: string | null;
+        providerEventId: string | null;
+        receivedAt: Date | null;
+        confirmedAt: Date | null;
+        createdByUserId: string | null;
+        confirmedByUserId: string | null;
+        meta: unknown;
+        createdAt: Date;
+    }[]>;
 }

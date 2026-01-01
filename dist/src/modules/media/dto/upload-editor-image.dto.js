@@ -18,4 +18,8 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UploadEditorImageDto.prototype, "base64", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UploadEditorImageDto.prototype, "storeId", void 0);
 //# sourceMappingURL=upload-editor-image.dto.js.map

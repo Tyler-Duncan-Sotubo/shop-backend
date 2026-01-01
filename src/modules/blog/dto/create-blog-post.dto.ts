@@ -30,6 +30,9 @@ export class BlogPostProductDto {
 }
 
 export class CreateBlogPostDto {
+  @IsUUID()
+  storeId: string;
+
   @IsString()
   @Length(3, 220)
   title: string;

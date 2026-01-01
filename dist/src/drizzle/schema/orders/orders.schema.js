@@ -11,6 +11,7 @@ const companies_schema_1 = require("../companies/companies.schema");
 const stores_schema_1 = require("../stores/stores.schema");
 const checkouts_schema_1 = require("../checkout/checkouts.schema");
 const carts_schema_1 = require("../cart/carts.schema");
+const quote_requests_schema_1 = require("../quotes/quote-requests.schema");
 exports.orders = (0, pg_core_1.pgTable)('orders', {
     id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),
     orderNumber: (0, pg_core_1.varchar)('order_number', { length: 32 }).notNull(),
@@ -22,6 +23,9 @@ exports.orders = (0, pg_core_1.pgTable)('orders', {
         .references(() => stores_schema_1.stores.id, { onDelete: 'cascade' }),
     checkoutId: (0, pg_core_1.uuid)('checkout_id').references(() => checkouts_schema_1.checkouts.id, {
         onDelete: 'cascade',
+    }),
+    quoteRequestId: (0, pg_core_1.uuid)('quote_request_id').references(() => quote_requests_schema_1.quoteRequests.id, {
+        onDelete: 'set null',
     }),
     cartId: (0, pg_core_1.uuid)('cart_id').references(() => carts_schema_1.carts.id, { onDelete: 'cascade' }),
     status: (0, pg_core_1.varchar)('status', { length: 32 }).notNull(),
@@ -39,6 +43,7 @@ exports.orders = (0, pg_core_1.pgTable)('orders', {
     billingAddress: (0, pg_core_1.jsonb)('billing_address').$type(),
     originInventoryLocationId: (0, pg_core_1.uuid)('origin_inventory_location_id').references(() => inventory_locations_schema_1.inventoryLocations.id, { onDelete: 'set null' }),
     shippingQuote: (0, pg_core_1.jsonb)('shipping_quote').$type(),
+    paidAt: (0, pg_core_1.timestamp)('paid_at', { withTimezone: true }),
     subtotal: (0, pg_core_1.numeric)('subtotal', { precision: 12, scale: 2 }).notNull(),
     discountTotal: (0, pg_core_1.numeric)('discount_total', {
         precision: 12,
@@ -73,6 +78,8 @@ exports.orders = (0, pg_core_1.pgTable)('orders', {
     (0, pg_core_1.index)('orders_delivery_idx').on(t.companyId, t.deliveryMethodType),
     (0, pg_core_1.index)('orders_pickup_idx').on(t.companyId, t.pickupLocationId),
     (0, pg_core_1.index)('orders_company_created_idx').on(t.companyId, t.createdAt),
+    (0, pg_core_1.index)('orders_company_store_created_idx').on(t.companyId, t.storeId, t.createdAt),
+    (0, pg_core_1.index)('orders_company_status_created_idx').on(t.companyId, t.status, t.createdAt),
 ]);
 exports.orderCounters = (0, pg_core_1.pgTable)('order_counters', {
     id: (0, pg_core_1.uuid)('id').primaryKey(),

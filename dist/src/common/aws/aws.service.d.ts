@@ -30,4 +30,8 @@ export declare class AwsService {
         key: string;
         url: string;
     }>;
+    deleteFromS3(storageKey: string): Promise<{
+        ok: boolean;
+    }>;
+    extractKeyFromUrl(url: string): string | null;
 }

@@ -7,6 +7,7 @@ const enum_schema_1 = require("../../enum.schema");
 const companies_schema_1 = require("../../companies/companies.schema");
 const invoices_schema_1 = require("../invoice/invoices.schema");
 const payments_schema_1 = require("./payments.schema");
+const users_schema_1 = require("../../iam/users.schema");
 exports.paymentAllocations = (0, pg_core_1.pgTable)('payment_allocations', {
     id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),
     companyId: (0, pg_core_1.uuid)('company_id')
@@ -20,12 +21,14 @@ exports.paymentAllocations = (0, pg_core_1.pgTable)('payment_allocations', {
         .references(() => invoices_schema_1.invoices.id, { onDelete: 'cascade' }),
     status: (0, enum_schema_1.allocationStatusEnum)('status').notNull().default('applied'),
     amountMinor: (0, pg_core_1.bigint)('amount_minor', { mode: 'number' }).notNull(),
+    createdByUserId: (0, pg_core_1.uuid)('created_by_user_id').references(() => users_schema_1.users.id, {
+        onDelete: 'set null',
+    }),
     createdAt: (0, pg_core_1.timestamp)('created_at', { withTimezone: true })
         .defaultNow()
         .notNull(),
 }, (t) => [
     (0, pg_core_1.index)('pay_alloc_company_payment_idx').on(t.companyId, t.paymentId),
     (0, pg_core_1.index)('pay_alloc_company_invoice_idx').on(t.companyId, t.invoiceId),
-    (0, pg_core_1.uniqueIndex)('pay_alloc_company_payment_invoice_uq').on(t.companyId, t.paymentId, t.invoiceId),
 ]);
 //# sourceMappingURL=payment-allocations.schema.js.map

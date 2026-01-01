@@ -51,5 +51,9 @@ export const orderItems = pgTable(
 
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
-  (t) => [index('order_items_company_order_idx').on(t.companyId, t.orderId)],
+  (t) => [
+    index('order_items_company_order_idx').on(t.companyId, t.orderId),
+    index('order_items_company_product_idx').on(t.companyId, t.productId),
+    index('order_items_company_variant_idx').on(t.companyId, t.variantId),
+  ],
 );

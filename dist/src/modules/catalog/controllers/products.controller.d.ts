@@ -58,9 +58,9 @@ export declare class ProductsController extends BaseController {
         ratingCount: number;
         averageRating: number;
     }[]>;
-    listStorefrontProducts(companyId: string, query: ProductQueryDto): Promise<import("../dtos/products/storefront-product.dto").StorefrontProductDto[]>;
+    listStorefrontProducts(companyId: string, storeId: string, query: ProductQueryDto): Promise<import("../dtos/products/storefront-product.dto").StorefrontProductDto[]>;
     getProductBySlug(companyId: string, slug: string): Promise<import("../mappers/product.mapper").ProductDetailResponse>;
-    listCollectionProducts(companyId: string, slug: string, query: ProductQueryDto): Promise<{
+    listCollectionProducts(companyId: string, storeId: string, slug: string, query: ProductQueryDto): Promise<{
         id: any;
         name: any;
         slug: any;
@@ -82,7 +82,7 @@ export declare class ProductsController extends BaseController {
         attributes: any;
         price_html: string;
     }[]>;
-    listProductsGroupedByCollectionSlug(companyId: string, slug: string, query: ProductQueryDto): Promise<{
+    listProductsGroupedByCollectionSlug(companyId: string, storeId: string, slug: string, query: ProductQueryDto): Promise<{
         category: {
             id: any;
             name: any;

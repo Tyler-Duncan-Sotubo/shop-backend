@@ -10,6 +10,9 @@ export declare class CartService {
     private readonly auditService;
     private readonly tokenGenerator;
     constructor(db: db, cache: CacheService, auditService: AuditService, tokenGenerator: TokenGeneratorService);
+    private hashToken;
+    private generateRefreshToken;
+    private computeExpiryFromNow;
     getCartByIdOnlyOrThrow(companyId: string, cartId: string): Promise<{
         [x: string]: any;
     }>;
@@ -438,6 +441,15 @@ export declare class CartService {
             cartItemId: string;
         })[];
     }>;
+    refreshCartAccessToken(args: {
+        companyId: string;
+        cartId: string;
+        refreshToken: string;
+    }): Promise<{
+        cart: any;
+        accessToken: string;
+        rotated: boolean;
+    }>;
     private isUniqueViolation;
     private assertInventoryAtOriginOrThrow;
     private resolveVariantPrice;
@@ -451,4 +463,16 @@ export declare class CartService {
     private addMoney;
     private negMoney;
     private mulMoney;
+    private isExpired;
+    private computeCartExpiryFromNow;
+    validateOrRotateGuestToken(args: {
+        companyId: string;
+        cartId: string;
+        token: string;
+        extendHours?: number;
+    }): Promise<{
+        cart: any;
+        token: string;
+        rotated: boolean;
+    }>;
 }

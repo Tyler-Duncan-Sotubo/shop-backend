@@ -21,8 +21,8 @@ export class CacheService {
     private readonly config: ConfigService,
   ) {
     // CACHE_TTL provided in SECONDS -> convert to MS for cache-manager v6
-    const ttlSeconds = parseInt(this.config.get('CACHE_TTL') ?? '86400', 10); // default 24h
-    this.ttlMs = Number.isFinite(ttlSeconds) ? ttlSeconds * 1000 : 86400 * 1000;
+    const ttlSeconds = parseInt(this.config.get('CACHE_TTL') ?? '3600', 10); // default 1 hour
+    this.ttlMs = Number.isFinite(ttlSeconds) ? ttlSeconds * 1000 : 3600 * 1000;
     this.logger.debug(`Cache TTL set to ${this.ttlMs} ms`);
   }
 

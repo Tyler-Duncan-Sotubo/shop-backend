@@ -10,6 +10,7 @@ const companies_schema_1 = require("../../companies/companies.schema");
 const customers_schema_1 = require("../../customers/customers.schema");
 const customer_addresses_schema_1 = require("../../customers/customer-addresses.schema");
 const invoice_series_schema_1 = require("./invoice-series.schema");
+const quote_requests_schema_1 = require("../../quotes/quote-requests.schema");
 exports.invoices = (0, pg_core_1.pgTable)('invoices', {
     id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),
     companyId: (0, pg_core_1.uuid)('company_id')
@@ -19,6 +20,9 @@ exports.invoices = (0, pg_core_1.pgTable)('invoices', {
         onDelete: 'set null',
     }),
     orderId: (0, pg_core_1.uuid)('order_id').references(() => orders_schema_1.orders.id, {
+        onDelete: 'set null',
+    }),
+    quoteRequestId: (0, pg_core_1.uuid)('quote_request_id').references(() => quote_requests_schema_1.quoteRequests.id, {
         onDelete: 'set null',
     }),
     type: (0, enum_schema_1.invoiceTypeEnum)('type').notNull().default('invoice'),

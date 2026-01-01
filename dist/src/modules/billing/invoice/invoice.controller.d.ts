@@ -8,9 +8,12 @@ import { InvoiceLineIdParamDto } from './dto/invoice-line-id.param.dto';
 import { UpdateInvoiceLineDto } from './dto/update-invoice-line.dto';
 import { ListInvoicesQueryDto } from './dto/list-invoices.query.dto';
 import { UpdateInvoiceDraftDto } from './dto/update-invoice-draft.dto';
+import { RecordInvoicePaymentDto } from '../payment/dto/record-invoice-payment.dto';
+import { PaymentService } from '../payment/payment.service';
 export declare class InvoiceController extends BaseController {
     private readonly invoiceService;
-    constructor(invoiceService: InvoiceService);
+    private readonly paymentService;
+    constructor(invoiceService: InvoiceService, paymentService: PaymentService);
     createDraftFromOrder(user: User, dto: CreateInvoiceFromOrderDto): Promise<any>;
     recalculateDraftTotals(user: User, params: InvoiceIdParamDto): Promise<any>;
     issueInvoice(user: User, params: InvoiceIdParamDto, dto: IssueInvoiceDto): Promise<any>;
@@ -20,6 +23,7 @@ export declare class InvoiceController extends BaseController {
             companyId: string;
             storeId: string | null;
             orderId: string | null;
+            quoteRequestId: string | null;
             type: "invoice" | "credit_note";
             status: "draft" | "issued" | "partially_paid" | "paid" | "void";
             customerId: string | null;
@@ -103,6 +107,7 @@ export declare class InvoiceController extends BaseController {
             companyId: string;
             storeId: string | null;
             orderId: string | null;
+            quoteRequestId: string | null;
             type: "invoice" | "credit_note";
             status: "draft" | "issued" | "partially_paid" | "paid" | "void";
             customerId: string | null;
@@ -159,5 +164,47 @@ export declare class InvoiceController extends BaseController {
     }>;
     syncInvoiceSeries(user: User): Promise<{
         message: string;
+    }>;
+    recordInvoicePayment(user: User, params: InvoiceIdParamDto, dto: RecordInvoicePaymentDto): Promise<{
+        invoice: {
+            id: string;
+            companyId: string;
+            storeId: string | null;
+            orderId: string | null;
+            quoteRequestId: string | null;
+            type: "invoice" | "credit_note";
+            status: "draft" | "issued" | "partially_paid" | "paid" | "void";
+            customerId: string | null;
+            billingAddressId: string | null;
+            shippingAddressId: string | null;
+            customerSnapshot: unknown;
+            supplierSnapshot: unknown;
+            seriesId: string | null;
+            sequenceNumber: number | null;
+            number: string | null;
+            issuedAt: Date | null;
+            dueAt: Date | null;
+            currency: string;
+            exchangeRate: string | null;
+            subtotalMinor: number;
+            discountMinor: number;
+            shippingMinor: number;
+            taxMinor: number;
+            adjustmentMinor: number;
+            roundingMinor: number;
+            totalMinor: number;
+            paidMinor: number;
+            balanceMinor: number;
+            lockedAt: Date | null;
+            voidedAt: Date | null;
+            voidReason: string | null;
+            meta: unknown;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+        paymentId: string;
+        receipt: any;
+        appliedMinor: number;
+        evidence: any;
     }>;
 }

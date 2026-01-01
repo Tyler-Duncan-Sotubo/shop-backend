@@ -28,6 +28,7 @@ import {
 import { ApiScopes } from 'src/modules/iam/api-keys/decorators/api-scopes.decorator';
 import { CurrentCompanyId } from 'src/modules/iam/api-keys/decorators/current-company-id.decorator';
 import { ApiKeyGuard } from 'src/modules/iam/api-keys/guard/api-key.guard';
+import { CurrentStoreId } from 'src/modules/iam/api-keys/decorators/current-store.decorator';
 
 @Controller('catalog/products')
 export class ProductsController extends BaseController {
@@ -56,6 +57,7 @@ export class ProductsController extends BaseController {
   ) {
     const products = await this.productsService.listProducts(
       user.companyId,
+      query.storeId!,
       query,
     );
     return products;
@@ -67,9 +69,15 @@ export class ProductsController extends BaseController {
   @ApiScopes('catalog.products.read')
   async listStorefrontProducts(
     @CurrentCompanyId() companyId: string,
+    @CurrentStoreId() storeId: string,
     @Query() query: ProductQueryDto,
   ) {
-    const products = await this.productsService.listProducts(companyId, query);
+    console.log(storeId);
+    const products = await this.productsService.listProducts(
+      companyId,
+      storeId,
+      query,
+    );
     return mapProductsListToStorefront(products as any);
   }
 
@@ -92,12 +100,14 @@ export class ProductsController extends BaseController {
   @ApiScopes('catalog.products.read')
   async listCollectionProducts(
     @CurrentCompanyId() companyId: string,
+    @CurrentStoreId() storeId: string,
     @Param('slug') slug: string,
     @Query() query: ProductQueryDto,
   ) {
     const collection =
       await this.productsService.listCollectionProductsByCategorySlug(
         companyId,
+        storeId,
         slug,
         query,
       );
@@ -109,12 +119,14 @@ export class ProductsController extends BaseController {
   @Get('storefront/collections/:slug/grouped')
   async listProductsGroupedByCollectionSlug(
     @CurrentCompanyId() companyId: string,
+    @CurrentStoreId() storeId: string,
     @Param('slug') slug: string,
     @Query() query: ProductQueryDto,
   ) {
     const groups =
       await this.productsService.listProductsGroupedUnderParentCategorySlug(
         companyId,
+        storeId,
         slug,
         query,
       );

@@ -21,6 +21,8 @@ export const customers = pgTable(
       .notNull()
       .references(() => companies.id, { onDelete: 'cascade' }),
 
+    storeId: uuid('store_id'),
+
     /**
      * Canonical name used for invoices & UI.
      * Example: "John Doe" or "Acme Ltd"

@@ -30,6 +30,9 @@ const pickup_module_1 = require("./fulfillment/pickup/pickup.module");
 const billing_module_1 = require("./billing/billing.module");
 const blog_module_1 = require("./blog/blog.module");
 const media_module_1 = require("./media/media.module");
+const analytics_module_1 = require("./analytics/analytics.module");
+const storefront_config_module_1 = require("./commerce/storefront-config/storefront-config.module");
+const quote_module_1 = require("./commerce/quote/quote.module");
 let ModulesModule = class ModulesModule {
 };
 exports.ModulesModule = ModulesModule;
@@ -59,6 +62,9 @@ exports.ModulesModule = ModulesModule = __decorate([
             billing_module_1.BillingModule,
             blog_module_1.BlogModule,
             media_module_1.MediaModule,
+            analytics_module_1.AnalyticsModule,
+            storefront_config_module_1.StorefrontConfigModule,
+            quote_module_1.QuoteModule,
         ],
         exports: [
             audit_module_1.AuditModule,

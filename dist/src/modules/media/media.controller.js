@@ -18,12 +18,23 @@ const upload_editor_image_dto_1 = require("./dto/upload-editor-image.dto");
 const media_service_1 = require("./media.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../auth/decorator/current-user.decorator");
+const create_media_dto_1 = require("./dto/create-media.dto");
+const get_media_query_dto_1 = require("./dto/get-media-query.dto");
 let MediaController = class MediaController {
     constructor(mediaService) {
         this.mediaService = mediaService;
     }
     uploadEditorImage(user, dto) {
-        return this.mediaService.uploadEditorImage(user.companyId, dto.base64);
+        return this.mediaService.uploadEditorImage(user.companyId, dto);
+    }
+    uploadMediaFile(user, dto) {
+        return this.mediaService.uploadMediaFile(user.companyId, dto);
+    }
+    getMedia(user, query) {
+        return this.mediaService.getMedia(user.companyId, query);
+    }
+    deleteMedia(user, mediaId) {
+        return this.mediaService.removeMedia(user.companyId, mediaId);
     }
 };
 exports.MediaController = MediaController;
@@ -37,6 +48,36 @@ __decorate([
     __metadata("design:paramtypes", [Object, upload_editor_image_dto_1.UploadEditorImageDto]),
     __metadata("design:returntype", void 0)
 ], MediaController.prototype, "uploadEditorImage", null);
+__decorate([
+    (0, common_1.Post)('upload-file'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['media.upload']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, create_media_dto_1.CreateMediaDto]),
+    __metadata("design:returntype", void 0)
+], MediaController.prototype, "uploadMediaFile", null);
+__decorate([
+    (0, common_1.Get)('list'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['media.upload']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, get_media_query_dto_1.GetMediaQueryDto]),
+    __metadata("design:returntype", void 0)
+], MediaController.prototype, "getMedia", null);
+__decorate([
+    (0, common_1.Delete)(':mediaId'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['media.upload']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('mediaId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], MediaController.prototype, "deleteMedia", null);
 exports.MediaController = MediaController = __decorate([
     (0, common_1.Controller)('media'),
     __metadata("design:paramtypes", [media_service_1.MediaService])

@@ -22,8 +22,8 @@ let CacheService = CacheService_1 = class CacheService {
         this.cacheManager = cacheManager;
         this.config = config;
         this.logger = new common_1.Logger(CacheService_1.name);
-        const ttlSeconds = parseInt(this.config.get('CACHE_TTL') ?? '86400', 10);
-        this.ttlMs = Number.isFinite(ttlSeconds) ? ttlSeconds * 1000 : 86400 * 1000;
+        const ttlSeconds = parseInt(this.config.get('CACHE_TTL') ?? '3600', 10);
+        this.ttlMs = Number.isFinite(ttlSeconds) ? ttlSeconds * 1000 : 3600 * 1000;
         this.logger.debug(`Cache TTL set to ${this.ttlMs} ms`);
     }
     async getOrSetCache(key, loadFn, opts) {

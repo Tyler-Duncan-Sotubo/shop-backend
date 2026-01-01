@@ -57,6 +57,23 @@ export declare const blogPosts: import("drizzle-orm/pg-core").PgTableWithColumns
         }, {}, {
             length: 240;
         }>;
+        storeId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "store_id";
+            tableName: "blog_posts";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         excerpt: import("drizzle-orm/pg-core").PgColumn<{
             name: "excerpt";
             tableName: "blog_posts";

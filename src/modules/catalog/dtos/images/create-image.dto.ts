@@ -4,6 +4,16 @@ export class CreateImageDto {
   @IsString()
   base64Image: string; // frontend sends base64
 
+  // ✅ NEW: optional filename
+  @IsOptional()
+  @IsString()
+  fileName?: string;
+
+  // ✅ NEW: optional mime type (e.g. image/jpeg, image/png)
+  @IsOptional()
+  @IsString()
+  mimeType?: string;
+
   @IsOptional()
   @IsString()
   altText?: string;

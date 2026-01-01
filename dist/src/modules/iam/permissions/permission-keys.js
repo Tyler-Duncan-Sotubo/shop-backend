@@ -137,5 +137,11 @@ exports.PermissionKeys = [
     'blog.posts.delete',
     'media.upload',
     'media.delete',
+    'analytics.write',
+    'analytics.read',
+    'quotes.read',
+    'quotes.create',
+    'quotes.update',
+    'quotes.delete',
 ];
 //# sourceMappingURL=permission-keys.js.map

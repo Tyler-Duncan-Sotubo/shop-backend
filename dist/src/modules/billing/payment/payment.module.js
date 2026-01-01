@@ -12,13 +12,24 @@ const payment_service_1 = require("./payment.service");
 const payment_controller_1 = require("./payment.controller");
 const invoice_service_1 = require("../invoice/invoice.service");
 const invoice_totals_service_1 = require("../invoice/invoice-totals.service");
+const aws_service_1 = require("../../../common/aws/aws.service");
+const payment_receipt_controller_1 = require("./payment-receipt.controller");
+const payment_receipt_service_1 = require("./payment-receipt.service");
+const api_keys_service_1 = require("../../iam/api-keys/api-keys.service");
 let PaymentModule = class PaymentModule {
 };
 exports.PaymentModule = PaymentModule;
 exports.PaymentModule = PaymentModule = __decorate([
     (0, common_1.Module)({
-        controllers: [payment_controller_1.PaymentController],
-        providers: [payment_service_1.PaymentService, invoice_service_1.InvoiceService, invoice_totals_service_1.InvoiceTotalsService],
+        controllers: [payment_controller_1.PaymentController, payment_receipt_controller_1.PaymentReceiptController],
+        providers: [
+            payment_service_1.PaymentService,
+            invoice_service_1.InvoiceService,
+            invoice_totals_service_1.InvoiceTotalsService,
+            aws_service_1.AwsService,
+            payment_receipt_service_1.PaymentReceiptService,
+            api_keys_service_1.ApiKeysService,
+        ],
     })
 ], PaymentModule);
 //# sourceMappingURL=payment.module.js.map

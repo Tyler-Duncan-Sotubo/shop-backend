@@ -88,6 +88,25 @@ let AwsService = class AwsService {
                     : 'image/jpeg';
         return this.uploadPublicObject({ key, body: buffer, contentType });
     }
+    async deleteFromS3(storageKey) {
+        const Bucket = this.configService.get('AWS_BUCKET_NAME');
+        if (!Bucket)
+            throw new Error('AWS_S3_BUCKET is not set');
+        await this.s3Client.send(new client_s3_1.DeleteObjectCommand({
+            Bucket,
+            Key: storageKey,
+        }));
+        return { ok: true };
+    }
+    extractKeyFromUrl(url) {
+        try {
+            const u = new URL(url);
+            return u.pathname.replace(/^\//, '');
+        }
+        catch {
+            return null;
+        }
+    }
 };
 exports.AwsService = AwsService;
 exports.AwsService = AwsService = __decorate([

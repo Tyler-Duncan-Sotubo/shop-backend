@@ -196,4 +196,14 @@ export const PermissionKeys = [
   // Media
   'media.upload',
   'media.delete',
+
+  // Analytics
+  'analytics.write',
+  'analytics.read',
+
+  // Quotes
+  'quotes.read',
+  'quotes.create',
+  'quotes.update',
+  'quotes.delete',
 ];

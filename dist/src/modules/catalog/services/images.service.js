@@ -73,16 +73,71 @@ let ImagesService = class ImagesService {
         });
         return (last?.position ?? 0) + 1;
     }
+    extractStorageKeyFromUrl(url) {
+        if (!url)
+            return null;
+        try {
+            const u = new URL(url);
+            return u.pathname.replace(/^\//, '');
+        }
+        catch {
+            return null;
+        }
+    }
+    sanitizeFileName(name) {
+        const raw = (name ?? '').trim();
+        if (!raw)
+            return null;
+        return raw
+            .replace(/[/\\]/g, '-')
+            .replace(/\s+/g, '-')
+            .replace(/[^a-zA-Z0-9._-]/g, '');
+    }
     async createImage(companyId, productId, dto, user, ip, opts) {
         const tx = opts?.tx ?? this.db;
         await this.assertProductBelongsToCompany(companyId, productId);
         if (dto.variantId) {
             await this.assertVariantBelongsToCompany(companyId, dto.variantId);
         }
-        const fileName = `${productId}-${Date.now()}.jpg`;
+        const mimeType = (dto.mimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+        const safeProvidedName = this.sanitizeFileName(dto.fileName);
+        const extFromMime = mimeType.startsWith('image/')
+            ? `.${mimeType.split('/')[1] || 'jpg'}`
+            : '.bin';
+        const fileNameBase = safeProvidedName ?? `${productId}-${Date.now()}${extFromMime}`;
+        const fileName = fileNameBase.includes('.')
+            ? fileNameBase
+            : `${fileNameBase}${extFromMime}`;
+        const normalized = dto.base64Image.includes(',')
+            ? dto.base64Image.split(',')[1]
+            : dto.base64Image;
+        let buffer;
+        try {
+            buffer = Buffer.from(normalized, 'base64');
+        }
+        catch {
+            throw new common_1.BadRequestException('Invalid base64Image');
+        }
+        const size = buffer.byteLength;
+        let width = null;
+        let height = null;
+        if (mimeType.startsWith('image/')) {
+            try {
+                const sharpMod = await Promise.resolve().then(() => require('sharp'));
+                const sharpFn = sharpMod.default ?? sharpMod;
+                const meta = await sharpFn(buffer).metadata();
+                width = meta.width ?? null;
+                height = meta.height ?? null;
+            }
+            catch {
+            }
+        }
         const url = await this.aws.uploadImageToS3(companyId, fileName, dto.base64Image);
         let image;
         if (dto.variantId) {
+            const existing = await tx.query.productImages.findFirst({
+                where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.productId, productId), (0, drizzle_orm_1.eq)(schema_1.productImages.variantId, dto.variantId), (0, drizzle_orm_1.isNull)(schema_1.productImages.deletedAt)),
+            });
             const [upserted] = await tx
                 .insert(schema_1.productImages)
                 .values({
@@ -92,6 +147,11 @@ let ImagesService = class ImagesService {
                 url,
                 altText: dto.altText ?? null,
                 position: dto.position ?? 0,
+                fileName,
+                mimeType,
+                size,
+                width,
+                height,
             })
                 .onConflictDoUpdate({
                 target: [
@@ -103,11 +163,26 @@ let ImagesService = class ImagesService {
                     url: (0, drizzle_orm_1.sql) `excluded.url`,
                     altText: (0, drizzle_orm_1.sql) `excluded.alt_text`,
                     position: (0, drizzle_orm_1.sql) `excluded.position`,
+                    fileName: (0, drizzle_orm_1.sql) `excluded.file_name`,
+                    mimeType: (0, drizzle_orm_1.sql) `excluded.mime_type`,
+                    size: (0, drizzle_orm_1.sql) `excluded.size`,
+                    width: (0, drizzle_orm_1.sql) `excluded.width`,
+                    height: (0, drizzle_orm_1.sql) `excluded.height`,
                 },
             })
                 .returning()
                 .execute();
             image = upserted;
+            if (existing?.url && existing.url !== url) {
+                const oldKey = this.extractStorageKeyFromUrl(existing.url);
+                if (oldKey) {
+                    try {
+                        await this.aws.deleteFromS3(oldKey);
+                    }
+                    catch {
+                    }
+                }
+            }
         }
         else {
             const position = await this.getNextImagePosition(companyId, productId, tx);
@@ -120,6 +195,11 @@ let ImagesService = class ImagesService {
                 altText: dto.altText ?? null,
                 position: dto.position ?? position,
                 variantId: null,
+                fileName,
+                mimeType,
+                size,
+                width,
+                height,
             })
                 .returning()
                 .execute();
@@ -154,7 +234,12 @@ let ImagesService = class ImagesService {
                     productId,
                     variantId: dto.variantId ?? null,
                     url,
-                    altText: dto.altText,
+                    altText: dto.altText ?? null,
+                    fileName,
+                    mimeType,
+                    size,
+                    width,
+                    height,
                 },
             });
         }

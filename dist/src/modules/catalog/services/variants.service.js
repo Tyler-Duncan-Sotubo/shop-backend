@@ -284,12 +284,15 @@ let VariantsService = class VariantsService {
                 .execute();
             if (!updated)
                 throw new common_1.NotFoundException('Variant not found');
+            console.log('filename', dto.imageFileName);
             let createdImage = null;
             if (shouldCreateImage) {
                 createdImage = await this.imagesService.createImage(companyId, existing.productId, {
                     base64Image: dto.base64Image,
                     altText: dto.imageAltText,
                     variantId: updated.id,
+                    fileName: dto.imageFileName,
+                    mimeType: dto.imageMimeType,
                 }, user, ip, { tx, skipCacheBump: true, skipAudit: true });
             }
             let inventoryRow = null;

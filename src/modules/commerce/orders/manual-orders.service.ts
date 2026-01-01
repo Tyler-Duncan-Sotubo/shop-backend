@@ -285,9 +285,10 @@ export class ManualOrdersService {
       }
 
       // ✅ Reserve inventory
-      await this.stock.releaseReservationInTx(
+      await this.stock.reserveForOrderInTx(
         tx,
         companyId,
+        input.orderId,
         origin,
         input.variantId,
         qty,
@@ -650,23 +651,9 @@ export class ManualOrdersService {
         .execute();
 
       if (!before) throw new NotFoundException('Order not found');
+
       if (before.status !== 'draft') {
         throw new BadRequestException('Only draft orders can be submitted');
-      }
-
-      if (before.status === 'pending_payment') {
-        const inv = await this.invoiceService.createDraftFromOrder(
-          {
-            orderId,
-            storeId: (before as any).storeId ?? null,
-            currency: (before as any).currency,
-            type: 'invoice',
-          } as any,
-          companyId,
-          { tx },
-        );
-
-        return { order: before, invoice: inv };
       }
 
       // ensure it has at least one item
@@ -722,7 +709,19 @@ export class ManualOrdersService {
         });
       }
 
-      return after;
+      // ✅ Create invoice as part of the submit flow
+      const invoice = await this.invoiceService.createDraftFromOrder(
+        {
+          orderId,
+          storeId: (before as any).storeId ?? null,
+          currency: (before as any).currency,
+          type: 'invoice',
+        } as any,
+        companyId,
+        { tx },
+      );
+
+      return { order: after, invoice };
     };
 
     const result = outerTx

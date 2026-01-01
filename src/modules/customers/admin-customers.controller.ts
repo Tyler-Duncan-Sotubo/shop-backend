@@ -8,6 +8,7 @@ import {
   UseGuards,
   SetMetadata,
   Post,
+  UseInterceptors,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/modules/auth/decorator/current-user.decorator';
@@ -21,6 +22,8 @@ import {
 } from './dto';
 import { BaseController } from 'src/common/interceptor/base.controller';
 import { CreateCustomerDto } from './dto/register-customer.dto';
+import { Audit } from '../audit/audit.decorator';
+import { FileParseInterceptor } from 'src/common/interceptor/file-parse.interceptor';
 
 @Controller('admin/customers')
 @UseGuards(JwtAuthGuard)
@@ -37,6 +40,24 @@ export class AdminCustomersController extends BaseController {
     return this.adminCustomers.adminCreateCustomer(
       user.companyId,
       dto,
+      user.id,
+    );
+  }
+
+  @Post('bulk/:storeId')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['customers.update'])
+  @Audit({ action: 'Customer Bulk Up', entity: 'Customers' })
+  @UseInterceptors(FileParseInterceptor({ field: 'file', maxRows: 500 }))
+  async bulkCreateCustomers(
+    @Body() rows: any[],
+    @CurrentUser() user: User,
+    @Param('storeId') storeId: string | null,
+  ) {
+    return this.adminCustomers.bulkCreateCustomers(
+      user.companyId,
+      storeId,
+      rows,
       user.id,
     );
   }

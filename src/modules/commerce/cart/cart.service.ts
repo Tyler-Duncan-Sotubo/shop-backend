@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -25,6 +26,7 @@ import {
 } from 'src/drizzle/schema';
 import { CreateCartDto, AddCartItemDto, UpdateCartItemDto } from './dto';
 import { TokenGeneratorService } from '../../auth/services';
+import { createHash, randomBytes } from 'node:crypto';
 
 type Money = string; // stored as numeric string from pg
 type WeightValue = string | number | null;
@@ -38,6 +40,19 @@ export class CartService {
     private readonly tokenGenerator: TokenGeneratorService,
   ) {}
 
+  private hashToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private generateRefreshToken() {
+    return randomBytes(32).toString('base64url'); // node 16+ supports base64url
+  }
+
+  private computeExpiryFromNow(days: number) {
+    const now = new Date();
+    return new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  }
+
   async getCartByIdOnlyOrThrow(companyId: string, cartId: string) {
     const cart = await this.db.query.carts.findFirst({
       where: and(eq(carts.companyId, companyId), eq(carts.id, cartId)),
@@ -50,7 +65,6 @@ export class CartService {
   // Core getters
   // -----------------------------
   async getCartByIdOrThrow(companyId: string, storeId: string, cartId: string) {
-    console.log('Getting cart by id', { companyId, storeId, cartId });
     const cart = await this.db.query.carts.findFirst({
       where: and(
         eq(carts.companyId, companyId),
@@ -205,7 +219,8 @@ export class CartService {
     ip?: string,
   ) {
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 24);
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // keep your 24h if you want
+
     const ownerType = dto.customerId ? 'customer' : 'guest';
 
     const channel: 'online' | 'pos' =
@@ -224,6 +239,10 @@ export class CartService {
 
     const token = await this.tokenGenerator.generateTempToken(payload);
 
+    const refreshToken = this.generateRefreshToken();
+    const refreshTokenHash = this.hashToken(refreshToken);
+    const refreshExpiresAt = this.computeExpiryFromNow(30);
+
     const [cart] = await this.db
       .insert(carts)
       .values({
@@ -231,7 +250,12 @@ export class CartService {
         storeId: storeId,
         ownerType,
         customerId: dto.customerId ?? null,
+
+        // Tokens
         guestToken: token,
+        guestRefreshTokenHash: refreshTokenHash,
+        guestRefreshTokenExpiresAt: refreshExpiresAt,
+
         status: 'active',
         channel, // ✅ new
         originInventoryLocationId: dto.originInventoryLocationId ?? null, // ✅ new
@@ -272,7 +296,12 @@ export class CartService {
 
     // Optional: for POS carts, you can run recalc once (shipping 0 anyway),
     // but not required since totals start at 0 and items are empty.
-    return { ...cart, items: [] };
+    return {
+      ...cart,
+      items: [],
+      guestToken: token,
+      guestRefreshToken: refreshToken,
+    };
   }
 
   // -----------------------------
@@ -752,6 +781,60 @@ export class CartService {
     });
   }
 
+  async refreshCartAccessToken(args: {
+    companyId: string;
+    cartId: string;
+    refreshToken: string;
+  }): Promise<{ cart: any; accessToken: string; rotated: boolean }> {
+    const { companyId, cartId, refreshToken } = args;
+    console.log('Refreshing cart access token...', refreshToken);
+    return this.db.transaction(async (tx) => {
+      const [cart] = await tx
+        .select()
+        .from(carts)
+        .where(and(eq(carts.companyId, companyId), eq(carts.id, cartId)))
+        .execute();
+
+      if (!cart) throw new ForbiddenException('Cart not found');
+      if (cart.status !== 'active')
+        throw new ForbiddenException('Cart is not active');
+
+      if (!cart.guestRefreshTokenHash || !cart.guestRefreshTokenExpiresAt) {
+        throw new ForbiddenException('Missing refresh token');
+      }
+
+      const expired =
+        new Date(cart.guestRefreshTokenExpiresAt).getTime() < Date.now();
+      if (expired) throw new ForbiddenException('Refresh token expired');
+
+      const incomingHash = this.hashToken(refreshToken);
+      if (incomingHash !== cart.guestRefreshTokenHash) {
+        throw new ForbiddenException('Invalid refresh token');
+      }
+
+      // mint new access token (you can keep same payload strategy)
+      const payload = { sub: cart.customerId ?? cart.id, email: 'guest' };
+      const newAccessToken =
+        await this.tokenGenerator.generateTempToken(payload);
+
+      const now = new Date();
+      const newAccessExpiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // keep your 24h if you want
+
+      const [updated] = await tx
+        .update(carts)
+        .set({
+          guestToken: newAccessToken,
+          expiresAt: newAccessExpiresAt,
+          lastActivityAt: now,
+        } as any)
+        .where(and(eq(carts.companyId, companyId), eq(carts.id, cart.id)))
+        .returning()
+        .execute();
+
+      return { cart: updated, accessToken: newAccessToken, rotated: true };
+    });
+  }
+
   // -----------------------------
   // Unique violation helper
   // -----------------------------
@@ -777,7 +860,6 @@ export class CartService {
         eq(inventoryItems.productVariantId, variantId),
       ),
     });
-    console.log(originLocationId);
     const sellable =
       Number(row?.available ?? 0) -
       Number(row?.reserved ?? 0) -
@@ -823,47 +905,6 @@ export class CartService {
     if (priceRaw != null && String(priceRaw) !== '') return String(priceRaw);
     return null;
   }
-
-  // -----------------------------
-  // Expiry helpers
-  // -----------------------------
-  // async setCartExpiry(
-  //   companyId: string,
-  //   cartId: string,
-  //   dto: SetCartExpiryDto,
-  //   user?: User,
-  //   ip?: string,
-  // ) {
-  //   const cart = await this.getCartByIdOrThrow(companyId, cartId);
-  //   const expiresAt = new Date(Date.now() + dto.minutes * 60 * 1000);
-
-  //   await this.db
-  //     .update(carts)
-  //     .set({ expiresAt, updatedAt: new Date() })
-  //     .where(and(eq(carts.companyId, companyId), eq(carts.id, cartId)))
-  //     .execute();
-
-  //   await this.cache.bumpCompanyVersion(companyId);
-
-  //   if (user && ip) {
-  //     await this.auditService.logAction({
-  //       action: 'update',
-  //       entity: 'cart',
-  //       entityId: cartId,
-  //       userId: user.id,
-  //       ipAddress: ip,
-  //       details: 'Updated cart expiry',
-  //       changes: {
-  //         companyId,
-  //         cartId,
-  //         beforeExpiresAt: cart.expiresAt,
-  //         afterExpiresAt: expiresAt,
-  //       },
-  //     });
-  //   }
-
-  //   return this.getCart(companyId, storeId, cartId);
-  // }
 
   private async assertHasWarehouse(companyId: string) {
     const row = await this.db.query.inventoryLocations.findFirst({
@@ -1281,5 +1322,85 @@ export class CartService {
   private mulMoney(unit: Money, qty: number): Money {
     const x = Number(unit ?? '0');
     return (x * Number(qty ?? 0)).toFixed(2);
+  }
+
+  // -----------------------------
+  // Validate and rotate guest token
+  // -----------------------------
+
+  private isExpired(expiresAt?: Date | string | null) {
+    if (!expiresAt) return false;
+    return new Date(expiresAt).getTime() < Date.now();
+  }
+
+  private computeCartExpiryFromNow(hours = 24) {
+    const now = new Date();
+    return new Date(now.getTime() + 1000 * 60 * 60 * hours);
+  }
+
+  /**
+   * If cart is active but token/expiry is stale, rotate token and optionally extend expiry.
+   * Returns { cart, token, rotated }.
+   */
+  async validateOrRotateGuestToken(args: {
+    companyId: string;
+    cartId: string;
+    token: string;
+    extendHours?: number; // default 24
+  }): Promise<{ cart: any; token: string; rotated: boolean }> {
+    const extendHours = args.extendHours ?? 24;
+
+    return this.db.transaction(async (tx) => {
+      const [cart] = await tx
+        .select()
+        .from(carts)
+        .where(
+          and(eq(carts.companyId, args.companyId), eq(carts.id, args.cartId)),
+        )
+        .execute();
+
+      if (!cart) throw new ForbiddenException('Cart not found');
+      if (cart.status !== 'active')
+        throw new ForbiddenException('Cart is not active');
+
+      // Must match current token (guard stays strict)
+      if (!cart.guestToken || cart.guestToken !== args.token) {
+        throw new ForbiddenException('Invalid cart token');
+      }
+
+      const expired = this.isExpired(cart.expiresAt);
+
+      if (!expired) {
+        // still valid; keep token
+        return { cart, token: cart.guestToken, rotated: false };
+      }
+
+      // ✅ revive: rotate token + extend expiry
+      const now = new Date();
+      const newExpiresAt = this.computeCartExpiryFromNow(extendHours);
+
+      // IMPORTANT: don't put customerId in email; use real email if you have it
+      const payload = {
+        sub: cart.customerId ?? cart.id, // stable identifier
+        email: 'guest',
+      };
+
+      const newToken = await this.tokenGenerator.generateTempToken(payload);
+
+      const [updated] = await tx
+        .update(carts)
+        .set({
+          guestToken: newToken,
+          expiresAt: newExpiresAt,
+          lastActivityAt: now,
+        } as any)
+        .where(
+          and(eq(carts.companyId, args.companyId), eq(carts.id, args.cartId)),
+        )
+        .returning()
+        .execute();
+
+      return { cart: updated, token: newToken, rotated: true };
+    });
   }
 }

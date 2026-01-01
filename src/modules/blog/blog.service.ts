@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, SQL, sql } from 'drizzle-orm';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import { db } from 'src/drizzle/types/drizzle';
 import { CacheService } from 'src/common/cache/cache.service';
@@ -15,6 +15,7 @@ import { blogPosts, blogPostProducts, products } from 'src/drizzle/schema';
 import { CreateBlogPostDto, BlogPostStatus } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
 import { AwsService } from 'src/common/aws/aws.service';
+import { BlogPostsAdminQueryDto } from './dto/blog-posts-admin-query.dto';
 
 @Injectable()
 export class BlogService {
@@ -48,6 +49,7 @@ export class BlogService {
       const [post] = await tx
         .insert(blogPosts)
         .values({
+          storeId: dto.storeId,
           title: dto.title,
           slug: dto.slug,
           excerpt: dto.excerpt,
@@ -136,13 +138,62 @@ export class BlogService {
   // -----------------------------
   // List (admin)
   // -----------------------------
-  async listAdmin(user: User) {
-    return this.cache.getOrSetVersioned(user.companyId, ['blog', 'posts'], () =>
-      this.db
-        .select()
-        .from(blogPosts)
-        .orderBy(desc(blogPosts.createdAt))
-        .execute(),
+
+  async listAdmin(user: User, filters: BlogPostsAdminQueryDto = {}) {
+    return this.cache.getOrSetVersioned(
+      user.companyId,
+      [
+        'blog',
+        'posts',
+        filters.status ?? 'all',
+        filters.storeId ?? 'all',
+        filters.search ?? 'all',
+        filters.limit?.toString() ?? 'default',
+        filters.offset?.toString() ?? '0',
+      ],
+      async () => {
+        const { status, storeId, search, limit = 50, offset = 0 } = filters;
+
+        const conditions: SQL[] = [];
+
+        if (status) {
+          conditions.push(eq(blogPosts.status, status));
+        }
+
+        if (storeId) {
+          conditions.push(eq(blogPosts.storeId, storeId));
+        }
+
+        if (search) {
+          conditions.push(sql`${blogPosts.title} ILIKE ${'%' + search + '%'}`);
+        }
+
+        const whereClause = conditions.length ? and(...conditions) : undefined;
+
+        // 1️⃣ total count
+        const [{ count }] = await this.db
+          .select({
+            count: sql<number>`count(*)`,
+          })
+          .from(blogPosts)
+          .where(whereClause)
+          .execute();
+
+        // 2️⃣ paginated rows
+        const rows = await this.db
+          .select()
+          .from(blogPosts)
+          .where(whereClause)
+          .orderBy(desc(blogPosts.createdAt))
+          .limit(limit)
+          .offset(offset)
+          .execute();
+
+        return {
+          rows,
+          count: Number(count),
+        };
+      },
     );
   }
 

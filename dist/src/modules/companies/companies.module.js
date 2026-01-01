@@ -11,6 +11,8 @@ const common_1 = require("@nestjs/common");
 const companies_service_1 = require("./companies.service");
 const companies_controller_1 = require("./companies.controller");
 const bullmq_1 = require("@nestjs/bullmq");
+const invoice_service_1 = require("../billing/invoice/invoice.service");
+const invoice_totals_service_1 = require("../billing/invoice/invoice-totals.service");
 let CompaniesModule = class CompaniesModule {
 };
 exports.CompaniesModule = CompaniesModule;
@@ -22,7 +24,7 @@ exports.CompaniesModule = CompaniesModule = __decorate([
             }),
         ],
         controllers: [companies_controller_1.CompaniesController],
-        providers: [companies_service_1.CompaniesService],
+        providers: [companies_service_1.CompaniesService, invoice_service_1.InvoiceService, invoice_totals_service_1.InvoiceTotalsService],
     })
 ], CompaniesModule);
 //# sourceMappingURL=companies.module.js.map

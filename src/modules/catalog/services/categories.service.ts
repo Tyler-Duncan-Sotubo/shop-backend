@@ -131,46 +131,73 @@ export class CategoriesService {
 
   // ----------------- Categories CRUD -----------------
 
+  // async getCategories(companyId: string, storeId?: string | null) {
+  //   await this.assertCompanyExists(companyId);
+
+  //   return this.cache.getOrSetVersioned(
+  //     companyId,
+  //     ['catalog', 'categories', storeId ?? 'company-default'],
+  //     async () => {
+  //       if (!storeId) {
+  //         return this.db
+  //           .select()
+  //           .from(categories)
+  //           .where(
+  //             and(
+  //               eq(categories.companyId, companyId),
+  //               isNull(categories.storeId),
+  //             ),
+  //           )
+  //           .execute();
+  //       }
+
+  //       const storeRows = await this.db
+  //         .select()
+  //         .from(categories)
+  //         .where(
+  //           and(
+  //             eq(categories.companyId, companyId),
+  //             eq(categories.storeId, storeId),
+  //           ),
+  //         )
+  //         .execute();
+
+  //       if (storeRows.length > 0) return storeRows;
+
+  //       return this.db
+  //         .select()
+  //         .from(categories)
+  //         .where(
+  //           and(
+  //             eq(categories.companyId, companyId),
+  //             isNull(categories.storeId),
+  //           ),
+  //         )
+  //         .execute();
+  //     },
+  //   );
+  // }
+
   async getCategories(companyId: string, storeId?: string | null) {
     await this.assertCompanyExists(companyId);
 
+    // ❌ no store → no categories
+    if (!storeId) {
+      return [];
+    }
+
     return this.cache.getOrSetVersioned(
       companyId,
-      ['catalog', 'categories', storeId ?? 'company-default'],
+      ['catalog', 'categories', storeId],
       async () => {
-        if (!storeId) {
-          return this.db
-            .select()
-            .from(categories)
-            .where(
-              and(
-                eq(categories.companyId, companyId),
-                isNull(categories.storeId),
-              ),
-            )
-            .execute();
-        }
-
-        const storeRows = await this.db
-          .select()
-          .from(categories)
-          .where(
-            and(
-              eq(categories.companyId, companyId),
-              eq(categories.storeId, storeId),
-            ),
-          )
-          .execute();
-
-        if (storeRows.length > 0) return storeRows;
-
         return this.db
           .select()
           .from(categories)
           .where(
             and(
               eq(categories.companyId, companyId),
-              isNull(categories.storeId),
+              eq(categories.storeId, storeId),
+              isNull(categories.deletedAt),
             ),
           )
           .execute();

@@ -28,5 +28,9 @@ exports.orderItems = (0, pg_core_1.pgTable)('order_items', {
         .default(0),
     attributes: (0, pg_core_1.jsonb)('attributes'),
     createdAt: (0, pg_core_1.timestamp)('created_at', { withTimezone: true }).defaultNow(),
-}, (t) => [(0, pg_core_1.index)('order_items_company_order_idx').on(t.companyId, t.orderId)]);
+}, (t) => [
+    (0, pg_core_1.index)('order_items_company_order_idx').on(t.companyId, t.orderId),
+    (0, pg_core_1.index)('order_items_company_product_idx').on(t.companyId, t.productId),
+    (0, pg_core_1.index)('order_items_company_variant_idx').on(t.companyId, t.variantId),
+]);
 //# sourceMappingURL=order-items.schema.js.map

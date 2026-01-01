@@ -17,6 +17,11 @@ exports.productImages = (0, pg_core_1.pgTable)('product_images', {
     variantId: (0, pg_core_1.uuid)('variant_id').references(() => variants_schema_1.productVariants.id, {
         onDelete: 'set null',
     }),
+    fileName: (0, pg_core_1.text)('file_name'),
+    mimeType: (0, pg_core_1.text)('mime_type'),
+    size: (0, pg_core_1.integer)('size'),
+    width: (0, pg_core_1.integer)('width'),
+    height: (0, pg_core_1.integer)('height'),
     url: (0, pg_core_1.text)('url').notNull(),
     altText: (0, pg_core_1.text)('alt_text'),
     position: (0, pg_core_1.integer)('position').notNull().default(1),

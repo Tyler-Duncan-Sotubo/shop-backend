@@ -14,6 +14,8 @@ export declare class UpdateVariantDto {
     metadata?: Record<string, unknown>;
     base64Image?: string;
     imageAltText?: string;
+    imageFileName?: string;
+    imageMimeType?: string;
     stockQuantity?: number;
     safetyStock?: number;
     lowStockThreshold?: number;

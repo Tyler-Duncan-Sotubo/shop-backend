@@ -4,12 +4,14 @@ import { CompanySettingsService } from '../company-settings/company-settings.ser
 import { VerificationService } from '../auth/services';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { InvoiceService } from '../billing/invoice/invoice.service';
 export declare class CompaniesService {
     private readonly db;
     private readonly verificationService;
     private readonly permissionService;
     private readonly companySettingsService;
-    constructor(db: db, verificationService: VerificationService, permissionService: PermissionsService, companySettingsService: CompanySettingsService);
+    private readonly invoiceService;
+    constructor(db: db, verificationService: VerificationService, permissionService: PermissionsService, companySettingsService: CompanySettingsService, invoiceService: InvoiceService);
     private checkCompanySlugAvailable;
     private checkUserNotExists;
     private createCompany;
@@ -24,6 +26,7 @@ export declare class CompaniesService {
         company: {
             id: string;
             name: string;
+            createdAt: Date;
             slug: string;
             legalName: string | null;
             country: string | null;
@@ -37,7 +40,6 @@ export declare class CompaniesService {
             plan: string;
             trialEndsAt: Date | null;
             isActive: boolean;
-            createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
         };

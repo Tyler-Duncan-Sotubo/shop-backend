@@ -45,6 +45,10 @@ export const carts = pgTable(
 
     // if ownerType=guest, you bind the cart to a session token
     guestToken: varchar('guest_token', { length: 255 }),
+    guestRefreshTokenHash: varchar('guest_refresh_token_hash', { length: 255 }),
+    guestRefreshTokenExpiresAt: timestamp('guest_refresh_token_expires_at', {
+      withTimezone: true,
+    }),
 
     status: cartStatusEnum('status').notNull().default('active'),
 

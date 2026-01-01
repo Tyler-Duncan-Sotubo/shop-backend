@@ -73,6 +73,14 @@ export class UpdateVariantDto {
   @IsString()
   imageAltText?: string;
 
+  @IsOptional()
+  @IsString()
+  imageFileName?: string;
+
+  @IsOptional()
+  @IsString()
+  imageMimeType?: string;
+
   // ---------- Inventory ----------
   @IsOptional()
   @Type(() => Number)

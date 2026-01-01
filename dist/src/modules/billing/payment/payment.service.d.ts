@@ -1,18 +1,50 @@
 import { db as DbType } from 'src/drizzle/types/drizzle';
+import { AwsService } from 'src/common/aws/aws.service';
 import { InvoiceService } from '../invoice/invoice.service';
 import { PaystackSuccessDto } from './dto/paystack-success.dto';
-import { ConfirmBankTransferDto } from './dto/confirm-bank-transfer.dto';
-import { RecordBankTransferDto } from './dto/record-bank-transfer.dto';
+import { ListPaymentsQueryDto } from './dto/payment-list.dto';
 export declare class PaymentService {
     private readonly db;
+    private readonly aws;
     private readonly invoiceService;
-    constructor(db: DbType, invoiceService: InvoiceService);
-    handlePaystackSuccess(dto: PaystackSuccessDto, companyId: string, userId: string): Promise<{
+    constructor(db: DbType, aws: AwsService, invoiceService: InvoiceService);
+    listPayments(companyId: string, filter: ListPaymentsQueryDto): Promise<{
+        id: string;
+        companyId: string;
+        orderId: string | null;
+        invoiceId: string | null;
+        method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
+        status: "pending" | "succeeded" | "reversed";
+        currency: string;
+        amountMinor: number;
+        reference: string | null;
+        provider: string | null;
+        providerRef: string | null;
+        providerEventId: string | null;
+        receivedAt: Date | null;
+        confirmedAt: Date | null;
+        createdByUserId: string | null;
+        confirmedByUserId: string | null;
+        meta: unknown;
+        createdAt: Date;
+    }[]>;
+    recordInvoicePayment(dto: {
+        invoiceId: string;
+        amount: number;
+        currency: string;
+        method: 'bank_transfer' | 'cash' | 'card_manual' | 'other';
+        reference?: string | null;
+        meta?: any;
+        evidenceDataUrl?: string;
+        evidenceFileName?: string;
+        evidenceNote?: string;
+    }, companyId: string, userId: string): Promise<{
         invoice: {
             id: string;
             companyId: string;
             storeId: string | null;
             orderId: string | null;
+            quoteRequestId: string | null;
             type: "invoice" | "credit_note";
             status: "draft" | "issued" | "partially_paid" | "paid" | "void";
             customerId: string | null;
@@ -43,17 +75,23 @@ export declare class PaymentService {
             createdAt: Date;
             updatedAt: Date;
         };
-        paymentId: any;
-    }>;
-    recordBankTransfer(dto: RecordBankTransferDto, companyId: string): Promise<{
         paymentId: string;
+        receipt: any;
+        appliedMinor: number;
+        evidence: any;
     }>;
-    confirmBankTransferAndApply(paymentId: string, dto: ConfirmBankTransferDto, companyId: string, userId: string): Promise<{
+    handlePaystackSuccess(dto: PaystackSuccessDto, companyId: string, userId: string): Promise<{
+        paymentId: string;
+        alreadyProcessed: boolean;
+        invoice?: undefined;
+        receipt?: undefined;
+    } | {
         invoice: {
             id: string;
             companyId: string;
             storeId: string | null;
             orderId: string | null;
+            quoteRequestId: string | null;
             type: "invoice" | "credit_note";
             status: "draft" | "issued" | "partially_paid" | "paid" | "void";
             customerId: string | null;
@@ -84,6 +122,13 @@ export declare class PaymentService {
             createdAt: Date;
             updatedAt: Date;
         };
+        paymentId: string;
+        receipt: any;
+        alreadyProcessed: boolean;
     }>;
-    private applyPaymentToInvoiceTx;
+    private uploadPaymentEvidenceTx;
+    private allocatePaymentToInvoiceTx;
+    private formatReceiptNumber;
+    private nextReceiptSequenceTx;
+    private createReceiptForPaymentTx;
 }

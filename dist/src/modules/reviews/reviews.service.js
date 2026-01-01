@@ -42,7 +42,7 @@ let ReviewsService = class ReviewsService {
         return row;
     }
     async listReviews(companyId, query) {
-        const { productId, search, isApproved, limit = 50, offset = 0 } = query;
+        const { productId, search, isApproved, storeId, limit = 50, offset = 0, } = query;
         const normalizedSearch = (search ?? '').trim();
         const approvedFilter = isApproved === 'true' ? true : isApproved === 'false' ? false : undefined;
         const cacheKey = [
@@ -50,6 +50,8 @@ let ReviewsService = class ReviewsService {
             'list',
             'product',
             productId ?? 'any',
+            'store',
+            storeId ?? 'any',
             'approved',
             approvedFilter === undefined ? 'any' : String(approvedFilter),
             'search',
@@ -72,15 +74,18 @@ let ReviewsService = class ReviewsService {
                 const q = `%${normalizedSearch}%`;
                 where.push((0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.productReviews.authorName, q), (0, drizzle_orm_1.ilike)(schema_1.productReviews.authorEmail, q), (0, drizzle_orm_1.ilike)(schema_1.productReviews.review, q)));
             }
+            const joinedWhere = (0, drizzle_orm_1.and)(...where, storeId ? (0, drizzle_orm_1.eq)(schema_1.products.storeId, storeId) : undefined);
             const [{ count }] = await this.db
                 .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
                 .from(schema_1.productReviews)
-                .where((0, drizzle_orm_1.and)(...where))
+                .innerJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productReviews.productId), (0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productReviews.companyId)))
+                .where(joinedWhere)
                 .execute();
             const rows = await this.db
                 .select({ review: schema_1.productReviews })
                 .from(schema_1.productReviews)
-                .where((0, drizzle_orm_1.and)(...where))
+                .innerJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productReviews.productId), (0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productReviews.companyId)))
+                .where(joinedWhere)
                 .orderBy((0, drizzle_orm_1.desc)(schema_1.productReviews.createdAt))
                 .limit(limit)
                 .offset(offset)

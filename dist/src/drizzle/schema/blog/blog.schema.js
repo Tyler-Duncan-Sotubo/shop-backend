@@ -8,6 +8,7 @@ exports.blogPosts = (0, pg_core_1.pgTable)('blog_posts', {
     id: (0, pg_core_1.uuid)('id').defaultRandom().primaryKey(),
     title: (0, pg_core_1.varchar)('title', { length: 220 }).notNull(),
     slug: (0, pg_core_1.varchar)('slug', { length: 240 }).notNull(),
+    storeId: (0, pg_core_1.uuid)('store_id').notNull(),
     excerpt: (0, pg_core_1.varchar)('excerpt', { length: 400 }),
     coverImageUrl: (0, pg_core_1.text)('cover_image_url'),
     focusKeyword: (0, pg_core_1.varchar)('focus_keyword', { length: 70 }),

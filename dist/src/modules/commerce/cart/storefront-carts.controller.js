@@ -29,30 +29,48 @@ let StorefrontCartController = class StorefrontCartController extends base_contr
         super();
         this.cartService = cartService;
     }
-    createGuestCart(companyId, storeId, dto, ip) {
-        return this.cartService.createCart(companyId, storeId, dto, undefined, ip);
+    attachRotatedCartToken(req, reply) {
+        if (req?.cartTokenRotated && req?.cartToken) {
+            reply.header('x-cart-token', String(req.cartToken));
+            reply.header('Access-Control-Expose-Headers', 'x-cart-token');
+        }
     }
-    getCart(companyId, storeId, cartId) {
-        return this.cartService.getCart(companyId, storeId, cartId);
+    async createGuestCart(companyId, storeId, dto, ip, reply) {
+        const cart = await this.cartService.createCart(companyId, storeId, dto, undefined, ip);
+        return reply.send(cart);
     }
-    async items(companyId, storeId, cartId) {
-        const carts = await this.cartService.getCartItems(companyId, storeId, cartId);
-        return carts;
+    async getCart(req, reply, companyId, storeId, cartId) {
+        this.attachRotatedCartToken(req, reply);
+        const cart = await this.cartService.getCart(companyId, storeId, cartId);
+        return reply.send(cart);
     }
-    addItem(req, companyId, storeId, cartId, dto, ip) {
-        return this.cartService.addItem(companyId, storeId, cartId, dto, undefined, ip);
+    async items(req, reply, companyId, storeId, cartId) {
+        this.attachRotatedCartToken(req, reply);
+        const items = await this.cartService.getCartItems(companyId, storeId, cartId);
+        return reply.send(items);
     }
-    updateItemQty(companyId, storeId, cartId, cartItemId, dto, ip) {
-        return this.cartService.updateItemQuantity(companyId, storeId, cartId, cartItemId, dto, undefined, ip);
+    async addItem(req, reply, companyId, storeId, cartId, dto, ip) {
+        this.attachRotatedCartToken(req, reply);
+        const updated = await this.cartService.addItem(companyId, storeId, cartId, dto, undefined, ip);
+        return reply.send(updated);
     }
-    removeItem(companyId, storeId, cartId, cartItemId, ip) {
-        return this.cartService.removeItem(companyId, storeId, cartId, cartItemId, undefined, ip);
+    async updateItemQty(req, reply, companyId, storeId, cartId, cartItemId, dto, ip) {
+        this.attachRotatedCartToken(req, reply);
+        const updated = await this.cartService.updateItemQuantity(companyId, storeId, cartId, cartItemId, dto, undefined, ip);
+        return reply.send(updated);
     }
-    claimCart(companyId, storeId, customer, req, ip) {
+    async removeItem(req, reply, companyId, storeId, cartId, cartItemId, ip) {
+        this.attachRotatedCartToken(req, reply);
+        const updated = await this.cartService.removeItem(companyId, storeId, cartId, cartItemId, undefined, ip);
+        return reply.send(updated);
+    }
+    async claimCart(req, reply, companyId, storeId, customer, ip) {
+        this.attachRotatedCartToken(req, reply);
         const cartToken = req.cartToken ??
             req.headers?.['x-cart-token'] ??
             req.headers?.['X-Cart-Token'];
-        return this.cartService.claimGuestCart(companyId, storeId, customer.id, String(cartToken ?? ''), undefined, ip);
+        const result = await this.cartService.claimGuestCart(companyId, storeId, customer.id, String(cartToken ?? ''), undefined, ip);
+        return reply.send(result);
     }
 };
 exports.StorefrontCartController = StorefrontCartController;
@@ -63,30 +81,35 @@ __decorate([
     __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
     __param(2, (0, common_1.Body)()),
     __param(3, (0, common_1.Ip)()),
+    __param(4, (0, common_1.Res)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, dto_1.CreateCartDto, String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [String, String, dto_1.CreateCartDto, String, Object]),
+    __metadata("design:returntype", Promise)
 ], StorefrontCartController.prototype, "createGuestCart", null);
 __decorate([
     (0, common_1.UseGuards)(cart_token_guard_1.CartTokenGuard),
     (0, api_scopes_decorator_1.ApiScopes)('carts.read'),
     (0, common_1.Get)(':cartId'),
-    __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
-    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
-    __param(2, (0, common_1.Param)('cartId')),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)()),
+    __param(2, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __param(3, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(4, (0, common_1.Param)('cartId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, Object, String, String, String]),
+    __metadata("design:returntype", Promise)
 ], StorefrontCartController.prototype, "getCart", null);
 __decorate([
     (0, common_1.UseGuards)(cart_token_guard_1.CartTokenGuard),
     (0, api_scopes_decorator_1.ApiScopes)('carts.read'),
     (0, common_1.Get)(':cartId/items'),
-    __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
-    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
-    __param(2, (0, common_1.Param)('cartId')),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)()),
+    __param(2, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __param(3, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(4, (0, common_1.Param)('cartId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [Object, Object, String, String, String]),
     __metadata("design:returntype", Promise)
 ], StorefrontCartController.prototype, "items", null);
 __decorate([
@@ -94,54 +117,60 @@ __decorate([
     (0, api_scopes_decorator_1.ApiScopes)('carts.update'),
     (0, common_1.Post)(':cartId/items'),
     __param(0, (0, common_1.Req)()),
-    __param(1, (0, current_company_id_decorator_1.CurrentCompanyId)()),
-    __param(2, (0, current_store_decorator_1.CurrentStoreId)()),
-    __param(3, (0, common_1.Param)('cartId')),
-    __param(4, (0, common_1.Body)()),
-    __param(5, (0, common_1.Ip)()),
+    __param(1, (0, common_1.Res)()),
+    __param(2, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __param(3, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(4, (0, common_1.Param)('cartId')),
+    __param(5, (0, common_1.Body)()),
+    __param(6, (0, common_1.Ip)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Request, String, String, String, dto_1.AddCartItemDto, String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, Object, String, String, String, dto_1.AddCartItemDto, String]),
+    __metadata("design:returntype", Promise)
 ], StorefrontCartController.prototype, "addItem", null);
 __decorate([
     (0, common_1.UseGuards)(cart_token_guard_1.CartTokenGuard),
     (0, api_scopes_decorator_1.ApiScopes)('carts.update'),
     (0, common_1.Patch)(':cartId/items/:cartItemId'),
-    __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
-    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
-    __param(2, (0, common_1.Param)('cartId')),
-    __param(3, (0, common_1.Param)('cartItemId')),
-    __param(4, (0, common_1.Body)()),
-    __param(5, (0, common_1.Ip)()),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)()),
+    __param(2, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __param(3, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(4, (0, common_1.Param)('cartId')),
+    __param(5, (0, common_1.Param)('cartItemId')),
+    __param(6, (0, common_1.Body)()),
+    __param(7, (0, common_1.Ip)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String, dto_1.UpdateCartItemDto, String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, Object, String, String, String, String, dto_1.UpdateCartItemDto, String]),
+    __metadata("design:returntype", Promise)
 ], StorefrontCartController.prototype, "updateItemQty", null);
 __decorate([
     (0, common_1.UseGuards)(cart_token_guard_1.CartTokenGuard),
     (0, api_scopes_decorator_1.ApiScopes)('carts.update'),
     (0, common_1.Delete)(':cartId/items/:cartItemId'),
-    __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
-    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
-    __param(2, (0, common_1.Param)('cartId')),
-    __param(3, (0, common_1.Param)('cartItemId')),
-    __param(4, (0, common_1.Ip)()),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)()),
+    __param(2, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __param(3, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(4, (0, common_1.Param)('cartId')),
+    __param(5, (0, common_1.Param)('cartItemId')),
+    __param(6, (0, common_1.Ip)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String, String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, Object, String, String, String, String, String]),
+    __metadata("design:returntype", Promise)
 ], StorefrontCartController.prototype, "removeItem", null);
 __decorate([
     (0, common_1.UseGuards)(customer_jwt_guard_1.CustomerJwtGuard, cart_token_guard_1.CartTokenGuard),
     (0, api_scopes_decorator_1.ApiScopes)('carts.update'),
     (0, common_1.Post)('claim'),
-    __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
-    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
-    __param(2, (0, current_customer_decorator_1.CurrentCustomer)()),
-    __param(3, (0, common_1.Req)()),
-    __param(4, (0, common_1.Ip)()),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)()),
+    __param(2, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __param(3, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(4, (0, current_customer_decorator_1.CurrentCustomer)()),
+    __param(5, (0, common_1.Ip)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, Object, Object, String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, Object, String, String, Object, String]),
+    __metadata("design:returntype", Promise)
 ], StorefrontCartController.prototype, "claimCart", null);
 exports.StorefrontCartController = StorefrontCartController = __decorate([
     (0, common_1.Controller)('/storefront/carts'),

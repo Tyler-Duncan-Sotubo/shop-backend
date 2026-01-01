@@ -18,27 +18,51 @@ let CartTokenGuard = class CartTokenGuard {
         this.cartService = cartService;
         this.checkoutService = checkoutService;
     }
+    getHeader(req, key) {
+        const lower = key.toLowerCase();
+        return (req.headers[lower] ??
+            req.headers[key]);
+    }
     async canActivate(ctx) {
         const req = ctx.switchToHttp().getRequest();
         const companyId = req.companyId;
-        const token = req.headers['x-cart-token'] ??
-            req.headers['x-cart-token'.toLowerCase()];
+        const accessToken = this.getHeader(req, 'x-cart-token');
+        const refreshToken = this.getHeader(req, 'x-cart-refresh-token');
         if (!companyId)
             throw new common_1.UnauthorizedException('Missing company context');
-        if (!token)
+        if (!accessToken && !refreshToken) {
             throw new common_1.UnauthorizedException('Missing cart token');
+        }
         let cartId = req.params?.cartId;
         if (!cartId) {
             const checkoutId = req.params?.checkoutId;
             if (!checkoutId) {
-                const cart = await this.cartService.getCartByGuestTokenOrThrow(companyId, token);
-                if (cart.status !== 'active')
+                if (!accessToken) {
+                    throw new common_1.UnauthorizedException('Missing cart token (token-only flow requires x-cart-token)');
+                }
+                const cart = await this.cartService.getCartByGuestTokenOrThrow(companyId, accessToken);
+                if (cart.status !== 'active') {
                     throw new common_1.ForbiddenException('Cart is not active');
-                if (cart.expiresAt && new Date(cart.expiresAt).getTime() < Date.now()) {
-                    throw new common_1.ForbiddenException('Cart expired');
+                }
+                const now = Date.now();
+                const accessExpired = cart.expiresAt && new Date(cart.expiresAt).getTime() < now;
+                if (accessExpired) {
+                    if (!refreshToken) {
+                        throw new common_1.ForbiddenException('Missing refresh token');
+                    }
+                    const refreshed = await this.cartService.refreshCartAccessToken({
+                        companyId,
+                        cartId: cart.id,
+                        refreshToken,
+                    });
+                    req.cart = refreshed.cart;
+                    req.cartToken = refreshed.accessToken;
+                    req.cartTokenRotated = true;
+                    return true;
                 }
                 req.cart = cart;
-                req.cartToken = token;
+                req.cartToken = accessToken;
+                req.cartTokenRotated = false;
                 return true;
             }
             const checkout = await this.checkoutService.getCheckout(companyId, checkoutId);
@@ -46,15 +70,29 @@ let CartTokenGuard = class CartTokenGuard {
             req.checkout = checkout;
         }
         const cart = await this.cartService.getCartByIdOnlyOrThrow(companyId, cartId);
-        if (cart.status !== 'active')
+        if (cart.status !== 'active') {
             throw new common_1.ForbiddenException('Cart is not active');
-        if (cart.expiresAt && new Date(cart.expiresAt).getTime() < Date.now()) {
-            throw new common_1.ForbiddenException('Cart expired');
         }
-        if (!cart.guestToken || cart.guestToken !== token) {
-            throw new common_1.ForbiddenException('Invalid cart token');
+        const now = Date.now();
+        const accessExpired = cart.expiresAt && new Date(cart.expiresAt).getTime() < now;
+        const accessMatches = !!accessToken && !!cart.guestToken && cart.guestToken === accessToken;
+        if (accessMatches && !accessExpired) {
+            req.cart = cart;
+            req.cartToken = accessToken;
+            req.cartTokenRotated = false;
+            return true;
         }
-        req.cart = cart;
+        if (!refreshToken) {
+            throw new common_1.ForbiddenException(accessMatches ? 'Cart token expired' : 'Invalid cart token');
+        }
+        const refreshed = await this.cartService.refreshCartAccessToken({
+            companyId,
+            cartId: cart.id,
+            refreshToken,
+        });
+        req.cart = refreshed.cart;
+        req.cartToken = refreshed.accessToken;
+        req.cartTokenRotated = true;
         return true;
     }
 };

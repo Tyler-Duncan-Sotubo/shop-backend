@@ -10,6 +10,7 @@ exports.customers = (0, pg_core_1.pgTable)('customers', {
     companyId: (0, pg_core_1.uuid)('company_id')
         .notNull()
         .references(() => companies_schema_1.companies.id, { onDelete: 'cascade' }),
+    storeId: (0, pg_core_1.uuid)('store_id'),
     displayName: (0, pg_core_1.varchar)('display_name', { length: 255 }).notNull(),
     type: (0, enum_schema_1.customerTypeEnum)('type').notNull().default('individual'),
     firstName: (0, pg_core_1.varchar)('first_name', { length: 100 }),

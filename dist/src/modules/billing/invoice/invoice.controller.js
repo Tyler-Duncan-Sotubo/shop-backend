@@ -25,10 +25,13 @@ const invoice_line_id_param_dto_1 = require("./dto/invoice-line-id.param.dto");
 const update_invoice_line_dto_1 = require("./dto/update-invoice-line.dto");
 const list_invoices_query_dto_1 = require("./dto/list-invoices.query.dto");
 const update_invoice_draft_dto_1 = require("./dto/update-invoice-draft.dto");
+const record_invoice_payment_dto_1 = require("../payment/dto/record-invoice-payment.dto");
+const payment_service_1 = require("../payment/payment.service");
 let InvoiceController = class InvoiceController extends base_controller_1.BaseController {
-    constructor(invoiceService) {
+    constructor(invoiceService, paymentService) {
         super();
         this.invoiceService = invoiceService;
+        this.paymentService = paymentService;
     }
     async createDraftFromOrder(user, dto) {
         return this.invoiceService.createDraftFromOrder(dto, user.companyId);
@@ -55,6 +58,20 @@ let InvoiceController = class InvoiceController extends base_controller_1.BaseCo
     async syncInvoiceSeries(user) {
         await this.invoiceService.seedDefaultInvoiceSeriesForCompany(user.companyId);
         return { message: 'Invoice series synchronized successfully.' };
+    }
+    async recordInvoicePayment(user, params, dto) {
+        console.log('Recording payment for invoice:', dto);
+        return this.paymentService.recordInvoicePayment({
+            invoiceId: params.invoiceId,
+            amount: dto.amount,
+            currency: dto.currency,
+            method: dto.method,
+            reference: dto.reference ?? null,
+            meta: dto.meta ?? null,
+            evidenceDataUrl: dto.evidenceDataUrl,
+            evidenceFileName: dto.evidenceFileName,
+            evidenceNote: dto.evidenceNote,
+        }, user.companyId, user.id);
     }
 };
 exports.InvoiceController = InvoiceController;
@@ -134,9 +151,20 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], InvoiceController.prototype, "syncInvoiceSeries", null);
+__decorate([
+    (0, common_1.Post)(':invoiceId/payments'),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)()),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, invoice_id_param_dto_1.InvoiceIdParamDto,
+        record_invoice_payment_dto_1.RecordInvoicePaymentDto]),
+    __metadata("design:returntype", Promise)
+], InvoiceController.prototype, "recordInvoicePayment", null);
 exports.InvoiceController = InvoiceController = __decorate([
     (0, common_1.Controller)('invoices'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [invoice_service_1.InvoiceService])
+    __metadata("design:paramtypes", [invoice_service_1.InvoiceService,
+        payment_service_1.PaymentService])
 ], InvoiceController);
 //# sourceMappingURL=invoice.controller.js.map

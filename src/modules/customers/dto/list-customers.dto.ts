@@ -11,6 +11,10 @@ import {
 export class ListCustomersDto {
   @IsOptional()
   @IsString()
+  storeId?: string;
+
+  @IsOptional()
+  @IsString()
   search?: string;
 
   @IsOptional()
@@ -22,7 +26,7 @@ export class ListCustomersDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(200)
+  @Max(5000)
   limit: number = 50;
 
   @IsOptional()

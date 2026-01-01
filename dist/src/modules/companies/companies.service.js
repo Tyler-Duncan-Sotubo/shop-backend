@@ -21,12 +21,14 @@ const schema_1 = require("../../drizzle/schema");
 const permissions_service_1 = require("../iam/permissions/permissions.service");
 const company_settings_service_1 = require("../company-settings/company-settings.service");
 const services_1 = require("../auth/services");
+const invoice_service_1 = require("../billing/invoice/invoice.service");
 let CompaniesService = class CompaniesService {
-    constructor(db, verificationService, permissionService, companySettingsService) {
+    constructor(db, verificationService, permissionService, companySettingsService, invoiceService) {
         this.db = db;
         this.verificationService = verificationService;
         this.permissionService = permissionService;
         this.companySettingsService = companySettingsService;
+        this.invoiceService = invoiceService;
     }
     async checkCompanySlugAvailable(slug, companyIdToIgnore) {
         const existing = await this.db
@@ -100,6 +102,7 @@ let CompaniesService = class CompaniesService {
     async postRegistration(company, user) {
         await this.verificationService.generateVerificationToken(user.id, company.name);
         await this.permissionService.seedDefaultPermissionsForCompany(company.id);
+        await this.invoiceService.seedDefaultInvoiceSeriesForCompany(company.id);
     }
     async register(dto) {
         await this.checkCompanySlugAvailable(dto.slug);
@@ -167,6 +170,7 @@ exports.CompaniesService = CompaniesService = __decorate([
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, services_1.VerificationService,
         permissions_service_1.PermissionsService,
-        company_settings_service_1.CompanySettingsService])
+        company_settings_service_1.CompanySettingsService,
+        invoice_service_1.InvoiceService])
 ], CompaniesService);
 //# sourceMappingURL=companies.service.js.map

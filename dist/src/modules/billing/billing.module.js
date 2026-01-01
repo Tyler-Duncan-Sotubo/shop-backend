@@ -18,6 +18,7 @@ exports.BillingModule = BillingModule;
 exports.BillingModule = BillingModule = __decorate([
     (0, common_1.Module)({
         imports: [payment_module_1.PaymentModule, invoice_module_1.InvoiceModule, tax_module_1.TaxModule, public_invoices_module_1.PublicInvoicesModule],
+        exports: [invoice_module_1.InvoiceModule, payment_module_1.PaymentModule, tax_module_1.TaxModule, public_invoices_module_1.PublicInvoicesModule],
     })
 ], BillingModule);
 //# sourceMappingURL=billing.module.js.map

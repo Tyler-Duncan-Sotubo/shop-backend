@@ -17,6 +17,9 @@ export * from './schema/iam/api-keys.schema';
 // --- Audit Logs ---
 export * from './schema/audit/audit.schema';
 
+// Media
+export * from './schema/media/media.schema';
+
 // --- Enums ---
 export * from './schema/enum.schema';
 
@@ -82,6 +85,9 @@ export * from './schema/orders/inventory-reservations.schema';
 export * from './schema/orders/order-events.schema';
 // ---------------------------------------------------------
 
+//  QUOTE REQUESTS
+export * from './schema/quotes/quote-requests.schema';
+
 // INVOICE
 export * from './schema/billing/invoice/invoice-series.schema';
 export * from './schema/billing/invoice/invoices.schema';
@@ -96,9 +102,20 @@ export * from './schema/billing/invoice/invoice-public-links.schema';
 // PAYMENTS
 export * from './schema/billing/payment/payments.schema';
 export * from './schema/billing/payment/payment-allocations.schema';
+export * from './schema/billing/payment/payment-files.schema';
+export * from './schema/billing/payment/payment-provider-events.schema';
+export * from './schema/billing/payment/payment-receipts.schema';
 
 // TAXES
 export * from './schema/billing/tax/taxes.schema';
 
 // BLOG POSTS
 export * from './schema/blog/blog.schema';
+
+// ANALYTICS
+export * from './schema/analytics/analytics-tags.schema';
+export * from './schema/analytics/storefront-events.schema';
+export * from './schema/analytics/storefront-sessions.schema';
+
+// Storefront
+export * from './schema/storefront/storefront-configs.schema';

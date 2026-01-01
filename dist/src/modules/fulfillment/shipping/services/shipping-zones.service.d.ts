@@ -27,8 +27,8 @@ export declare class ShippingZonesService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        description: string | null;
         storeId: string;
+        description: string | null;
         metadata: Record<string, any> | null;
         priority: number;
     }>;
@@ -88,8 +88,8 @@ export declare class ShippingZonesService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        description: string | null;
         storeId: string;
+        description: string | null;
         metadata: Record<string, any> | null;
         priority: number;
     } | null | undefined>;

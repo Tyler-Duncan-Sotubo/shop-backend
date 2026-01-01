@@ -20,6 +20,8 @@ const admin_customers_service_1 = require("./admin-customers.service");
 const dto_1 = require("./dto");
 const base_controller_1 = require("../../common/interceptor/base.controller");
 const register_customer_dto_1 = require("./dto/register-customer.dto");
+const audit_decorator_1 = require("../audit/audit.decorator");
+const file_parse_interceptor_1 = require("../../common/interceptor/file-parse.interceptor");
 let AdminCustomersController = class AdminCustomersController extends base_controller_1.BaseController {
     constructor(adminCustomers) {
         super();
@@ -27,6 +29,9 @@ let AdminCustomersController = class AdminCustomersController extends base_contr
     }
     async adminRegister(user, dto) {
         return this.adminCustomers.adminCreateCustomer(user.companyId, dto, user.id);
+    }
+    async bulkCreateCustomers(rows, user, storeId) {
+        return this.adminCustomers.bulkCreateCustomers(user.companyId, storeId, rows, user.id);
     }
     createAddress(user, customerId, dto) {
         return this.adminCustomers.createCustomerAddress(user.companyId, customerId, dto, user.id);
@@ -53,6 +58,19 @@ __decorate([
     __metadata("design:paramtypes", [Object, register_customer_dto_1.CreateCustomerDto]),
     __metadata("design:returntype", Promise)
 ], AdminCustomersController.prototype, "adminRegister", null);
+__decorate([
+    (0, common_1.Post)('bulk/:storeId'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['customers.update']),
+    (0, audit_decorator_1.Audit)({ action: 'Customer Bulk Up', entity: 'Customers' }),
+    (0, common_1.UseInterceptors)((0, file_parse_interceptor_1.FileParseInterceptor)({ field: 'file', maxRows: 500 })),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __param(2, (0, common_1.Param)('storeId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Array, Object, Object]),
+    __metadata("design:returntype", Promise)
+], AdminCustomersController.prototype, "bulkCreateCustomers", null);
 __decorate([
     (0, common_1.Post)(':customerId/addresses'),
     (0, common_1.SetMetadata)('permissions', ['customers.update']),

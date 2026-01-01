@@ -3,15 +3,17 @@ import { User } from 'src/common/types/user.type';
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { BlogPostIdParamDto, UpdateBlogPostDto } from './dto/update-blog-post.dto';
 import { BlogService } from './blog.service';
+import { BlogPostsAdminQueryDto } from './dto/blog-posts-admin-query.dto';
 export declare class BlogController extends BaseController {
     private readonly blogService;
     constructor(blogService: BlogService);
     create(user: User, dto: CreateBlogPostDto, ip: string): Promise<{
-        status: string;
         id: string;
-        slug: string;
         createdAt: Date;
+        slug: string;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         seoTitle: string | null;
         seoDescription: string | null;
         title: string;
@@ -22,28 +24,33 @@ export declare class BlogController extends BaseController {
         publishedAt: Date | null;
         isFeatured: boolean;
     }>;
-    listAdmin(user: User): Promise<{
-        id: string;
-        title: string;
-        slug: string;
-        excerpt: string | null;
-        coverImageUrl: string | null;
-        focusKeyword: string | null;
-        content: string;
-        status: string;
-        publishedAt: Date | null;
-        isFeatured: boolean;
-        seoTitle: string | null;
-        seoDescription: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-    }[]>;
+    listAdmin(user: User, filters?: BlogPostsAdminQueryDto): Promise<{
+        rows: {
+            id: string;
+            title: string;
+            slug: string;
+            storeId: string;
+            excerpt: string | null;
+            coverImageUrl: string | null;
+            focusKeyword: string | null;
+            content: string;
+            status: string;
+            publishedAt: Date | null;
+            isFeatured: boolean;
+            seoTitle: string | null;
+            seoDescription: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        count: number;
+    }>;
     getByIdAdmin(user: User, params: BlogPostIdParamDto): Promise<{
-        status: string;
         id: string;
-        slug: string;
         createdAt: Date;
+        slug: string;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         seoTitle: string | null;
         seoDescription: string | null;
         title: string;
@@ -61,6 +68,7 @@ export declare class BlogController extends BaseController {
         id: string;
         title: string;
         slug: string;
+        storeId: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
@@ -77,6 +85,7 @@ export declare class BlogController extends BaseController {
         id: string;
         title: string;
         slug: string;
+        storeId: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
@@ -93,6 +102,7 @@ export declare class BlogController extends BaseController {
         id: string;
         title: string;
         slug: string;
+        storeId: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
@@ -112,6 +122,7 @@ export declare class BlogController extends BaseController {
         id: string;
         title: string;
         slug: string;
+        storeId: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
@@ -125,11 +136,12 @@ export declare class BlogController extends BaseController {
         updatedAt: Date;
     }[]>;
     getBySlugPublic(slug: string): Promise<{
-        status: string;
         id: string;
-        slug: string;
         createdAt: Date;
+        slug: string;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         seoTitle: string | null;
         seoDescription: string | null;
         title: string;

@@ -1,5 +1,11 @@
 // src/modules/stores/dto/create-store.dto.ts
-import { IsBoolean, IsOptional, IsString, Length } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  Length,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateStoreDto {
   @IsString()
@@ -23,4 +29,17 @@ export class CreateStoreDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  base64Image?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  imageAltText?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  removeImage?: boolean;
 }

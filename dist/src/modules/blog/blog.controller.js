@@ -20,6 +20,7 @@ const update_blog_post_dto_1 = require("./dto/update-blog-post.dto");
 const blog_service_1 = require("./blog.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../auth/decorator/current-user.decorator");
+const blog_posts_admin_query_dto_1 = require("./dto/blog-posts-admin-query.dto");
 let BlogController = class BlogController extends base_controller_1.BaseController {
     constructor(blogService) {
         super();
@@ -28,8 +29,8 @@ let BlogController = class BlogController extends base_controller_1.BaseControll
     create(user, dto, ip) {
         return this.blogService.create(user, dto, ip);
     }
-    listAdmin(user) {
-        return this.blogService.listAdmin(user);
+    listAdmin(user, filters) {
+        return this.blogService.listAdmin(user, filters);
     }
     getByIdAdmin(user, params) {
         return this.blogService.getByIdAdmin(user, params.id);
@@ -70,8 +71,9 @@ __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.SetMetadata)('permissions', ['blog.posts.read']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, blog_posts_admin_query_dto_1.BlogPostsAdminQueryDto]),
     __metadata("design:returntype", void 0)
 ], BlogController.prototype, "listAdmin", null);
 __decorate([

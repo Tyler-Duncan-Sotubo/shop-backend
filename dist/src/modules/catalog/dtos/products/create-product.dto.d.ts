@@ -14,4 +14,6 @@ export declare class CreateProductDto {
     links?: Partial<Record<ProductLinkType, string[]>>;
     base64Image?: string;
     imageAltText?: string;
+    imageFileName?: string;
+    imageMimeType?: string;
 }

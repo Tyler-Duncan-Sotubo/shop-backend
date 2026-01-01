@@ -20,6 +20,9 @@ const drizzle_module_1 = require("../../drizzle/drizzle.module");
 const schema_1 = require("../../drizzle/schema");
 const cache_service_1 = require("../../common/cache/cache.service");
 const services_1 = require("../auth/services");
+const bulk_customer_row_dto_1 = require("./dto/bulk-customer-row.dto");
+const class_transformer_1 = require("class-transformer");
+const class_validator_1 = require("class-validator");
 let AdminCustomersService = class AdminCustomersService {
     constructor(db, cache, tokenGeneratorService) {
         this.db = db;
@@ -47,6 +50,231 @@ let AdminCustomersService = class AdminCustomersService {
         const last = (dto.lastName ?? '').trim();
         const name = `${first} ${last}`.trim();
         return name.length > 0 ? name : this.normalizeEmail(dto.email);
+    }
+    generateTempPassword() {
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+        let out = '';
+        for (let i = 0; i < 12; i++)
+            out += alphabet[Math.floor(Math.random() * alphabet.length)];
+        return out;
+    }
+    normalizePhone(phone) {
+        return phone.trim().replace(/[^\d+]/g, '');
+    }
+    makeTempEmailFromPhone(companyId, phone) {
+        const p = this.normalizePhone(phone);
+        return `${p}.${companyId}@temp.yourapp.local`.toLowerCase();
+    }
+    async mapLimit(items, limit, fn) {
+        const out = new Array(items.length);
+        let i = 0;
+        const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+            while (true) {
+                const cur = i++;
+                if (cur >= items.length)
+                    break;
+                out[cur] = await fn(items[cur], cur);
+            }
+        });
+        await Promise.all(workers);
+        return out;
+    }
+    chunk(arr, size) {
+        const res = [];
+        for (let i = 0; i < arr.length; i += size)
+            res.push(arr.slice(i, i + size));
+        return res;
+    }
+    async bulkCreateCustomers(companyId, storeId, rows, actorUserId) {
+        if (!rows?.length)
+            throw new common_1.BadRequestException('No rows provided.');
+        const dtos = new Array(rows.length);
+        const derived = new Array(rows.length);
+        const seenEmail = new Map();
+        const seenPhone = new Map();
+        const dupEmails = [];
+        const dupPhones = [];
+        const indices = rows.map((_, i) => i);
+        await this.mapLimit(indices, 50, async (idx) => {
+            const row = rows[idx];
+            const dto = (0, class_transformer_1.plainToInstance)(bulk_customer_row_dto_1.BulkCustomerRowDto, {
+                firstName: row['First Name'] ?? row['firstName'] ?? row['first_name'],
+                lastName: row['Last Name'] ?? row['lastName'] ?? row['last_name'],
+                email: row['Email'] ?? row['email'],
+                phone: row['Phone'] ?? row['phone'],
+                address: row['Address'] ?? row['address'],
+            });
+            const errors = await (0, class_validator_1.validate)(dto);
+            if (errors.length) {
+                throw new common_1.BadRequestException(`Invalid data in bulk upload (row ${idx + 1}): ` +
+                    JSON.stringify(errors));
+            }
+            const rawEmail = (dto.email ?? '').trim();
+            const rawPhone = (dto.phone ?? '').trim();
+            const normalizedPhone = rawPhone ? this.normalizePhone(rawPhone) : null;
+            const canLogin = Boolean(rawEmail || normalizedPhone);
+            const loginEmail = !canLogin
+                ? null
+                : rawEmail
+                    ? this.normalizeEmail(rawEmail)
+                    : this.makeTempEmailFromPhone(companyId, normalizedPhone);
+            const isTempEmail = canLogin && !rawEmail && !!normalizedPhone;
+            const tempPassword = canLogin ? this.generateTempPassword() : null;
+            dto.email = loginEmail ?? undefined;
+            dtos[idx] = dto;
+            derived[idx] = {
+                canLogin,
+                loginEmail,
+                isTempEmail,
+                tempPassword,
+                normalizedPhone,
+                rawEmail: rawEmail ? this.normalizeEmail(rawEmail) : null,
+            };
+            if (loginEmail) {
+                const first = seenEmail.get(loginEmail);
+                if (first !== undefined)
+                    dupEmails.push(loginEmail);
+                else
+                    seenEmail.set(loginEmail, idx);
+            }
+            if (normalizedPhone) {
+                const first = seenPhone.get(normalizedPhone);
+                if (first !== undefined)
+                    dupPhones.push(normalizedPhone);
+                else
+                    seenPhone.set(normalizedPhone, idx);
+            }
+        });
+        if (dupEmails.length) {
+            const unique = [...new Set(dupEmails)];
+            throw new common_1.BadRequestException(`Duplicate login emails in file: ${unique.join(', ')}`);
+        }
+        if (dupPhones.length) {
+            const unique = [...new Set(dupPhones)];
+            throw new common_1.BadRequestException(`Duplicate phone numbers in file: ${unique.join(', ')}`);
+        }
+        const loginEmails = derived
+            .filter((d) => d.loginEmail)
+            .map((d) => d.loginEmail);
+        const EMAIL_CHUNK = 5000;
+        if (loginEmails.length) {
+            for (const part of this.chunk(loginEmails, EMAIL_CHUNK)) {
+                const existing = await this.db
+                    .select({ email: schema_1.customerCredentials.email })
+                    .from(schema_1.customerCredentials)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customerCredentials.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.customerCredentials.email, part)))
+                    .execute();
+                if (existing.length) {
+                    throw new common_1.BadRequestException(`Customers already exist for emails: ${existing.map((r) => r.email).join(', ')}`);
+                }
+            }
+        }
+        const inserted = await this.db.transaction(async (trx) => {
+            const customerRows = await trx
+                .insert(schema_1.customers)
+                .values(dtos.map((d, i) => ({
+                companyId,
+                storeId,
+                displayName: this.buildDisplayName({
+                    firstName: d.firstName,
+                    lastName: d.lastName,
+                    email: derived[i].rawEmail ?? d.phone ?? 'customer',
+                }),
+                type: 'individual',
+                firstName: d.firstName ?? null,
+                lastName: d.lastName ?? null,
+                billingEmail: derived[i].rawEmail ?? null,
+                phone: d.phone ?? null,
+                marketingOptIn: false,
+                isActive: true,
+            })))
+                .returning({
+                id: schema_1.customers.id,
+                displayName: schema_1.customers.displayName,
+                billingEmail: schema_1.customers.billingEmail,
+                firstName: schema_1.customers.firstName,
+                lastName: schema_1.customers.lastName,
+                phone: schema_1.customers.phone,
+            })
+                .execute();
+            const credInputs = derived
+                .map((d, i) => ({ d, i }))
+                .filter(({ d }) => d.canLogin && d.loginEmail && d.tempPassword);
+            const BCRYPT_CONCURRENCY = 16;
+            const credentialValues = await this.mapLimit(credInputs, BCRYPT_CONCURRENCY, async ({ d, i }) => {
+                const passwordHash = await bcrypt.hash(d.tempPassword, 10);
+                return {
+                    companyId,
+                    customerId: customerRows[i].id,
+                    email: d.loginEmail,
+                    passwordHash,
+                    isVerified: true,
+                    inviteTokenHash: null,
+                    inviteExpiresAt: null,
+                };
+            });
+            if (credentialValues.length) {
+                await trx
+                    .insert(schema_1.customerCredentials)
+                    .values(credentialValues)
+                    .execute();
+            }
+            const addressValues = dtos
+                .map((d, i) => ({ d, i }))
+                .filter(({ d }) => d.address?.trim())
+                .map(({ d, i }) => ({
+                companyId,
+                customerId: customerRows[i].id,
+                label: 'Default',
+                firstName: d.firstName ?? null,
+                lastName: d.lastName ?? null,
+                line1: d.address.trim(),
+                line2: null,
+                city: 'city',
+                state: null,
+                postalCode: null,
+                country: 'Nigeria',
+                phone: d.phone ?? null,
+                isDefaultBilling: true,
+                isDefaultShipping: true,
+            }));
+            if (addressValues.length) {
+                await trx.insert(schema_1.customerAddresses).values(addressValues).execute();
+            }
+            const auditValues = customerRows.map((c, i) => ({
+                companyId,
+                actorUserId,
+                entity: 'customer',
+                entityId: c.id,
+                action: 'admin_bulk_created',
+                changes: {
+                    loginEmail: derived[i].loginEmail ?? null,
+                    canLogin: derived[i].canLogin,
+                    isTempEmail: derived[i].isTempEmail,
+                    displayName: c.displayName,
+                },
+            }));
+            if (trx.insert && this.auditLogs) {
+                await trx.insert(this.auditLogs).values(auditValues).execute();
+            }
+            else {
+                await Promise.all(customerRows.map((c, i) => this.log(companyId, actorUserId, {
+                    entity: 'customer',
+                    entityId: c.id,
+                    action: 'admin_bulk_created',
+                    changes: auditValues[i].changes,
+                })));
+            }
+            return customerRows.map((c, i) => ({
+                customer: c,
+                canLogin: derived[i].canLogin,
+                loginEmail: derived[i].loginEmail,
+                tempPassword: derived[i].tempPassword,
+                isTempEmail: derived[i].isTempEmail,
+            }));
+        });
+        await this.cache.bumpCompanyVersion(companyId);
+        return { insertedCount: inserted.length, items: inserted };
     }
     async adminCreateCustomer(companyId, dto, actorUserId) {
         const loginEmail = this.normalizeEmail(dto.email);
@@ -176,7 +404,9 @@ let AdminCustomersService = class AdminCustomersService {
         return this.db
             .select({
             id: schema_1.customers.id,
-            displayName: schema_1.customers.displayName,
+            displayName: schema_1.customers.firstName,
+            firstName: schema_1.customers.firstName,
+            lastName: schema_1.customers.lastName,
             billingEmail: schema_1.customers.billingEmail,
             phone: schema_1.customers.phone,
             marketingOptIn: schema_1.customers.marketingOptIn,
@@ -188,7 +418,7 @@ let AdminCustomersService = class AdminCustomersService {
         })
             .from(schema_1.customers)
             .leftJoin(schema_1.customerCredentials, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customerCredentials.companyId, schema_1.customers.companyId), (0, drizzle_orm_1.eq)(schema_1.customerCredentials.customerId, schema_1.customers.id)))
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customers.companyId, companyId), ...(opts.includeInactive ? [] : [(0, drizzle_orm_1.eq)(schema_1.customers.isActive, true)]), ...(s
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customers.companyId, companyId), opts.storeId ? (0, drizzle_orm_1.eq)(schema_1.customers.storeId, opts.storeId) : undefined, ...(opts.includeInactive ? [] : [(0, drizzle_orm_1.eq)(schema_1.customers.isActive, true)]), ...(s
             ? [
                 (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.customers.displayName, `%${s}%`), (0, drizzle_orm_1.ilike)(schema_1.customers.billingEmail, `%${s}%`), (0, drizzle_orm_1.ilike)(schema_1.customerCredentials.email, `%${s}%`), (0, drizzle_orm_1.ilike)(schema_1.customers.phone, `%${s}%`)),
             ]

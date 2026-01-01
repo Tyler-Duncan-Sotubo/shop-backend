@@ -120,4 +120,19 @@ export class OrdersController extends BaseController {
       ip,
     );
   }
+
+  @Post('manual/:orderId/submit-for-payment')
+  @SetMetadata('permissions', ['orders.manual.edit'])
+  async submitForPayment(
+    @CurrentUser() user: User,
+    @Param('orderId') orderId: string,
+    @Ip() ip: string,
+  ) {
+    return this.manualOrdersService.submitForPayment(
+      user.companyId,
+      orderId,
+      user,
+      ip,
+    );
+  }
 }

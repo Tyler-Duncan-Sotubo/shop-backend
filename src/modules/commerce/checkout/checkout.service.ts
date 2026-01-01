@@ -371,8 +371,6 @@ export class CheckoutService {
       dto.area,
     );
 
-    console.log('Resolved shipping zone:', zone);
-
     if (!zone)
       throw new BadRequestException('No shipping zone matches destination');
 

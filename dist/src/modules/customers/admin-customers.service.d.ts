@@ -11,6 +11,15 @@ export declare class AdminCustomersService {
     private log;
     private normalizeEmail;
     private buildDisplayName;
+    private generateTempPassword;
+    private normalizePhone;
+    private makeTempEmailFromPhone;
+    private mapLimit;
+    private chunk;
+    bulkCreateCustomers(this: any, companyId: string, storeId: string | null, rows: any[], actorUserId: string | null): Promise<{
+        insertedCount: any;
+        items: any;
+    }>;
     adminCreateCustomer(companyId: string, dto: CreateCustomerDto, actorUserId: string | null): Promise<{
         customer: {
             id: string;
@@ -24,8 +33,8 @@ export declare class AdminCustomersService {
     }>;
     createCustomerAddress(companyId: string, customerId: string, dto: CreateCustomerAddressAdminDto, actorUserId: string | null): Promise<{
         id: string;
-        country: string;
         createdAt: Date;
+        country: string;
         updatedAt: Date;
         companyId: string;
         firstName: string | null;
@@ -43,7 +52,9 @@ export declare class AdminCustomersService {
     }>;
     listCustomers(companyId: string, opts: ListCustomersDto): Promise<{
         id: string;
-        displayName: string;
+        displayName: string | null;
+        firstName: string | null;
+        lastName: string | null;
         billingEmail: string | null;
         phone: string | null;
         marketingOptIn: boolean;

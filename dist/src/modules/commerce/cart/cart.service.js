@@ -20,12 +20,23 @@ const cache_service_1 = require("../../../common/cache/cache.service");
 const audit_service_1 = require("../../audit/audit.service");
 const schema_1 = require("../../../drizzle/schema");
 const services_1 = require("../../auth/services");
+const node_crypto_1 = require("node:crypto");
 let CartService = class CartService {
     constructor(db, cache, auditService, tokenGenerator) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
         this.tokenGenerator = tokenGenerator;
+    }
+    hashToken(token) {
+        return (0, node_crypto_1.createHash)('sha256').update(token).digest('hex');
+    }
+    generateRefreshToken() {
+        return (0, node_crypto_1.randomBytes)(32).toString('base64url');
+    }
+    computeExpiryFromNow(days) {
+        const now = new Date();
+        return new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
     }
     async getCartByIdOnlyOrThrow(companyId, cartId) {
         const cart = await this.db.query.carts.findFirst({
@@ -36,7 +47,6 @@ let CartService = class CartService {
         return cart;
     }
     async getCartByIdOrThrow(companyId, storeId, cartId) {
-        console.log('Getting cart by id', { companyId, storeId, cartId });
         const cart = await this.db.query.carts.findFirst({
             where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.carts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.carts.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.carts.id, cartId)),
         });
@@ -127,7 +137,7 @@ let CartService = class CartService {
     }
     async createCart(companyId, storeId, dto, user, ip) {
         const now = new Date();
-        const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 24);
+        const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
         const ownerType = dto.customerId ? 'customer' : 'guest';
         const channel = dto.channel ?? (dto.originInventoryLocationId ? 'pos' : 'online');
         if (channel === 'pos' && !dto.originInventoryLocationId) {
@@ -138,6 +148,9 @@ let CartService = class CartService {
             sub: dto.customerId,
         };
         const token = await this.tokenGenerator.generateTempToken(payload);
+        const refreshToken = this.generateRefreshToken();
+        const refreshTokenHash = this.hashToken(refreshToken);
+        const refreshExpiresAt = this.computeExpiryFromNow(30);
         const [cart] = await this.db
             .insert(schema_1.carts)
             .values({
@@ -146,6 +159,8 @@ let CartService = class CartService {
             ownerType,
             customerId: dto.customerId ?? null,
             guestToken: token,
+            guestRefreshTokenHash: refreshTokenHash,
+            guestRefreshTokenExpiresAt: refreshExpiresAt,
             status: 'active',
             channel,
             originInventoryLocationId: dto.originInventoryLocationId ?? null,
@@ -180,7 +195,12 @@ let CartService = class CartService {
                 },
             });
         }
-        return { ...cart, items: [] };
+        return {
+            ...cart,
+            items: [],
+            guestToken: token,
+            guestRefreshToken: refreshToken,
+        };
     }
     async getCart(companyId, storeId, cartId) {
         return this.cache.getOrSetVersioned(companyId, ['carts', 'cart', 'store', storeId, cartId, 'v1'], async () => {
@@ -476,6 +496,46 @@ let CartService = class CartService {
             return this.getCart(companyId, storeId, cart.id);
         });
     }
+    async refreshCartAccessToken(args) {
+        const { companyId, cartId, refreshToken } = args;
+        console.log('Refreshing cart access token...', refreshToken);
+        return this.db.transaction(async (tx) => {
+            const [cart] = await tx
+                .select()
+                .from(schema_1.carts)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.carts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.carts.id, cartId)))
+                .execute();
+            if (!cart)
+                throw new common_1.ForbiddenException('Cart not found');
+            if (cart.status !== 'active')
+                throw new common_1.ForbiddenException('Cart is not active');
+            if (!cart.guestRefreshTokenHash || !cart.guestRefreshTokenExpiresAt) {
+                throw new common_1.ForbiddenException('Missing refresh token');
+            }
+            const expired = new Date(cart.guestRefreshTokenExpiresAt).getTime() < Date.now();
+            if (expired)
+                throw new common_1.ForbiddenException('Refresh token expired');
+            const incomingHash = this.hashToken(refreshToken);
+            if (incomingHash !== cart.guestRefreshTokenHash) {
+                throw new common_1.ForbiddenException('Invalid refresh token');
+            }
+            const payload = { sub: cart.customerId ?? cart.id, email: 'guest' };
+            const newAccessToken = await this.tokenGenerator.generateTempToken(payload);
+            const now = new Date();
+            const newAccessExpiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            const [updated] = await tx
+                .update(schema_1.carts)
+                .set({
+                guestToken: newAccessToken,
+                expiresAt: newAccessExpiresAt,
+                lastActivityAt: now,
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.carts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.carts.id, cart.id)))
+                .returning()
+                .execute();
+            return { cart: updated, accessToken: newAccessToken, rotated: true };
+        });
+    }
     isUniqueViolation(err) {
         return err?.code === '23505';
     }
@@ -483,7 +543,6 @@ let CartService = class CartService {
         const row = await this.db.query.inventoryItems.findFirst({
             where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, originLocationId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, variantId)),
         });
-        console.log(originLocationId);
         const sellable = Number(row?.available ?? 0) -
             Number(row?.reserved ?? 0) -
             Number(row?.safetyStock ?? 0);
@@ -765,6 +824,54 @@ let CartService = class CartService {
     mulMoney(unit, qty) {
         const x = Number(unit ?? '0');
         return (x * Number(qty ?? 0)).toFixed(2);
+    }
+    isExpired(expiresAt) {
+        if (!expiresAt)
+            return false;
+        return new Date(expiresAt).getTime() < Date.now();
+    }
+    computeCartExpiryFromNow(hours = 24) {
+        const now = new Date();
+        return new Date(now.getTime() + 1000 * 60 * 60 * hours);
+    }
+    async validateOrRotateGuestToken(args) {
+        const extendHours = args.extendHours ?? 24;
+        return this.db.transaction(async (tx) => {
+            const [cart] = await tx
+                .select()
+                .from(schema_1.carts)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.carts.companyId, args.companyId), (0, drizzle_orm_1.eq)(schema_1.carts.id, args.cartId)))
+                .execute();
+            if (!cart)
+                throw new common_1.ForbiddenException('Cart not found');
+            if (cart.status !== 'active')
+                throw new common_1.ForbiddenException('Cart is not active');
+            if (!cart.guestToken || cart.guestToken !== args.token) {
+                throw new common_1.ForbiddenException('Invalid cart token');
+            }
+            const expired = this.isExpired(cart.expiresAt);
+            if (!expired) {
+                return { cart, token: cart.guestToken, rotated: false };
+            }
+            const now = new Date();
+            const newExpiresAt = this.computeCartExpiryFromNow(extendHours);
+            const payload = {
+                sub: cart.customerId ?? cart.id,
+                email: 'guest',
+            };
+            const newToken = await this.tokenGenerator.generateTempToken(payload);
+            const [updated] = await tx
+                .update(schema_1.carts)
+                .set({
+                guestToken: newToken,
+                expiresAt: newExpiresAt,
+                lastActivityAt: now,
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.carts.companyId, args.companyId), (0, drizzle_orm_1.eq)(schema_1.carts.id, args.cartId)))
+                .returning()
+                .execute();
+            return { cart: updated, token: newToken, rotated: true };
+        });
     }
 };
 exports.CartService = CartService;

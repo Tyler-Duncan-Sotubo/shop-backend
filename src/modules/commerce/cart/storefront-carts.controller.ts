@@ -9,7 +9,9 @@ import {
   Delete,
   UseGuards,
   Req,
+  Res,
 } from '@nestjs/common';
+import { FastifyReply } from 'fastify';
 import { BaseController } from 'src/common/interceptor/base.controller';
 import { CartService } from './cart.service';
 import { CreateCartDto, AddCartItemDto, UpdateCartItemDto } from './dto';
@@ -29,58 +31,85 @@ export class StorefrontCartController extends BaseController {
     super();
   }
 
+  private attachRotatedCartToken(req: any, reply: FastifyReply) {
+    if (req?.cartTokenRotated && req?.cartToken) {
+      reply.header('x-cart-token', String(req.cartToken));
+      reply.header('Access-Control-Expose-Headers', 'x-cart-token');
+    }
+  }
+
   // ----------------- Carts -----------------
   @ApiScopes('carts.create')
   @Post()
-  createGuestCart(
+  async createGuestCart(
     @CurrentCompanyId() companyId: string,
     @CurrentStoreId() storeId: string,
     @Body() dto: CreateCartDto,
     @Ip() ip: string,
+    @Res() reply: FastifyReply,
   ) {
-    return this.cartService.createCart(companyId, storeId, dto, undefined, ip);
+    const cart = await this.cartService.createCart(
+      companyId,
+      storeId,
+      dto,
+      undefined,
+      ip,
+    );
+
+    // If you return guestRefreshToken only once, you can optionally set it as a header too,
+    // but most people just return it in JSON and the Next route stores it in httpOnly cookie.
+    return reply.send(cart);
   }
 
   @UseGuards(CartTokenGuard)
   @ApiScopes('carts.read')
   @Get(':cartId')
-  getCart(
+  async getCart(
+    @Req() req: any,
+    @Res() reply: FastifyReply,
     @CurrentCompanyId() companyId: string,
     @CurrentStoreId() storeId: string,
     @Param('cartId') cartId: string,
   ) {
-    return this.cartService.getCart(companyId, storeId, cartId);
+    this.attachRotatedCartToken(req, reply);
+    const cart = await this.cartService.getCart(companyId, storeId, cartId);
+    return reply.send(cart);
   }
 
   @UseGuards(CartTokenGuard)
   @ApiScopes('carts.read')
   @Get(':cartId/items')
   async items(
+    @Req() req: any,
+    @Res() reply: FastifyReply,
     @CurrentCompanyId() companyId: string,
     @CurrentStoreId() storeId: string,
     @Param('cartId') cartId: string,
   ) {
-    const carts = await this.cartService.getCartItems(
+    this.attachRotatedCartToken(req, reply);
+    const items = await this.cartService.getCartItems(
       companyId,
       storeId,
       cartId,
     );
-    return carts;
+    return reply.send(items);
   }
 
   // ----------------- Items -----------------
   @UseGuards(CartTokenGuard)
   @ApiScopes('carts.update')
   @Post(':cartId/items')
-  addItem(
-    @Req() req: Request,
+  async addItem(
+    @Req() req: any,
+    @Res() reply: FastifyReply,
     @CurrentCompanyId() companyId: string,
     @CurrentStoreId() storeId: string,
     @Param('cartId') cartId: string,
     @Body() dto: AddCartItemDto,
     @Ip() ip: string,
   ) {
-    return this.cartService.addItem(
+    this.attachRotatedCartToken(req, reply);
+    const updated = await this.cartService.addItem(
       companyId,
       storeId,
       cartId,
@@ -88,12 +117,15 @@ export class StorefrontCartController extends BaseController {
       undefined,
       ip,
     );
+    return reply.send(updated);
   }
 
   @UseGuards(CartTokenGuard)
   @ApiScopes('carts.update')
   @Patch(':cartId/items/:cartItemId')
-  updateItemQty(
+  async updateItemQty(
+    @Req() req: any,
+    @Res() reply: FastifyReply,
     @CurrentCompanyId() companyId: string,
     @CurrentStoreId() storeId: string,
     @Param('cartId') cartId: string,
@@ -101,7 +133,8 @@ export class StorefrontCartController extends BaseController {
     @Body() dto: UpdateCartItemDto,
     @Ip() ip: string,
   ) {
-    return this.cartService.updateItemQuantity(
+    this.attachRotatedCartToken(req, reply);
+    const updated = await this.cartService.updateItemQuantity(
       companyId,
       storeId,
       cartId,
@@ -110,19 +143,23 @@ export class StorefrontCartController extends BaseController {
       undefined,
       ip,
     );
+    return reply.send(updated);
   }
 
   @UseGuards(CartTokenGuard)
   @ApiScopes('carts.update')
   @Delete(':cartId/items/:cartItemId')
-  removeItem(
+  async removeItem(
+    @Req() req: any,
+    @Res() reply: FastifyReply,
     @CurrentCompanyId() companyId: string,
     @CurrentStoreId() storeId: string,
     @Param('cartId') cartId: string,
     @Param('cartItemId') cartItemId: string,
     @Ip() ip: string,
   ) {
-    return this.cartService.removeItem(
+    this.attachRotatedCartToken(req, reply);
+    const updated = await this.cartService.removeItem(
       companyId,
       storeId,
       cartId,
@@ -130,26 +167,30 @@ export class StorefrontCartController extends BaseController {
       undefined,
       ip,
     );
+    return reply.send(updated);
   }
 
-  // Claim a cart (e.g., convert guest cart to user cart)
-
+  // Claim a cart
   @UseGuards(CustomerJwtGuard, CartTokenGuard)
   @ApiScopes('carts.update')
   @Post('claim')
-  claimCart(
+  async claimCart(
+    @Req() req: any,
+    @Res() reply: FastifyReply,
     @CurrentCompanyId() companyId: string,
     @CurrentStoreId() storeId: string,
     @CurrentCustomer() customer: AuthCustomer,
-    @Req() req: any,
     @Ip() ip: string,
   ) {
+    // If guard refreshed access token, surface it
+    this.attachRotatedCartToken(req, reply);
+
     const cartToken =
       req.cartToken ??
       req.headers?.['x-cart-token'] ??
       req.headers?.['X-Cart-Token'];
 
-    return this.cartService.claimGuestCart(
+    const result = await this.cartService.claimGuestCart(
       companyId,
       storeId,
       customer.id,
@@ -157,5 +198,7 @@ export class StorefrontCartController extends BaseController {
       undefined,
       ip,
     );
+
+    return reply.send(result);
   }
 }

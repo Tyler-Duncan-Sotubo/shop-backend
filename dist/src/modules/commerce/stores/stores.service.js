@@ -20,12 +20,14 @@ const schema_1 = require("../../../drizzle/schema");
 const cache_service_1 = require("../../../common/cache/cache.service");
 const audit_service_1 = require("../../audit/audit.service");
 const company_settings_service_1 = require("../../company-settings/company-settings.service");
+const aws_service_1 = require("../../../common/aws/aws.service");
 let StoresService = class StoresService {
-    constructor(db, cache, auditService, companySettingsService) {
+    constructor(db, cache, auditService, companySettingsService, aws) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
         this.companySettingsService = companySettingsService;
+        this.aws = aws;
     }
     async findStoreByIdOrThrow(companyId, storeId) {
         const store = await this.db.query.stores.findFirst({
@@ -50,37 +52,58 @@ let StoresService = class StoresService {
     }
     async createStore(companyId, payload, user, ip) {
         await this.ensureSlugUniqueForCompany(companyId, payload.slug);
-        const [store] = await this.db
-            .insert(schema_1.stores)
-            .values({
-            companyId,
-            name: payload.name,
-            slug: payload.slug,
-            defaultCurrency: payload.defaultCurrency ?? 'NGN',
-            defaultLocale: payload.defaultLocale ?? 'en-US',
-            isActive: payload.isActive ?? true,
-        })
-            .returning()
-            .execute();
+        const created = await this.db.transaction(async (tx) => {
+            const [store] = await tx
+                .insert(schema_1.stores)
+                .values({
+                companyId,
+                name: payload.name,
+                slug: payload.slug,
+                defaultCurrency: payload.defaultCurrency ?? 'NGN',
+                defaultLocale: payload.defaultLocale ?? 'en-US',
+                isActive: payload.isActive ?? true,
+                imageUrl: null,
+                imageAltText: payload.imageAltText ?? null,
+            })
+                .returning()
+                .execute();
+            if (payload.base64Image) {
+                const fileName = `${store.id}-cover-${Date.now()}.jpg`;
+                const url = await this.aws.uploadImageToS3(companyId, fileName, payload.base64Image);
+                const [updated] = await tx
+                    .update(schema_1.stores)
+                    .set({
+                    imageUrl: url,
+                    imageAltText: payload.imageAltText ?? `${store.name} cover image`,
+                    updatedAt: new Date(),
+                })
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.stores.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.stores.id, store.id)))
+                    .returning()
+                    .execute();
+                return updated ?? store;
+            }
+            return store;
+        });
         await this.cache.bumpCompanyVersion(companyId);
         if (user && ip) {
             await this.auditService.logAction({
                 action: 'create',
                 entity: 'store',
-                entityId: store.id,
+                entityId: created.id,
                 userId: user.id,
                 ipAddress: ip,
                 details: 'Created store',
                 changes: {
                     companyId,
-                    storeId: store.id,
-                    name: store.name,
-                    slug: store.slug,
+                    storeId: created.id,
+                    name: created.name,
+                    slug: created.slug,
+                    imageUrl: created.imageUrl ?? null,
                 },
             });
         }
         await this.companySettingsService.markOnboardingStep(companyId, 'store_setup_complete', true);
-        return store;
+        return created;
     }
     async getStoresByCompany(companyId) {
         return this.cache.getOrSetVersioned(companyId, ['stores'], async () => {
@@ -108,21 +131,43 @@ let StoresService = class StoresService {
         if (payload.slug && payload.slug !== existing.slug) {
             await this.ensureSlugUniqueForCompany(companyId, payload.slug, storeId);
         }
-        const [updated] = await this.db
-            .update(schema_1.stores)
-            .set({
-            name: payload.name ?? existing.name,
-            slug: payload.slug ?? existing.slug,
-            defaultCurrency: payload.defaultCurrency ?? existing.defaultCurrency,
-            defaultLocale: payload.defaultLocale ?? existing.defaultLocale,
-            isActive: payload.isActive === undefined ? existing.isActive : payload.isActive,
-        })
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.stores.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.stores.id, storeId)))
-            .returning()
-            .execute();
-        if (!updated) {
-            throw new common_1.NotFoundException('Store not found');
-        }
+        const updated = await this.db.transaction(async (tx) => {
+            let uploadedUrl = undefined;
+            if (payload.base64Image) {
+                const fileName = `${storeId}-cover-${Date.now()}.jpg`;
+                uploadedUrl = await this.aws.uploadImageToS3(companyId, fileName, payload.base64Image);
+            }
+            const nextImageUrl = payload.removeImage === true
+                ? null
+                : uploadedUrl !== undefined
+                    ? uploadedUrl
+                    : (existing.imageUrl ?? null);
+            const nextAlt = payload.removeImage === true
+                ? null
+                : payload.imageAltText !== undefined
+                    ? payload.imageAltText
+                    : (existing.imageAltText ?? null);
+            const [row] = await tx
+                .update(schema_1.stores)
+                .set({
+                name: payload.name ?? existing.name,
+                slug: payload.slug ?? existing.slug,
+                defaultCurrency: payload.defaultCurrency ?? existing.defaultCurrency,
+                defaultLocale: payload.defaultLocale ?? existing.defaultLocale,
+                isActive: payload.isActive === undefined
+                    ? existing.isActive
+                    : payload.isActive,
+                imageUrl: nextImageUrl,
+                imageAltText: nextAlt,
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.stores.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.stores.id, storeId)))
+                .returning()
+                .execute();
+            if (!row)
+                throw new common_1.NotFoundException('Store not found');
+            return row;
+        });
         await this.cache.bumpCompanyVersion(companyId);
         if (user && ip) {
             await this.auditService.logAction({
@@ -141,6 +186,8 @@ let StoresService = class StoresService {
                         defaultCurrency: existing.defaultCurrency,
                         defaultLocale: existing.defaultLocale,
                         isActive: existing.isActive,
+                        imageUrl: existing.imageUrl ?? null,
+                        imageAltText: existing.imageAltText ?? null,
                     },
                     after: {
                         name: updated.name,
@@ -148,6 +195,8 @@ let StoresService = class StoresService {
                         defaultCurrency: updated.defaultCurrency,
                         defaultLocale: updated.defaultLocale,
                         isActive: updated.isActive,
+                        imageUrl: updated.imageUrl ?? null,
+                        imageAltText: updated.imageAltText ?? null,
                     },
                 },
             });
@@ -273,6 +322,7 @@ exports.StoresService = StoresService = __decorate([
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, cache_service_1.CacheService,
         audit_service_1.AuditService,
-        company_settings_service_1.CompanySettingsService])
+        company_settings_service_1.CompanySettingsService,
+        aws_service_1.AwsService])
 ], StoresService);
 //# sourceMappingURL=stores.service.js.map

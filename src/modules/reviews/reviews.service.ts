@@ -49,7 +49,14 @@ export class ReviewsService {
 
   // ------------- list (admin) -------------
   async listReviews(companyId: string, query: ReviewQueryDto) {
-    const { productId, search, isApproved, limit = 50, offset = 0 } = query;
+    const {
+      productId,
+      search,
+      isApproved,
+      storeId,
+      limit = 50,
+      offset = 0,
+    } = query;
 
     const normalizedSearch = (search ?? '').trim();
     const approvedFilter =
@@ -60,6 +67,8 @@ export class ReviewsService {
       'list',
       'product',
       productId ?? 'any',
+      'store',
+      storeId ?? 'any',
       'approved',
       approvedFilter === undefined ? 'any' : String(approvedFilter),
       'search',
@@ -91,17 +100,37 @@ export class ReviewsService {
         );
       }
 
-      // ✅ total count (same filters, no limit/offset)
+      const joinedWhere = and(
+        ...where,
+        storeId ? eq(products.storeId, storeId) : undefined,
+      );
+
+      // ✅ total count (same join + same filters)
       const [{ count }] = await this.db
         .select({ count: sql<number>`count(*)` })
         .from(productReviews)
-        .where(and(...where))
+        .innerJoin(
+          products,
+          and(
+            eq(products.id, productReviews.productId),
+            eq(products.companyId, productReviews.companyId),
+          ),
+        )
+        .where(joinedWhere)
         .execute();
 
+      // ✅ items
       const rows = await this.db
         .select({ review: productReviews })
         .from(productReviews)
-        .where(and(...where))
+        .innerJoin(
+          products,
+          and(
+            eq(products.id, productReviews.productId),
+            eq(products.companyId, productReviews.companyId),
+          ),
+        )
+        .where(joinedWhere)
         .orderBy(desc(productReviews.createdAt))
         .limit(limit)
         .offset(offset)

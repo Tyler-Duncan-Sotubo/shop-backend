@@ -43,6 +43,7 @@ let BlogService = class BlogService {
             const [post] = await tx
                 .insert(schema_1.blogPosts)
                 .values({
+                storeId: dto.storeId,
                 title: dto.title,
                 slug: dto.slug,
                 excerpt: dto.excerpt,
@@ -107,12 +108,48 @@ let BlogService = class BlogService {
             return post;
         });
     }
-    async listAdmin(user) {
-        return this.cache.getOrSetVersioned(user.companyId, ['blog', 'posts'], () => this.db
-            .select()
-            .from(schema_1.blogPosts)
-            .orderBy((0, drizzle_orm_1.desc)(schema_1.blogPosts.createdAt))
-            .execute());
+    async listAdmin(user, filters = {}) {
+        return this.cache.getOrSetVersioned(user.companyId, [
+            'blog',
+            'posts',
+            filters.status ?? 'all',
+            filters.storeId ?? 'all',
+            filters.search ?? 'all',
+            filters.limit?.toString() ?? 'default',
+            filters.offset?.toString() ?? '0',
+        ], async () => {
+            const { status, storeId, search, limit = 50, offset = 0 } = filters;
+            const conditions = [];
+            if (status) {
+                conditions.push((0, drizzle_orm_1.eq)(schema_1.blogPosts.status, status));
+            }
+            if (storeId) {
+                conditions.push((0, drizzle_orm_1.eq)(schema_1.blogPosts.storeId, storeId));
+            }
+            if (search) {
+                conditions.push((0, drizzle_orm_1.sql) `${schema_1.blogPosts.title} ILIKE ${'%' + search + '%'}`);
+            }
+            const whereClause = conditions.length ? (0, drizzle_orm_1.and)(...conditions) : undefined;
+            const [{ count }] = await this.db
+                .select({
+                count: (0, drizzle_orm_1.sql) `count(*)`,
+            })
+                .from(schema_1.blogPosts)
+                .where(whereClause)
+                .execute();
+            const rows = await this.db
+                .select()
+                .from(schema_1.blogPosts)
+                .where(whereClause)
+                .orderBy((0, drizzle_orm_1.desc)(schema_1.blogPosts.createdAt))
+                .limit(limit)
+                .offset(offset)
+                .execute();
+            return {
+                rows,
+                count: Number(count),
+            };
+        });
     }
     async getByIdAdmin(user, id) {
         return this.cache.getOrSetVersioned(user.companyId, ['blog', 'post', id], async () => {

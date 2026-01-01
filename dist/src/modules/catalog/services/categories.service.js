@@ -82,25 +82,14 @@ let CategoriesService = class CategoriesService {
     }
     async getCategories(companyId, storeId) {
         await this.assertCompanyExists(companyId);
-        return this.cache.getOrSetVersioned(companyId, ['catalog', 'categories', storeId ?? 'company-default'], async () => {
-            if (!storeId) {
-                return this.db
-                    .select()
-                    .from(schema_1.categories)
-                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.isNull)(schema_1.categories.storeId)))
-                    .execute();
-            }
-            const storeRows = await this.db
-                .select()
-                .from(schema_1.categories)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.storeId, storeId)))
-                .execute();
-            if (storeRows.length > 0)
-                return storeRows;
+        if (!storeId) {
+            return [];
+        }
+        return this.cache.getOrSetVersioned(companyId, ['catalog', 'categories', storeId], async () => {
             return this.db
                 .select()
                 .from(schema_1.categories)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.isNull)(schema_1.categories.storeId)))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.storeId, storeId), (0, drizzle_orm_1.isNull)(schema_1.categories.deletedAt)))
                 .execute();
         });
     }

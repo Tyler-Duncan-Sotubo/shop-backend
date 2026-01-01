@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   S3Client,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ConfigService } from '@nestjs/config';
@@ -121,5 +122,33 @@ export class AwsService {
           : 'image/jpeg';
 
     return this.uploadPublicObject({ key, body: buffer, contentType });
+  }
+
+  async deleteFromS3(storageKey: string) {
+    const Bucket = this.configService.get('AWS_BUCKET_NAME');
+    if (!Bucket) throw new Error('AWS_S3_BUCKET is not set');
+
+    await this.s3Client.send(
+      new DeleteObjectCommand({
+        Bucket,
+        Key: storageKey,
+      }),
+    );
+
+    return { ok: true };
+  }
+
+  /**
+   * Optional helper if you only have a full URL.
+   * Works if your URL contains the key after the bucket domain.
+   */
+  extractKeyFromUrl(url: string) {
+    try {
+      const u = new URL(url);
+      // Example: /companyId/path/file.jpg -> "companyId/path/file.jpg"
+      return u.pathname.replace(/^\//, '');
+    } catch {
+      return null;
+    }
   }
 }

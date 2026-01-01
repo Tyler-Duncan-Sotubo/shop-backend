@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, ilike, inArray, sql } from 'drizzle-orm';
+import { and, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from 'src/drizzle/types/drizzle';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import {
@@ -95,6 +95,26 @@ export class ProductsService {
     }
   }
 
+  private sanitizeFileName(name?: string | null) {
+    const raw = (name ?? '').trim();
+    if (!raw) return null;
+
+    return raw
+      .replace(/[/\\]/g, '-') // prevent paths
+      .replace(/\s+/g, '-') // spaces -> dashes
+      .replace(/[^a-zA-Z0-9._-]/g, ''); // drop unsafe chars
+  }
+
+  private extractStorageKeyFromUrl(url?: string | null) {
+    if (!url) return null;
+    try {
+      const u = new URL(url);
+      return u.pathname.replace(/^\//, '');
+    } catch {
+      return null;
+    }
+  }
+
   // ----------------- Create -----------------
   async createProduct(
     companyId: string,
@@ -130,14 +150,62 @@ export class ProductsService {
         .returning()
         .execute();
 
+      // 1b) Optional default image upload (same logic as createImage/media)
       if (dto.base64Image) {
-        const fileName = `${product.id}-default-${Date.now()}.jpg`;
+        const mimeType =
+          (dto.imageMimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+
+        const safeProvidedName = this.sanitizeFileName(dto.imageFileName);
+        const extFromMime = mimeType.startsWith('image/')
+          ? `.${mimeType.split('/')[1] || 'jpg'}`
+          : '.bin';
+
+        const fallbackName = `${product.id}-default-${Date.now()}${extFromMime}`;
+
+        const fileName =
+          safeProvidedName && safeProvidedName.includes('.')
+            ? safeProvidedName
+            : safeProvidedName
+              ? `${safeProvidedName}${extFromMime}`
+              : fallbackName;
+
+        // decode base64 -> buffer (size + dimensions)
+        const normalized = dto.base64Image.includes(',')
+          ? dto.base64Image.split(',')[1]
+          : dto.base64Image;
+
+        let buffer: Buffer;
+        try {
+          buffer = Buffer.from(normalized, 'base64');
+        } catch {
+          throw new BadRequestException('Invalid base64Image');
+        }
+
+        const size = buffer.byteLength;
+
+        let width: number | null = null;
+        let height: number | null = null;
+
+        if (mimeType.startsWith('image/')) {
+          try {
+            const sharpMod = await import('sharp');
+            const sharpFn: any = (sharpMod as any).default ?? sharpMod;
+            const meta = await sharpFn(buffer).metadata();
+            width = meta.width ?? null;
+            height = meta.height ?? null;
+          } catch {
+            // non-fatal
+          }
+        }
+
+        // upload
         const url = await this.aws.uploadImageToS3(
           companyId,
           fileName,
           dto.base64Image,
         );
 
+        // insert product_images row (your schema has these cols now)
         const [img] = await tx
           .insert(productImages)
           .values({
@@ -146,11 +214,17 @@ export class ProductsService {
             variantId: null,
             url,
             altText: dto.imageAltText ?? `${product.name} product image`,
+            fileName,
+            mimeType,
+            size,
+            width,
+            height,
             position: 0,
           })
           .returning()
           .execute();
 
+        // set as default image
         await tx
           .update(products)
           .set({ defaultImageId: img.id, updatedAt: new Date() })
@@ -159,7 +233,7 @@ export class ProductsService {
           );
       }
 
-      // 2) Assign categories (only INSERT; no delete needed for a new product)
+      // 2) Assign categories
       if (uniqueCategoryIds.length) {
         await this.categoryService.assertCategoriesBelongToCompany(
           companyId,
@@ -179,7 +253,6 @@ export class ProductsService {
       }
 
       // 3) Insert linked products (if provided)
-      // flatten + validate all linked ids
       const allLinkedIds: string[] = [];
       for (const ids of Object.values(linksByType)) {
         if (Array.isArray(ids)) allLinkedIds.push(...ids);
@@ -190,7 +263,6 @@ export class ProductsService {
       );
 
       if (uniqueAllLinkedIds.length) {
-        // validate they belong to company
         await this.linkedProductsService.assertProductsBelongToCompany(
           companyId,
           uniqueAllLinkedIds,
@@ -226,7 +298,6 @@ export class ProductsService {
       return product;
     });
 
-    // bump once after tx
     await this.cache.bumpCompanyVersion(companyId);
 
     if (user && ip) {
@@ -336,7 +407,11 @@ export class ProductsService {
         const total = Number(count) || 0;
 
         // ✅ items list must also receive storeId
-        const items = await this.listProducts(companyId, query);
+        const items = await this.listProducts(
+          companyId,
+          storeId as string,
+          query,
+        );
 
         return { items, total, limit, offset };
       },
@@ -344,15 +419,12 @@ export class ProductsService {
   }
 
   // store front
-  async listProducts(companyId: string, query: ProductQueryDto) {
-    const {
-      search,
-      status,
-      categoryId,
-      storeId,
-      limit = 50,
-      offset = 0,
-    } = query;
+  async listProducts(
+    companyId: string,
+    storeId: string,
+    query: ProductQueryDto,
+  ) {
+    const { search, status, categoryId, limit = 50, offset = 0 } = query;
 
     return this.cache.getOrSetVersioned(
       companyId,
@@ -941,18 +1013,78 @@ export class ProductsService {
         .returning()
         .execute();
 
-      if (!p) {
-        throw new NotFoundException('Product not found');
-      }
+      if (!p) throw new NotFoundException('Product not found');
 
+      // 1b) Optional default image update
       if (dto.base64Image) {
-        const fileName = `${productId}-default-${Date.now()}.jpg`;
+        const mimeType =
+          (dto.imageMimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+
+        const safeProvidedName = this.sanitizeFileName(dto.imageFileName);
+        const extFromMime = mimeType.startsWith('image/')
+          ? `.${mimeType.split('/')[1] || 'jpg'}`
+          : '.bin';
+
+        const fallbackName = `${productId}-default-${Date.now()}${extFromMime}`;
+
+        const fileName =
+          safeProvidedName && safeProvidedName.includes('.')
+            ? safeProvidedName
+            : safeProvidedName
+              ? `${safeProvidedName}${extFromMime}`
+              : fallbackName;
+
+        // decode base64 -> buffer (size + dimensions)
+        const normalized = dto.base64Image.includes(',')
+          ? dto.base64Image.split(',')[1]
+          : dto.base64Image;
+
+        let buffer: Buffer;
+        try {
+          buffer = Buffer.from(normalized, 'base64');
+        } catch {
+          throw new BadRequestException('Invalid base64Image');
+        }
+
+        const size = buffer.byteLength;
+
+        let width: number | null = null;
+        let height: number | null = null;
+
+        if (mimeType.startsWith('image/')) {
+          try {
+            const sharpMod = await import('sharp');
+            const sharpFn: any = (sharpMod as any).default ?? sharpMod;
+            const meta = await sharpFn(buffer).metadata();
+            width = meta.width ?? null;
+            height = meta.height ?? null;
+          } catch {
+            // non-fatal
+          }
+        }
+
+        // ✅ load current default image row (for cleanup)
+        const currentDefaultImageId = existing.defaultImageId ?? null;
+        const currentDefaultImage = currentDefaultImageId
+          ? await tx.query.productImages.findFirst({
+              where: and(
+                eq(productImages.companyId, companyId),
+                eq(productImages.id, currentDefaultImageId),
+                isNull(productImages.deletedAt),
+              ),
+            })
+          : null;
+
+        // upload new
         const url = await this.aws.uploadImageToS3(
           companyId,
           fileName,
           dto.base64Image,
+          // if supported:
+          // mimeType,
         );
 
+        // insert a new product image row (keeps history)
         const [img] = await tx
           .insert(productImages)
           .values({
@@ -961,11 +1093,17 @@ export class ProductsService {
             variantId: null,
             url,
             altText: dto.imageAltText ?? `${existing.name} product image`,
+            fileName,
+            mimeType,
+            size,
+            width,
+            height,
             position: 0,
           })
           .returning()
           .execute();
 
+        // point product to new image
         await tx
           .update(products)
           .set({ defaultImageId: img.id, updatedAt: new Date() })
@@ -975,6 +1113,19 @@ export class ProductsService {
               eq(products.id, existing.id),
             ),
           );
+
+        // ✅ best-effort cleanup: delete old S3 object (don’t block the request)
+        // (Optional: you might want to skip deleting if that old image is used elsewhere.)
+        if (currentDefaultImage?.url && currentDefaultImage.url !== url) {
+          const oldKey = this.extractStorageKeyFromUrl(currentDefaultImage.url);
+          if (oldKey) {
+            try {
+              await this.aws.deleteFromS3(oldKey);
+            } catch {
+              // optionally log
+            }
+          }
+        }
       }
 
       // 2) replace categories if provided
@@ -986,7 +1137,6 @@ export class ProductsService {
           uniqueCategoryIds,
         );
 
-        // wipe existing
         await tx
           .delete(productCategories)
           .where(
@@ -997,7 +1147,6 @@ export class ProductsService {
           )
           .execute();
 
-        // insert new
         if (uniqueCategoryIds.length) {
           await tx
             .insert(productCategories)
@@ -1016,7 +1165,6 @@ export class ProductsService {
       if (dto.links) {
         const linksByType = dto.links ?? {};
 
-        // flatten + validate
         const allLinkedIds: string[] = [];
         for (const ids of Object.values(linksByType)) {
           if (Array.isArray(ids)) allLinkedIds.push(...ids);
@@ -1033,7 +1181,6 @@ export class ProductsService {
           );
         }
 
-        // wipe all existing links for this product (simple + safe)
         await tx
           .delete(productLinks)
           .where(
@@ -1044,7 +1191,6 @@ export class ProductsService {
           )
           .execute();
 
-        // insert new
         const rowsToInsert: (typeof productLinks.$inferInsert)[] = [];
 
         for (const [linkType, ids] of Object.entries(linksByType) as Array<
@@ -1075,7 +1221,6 @@ export class ProductsService {
       return p;
     });
 
-    // bump once after tx
     await this.cache.bumpCompanyVersion(companyId);
 
     if (user && ip) {
@@ -1111,7 +1256,6 @@ export class ProductsService {
             seoDescription: updated.seoDescription,
             metadata: updated.metadata,
           },
-          // include when provided
           categoryIds: dto.categoryIds,
           links: dto.links,
         },
@@ -1245,6 +1389,7 @@ export class ProductsService {
 
   private async getCategoryAndDescendantIds(
     companyId: string,
+    storeId: string,
     categoryId: string,
   ) {
     const res = await this.db.execute(sql`
@@ -1252,6 +1397,7 @@ export class ProductsService {
       SELECT id
       FROM ${categories}
       WHERE company_id = ${companyId}
+        AND store_id = ${storeId}
         AND id = ${categoryId}
         AND deleted_at IS NULL
 
@@ -1261,6 +1407,7 @@ export class ProductsService {
       FROM ${categories} c
       JOIN subcats s ON c.parent_id = s.id
       WHERE c.company_id = ${companyId}
+        AND c.store_id = ${storeId}
         AND c.deleted_at IS NULL
     )
     SELECT id FROM subcats
@@ -1272,6 +1419,7 @@ export class ProductsService {
 
   async listCollectionProductsByCategorySlug(
     companyId: string,
+    storeId: string,
     categorySlug: string,
     query: ProductQueryDto,
   ) {
@@ -1291,6 +1439,7 @@ export class ProductsService {
       'collections',
       'products',
       'byCategorySlug',
+      storeId,
       categorySlug,
       JSON.stringify({
         search: search ?? null,
@@ -1307,6 +1456,7 @@ export class ProductsService {
         where: (c, { and, eq, isNull }) =>
           and(
             eq(c.companyId, companyId),
+            eq(c.storeId, storeId),
             eq(c.slug, categorySlug),
             isNull(c.deletedAt),
           ),
@@ -1319,6 +1469,7 @@ export class ProductsService {
         where: (c, { and, eq, isNull }) =>
           and(
             eq(c.companyId, companyId),
+            eq(c.storeId, storeId),
             eq(c.parentId, category.id),
             isNull(c.deletedAt),
           ),
@@ -1326,12 +1477,17 @@ export class ProductsService {
       });
 
       const categoryIds = hasChild
-        ? await this.getCategoryAndDescendantIds(companyId, category.id)
+        ? await this.getCategoryAndDescendantIds(
+            companyId,
+            storeId,
+            category.id,
+          )
         : [category.id];
 
       // ---- 1) Get paged product ids matching category + search + attributes ----
       const whereSql: any[] = [
         sql`${products.companyId} = ${companyId}`,
+        sql`${products.storeId} = ${storeId}`,
         sql`${products.status} = ${effectiveStatus}`,
         sql`${products.deletedAt} IS NULL`,
         sql`EXISTS (
@@ -1386,6 +1542,7 @@ export class ProductsService {
         where: (p, { and, eq, inArray, isNull }) =>
           and(
             eq(p.companyId, companyId),
+            eq(p.storeId, storeId),
             inArray(p.id, productIds),
             isNull(p.deletedAt),
           ),
@@ -1487,6 +1644,7 @@ export class ProductsService {
 
   async listProductsGroupedUnderParentCategory(
     companyId: string,
+    storeId: string,
     parentCategoryId: string,
     query: ProductQueryDto,
   ) {
@@ -1504,6 +1662,7 @@ export class ProductsService {
       .where(
         and(
           eq(categories.companyId, companyId),
+          eq(categories.storeId, storeId),
           eq(categories.parentId, parentCategoryId),
           sql`${categories.deletedAt} IS NULL`,
         ),
@@ -1537,6 +1696,7 @@ export class ProductsService {
           childCatIds.map((id) => sql`${id}`),
           sql`, `,
         )})
+        AND p.store_id = ${storeId}
         AND p.status = ${effectiveStatus}
         AND p.deleted_at IS NULL
         ${search ? sql`AND p.name ILIKE ${`%${search}%`}` : sql``}
@@ -1578,6 +1738,7 @@ export class ProductsService {
       .where(
         and(
           eq(products.companyId, companyId),
+          eq(products.storeId, storeId),
           inArray(products.id, productIds),
         ),
       )
@@ -1700,6 +1861,7 @@ export class ProductsService {
 
   async listProductsGroupedUnderParentCategorySlug(
     companyId: string,
+    storeId: string,
     parentSlug: string,
     query: ProductQueryDto,
   ) {
@@ -1715,6 +1877,7 @@ export class ProductsService {
       .where(
         and(
           eq(categories.companyId, companyId),
+          eq(categories.storeId, storeId),
           eq(categories.slug, parentSlug),
           sql`${categories.deletedAt} IS NULL`,
         ),
@@ -1728,6 +1891,7 @@ export class ProductsService {
     // 1) reuse your existing logic
     return this.listProductsGroupedUnderParentCategory(
       companyId,
+      storeId,
       parent.id,
       query,
     );

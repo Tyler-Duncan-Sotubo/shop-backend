@@ -10,6 +10,7 @@ import {
   Delete,
   SetMetadata,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { BaseController } from 'src/common/interceptor/base.controller';
 import { User } from 'src/common/types/user.type';
@@ -21,6 +22,7 @@ import {
 import { BlogService } from './blog.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorator/current-user.decorator';
+import { BlogPostsAdminQueryDto } from './dto/blog-posts-admin-query.dto';
 
 @Controller('blog-posts')
 export class BlogController extends BaseController {
@@ -46,8 +48,11 @@ export class BlogController extends BaseController {
   @Get()
   @UseGuards(JwtAuthGuard)
   @SetMetadata('permissions', ['blog.posts.read'])
-  listAdmin(@CurrentUser() user: User) {
-    return this.blogService.listAdmin(user);
+  listAdmin(
+    @CurrentUser() user: User,
+    @Query() filters?: BlogPostsAdminQueryDto,
+  ) {
+    return this.blogService.listAdmin(user, filters);
   }
 
   @Get(':id')

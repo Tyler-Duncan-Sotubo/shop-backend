@@ -57,6 +57,9 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
     async deleteManual(user, orderId, ip) {
         return this.manualOrdersService.deleteManualOrder(user.companyId, orderId, user, ip);
     }
+    async submitForPayment(user, orderId, ip) {
+        return this.manualOrdersService.submitForPayment(user.companyId, orderId, user, ip);
+    }
 };
 exports.OrdersController = OrdersController;
 __decorate([
@@ -145,6 +148,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "deleteManual", null);
+__decorate([
+    (0, common_1.Post)('manual/:orderId/submit-for-payment'),
+    (0, common_1.SetMetadata)('permissions', ['orders.manual.edit']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('orderId')),
+    __param(2, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "submitForPayment", null);
 exports.OrdersController = OrdersController = __decorate([
     (0, common_1.Controller)('orders'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

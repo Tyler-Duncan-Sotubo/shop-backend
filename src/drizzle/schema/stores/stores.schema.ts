@@ -21,6 +21,8 @@ export const stores = pgTable(
 
     name: text('name').notNull(),
     slug: text('slug').notNull(), // used in /storefront/:slug/...
+    imageUrl: text('image_url'),
+    imageAltText: text('image_alt_text'),
 
     defaultCurrency: text('default_currency').notNull().default('USD'),
     defaultLocale: text('default_locale').notNull().default('en'),

@@ -194,7 +194,7 @@ export declare const paymentReceipts: import("drizzle-orm/pg-core").PgTableWithC
             tableName: "payment_receipts";
             dataType: "string";
             columnType: "PgEnumColumn";
-            data: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
+            data: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
             driverParam: string;
             notNull: true;
             hasDefault: false;

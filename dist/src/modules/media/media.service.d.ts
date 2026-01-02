@@ -12,16 +12,16 @@ export declare class MediaService {
     private extractStorageKeyFromUrl;
     private buildMediaPayload;
     uploadEditorImage(companyId: string, dto: UploadEditorImageDto): Promise<{
+        url: string;
         id: string;
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
+        size: number | null;
         fileName: string;
         mimeType: string;
-        url: string;
         storageKey: string | null;
-        size: number | null;
         width: number | null;
         height: number | null;
         altText: string | null;
@@ -29,16 +29,16 @@ export declare class MediaService {
         tag: string | null;
     }>;
     uploadMediaFile(companyId: string, dto: CreateMediaDto): Promise<{
+        url: string;
         id: string;
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
+        size: number | null;
         fileName: string;
         mimeType: string;
-        url: string;
         storageKey: string | null;
-        size: number | null;
         width: number | null;
         height: number | null;
         altText: string | null;
@@ -46,12 +46,12 @@ export declare class MediaService {
         tag: string | null;
     }>;
     getMedia(companyId: string, query: GetMediaQueryDto): Promise<{
-        id: string;
-        url: string;
-        createdAt: Date;
-        fileName: string | null;
-        mimeType: string | null;
-        size: number | null;
+        id: any;
+        url: any;
+        createdAt: any;
+        fileName: any;
+        mimeType: any;
+        size: any;
     }[]>;
     removeMedia(companyId: string, mediaId: string): Promise<{
         success: boolean;
@@ -59,6 +59,6 @@ export declare class MediaService {
     }>;
     removeProductImage(companyId: string, storeId: string, imageId: string): Promise<{
         success: boolean;
-        id: string;
+        id: any;
     }>;
 }

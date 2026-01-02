@@ -31,8 +31,8 @@ export declare class PickupController extends BaseController {
     create(user: User, dto: CreatePickupLocationDto, ip: string): Promise<{
         id: string;
         name: string;
-        createdAt: Date;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
         companyId: string;
         storeId: string;

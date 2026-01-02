@@ -168,17 +168,17 @@ let BlogService = class BlogService {
             return post;
         });
     }
-    async listPublic() {
+    async listPublic(storeId) {
         return this.db
             .select()
             .from(schema_1.blogPosts)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.blogPosts.status, create_blog_post_dto_1.BlogPostStatus.PUBLISHED), (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} IS NOT NULL`, (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} <= now()`))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.blogPosts.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.blogPosts.status, create_blog_post_dto_1.BlogPostStatus.PUBLISHED), (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} IS NOT NULL`, (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} <= now()`))
             .orderBy((0, drizzle_orm_1.desc)(schema_1.blogPosts.publishedAt))
             .execute();
     }
-    async getBySlugPublic(slug) {
+    async getBySlugPublic(storeId, slug) {
         const post = await this.db.query.blogPosts.findFirst({
-            where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.blogPosts.slug, slug), (0, drizzle_orm_1.eq)(schema_1.blogPosts.status, create_blog_post_dto_1.BlogPostStatus.PUBLISHED), (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} IS NOT NULL`, (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} <= now()`),
+            where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.blogPosts.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.blogPosts.slug, slug), (0, drizzle_orm_1.eq)(schema_1.blogPosts.status, create_blog_post_dto_1.BlogPostStatus.PUBLISHED), (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} IS NOT NULL`, (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} <= now()`),
             with: {
                 products: {
                     with: { product: true },

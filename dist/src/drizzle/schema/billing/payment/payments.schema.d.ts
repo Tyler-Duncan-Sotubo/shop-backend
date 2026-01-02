@@ -75,7 +75,7 @@ export declare const payments: import("drizzle-orm/pg-core").PgTableWithColumns<
             tableName: "payments";
             dataType: "string";
             columnType: "PgEnumColumn";
-            data: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
+            data: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
             driverParam: string;
             notNull: true;
             hasDefault: false;

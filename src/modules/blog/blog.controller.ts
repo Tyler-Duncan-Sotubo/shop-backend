@@ -23,6 +23,9 @@ import { BlogService } from './blog.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorator/current-user.decorator';
 import { BlogPostsAdminQueryDto } from './dto/blog-posts-admin-query.dto';
+import { ApiKeyGuard } from '../iam/api-keys/guard/api-key.guard';
+import { CurrentStoreId } from '../iam/api-keys/decorators/current-store.decorator';
+import { ApiScopes } from 'src/modules/iam/api-keys/decorators/api-scopes.decorator';
 
 @Controller('blog-posts')
 export class BlogController extends BaseController {
@@ -107,16 +110,23 @@ export class BlogController extends BaseController {
     return this.blogService.remove(user, params.id, ip);
   }
 
-  // -----------------------------
-  // Public endpoints (optional)
-  // -----------------------------
+  // --------------------------------------------------------------------------
+  // Storefront
+  // --------------------------------------------------------------------------
   @Get('/public/list')
-  listPublic() {
-    return this.blogService.listPublic();
+  @UseGuards(ApiKeyGuard)
+  @ApiScopes('quotes.create')
+  listPublic(@CurrentStoreId() storeId: string) {
+    return this.blogService.listPublic(storeId);
   }
 
   @Get('/public/:slug')
-  getBySlugPublic(@Param('slug') slug: string) {
-    return this.blogService.getBySlugPublic(slug);
+  @UseGuards(ApiKeyGuard)
+  @ApiScopes('quotes.create')
+  getBySlugPublic(
+    @CurrentStoreId() storeId: string,
+    @Param('slug') slug: string,
+  ) {
+    return this.blogService.getBySlugPublic(storeId, slug);
   }
 }

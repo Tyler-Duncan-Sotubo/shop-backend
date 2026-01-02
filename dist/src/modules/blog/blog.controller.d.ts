@@ -8,12 +8,12 @@ export declare class BlogController extends BaseController {
     private readonly blogService;
     constructor(blogService: BlogService);
     create(user: User, dto: CreateBlogPostDto, ip: string): Promise<{
+        status: string;
         id: string;
-        createdAt: Date;
         slug: string;
+        createdAt: Date;
         updatedAt: Date;
         storeId: string;
-        status: string;
         seoTitle: string | null;
         seoDescription: string | null;
         title: string;
@@ -45,12 +45,12 @@ export declare class BlogController extends BaseController {
         count: number;
     }>;
     getByIdAdmin(user: User, params: BlogPostIdParamDto): Promise<{
+        status: string;
         id: string;
-        createdAt: Date;
         slug: string;
+        createdAt: Date;
         updatedAt: Date;
         storeId: string;
-        status: string;
         seoTitle: string | null;
         seoDescription: string | null;
         title: string;
@@ -118,7 +118,7 @@ export declare class BlogController extends BaseController {
     remove(user: User, params: BlogPostIdParamDto, ip: string): Promise<{
         message: string;
     }>;
-    listPublic(): Promise<{
+    listPublic(storeId: string): Promise<{
         id: string;
         title: string;
         slug: string;
@@ -135,13 +135,13 @@ export declare class BlogController extends BaseController {
         createdAt: Date;
         updatedAt: Date;
     }[]>;
-    getBySlugPublic(slug: string): Promise<{
+    getBySlugPublic(storeId: string, slug: string): Promise<{
+        status: string;
         id: string;
-        createdAt: Date;
         slug: string;
+        createdAt: Date;
         updatedAt: Date;
         storeId: string;
-        status: string;
         seoTitle: string | null;
         seoDescription: string | null;
         title: string;

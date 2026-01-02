@@ -13,12 +13,12 @@ export declare class BlogService {
     private readonly aws;
     constructor(db: db, cache: CacheService, auditService: AuditService, aws: AwsService);
     create(user: User, dto: CreateBlogPostDto, ip: string): Promise<{
+        status: string;
         id: string;
         slug: string;
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
-        status: string;
         seoTitle: string | null;
         seoDescription: string | null;
         title: string;
@@ -50,12 +50,12 @@ export declare class BlogService {
         count: number;
     }>;
     getByIdAdmin(user: User, id: string): Promise<{
+        status: string;
         id: string;
         slug: string;
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
-        status: string;
         seoTitle: string | null;
         seoDescription: string | null;
         title: string;
@@ -69,7 +69,7 @@ export declare class BlogService {
             [x: string]: any;
         }[];
     }>;
-    listPublic(): Promise<{
+    listPublic(storeId: string): Promise<{
         id: string;
         title: string;
         slug: string;
@@ -86,13 +86,13 @@ export declare class BlogService {
         createdAt: Date;
         updatedAt: Date;
     }[]>;
-    getBySlugPublic(slug: string): Promise<{
+    getBySlugPublic(storeId: string, slug: string): Promise<{
+        status: string;
         id: string;
         slug: string;
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
-        status: string;
         seoTitle: string | null;
         seoDescription: string | null;
         title: string;

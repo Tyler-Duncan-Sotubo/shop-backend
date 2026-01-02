@@ -24,19 +24,19 @@ export declare class PermissionsService {
     createRole(companyId: string, name: CompanyRoleName): Promise<{
         id: string;
         name: "owner" | "manager" | "staff" | "support";
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        description: string | null;
         isSystem: boolean;
     }>;
     createDefaultRoles(companyId: string): Promise<{
         id: string;
         name: "owner" | "manager" | "staff" | "support";
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        description: string | null;
         isSystem: boolean;
     }[]>;
     getRolesByCompany(companyId: string): Promise<{
@@ -86,10 +86,10 @@ export declare class PermissionsService {
     getRoleById(roleId: string): Promise<{
         id: string;
         name: "owner" | "manager" | "staff" | "support";
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        description: string | null;
         isSystem: boolean;
     }>;
 }

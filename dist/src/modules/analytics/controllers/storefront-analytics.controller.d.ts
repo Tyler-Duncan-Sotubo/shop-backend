@@ -16,9 +16,9 @@ export declare class StorefrontAnalyticsController {
                 companyId: string;
                 storeId: string | null;
                 title: string | null;
+                meta: unknown;
                 cartId: string | null;
                 checkoutId: string | null;
-                meta: unknown;
                 orderId: string | null;
                 paymentId: string | null;
                 sessionId: string;

@@ -225,12 +225,16 @@ export class BlogService {
   // -----------------------------
   // Public list + get by slug (optional)
   // -----------------------------
-  async listPublic() {
+  // -----------------------------
+  // Public list + get by slug (store scoped)
+  // -----------------------------
+  async listPublic(storeId: string) {
     return this.db
       .select()
       .from(blogPosts)
       .where(
         and(
+          eq(blogPosts.storeId, storeId),
           eq(blogPosts.status, BlogPostStatus.PUBLISHED),
           sql`${blogPosts.publishedAt} IS NOT NULL`,
           sql`${blogPosts.publishedAt} <= now()`,
@@ -240,9 +244,10 @@ export class BlogService {
       .execute();
   }
 
-  async getBySlugPublic(slug: string) {
+  async getBySlugPublic(storeId: string, slug: string) {
     const post = await this.db.query.blogPosts.findFirst({
       where: and(
+        eq(blogPosts.storeId, storeId),
         eq(blogPosts.slug, slug),
         eq(blogPosts.status, BlogPostStatus.PUBLISHED),
         sql`${blogPosts.publishedAt} IS NOT NULL`,

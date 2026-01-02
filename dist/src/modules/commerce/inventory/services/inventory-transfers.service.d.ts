@@ -19,15 +19,15 @@ export declare class InventoryTransfersService {
         items: {
             id: string;
             createdAt: Date;
-            quantity: number;
-            productVariantId: string;
             transferId: string;
+            productVariantId: string;
+            quantity: number;
         }[];
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;
@@ -62,15 +62,15 @@ export declare class InventoryTransfersService {
         items: {
             id: string;
             createdAt: Date;
-            quantity: number;
-            productVariantId: string;
             transferId: string;
+            productVariantId: string;
+            quantity: number;
         }[];
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;

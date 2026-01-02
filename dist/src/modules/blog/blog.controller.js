@@ -21,6 +21,9 @@ const blog_service_1 = require("./blog.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../auth/decorator/current-user.decorator");
 const blog_posts_admin_query_dto_1 = require("./dto/blog-posts-admin-query.dto");
+const api_key_guard_1 = require("../iam/api-keys/guard/api-key.guard");
+const current_store_decorator_1 = require("../iam/api-keys/decorators/current-store.decorator");
+const api_scopes_decorator_1 = require("../iam/api-keys/decorators/api-scopes.decorator");
 let BlogController = class BlogController extends base_controller_1.BaseController {
     constructor(blogService) {
         super();
@@ -47,11 +50,11 @@ let BlogController = class BlogController extends base_controller_1.BaseControll
     remove(user, params, ip) {
         return this.blogService.remove(user, params.id, ip);
     }
-    listPublic() {
-        return this.blogService.listPublic();
+    listPublic(storeId) {
+        return this.blogService.listPublic(storeId);
     }
-    getBySlugPublic(slug) {
-        return this.blogService.getBySlugPublic(slug);
+    getBySlugPublic(storeId, slug) {
+        return this.blogService.getBySlugPublic(storeId, slug);
     }
 };
 exports.BlogController = BlogController;
@@ -134,15 +137,21 @@ __decorate([
 ], BlogController.prototype, "remove", null);
 __decorate([
     (0, common_1.Get)('/public/list'),
+    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
+    (0, api_scopes_decorator_1.ApiScopes)('quotes.create'),
+    __param(0, (0, current_store_decorator_1.CurrentStoreId)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], BlogController.prototype, "listPublic", null);
 __decorate([
     (0, common_1.Get)('/public/:slug'),
-    __param(0, (0, common_1.Param)('slug')),
+    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
+    (0, api_scopes_decorator_1.ApiScopes)('quotes.create'),
+    __param(0, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(1, (0, common_1.Param)('slug')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], BlogController.prototype, "getBySlugPublic", null);
 exports.BlogController = BlogController = __decorate([

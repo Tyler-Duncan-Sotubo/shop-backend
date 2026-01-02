@@ -14,7 +14,6 @@ export declare class CompaniesController {
         company: {
             id: string;
             name: string;
-            createdAt: Date;
             slug: string;
             legalName: string | null;
             country: string | null;
@@ -28,6 +27,7 @@ export declare class CompaniesController {
             plan: string;
             trialEndsAt: Date | null;
             isActive: boolean;
+            createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
         };

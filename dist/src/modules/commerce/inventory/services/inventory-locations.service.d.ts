@@ -41,13 +41,13 @@ export declare class InventoryLocationsService {
         companyId: string;
         storeId: string;
         type: string;
-        isDefault: boolean;
+        city: string | null;
+        postalCode: string | null;
         code: string | null;
+        isDefault: boolean;
         addressLine1: string | null;
         addressLine2: string | null;
-        city: string | null;
         region: string | null;
-        postalCode: string | null;
     }>;
     assertStoreBelongsToCompany(companyId: string, storeId: string): Promise<{
         id: string;
@@ -74,13 +74,13 @@ export declare class InventoryLocationsService {
         companyId: string;
         storeId: string;
         type: string;
-        isDefault: boolean;
+        city: string | null;
+        postalCode: string | null;
         code: string | null;
+        isDefault: boolean;
         addressLine1: string | null;
         addressLine2: string | null;
-        city: string | null;
         region: string | null;
-        postalCode: string | null;
     }>;
     getLocationsByCompany(companyId: string): Promise<{
         id: string;
@@ -165,7 +165,7 @@ export declare class InventoryLocationsService {
         isActive: boolean;
         createdAt: Date;
         storeId: string;
-        locationId: string;
         isPrimary: boolean;
+        locationId: string;
     }[]>;
 }

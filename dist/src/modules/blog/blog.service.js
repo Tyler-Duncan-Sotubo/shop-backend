@@ -168,13 +168,31 @@ let BlogService = class BlogService {
             return post;
         });
     }
-    async listPublic(storeId) {
-        return this.db
+    async listPublic(storeId, opts) {
+        const page = Math.max(1, opts?.page ?? 1);
+        const limit = Math.min(50, opts?.limit ?? 10);
+        const offset = (page - 1) * limit;
+        const whereClause = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.blogPosts.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.blogPosts.status, create_blog_post_dto_1.BlogPostStatus.PUBLISHED), (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} IS NOT NULL`, (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} <= now()`);
+        const [{ count }] = await this.db
+            .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+            .from(schema_1.blogPosts)
+            .where(whereClause)
+            .execute();
+        const items = await this.db
             .select()
             .from(schema_1.blogPosts)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.blogPosts.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.blogPosts.status, create_blog_post_dto_1.BlogPostStatus.PUBLISHED), (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} IS NOT NULL`, (0, drizzle_orm_1.sql) `${schema_1.blogPosts.publishedAt} <= now()`))
+            .where(whereClause)
             .orderBy((0, drizzle_orm_1.desc)(schema_1.blogPosts.publishedAt))
+            .limit(limit)
+            .offset(offset)
             .execute();
+        return {
+            items,
+            page,
+            limit,
+            total: Number(count),
+            totalPages: Math.ceil(Number(count) / limit),
+        };
     }
     async getBySlugPublic(storeId, slug) {
         const post = await this.db.query.blogPosts.findFirst({

@@ -116,8 +116,15 @@ export class BlogController extends BaseController {
   @Get('/public/list')
   @UseGuards(ApiKeyGuard)
   @ApiScopes('quotes.create')
-  listPublic(@CurrentStoreId() storeId: string) {
-    return this.blogService.listPublic(storeId);
+  listPublic(
+    @CurrentStoreId() storeId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.blogService.listPublic(storeId, {
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
   }
 
   @Get('/public/:slug')

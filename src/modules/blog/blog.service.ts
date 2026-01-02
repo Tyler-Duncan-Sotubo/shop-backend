@@ -225,23 +225,42 @@ export class BlogService {
   // -----------------------------
   // Public list + get by slug (optional)
   // -----------------------------
-  // -----------------------------
-  // Public list + get by slug (store scoped)
-  // -----------------------------
-  async listPublic(storeId: string) {
-    return this.db
+  async listPublic(storeId: string, opts?: { page?: number; limit?: number }) {
+    const page = Math.max(1, opts?.page ?? 1);
+    const limit = Math.min(50, opts?.limit ?? 10); // cap for safety
+    const offset = (page - 1) * limit;
+
+    const whereClause = and(
+      eq(blogPosts.storeId, storeId),
+      eq(blogPosts.status, BlogPostStatus.PUBLISHED),
+      sql`${blogPosts.publishedAt} IS NOT NULL`,
+      sql`${blogPosts.publishedAt} <= now()`,
+    );
+
+    // total count
+    const [{ count }] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(blogPosts)
+      .where(whereClause)
+      .execute();
+
+    // paginated items
+    const items = await this.db
       .select()
       .from(blogPosts)
-      .where(
-        and(
-          eq(blogPosts.storeId, storeId),
-          eq(blogPosts.status, BlogPostStatus.PUBLISHED),
-          sql`${blogPosts.publishedAt} IS NOT NULL`,
-          sql`${blogPosts.publishedAt} <= now()`,
-        ),
-      )
+      .where(whereClause)
       .orderBy(desc(blogPosts.publishedAt))
+      .limit(limit)
+      .offset(offset)
       .execute();
+
+    return {
+      items,
+      page,
+      limit,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / limit),
+    };
   }
 
   async getBySlugPublic(storeId: string, slug: string) {

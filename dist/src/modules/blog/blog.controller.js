@@ -50,8 +50,11 @@ let BlogController = class BlogController extends base_controller_1.BaseControll
     remove(user, params, ip) {
         return this.blogService.remove(user, params.id, ip);
     }
-    listPublic(storeId) {
-        return this.blogService.listPublic(storeId);
+    listPublic(storeId, page, limit) {
+        return this.blogService.listPublic(storeId, {
+            page: page ? Number(page) : undefined,
+            limit: limit ? Number(limit) : undefined,
+        });
     }
     getBySlugPublic(storeId, slug) {
         return this.blogService.getBySlugPublic(storeId, slug);
@@ -140,8 +143,10 @@ __decorate([
     (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
     (0, api_scopes_decorator_1.ApiScopes)('quotes.create'),
     __param(0, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", void 0)
 ], BlogController.prototype, "listPublic", null);
 __decorate([

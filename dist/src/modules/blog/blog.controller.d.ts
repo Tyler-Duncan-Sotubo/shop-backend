@@ -118,23 +118,29 @@ export declare class BlogController extends BaseController {
     remove(user: User, params: BlogPostIdParamDto, ip: string): Promise<{
         message: string;
     }>;
-    listPublic(storeId: string): Promise<{
-        id: string;
-        title: string;
-        slug: string;
-        storeId: string;
-        excerpt: string | null;
-        coverImageUrl: string | null;
-        focusKeyword: string | null;
-        content: string;
-        status: string;
-        publishedAt: Date | null;
-        isFeatured: boolean;
-        seoTitle: string | null;
-        seoDescription: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-    }[]>;
+    listPublic(storeId: string, page?: string, limit?: string): Promise<{
+        items: {
+            id: string;
+            title: string;
+            slug: string;
+            storeId: string;
+            excerpt: string | null;
+            coverImageUrl: string | null;
+            focusKeyword: string | null;
+            content: string;
+            status: string;
+            publishedAt: Date | null;
+            isFeatured: boolean;
+            seoTitle: string | null;
+            seoDescription: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    }>;
     getBySlugPublic(storeId: string, slug: string): Promise<{
         status: string;
         id: string;

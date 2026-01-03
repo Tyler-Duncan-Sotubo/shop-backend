@@ -8,15 +8,22 @@ declare class SetLinkedProductsDto {
 export declare class LinkedProductsController extends BaseController {
     private readonly linkedProductsService;
     constructor(linkedProductsService: LinkedProductsService);
-    getLinkedProducts(user: User, productId: string, linkType?: ProductLinkType): Promise<{
-        id: string;
-        companyId: string;
-        productId: string;
-        linkedProductId: string;
-        linkType: "related" | "upsell" | "cross_sell" | "accessory";
-        position: number;
-        createdAt: Date;
-    }[]>;
+    getLinkedProducts(user: User, productId: string, linkType?: ProductLinkType): Promise<({
+        id: any;
+        name: any;
+        slug: any;
+        image: any;
+        price_html: string;
+        on_sale: boolean;
+    } | undefined)[]>;
+    GetStoreFrontLinkedProducts(companyId: string, productId: string, linkType?: ProductLinkType): Promise<({
+        id: any;
+        name: any;
+        slug: any;
+        image: any;
+        price_html: string;
+        on_sale: boolean;
+    } | undefined)[]>;
     setLinkedProducts(user: User, productId: string, linkType: ProductLinkType, dto: SetLinkedProductsDto, ip: string): Promise<{
         id: string;
         createdAt: Date;

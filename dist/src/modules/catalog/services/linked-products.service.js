@@ -57,23 +57,113 @@ let LinkedProductsService = class LinkedProductsService {
             throw new common_1.BadRequestException(`Some linked products do not belong to this company: ${missing.join(', ')}`);
         }
     }
+    async listLinkedProductsStorefrontLite(companyId, productIds) {
+        if (!productIds.length)
+            return [];
+        const productsPage = await this.db
+            .select({
+            id: schema_1.products.id,
+            name: schema_1.products.name,
+            slug: schema_1.products.slug,
+            imageUrl: schema_1.productImages.url,
+        })
+            .from(schema_1.products)
+            .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, schema_1.products.companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, schema_1.products.defaultImageId)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.products.id, productIds), (0, drizzle_orm_1.eq)(schema_1.products.status, 'active'), (0, drizzle_orm_1.sql) `${schema_1.products.deletedAt} IS NULL`))
+            .execute();
+        if (!productsPage.length)
+            return [];
+        const ids = productsPage.map((p) => p.id);
+        const priceRows = await this.db
+            .select({
+            productId: schema_1.productVariants.productId,
+            minRegular: (0, drizzle_orm_1.sql) `
+          MIN(NULLIF(${schema_1.productVariants.regularPrice}, 0))
+        `,
+            maxRegular: (0, drizzle_orm_1.sql) `
+          MAX(NULLIF(${schema_1.productVariants.regularPrice}, 0))
+        `,
+            minSale: (0, drizzle_orm_1.sql) `
+          MIN(
+            CASE
+              WHEN NULLIF(${schema_1.productVariants.salePrice}, 0) IS NOT NULL
+               AND ${schema_1.productVariants.salePrice} < ${schema_1.productVariants.regularPrice}
+              THEN ${schema_1.productVariants.salePrice}
+              ELSE NULL
+            END
+          )
+        `,
+            maxSale: (0, drizzle_orm_1.sql) `
+          MAX(
+            CASE
+              WHEN NULLIF(${schema_1.productVariants.salePrice}, 0) IS NOT NULL
+               AND ${schema_1.productVariants.salePrice} < ${schema_1.productVariants.regularPrice}
+              THEN ${schema_1.productVariants.salePrice}
+              ELSE NULL
+            END
+          )
+        `,
+        })
+            .from(schema_1.productVariants)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.productVariants.productId, ids)))
+            .groupBy(schema_1.productVariants.productId)
+            .execute();
+        const prices = new Map();
+        for (const r of priceRows) {
+            prices.set(r.productId, {
+                minRegular: r.minRegular,
+                maxRegular: r.maxRegular,
+                minSale: r.minSale,
+                maxSale: r.maxSale,
+            });
+        }
+        const rangeLabel = (min, max) => {
+            if (min == null && max == null)
+                return '';
+            if (min != null && max != null)
+                return min === max ? `${min}` : `${min} - ${max}`;
+            return `${min ?? max}`;
+        };
+        return productsPage.map((p) => {
+            const pr = prices.get(p.id) ?? {
+                minRegular: null,
+                maxRegular: null,
+                minSale: null,
+                maxSale: null,
+            };
+            const regularLabel = rangeLabel(pr.minRegular, pr.maxRegular);
+            const saleLabel = rangeLabel(pr.minSale, pr.maxSale);
+            const onSale = pr.minSale != null &&
+                pr.minRegular != null &&
+                pr.minSale < pr.minRegular;
+            const price_html = onSale && regularLabel && saleLabel
+                ? `<del>${regularLabel}</del> <ins>${saleLabel}</ins>`
+                : regularLabel;
+            return {
+                id: p.id,
+                name: p.name,
+                slug: p.slug,
+                image: p.imageUrl ?? null,
+                price_html,
+                on_sale: onSale,
+            };
+        });
+    }
     async getLinkedProducts(companyId, productId, linkType) {
         await this.assertProductBelongsToCompany(companyId, productId);
-        return this.cache.getOrSetVersioned(companyId, ['catalog', 'product', productId, 'links', linkType ?? 'all'], async () => {
-            const where = [
-                (0, drizzle_orm_1.eq)(schema_1.productLinks.companyId, companyId),
-                (0, drizzle_orm_1.eq)(schema_1.productLinks.productId, productId),
-            ];
-            if (linkType) {
-                where.push((0, drizzle_orm_1.eq)(schema_1.productLinks.linkType, linkType));
-            }
-            const links = await this.db
-                .select()
-                .from(schema_1.productLinks)
-                .where((0, drizzle_orm_1.and)(...where))
-                .execute();
-            return links;
-        });
+        const links = await this.db
+            .select({
+            linkedProductId: schema_1.productLinks.linkedProductId,
+            sortOrder: schema_1.productLinks.position,
+        })
+            .from(schema_1.productLinks)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productLinks.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productLinks.productId, productId), linkType ? (0, drizzle_orm_1.eq)(schema_1.productLinks.linkType, linkType) : undefined))
+            .orderBy(schema_1.productLinks.position)
+            .execute();
+        const linkedIds = links.map((l) => l.linkedProductId);
+        const products = await this.listLinkedProductsStorefrontLite(companyId, linkedIds);
+        const byId = new Map(products.map((p) => [p.id, p]));
+        return linkedIds.map((id) => byId.get(id)).filter(Boolean);
     }
     async setLinkedProducts(companyId, productId, linkType, linkedProductIds, user, ip) {
         await this.assertProductBelongsToCompany(companyId, productId);

@@ -963,10 +963,16 @@ let ProductsService = class ProductsService {
         return this.cache.getOrSetVersioned(companyId, cacheKey, async () => {
             const category = await this.db.query.categories.findFirst({
                 where: (c, { and, eq, isNull }) => and(eq(c.companyId, companyId), eq(c.storeId, storeId), eq(c.slug, categorySlug), isNull(c.deletedAt)),
-                columns: { id: true },
+                columns: { id: true, name: true, slug: true },
             });
-            if (!category)
-                return [];
+            if (!category) {
+                return { category: null, products: [] };
+            }
+            const categoryForResponse = {
+                id: category.id,
+                name: category.name,
+                slug: category.slug,
+            };
             const hasChild = await this.db.query.categories.findFirst({
                 where: (c, { and, eq, isNull }) => and(eq(c.companyId, companyId), eq(c.storeId, storeId), eq(c.parentId, category.id), isNull(c.deletedAt)),
                 columns: { id: true },
@@ -1013,8 +1019,9 @@ let ProductsService = class ProductsService {
                 .offset(offset)
                 .execute();
             const productIds = idRows.map((r) => r.id);
-            if (productIds.length === 0)
-                return [];
+            if (productIds.length === 0) {
+                return { category: categoryForResponse, products: [] };
+            }
             const fullProducts = await this.db.query.products.findMany({
                 where: (p, { and, eq, inArray, isNull }) => and(eq(p.companyId, companyId), eq(p.storeId, storeId), inArray(p.id, productIds), isNull(p.deletedAt)),
                 with: {
@@ -1050,12 +1057,8 @@ let ProductsService = class ProductsService {
             const priceRows = await this.db
                 .select({
                 productId: schema_1.productVariants.productId,
-                minPrice: (0, drizzle_orm_1.sql) `
-          MIN(NULLIF(${schema_1.productVariants.regularPrice}, 0))
-        `,
-                maxPrice: (0, drizzle_orm_1.sql) `
-          MAX(NULLIF(${schema_1.productVariants.regularPrice}, 0))
-        `,
+                minPrice: (0, drizzle_orm_1.sql) `MIN(NULLIF(${schema_1.productVariants.regularPrice}, 0))`,
+                maxPrice: (0, drizzle_orm_1.sql) `MAX(NULLIF(${schema_1.productVariants.regularPrice}, 0))`,
             })
                 .from(schema_1.productVariants)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.productVariants.productId, productIds)))
@@ -1067,7 +1070,7 @@ let ProductsService = class ProductsService {
                 const max = r.maxPrice == null ? min : Number(r.maxPrice);
                 priceByProduct.set(r.productId, { minPrice: min, maxPrice: max });
             }
-            return ordered.map((p) => {
+            const productsList = ordered.map((p) => {
                 const ratings = ratingsByProduct.get(p.id) ?? {
                     rating_count: 0,
                     average_rating: 0,
@@ -1081,6 +1084,10 @@ let ProductsService = class ProductsService {
                     maxPrice: price.maxPrice,
                 });
             });
+            return {
+                category: categoryForResponse,
+                products: productsList,
+            };
         });
     }
     async listProductsGroupedUnderParentCategory(companyId, storeId, parentCategoryId, query) {

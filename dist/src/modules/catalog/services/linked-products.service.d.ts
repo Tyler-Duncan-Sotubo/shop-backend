@@ -32,15 +32,15 @@ export declare class LinkedProductsService {
         [x: string]: any;
     }>;
     assertProductsBelongToCompany(companyId: string, productIds: string[]): Promise<void>;
-    getLinkedProducts(companyId: string, productId: string, linkType?: ProductLinkType): Promise<{
-        id: string;
-        companyId: string;
-        productId: string;
-        linkedProductId: string;
-        linkType: "related" | "upsell" | "cross_sell" | "accessory";
-        position: number;
-        createdAt: Date;
-    }[]>;
+    private listLinkedProductsStorefrontLite;
+    getLinkedProducts(companyId: string, productId: string, linkType?: ProductLinkType): Promise<({
+        id: any;
+        name: any;
+        slug: any;
+        image: any;
+        price_html: string;
+        on_sale: boolean;
+    } | undefined)[]>;
     setLinkedProducts(companyId: string, productId: string, linkType: ProductLinkType, linkedProductIds: string[], user?: User, ip?: string): Promise<{
         id: string;
         createdAt: Date;

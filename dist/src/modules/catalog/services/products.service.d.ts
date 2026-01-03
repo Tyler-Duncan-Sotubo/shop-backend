@@ -6,6 +6,16 @@ import { AssignProductCategoriesDto, CreateProductDto, ProductQueryDto, UpdatePr
 import { CategoriesService } from './categories.service';
 import { LinkedProductsService } from './linked-products.service';
 import { AwsService } from 'src/common/aws/aws.service';
+import { mapProductToCollectionListResponse } from '../mappers/product.mapper';
+type CollectionCategory = {
+    id: string;
+    name: string;
+    slug: string;
+};
+type CollectionResponse<TProduct> = {
+    category: CollectionCategory | null;
+    products: TProduct[];
+};
 export declare class ProductsService {
     private readonly db;
     private readonly cache;
@@ -138,28 +148,7 @@ export declare class ProductsService {
         categoryId: string;
     }[]>;
     private getCategoryAndDescendantIds;
-    listCollectionProductsByCategorySlug(companyId: string, storeId: string, categorySlug: string, query: ProductQueryDto): Promise<{
-        id: any;
-        name: any;
-        slug: any;
-        permalink: string;
-        type: string;
-        price: string;
-        regular_price: string;
-        sale_price: string;
-        on_sale: boolean;
-        average_rating: string;
-        rating_count: number;
-        images: {
-            id: any;
-            src: any;
-            alt: any;
-        }[];
-        tags: never[];
-        categories: any;
-        attributes: any;
-        price_html: string;
-    }[]>;
+    listCollectionProductsByCategorySlug(companyId: string, storeId: string, categorySlug: string, query: ProductQueryDto): Promise<CollectionResponse<ReturnType<typeof mapProductToCollectionListResponse>>>;
     listProductsGroupedUnderParentCategory(companyId: string, storeId: string, parentCategoryId: string, query: ProductQueryDto): Promise<{
         category: {
             id: any;
@@ -185,3 +174,4 @@ export declare class ProductsService {
         products: any[];
     }[]>;
 }
+export {};

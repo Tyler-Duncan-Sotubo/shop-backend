@@ -17,6 +17,9 @@ import { BaseController } from 'src/common/interceptor/base.controller';
 import { LinkedProductsService } from '../services/linked-products.service';
 import { ProductLinkType } from 'src/drizzle/schema';
 import { IsArray, IsString } from 'class-validator';
+import { ApiScopes } from 'src/modules/iam/api-keys/decorators/api-scopes.decorator';
+import { ApiKeyGuard } from 'src/modules/iam/api-keys/guard/api-key.guard';
+import { CurrentCompanyId } from 'src/modules/iam/api-keys/decorators/current-company-id.decorator';
 
 class SetLinkedProductsDto {
   @IsArray()
@@ -41,6 +44,22 @@ export class LinkedProductsController extends BaseController {
   ) {
     return this.linkedProductsService.getLinkedProducts(
       user.companyId,
+      productId,
+      linkType,
+    );
+  }
+
+  // ----------------- Storefront -----------------
+  @Get('links/storefront/:productId')
+  @UseGuards(ApiKeyGuard)
+  @ApiScopes('catalog.products.read')
+  async GetStoreFrontLinkedProducts(
+    @CurrentCompanyId() companyId: string,
+    @Param('productId') productId: string,
+    @Query('linkType') linkType?: ProductLinkType,
+  ) {
+    return this.linkedProductsService.getLinkedProducts(
+      companyId,
       productId,
       linkType,
     );

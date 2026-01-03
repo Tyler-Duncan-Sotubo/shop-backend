@@ -19,6 +19,9 @@ const current_user_decorator_1 = require("../../auth/decorator/current-user.deco
 const base_controller_1 = require("../../../common/interceptor/base.controller");
 const linked_products_service_1 = require("../services/linked-products.service");
 const class_validator_1 = require("class-validator");
+const api_scopes_decorator_1 = require("../../iam/api-keys/decorators/api-scopes.decorator");
+const api_key_guard_1 = require("../../iam/api-keys/guard/api-key.guard");
+const current_company_id_decorator_1 = require("../../iam/api-keys/decorators/current-company-id.decorator");
 class SetLinkedProductsDto {
 }
 __decorate([
@@ -33,6 +36,9 @@ let LinkedProductsController = class LinkedProductsController extends base_contr
     }
     async getLinkedProducts(user, productId, linkType) {
         return this.linkedProductsService.getLinkedProducts(user.companyId, productId, linkType);
+    }
+    async GetStoreFrontLinkedProducts(companyId, productId, linkType) {
+        return this.linkedProductsService.getLinkedProducts(companyId, productId, linkType);
     }
     async setLinkedProducts(user, productId, linkType, dto, ip) {
         const inserted = await this.linkedProductsService.setLinkedProducts(user.companyId, productId, linkType, dto.linkedProductIds, user, ip);
@@ -54,6 +60,17 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], LinkedProductsController.prototype, "getLinkedProducts", null);
+__decorate([
+    (0, common_1.Get)('links/storefront/:productId'),
+    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
+    (0, api_scopes_decorator_1.ApiScopes)('catalog.products.read'),
+    __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __param(1, (0, common_1.Param)('productId')),
+    __param(2, (0, common_1.Query)('linkType')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], LinkedProductsController.prototype, "GetStoreFrontLinkedProducts", null);
 __decorate([
     (0, common_1.Put)('products/:productId/links/:linkType'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

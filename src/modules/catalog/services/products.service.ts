@@ -38,6 +38,13 @@ import { LinkedProductsService } from './linked-products.service';
 import { AwsService } from 'src/common/aws/aws.service';
 import { mapProductToCollectionListResponse } from '../mappers/product.mapper';
 
+type CollectionCategory = { id: string; name: string; slug: string };
+
+type CollectionResponse<TProduct> = {
+  category: CollectionCategory | null;
+  products: TProduct[];
+};
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -323,6 +330,7 @@ export class ProductsService {
   }
 
   // ----------------- Read / Query -----------------
+
   // Admin panel
   async listProductsAdmin(companyId: string, query: ProductQueryDto) {
     const {
@@ -1417,12 +1425,16 @@ export class ProductsService {
     return ids as string[];
   }
 
+  // Add these types somewhere appropriate (top of file or near the method)
+
   async listCollectionProductsByCategorySlug(
     companyId: string,
     storeId: string,
     categorySlug: string,
     query: ProductQueryDto,
-  ) {
+  ): Promise<
+    CollectionResponse<ReturnType<typeof mapProductToCollectionListResponse>>
+  > {
     const { search, status, limit = 12, offset = 0 } = query;
     const effectiveStatus = status ?? 'active';
     const attr = query.attr ?? {};
@@ -1451,7 +1463,7 @@ export class ProductsService {
     ];
 
     return this.cache.getOrSetVersioned(companyId, cacheKey, async () => {
-      // A) resolve category slug -> id
+      // A) resolve category slug -> category (include name/slug for API response)
       const category = await this.db.query.categories.findFirst({
         where: (c, { and, eq, isNull }) =>
           and(
@@ -1460,9 +1472,18 @@ export class ProductsService {
             eq(c.slug, categorySlug),
             isNull(c.deletedAt),
           ),
-        columns: { id: true },
+        columns: { id: true, name: true, slug: true }, // ✅ include these
       });
-      if (!category) return [];
+
+      if (!category) {
+        return { category: null, products: [] };
+      }
+
+      const categoryForResponse: CollectionCategory = {
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+      };
 
       // B) leaf vs parent -> categoryIds
       const hasChild = await this.db.query.categories.findFirst({
@@ -1535,7 +1556,10 @@ export class ProductsService {
         .execute();
 
       const productIds = idRows.map((r) => r.id);
-      if (productIds.length === 0) return [];
+
+      if (productIds.length === 0) {
+        return { category: categoryForResponse, products: [] };
+      }
 
       // ---- 2) Load product graph for those ids (NO variants) ----
       const fullProducts = await this.db.query.products.findMany({
@@ -1596,12 +1620,12 @@ export class ProductsService {
       const priceRows = await this.db
         .select({
           productId: productVariants.productId,
-          minPrice: sql<string | null>`
-          MIN(NULLIF(${productVariants.regularPrice}, 0))
-        `,
-          maxPrice: sql<string | null>`
-          MAX(NULLIF(${productVariants.regularPrice}, 0))
-        `,
+          minPrice: sql<
+            string | null
+          >`MIN(NULLIF(${productVariants.regularPrice}, 0))`,
+          maxPrice: sql<
+            string | null
+          >`MAX(NULLIF(${productVariants.regularPrice}, 0))`,
         })
         .from(productVariants)
         .where(
@@ -1624,7 +1648,7 @@ export class ProductsService {
       }
 
       // ---- 5) Map to lightweight list items ----
-      return ordered.map((p) => {
+      const productsList = ordered.map((p) => {
         const ratings = ratingsByProduct.get(p.id) ?? {
           rating_count: 0,
           average_rating: 0,
@@ -1639,6 +1663,11 @@ export class ProductsService {
           maxPrice: price.maxPrice,
         } as any);
       });
+
+      return {
+        category: categoryForResponse,
+        products: productsList,
+      };
     });
   }
 

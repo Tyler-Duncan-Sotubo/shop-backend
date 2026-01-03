@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from 'src/drizzle/types/drizzle';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import {
@@ -12,6 +12,8 @@ import {
   products,
   productLinks,
   ProductLinkType,
+  productImages,
+  productVariants,
 } from 'src/drizzle/schema';
 import { CacheService } from 'src/common/cache/cache.service';
 import { AuditService } from 'src/modules/audit/audit.service';
@@ -26,7 +28,6 @@ export class LinkedProductsService {
   ) {}
 
   // ----------------- Helpers -----------------
-
   async assertCompanyExists(companyId: string) {
     const company = await this.db.query.companies.findFirst({
       where: eq(companies.id, companyId),
@@ -77,6 +78,144 @@ export class LinkedProductsService {
     }
   }
 
+  private async listLinkedProductsStorefrontLite(
+    companyId: string,
+    productIds: string[],
+  ) {
+    if (!productIds.length) return [];
+
+    // 1) Base product info
+    const productsPage = await this.db
+      .select({
+        id: products.id,
+        name: products.name,
+        slug: products.slug,
+        imageUrl: productImages.url,
+      })
+      .from(products)
+      .leftJoin(
+        productImages,
+        and(
+          eq(productImages.companyId, products.companyId),
+          eq(productImages.id, products.defaultImageId),
+        ),
+      )
+      .where(
+        and(
+          eq(products.companyId, companyId),
+          inArray(products.id, productIds),
+          eq(products.status, 'active'),
+          sql`${products.deletedAt} IS NULL`,
+        ),
+      )
+      .execute();
+
+    if (!productsPage.length) return [];
+
+    const ids = productsPage.map((p) => p.id);
+
+    // 2) Price aggregation only
+    const priceRows = await this.db
+      .select({
+        productId: productVariants.productId,
+
+        minRegular: sql<number | null>`
+          MIN(NULLIF(${productVariants.regularPrice}, 0))
+        `,
+        maxRegular: sql<number | null>`
+          MAX(NULLIF(${productVariants.regularPrice}, 0))
+        `,
+
+        minSale: sql<number | null>`
+          MIN(
+            CASE
+              WHEN NULLIF(${productVariants.salePrice}, 0) IS NOT NULL
+               AND ${productVariants.salePrice} < ${productVariants.regularPrice}
+              THEN ${productVariants.salePrice}
+              ELSE NULL
+            END
+          )
+        `,
+        maxSale: sql<number | null>`
+          MAX(
+            CASE
+              WHEN NULLIF(${productVariants.salePrice}, 0) IS NOT NULL
+               AND ${productVariants.salePrice} < ${productVariants.regularPrice}
+              THEN ${productVariants.salePrice}
+              ELSE NULL
+            END
+          )
+        `,
+      })
+      .from(productVariants)
+      .where(
+        and(
+          eq(productVariants.companyId, companyId),
+          inArray(productVariants.productId, ids),
+        ),
+      )
+      .groupBy(productVariants.productId)
+      .execute();
+
+    const prices = new Map<
+      string,
+      {
+        minRegular: number | null;
+        maxRegular: number | null;
+        minSale: number | null;
+        maxSale: number | null;
+      }
+    >();
+
+    for (const r of priceRows) {
+      prices.set(r.productId, {
+        minRegular: r.minRegular,
+        maxRegular: r.maxRegular,
+        minSale: r.minSale,
+        maxSale: r.maxSale,
+      });
+    }
+
+    const rangeLabel = (min: number | null, max: number | null) => {
+      if (min == null && max == null) return '';
+      if (min != null && max != null)
+        return min === max ? `${min}` : `${min} - ${max}`;
+      return `${min ?? max}`;
+    };
+
+    // 3) Merge minimal storefront response
+    return productsPage.map((p) => {
+      const pr = prices.get(p.id) ?? {
+        minRegular: null,
+        maxRegular: null,
+        minSale: null,
+        maxSale: null,
+      };
+
+      const regularLabel = rangeLabel(pr.minRegular, pr.maxRegular);
+      const saleLabel = rangeLabel(pr.minSale, pr.maxSale);
+
+      const onSale =
+        pr.minSale != null &&
+        pr.minRegular != null &&
+        pr.minSale < pr.minRegular;
+
+      const price_html =
+        onSale && regularLabel && saleLabel
+          ? `<del>${regularLabel}</del> <ins>${saleLabel}</ins>`
+          : regularLabel;
+
+      return {
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        image: p.imageUrl ?? null,
+        price_html,
+        on_sale: onSale,
+      };
+    });
+  }
+
   // ----------------- Get Linked Products -----------------
 
   async getLinkedProducts(
@@ -86,28 +225,32 @@ export class LinkedProductsService {
   ) {
     await this.assertProductBelongsToCompany(companyId, productId);
 
-    return this.cache.getOrSetVersioned(
-      companyId,
-      ['catalog', 'product', productId, 'links', linkType ?? 'all'],
-      async () => {
-        const where = [
+    const links = await this.db
+      .select({
+        linkedProductId: productLinks.linkedProductId,
+        sortOrder: productLinks.position,
+      })
+      .from(productLinks)
+      .where(
+        and(
           eq(productLinks.companyId, companyId),
           eq(productLinks.productId, productId),
-        ];
+          linkType ? eq(productLinks.linkType, linkType) : undefined,
+        ),
+      )
+      .orderBy(productLinks.position)
+      .execute();
 
-        if (linkType) {
-          where.push(eq(productLinks.linkType, linkType));
-        }
+    const linkedIds = links.map((l) => l.linkedProductId);
 
-        const links = await this.db
-          .select()
-          .from(productLinks)
-          .where(and(...where))
-          .execute();
-
-        return links;
-      },
+    const products = await this.listLinkedProductsStorefrontLite(
+      companyId,
+      linkedIds,
     );
+
+    // preserve link ordering
+    const byId = new Map(products.map((p) => [p.id, p]));
+    return linkedIds.map((id) => byId.get(id)).filter(Boolean);
   }
 
   // ----------------- Replace Linked Products for a Type -----------------

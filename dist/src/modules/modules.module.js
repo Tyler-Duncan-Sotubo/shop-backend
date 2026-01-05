@@ -33,6 +33,7 @@ const media_module_1 = require("./media/media.module");
 const analytics_module_1 = require("./analytics/analytics.module");
 const storefront_config_module_1 = require("./commerce/storefront-config/storefront-config.module");
 const quote_module_1 = require("./commerce/quote/quote.module");
+const mail_module_1 = require("./mail/mail.module");
 let ModulesModule = class ModulesModule {
 };
 exports.ModulesModule = ModulesModule;
@@ -65,6 +66,7 @@ exports.ModulesModule = ModulesModule = __decorate([
             analytics_module_1.AnalyticsModule,
             storefront_config_module_1.StorefrontConfigModule,
             quote_module_1.QuoteModule,
+            mail_module_1.MailModule,
         ],
         exports: [
             audit_module_1.AuditModule,

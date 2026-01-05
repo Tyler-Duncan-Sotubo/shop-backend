@@ -171,6 +171,46 @@ let CustomerAuthService = class CustomerAuthService {
             tokens,
         };
     }
+    async updatePassword(companyId, authCustomer, input) {
+        if (authCustomer.companyId !== companyId) {
+            throw new common_1.UnauthorizedException('Invalid company');
+        }
+        const [creds] = await this.db
+            .select({
+            id: schema_1.customerCredentials.id,
+            passwordHash: schema_1.customerCredentials.passwordHash,
+            email: schema_1.customerCredentials.email,
+        })
+            .from(schema_1.customerCredentials)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customerCredentials.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.customerCredentials.customerId, authCustomer.id)))
+            .execute();
+        if (!creds || !creds.passwordHash) {
+            throw new common_1.UnauthorizedException('Credentials not found');
+        }
+        const ok = await bcrypt.compare(input.currentPassword, creds.passwordHash);
+        if (!ok) {
+            throw new common_1.UnauthorizedException('Current password is incorrect');
+        }
+        const sameAsOld = await bcrypt.compare(input.newPassword, creds.passwordHash);
+        if (sameAsOld) {
+            throw new common_1.BadRequestException('New password must be different');
+        }
+        const nextHash = await bcrypt.hash(input.newPassword, 10);
+        await this.db
+            .update(schema_1.customerCredentials)
+            .set({
+            passwordHash: nextHash,
+            updatedAt: new Date(),
+        })
+            .where((0, drizzle_orm_1.eq)(schema_1.customerCredentials.id, creds.id))
+            .execute();
+        const tokens = await this.issueTokens({
+            customerId: authCustomer.id,
+            companyId,
+            email: creds.email,
+        });
+        return { ok: true, tokens };
+    }
 };
 exports.CustomerAuthService = CustomerAuthService;
 exports.CustomerAuthService = CustomerAuthService = __decorate([

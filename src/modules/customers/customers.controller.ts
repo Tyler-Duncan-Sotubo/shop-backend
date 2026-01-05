@@ -7,6 +7,7 @@ import {
   Param,
   Body,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { CustomersService } from './customers.service';
 import { CustomerJwtGuard } from './guards/customer-jwt.guard';
@@ -21,6 +22,7 @@ import { LoginCustomerDto } from './dto/login-customer.dto';
 import { ApiScopes } from 'src/modules/iam/api-keys/decorators/api-scopes.decorator';
 import { ApiKeyGuard } from 'src/modules/iam/api-keys/guard/api-key.guard';
 import { CurrentCompanyId } from 'src/modules/iam/api-keys/decorators/current-company-id.decorator';
+import { CurrentStoreId } from '../iam/api-keys/decorators/current-store.decorator';
 
 @Controller('storefront/customers')
 @UseGuards(ApiKeyGuard) // ✅ storefront always requires API key
@@ -51,6 +53,24 @@ export class CustomersController {
   // -----------------------------
   // Protected (API key + Customer JWT)
   // -----------------------------
+
+  // ✅ Change customer password
+  @UseGuards(CustomerJwtGuard)
+  @Patch('password')
+  updatePassword(
+    @CurrentCustomer() customer: AuthCustomer,
+    @Body()
+    body: {
+      currentPassword: string;
+      newPassword: string;
+    },
+    @CurrentCompanyId() companyId: string,
+  ) {
+    return this.customerAuthService.updatePassword(companyId, customer, {
+      currentPassword: body.currentPassword,
+      newPassword: body.newPassword,
+    });
+  }
 
   @UseGuards(CustomerJwtGuard)
   @Get()
@@ -99,5 +119,63 @@ export class CustomersController {
     @Param('id') id: string,
   ) {
     return this.customersService.deleteAddress(customer, id);
+  }
+
+  @UseGuards(CustomerJwtGuard)
+  @Get('activity')
+  getCustomerActivity(
+    @CurrentCustomer() customer: AuthCustomer,
+    @CurrentStoreId() storeId: string,
+  ) {
+    return this.customersService.getCustomerActivityBundle(customer, {
+      storeId,
+      ordersLimit: 3,
+      reviewsLimit: 3,
+      quotesLimit: 3,
+    });
+  }
+
+  @UseGuards(CustomerJwtGuard)
+  @Get('orders')
+  listMyOrders(
+    @CurrentCustomer() customer: AuthCustomer,
+    @CurrentStoreId() storeId: string,
+    @Query() q: { limit?: string; offset?: string; status?: string },
+  ) {
+    return this.customersService.listCustomerOrders(customer, storeId, {
+      limit: q.limit ? Number(q.limit) : undefined,
+      offset: q.offset ? Number(q.offset) : undefined,
+      status: q.status,
+    });
+  }
+
+  @UseGuards(CustomerJwtGuard)
+  @Get('products')
+  listMyProducts(
+    @CurrentCustomer() customer: AuthCustomer,
+    @CurrentStoreId() storeId: string,
+    @Query() q: { limit?: string; offset?: string },
+  ) {
+    return this.customersService.listCustomerPurchasedProducts(
+      customer,
+      storeId,
+      {
+        limit: q.limit ? Number(q.limit) : undefined,
+        offset: q.offset ? Number(q.offset) : undefined,
+      },
+    );
+  }
+
+  @UseGuards(CustomerJwtGuard)
+  @Get('reviews')
+  listMyReviews(
+    @CurrentCustomer() customer: AuthCustomer,
+    @CurrentStoreId() storeId: string,
+    @Query() q: { limit?: string; offset?: string },
+  ) {
+    return this.customersService.listCustomerReviews(customer, storeId, {
+      limit: q.limit ? Number(q.limit) : undefined,
+      offset: q.offset ? Number(q.offset) : undefined,
+    });
   }
 }

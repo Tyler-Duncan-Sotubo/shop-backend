@@ -26,6 +26,7 @@ const login_customer_dto_1 = require("./dto/login-customer.dto");
 const api_scopes_decorator_1 = require("../iam/api-keys/decorators/api-scopes.decorator");
 const api_key_guard_1 = require("../iam/api-keys/guard/api-key.guard");
 const current_company_id_decorator_1 = require("../iam/api-keys/decorators/current-company-id.decorator");
+const current_store_decorator_1 = require("../iam/api-keys/decorators/current-store.decorator");
 let CustomersController = class CustomersController {
     constructor(customersService, customerAuthService) {
         this.customersService = customersService;
@@ -36,6 +37,12 @@ let CustomersController = class CustomersController {
     }
     login(dto, companyId) {
         return this.customerAuthService.login(companyId, dto);
+    }
+    updatePassword(customer, body, companyId) {
+        return this.customerAuthService.updatePassword(companyId, customer, {
+            currentPassword: body.currentPassword,
+            newPassword: body.newPassword,
+        });
     }
     getProfile(customer) {
         return this.customersService.getProfile(customer);
@@ -55,6 +62,33 @@ let CustomersController = class CustomersController {
     deleteAddress(customer, id) {
         return this.customersService.deleteAddress(customer, id);
     }
+    getCustomerActivity(customer, storeId) {
+        return this.customersService.getCustomerActivityBundle(customer, {
+            storeId,
+            ordersLimit: 3,
+            reviewsLimit: 3,
+            quotesLimit: 3,
+        });
+    }
+    listMyOrders(customer, storeId, q) {
+        return this.customersService.listCustomerOrders(customer, storeId, {
+            limit: q.limit ? Number(q.limit) : undefined,
+            offset: q.offset ? Number(q.offset) : undefined,
+            status: q.status,
+        });
+    }
+    listMyProducts(customer, storeId, q) {
+        return this.customersService.listCustomerPurchasedProducts(customer, storeId, {
+            limit: q.limit ? Number(q.limit) : undefined,
+            offset: q.offset ? Number(q.offset) : undefined,
+        });
+    }
+    listMyReviews(customer, storeId, q) {
+        return this.customersService.listCustomerReviews(customer, storeId, {
+            limit: q.limit ? Number(q.limit) : undefined,
+            offset: q.offset ? Number(q.offset) : undefined,
+        });
+    }
 };
 exports.CustomersController = CustomersController;
 __decorate([
@@ -73,6 +107,16 @@ __decorate([
     __metadata("design:paramtypes", [login_customer_dto_1.LoginCustomerDto, String]),
     __metadata("design:returntype", void 0)
 ], CustomersController.prototype, "login", null);
+__decorate([
+    (0, common_1.UseGuards)(customer_jwt_guard_1.CustomerJwtGuard),
+    (0, common_1.Patch)('password'),
+    __param(0, (0, current_customer_decorator_1.CurrentCustomer)()),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object, String]),
+    __metadata("design:returntype", void 0)
+], CustomersController.prototype, "updatePassword", null);
 __decorate([
     (0, common_1.UseGuards)(customer_jwt_guard_1.CustomerJwtGuard),
     (0, common_1.Get)(),
@@ -126,6 +170,45 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], CustomersController.prototype, "deleteAddress", null);
+__decorate([
+    (0, common_1.UseGuards)(customer_jwt_guard_1.CustomerJwtGuard),
+    (0, common_1.Get)('activity'),
+    __param(0, (0, current_customer_decorator_1.CurrentCustomer)()),
+    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], CustomersController.prototype, "getCustomerActivity", null);
+__decorate([
+    (0, common_1.UseGuards)(customer_jwt_guard_1.CustomerJwtGuard),
+    (0, common_1.Get)('orders'),
+    __param(0, (0, current_customer_decorator_1.CurrentCustomer)()),
+    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(2, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", void 0)
+], CustomersController.prototype, "listMyOrders", null);
+__decorate([
+    (0, common_1.UseGuards)(customer_jwt_guard_1.CustomerJwtGuard),
+    (0, common_1.Get)('products'),
+    __param(0, (0, current_customer_decorator_1.CurrentCustomer)()),
+    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(2, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", void 0)
+], CustomersController.prototype, "listMyProducts", null);
+__decorate([
+    (0, common_1.UseGuards)(customer_jwt_guard_1.CustomerJwtGuard),
+    (0, common_1.Get)('reviews'),
+    __param(0, (0, current_customer_decorator_1.CurrentCustomer)()),
+    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(2, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", void 0)
+], CustomersController.prototype, "listMyReviews", null);
 exports.CustomersController = CustomersController = __decorate([
     (0, common_1.Controller)('storefront/customers'),
     (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),

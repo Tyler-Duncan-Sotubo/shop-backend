@@ -17,9 +17,11 @@ const common_1 = require("@nestjs/common");
 const drizzle_orm_1 = require("drizzle-orm");
 const drizzle_module_1 = require("../../drizzle/drizzle.module");
 const schema_1 = require("../../drizzle/schema");
+const cache_service_1 = require("../../common/cache/cache.service");
 let CustomersService = class CustomersService {
-    constructor(db) {
+    constructor(db, cache) {
         this.db = db;
+        this.cache = cache;
     }
     async getProfile(authCustomer) {
         const [row] = await this.db
@@ -187,11 +189,368 @@ let CustomersService = class CustomersService {
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customerAddresses.companyId, authCustomer.companyId), (0, drizzle_orm_1.eq)(schema_1.customerAddresses.customerId, authCustomer.id)))
             .execute();
     }
+    async getCustomerActivityBundle(authCustomer, opts) {
+        const storeId = opts?.storeId;
+        const ordersLimit = Math.min(Number(opts?.ordersLimit ?? 10), 50);
+        const reviewsLimit = Math.min(Number(opts?.reviewsLimit ?? 20), 100);
+        const quotesLimit = Math.min(Number(opts?.quotesLimit ?? 10), 50);
+        const [profile] = await this.db
+            .select({
+            loginEmail: schema_1.customerCredentials.email,
+            billingEmail: schema_1.customers.billingEmail,
+        })
+            .from(schema_1.customers)
+            .leftJoin(schema_1.customerCredentials, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customerCredentials.customerId, schema_1.customers.id), (0, drizzle_orm_1.eq)(schema_1.customerCredentials.companyId, schema_1.customers.companyId)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customers.id, authCustomer.id), (0, drizzle_orm_1.eq)(schema_1.customers.companyId, authCustomer.companyId)))
+            .execute();
+        const emailCandidates = [
+            profile?.loginEmail?.trim()?.toLowerCase() ?? null,
+            profile?.billingEmail?.trim()?.toLowerCase() ?? null,
+        ].filter(Boolean);
+        const cacheKey = [
+            'storefront',
+            'customers',
+            'activity',
+            authCustomer.id,
+            JSON.stringify({
+                storeId: storeId ?? null,
+                ordersLimit,
+                reviewsLimit,
+                quotesLimit,
+                emails: emailCandidates.sort(),
+            }),
+        ];
+        return this.cache.getOrSetVersioned(authCustomer.companyId, cacheKey, async () => {
+            const orderWhere = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, authCustomer.companyId), (0, drizzle_orm_1.eq)(schema_1.orders.customerId, authCustomer.id), storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, storeId) : undefined, (0, drizzle_orm_1.eq)(schema_1.orders.status, 'pending_payment'));
+            const ordersRows = await this.db
+                .select({
+                id: schema_1.orders.id,
+                orderNumber: schema_1.orders.orderNumber,
+                status: schema_1.orders.status,
+                createdAt: schema_1.orders.createdAt,
+                currency: schema_1.orders.currency,
+                totalMinor: schema_1.orders.totalMinor,
+            })
+                .from(schema_1.orders)
+                .where(orderWhere)
+                .orderBy((0, drizzle_orm_1.desc)(schema_1.orders.createdAt))
+                .limit(ordersLimit)
+                .execute();
+            const orderIds = ordersRows.map((o) => o.id);
+            let productsPreview = [];
+            if (orderIds.length) {
+                const recentProductRows = await this.db
+                    .select({
+                    productId: schema_1.products.id,
+                    name: schema_1.products.name,
+                    slug: schema_1.products.slug,
+                    imageUrl: schema_1.productImages.url,
+                    lastOrderedAt: (0, drizzle_orm_1.sql) `MAX(${schema_1.orders.createdAt})`,
+                })
+                    .from(schema_1.orderItems)
+                    .innerJoin(schema_1.orders, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, schema_1.orderItems.companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, schema_1.orderItems.orderId)))
+                    .leftJoin(schema_1.productVariants, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, schema_1.orderItems.companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.id, schema_1.orderItems.variantId)))
+                    .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productVariants.productId)))
+                    .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, schema_1.products.companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, schema_1.products.defaultImageId)))
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, authCustomer.companyId), (0, drizzle_orm_1.inArray)(schema_1.orderItems.orderId, orderIds), (0, drizzle_orm_1.sql) `${schema_1.products.id} IS NOT NULL`))
+                    .groupBy(schema_1.products.id, schema_1.products.name, schema_1.products.slug, schema_1.productImages.url)
+                    .orderBy((0, drizzle_orm_1.sql) `MAX(${schema_1.orders.createdAt}) DESC`)
+                    .limit(2)
+                    .execute();
+                productsPreview = recentProductRows
+                    .filter((r) => r.productId && r.name && r.slug)
+                    .map((r) => ({
+                    id: r.productId,
+                    name: r.name,
+                    slug: r.slug,
+                    imageUrl: r.imageUrl ?? null,
+                    lastOrderedAt: r.lastOrderedAt,
+                }));
+            }
+            const reviewsWhere = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productReviews.companyId, authCustomer.companyId), storeId ? (0, drizzle_orm_1.eq)(schema_1.productReviews.storeId, storeId) : undefined, (0, drizzle_orm_1.sql) `${schema_1.productReviews.deletedAt} IS NULL`, (0, drizzle_orm_1.or)((0, drizzle_orm_1.eq)(schema_1.productReviews.userId, authCustomer.id), emailCandidates.length
+                ? (0, drizzle_orm_1.inArray)((0, drizzle_orm_1.sql) `LOWER(${schema_1.productReviews.authorEmail})`, emailCandidates)
+                : undefined));
+            const reviewsRows = await this.db
+                .select({
+                id: schema_1.productReviews.id,
+                productId: schema_1.productReviews.productId,
+                rating: schema_1.productReviews.rating,
+                review: schema_1.productReviews.review,
+                createdAt: schema_1.productReviews.createdAt,
+                productName: schema_1.products.name,
+                productSlug: schema_1.products.slug,
+                productImageUrl: schema_1.productImages.url,
+            })
+                .from(schema_1.productReviews)
+                .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productReviews.companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productReviews.productId)))
+                .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, schema_1.products.companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, schema_1.products.defaultImageId)))
+                .where(reviewsWhere)
+                .orderBy((0, drizzle_orm_1.desc)(schema_1.productReviews.createdAt))
+                .limit(reviewsLimit)
+                .execute();
+            const quotesWhere = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.quoteRequests.companyId, authCustomer.companyId), storeId ? (0, drizzle_orm_1.eq)(schema_1.quoteRequests.storeId, storeId) : undefined, (0, drizzle_orm_1.sql) `${schema_1.quoteRequests.deletedAt} IS NULL`, (0, drizzle_orm_1.eq)(schema_1.quoteRequests.status, 'new'), emailCandidates.length
+                ? (0, drizzle_orm_1.inArray)((0, drizzle_orm_1.sql) `LOWER(${schema_1.quoteRequests.customerEmail})`, emailCandidates)
+                :
+                    (0, drizzle_orm_1.sql) `1 = 0`);
+            const quotesRows = await this.db
+                .select({
+                id: schema_1.quoteRequests.id,
+                storeId: schema_1.quoteRequests.storeId,
+                status: schema_1.quoteRequests.status,
+                customerEmail: schema_1.quoteRequests.customerEmail,
+                customerNote: schema_1.quoteRequests.customerNote,
+                expiresAt: schema_1.quoteRequests.expiresAt,
+                createdAt: schema_1.quoteRequests.createdAt,
+            })
+                .from(schema_1.quoteRequests)
+                .where(quotesWhere)
+                .orderBy((0, drizzle_orm_1.desc)(schema_1.quoteRequests.createdAt))
+                .limit(quotesLimit)
+                .execute();
+            return {
+                orders: ordersRows,
+                products: productsPreview,
+                quotes: quotesRows,
+                reviews: reviewsRows.map((r) => ({
+                    id: r.id,
+                    productId: r.productId,
+                    rating: r.rating,
+                    review: r.review,
+                    createdAt: r.createdAt,
+                    product: r.productId
+                        ? {
+                            id: r.productId,
+                            name: r.productName ?? null,
+                            slug: r.productSlug ?? null,
+                            imageUrl: r.productImageUrl ?? null,
+                        }
+                        : null,
+                })),
+            };
+        });
+    }
+    async listCustomerOrders(authCustomer, storeId, opts) {
+        const limit = Math.min(Number(opts?.limit ?? 20), 100);
+        const offset = Math.max(Number(opts?.offset ?? 0), 0);
+        const status = opts?.status;
+        const cacheKey = [
+            'storefront',
+            'customers',
+            'orders',
+            authCustomer.id,
+            JSON.stringify({
+                storeId: storeId ?? null,
+                limit,
+                offset,
+                status: status ?? null,
+            }),
+        ];
+        return this.cache.getOrSetVersioned(authCustomer.companyId, cacheKey, async () => {
+            const where = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, authCustomer.companyId), (0, drizzle_orm_1.eq)(schema_1.orders.customerId, authCustomer.id), storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, storeId) : undefined, status ? (0, drizzle_orm_1.eq)(schema_1.orders.status, status) : undefined);
+            const rows = await this.db
+                .select({
+                id: schema_1.orders.id,
+                orderNumber: schema_1.orders.orderNumber,
+                status: schema_1.orders.status,
+                createdAt: schema_1.orders.createdAt,
+                currency: schema_1.orders.currency,
+                totalMinor: schema_1.orders.total,
+            })
+                .from(schema_1.orders)
+                .where(where)
+                .orderBy((0, drizzle_orm_1.desc)(schema_1.orders.createdAt))
+                .limit(limit)
+                .offset(offset)
+                .execute();
+            const [{ count }] = await this.db
+                .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+                .from(schema_1.orders)
+                .where(where)
+                .execute();
+            const orderIds = rows.map((o) => o.id);
+            const itemRows = orderIds.length > 0
+                ? await this.db
+                    .select({
+                    id: schema_1.orderItems.id,
+                    orderId: schema_1.orderItems.orderId,
+                    variantId: schema_1.orderItems.variantId,
+                    quantity: schema_1.orderItems.quantity,
+                    name: schema_1.orderItems.nameSnapshot ??
+                        schema_1.orderItems.name,
+                    productId: schema_1.products.id,
+                    productName: schema_1.products.name,
+                    productSlug: schema_1.products.slug,
+                    imageUrl: schema_1.productImages.url,
+                })
+                    .from(schema_1.orderItems)
+                    .leftJoin(schema_1.productVariants, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, schema_1.orderItems.companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.id, schema_1.orderItems.variantId)))
+                    .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productVariants.productId)))
+                    .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, schema_1.products.companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, schema_1.products.defaultImageId)))
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, authCustomer.companyId), (0, drizzle_orm_1.inArray)(schema_1.orderItems.orderId, orderIds)))
+                    .execute()
+                : [];
+            const itemsByOrderId = new Map();
+            for (const it of itemRows) {
+                const list = itemsByOrderId.get(it.orderId) ?? [];
+                list.push({
+                    id: it.id,
+                    variantId: it.variantId ?? null,
+                    quantity: Number(it.quantity ?? 0),
+                    name: (it.name ?? it.productName ?? '').trim(),
+                    imageUrl: it.imageUrl ?? null,
+                    product: it.productId
+                        ? {
+                            id: it.productId,
+                            name: it.productName ?? null,
+                            slug: it.productSlug ?? null,
+                        }
+                        : null,
+                });
+                itemsByOrderId.set(it.orderId, list);
+            }
+            const items = rows.map((o) => ({
+                id: o.id,
+                orderNumber: o.orderNumber ?? null,
+                totalMinor: o.totalMinor,
+                status: o.status,
+                createdAt: o.createdAt,
+                currency: o.currency ?? null,
+                items: itemsByOrderId.get(o.id) ?? [],
+            }));
+            return {
+                items,
+                total: Number(count ?? 0),
+                limit,
+                offset,
+            };
+        });
+    }
+    async listCustomerPurchasedProducts(authCustomer, storeId, opts) {
+        const limit = Math.min(Number(opts?.limit ?? 20), 100);
+        const offset = Math.max(Number(opts?.offset ?? 0), 0);
+        const cacheKey = [
+            'storefront',
+            'customers',
+            'products',
+            authCustomer.id,
+            JSON.stringify({ storeId: storeId ?? null, limit, offset }),
+        ];
+        return this.cache.getOrSetVersioned(authCustomer.companyId, cacheKey, async () => {
+            const rows = await this.db
+                .select({
+                id: schema_1.products.id,
+                name: schema_1.products.name,
+                slug: schema_1.products.slug,
+                imageUrl: schema_1.productImages.url,
+                lastOrderedAt: (0, drizzle_orm_1.sql) `MAX(${schema_1.orders.createdAt})`,
+            })
+                .from(schema_1.orderItems)
+                .innerJoin(schema_1.orders, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, schema_1.orderItems.companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, schema_1.orderItems.orderId)))
+                .leftJoin(schema_1.productVariants, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, schema_1.orderItems.companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.id, schema_1.orderItems.variantId)))
+                .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productVariants.productId)))
+                .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, schema_1.products.companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, schema_1.products.defaultImageId)))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, authCustomer.companyId), (0, drizzle_orm_1.eq)(schema_1.orders.customerId, authCustomer.id), storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, storeId) : undefined, (0, drizzle_orm_1.sql) `${schema_1.products.id} IS NOT NULL`))
+                .groupBy(schema_1.products.id, schema_1.products.name, schema_1.products.slug, schema_1.productImages.url)
+                .orderBy((0, drizzle_orm_1.sql) `MAX(${schema_1.orders.createdAt}) DESC`)
+                .limit(limit)
+                .offset(offset)
+                .execute();
+            const [{ count }] = await this.db
+                .select({
+                count: (0, drizzle_orm_1.sql) `COUNT(DISTINCT ${schema_1.products.id})`,
+            })
+                .from(schema_1.orderItems)
+                .innerJoin(schema_1.orders, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, schema_1.orderItems.companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, schema_1.orderItems.orderId)))
+                .leftJoin(schema_1.productVariants, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, schema_1.orderItems.companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.id, schema_1.orderItems.variantId)))
+                .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productVariants.productId)))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, authCustomer.companyId), (0, drizzle_orm_1.eq)(schema_1.orders.customerId, authCustomer.id), storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, storeId) : undefined, (0, drizzle_orm_1.sql) `${schema_1.products.id} IS NOT NULL`))
+                .execute();
+            return { items: rows, total: Number(count ?? 0), limit, offset };
+        });
+    }
+    async listCustomerReviews(authCustomer, storeId, opts) {
+        const limit = Math.min(Number(opts?.limit ?? 20), 100);
+        const offset = Math.max(Number(opts?.offset ?? 0), 0);
+        const [profile] = await this.db
+            .select({
+            loginEmail: schema_1.customerCredentials.email,
+            billingEmail: schema_1.customers.billingEmail,
+        })
+            .from(schema_1.customers)
+            .leftJoin(schema_1.customerCredentials, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customerCredentials.customerId, schema_1.customers.id), (0, drizzle_orm_1.eq)(schema_1.customerCredentials.companyId, schema_1.customers.companyId)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customers.id, authCustomer.id), (0, drizzle_orm_1.eq)(schema_1.customers.companyId, authCustomer.companyId)))
+            .execute();
+        const emails = [
+            profile?.loginEmail?.trim()?.toLowerCase() ?? null,
+            profile?.billingEmail?.trim()?.toLowerCase() ?? null,
+        ].filter(Boolean);
+        const cacheKey = [
+            'storefront',
+            'customers',
+            'reviews',
+            authCustomer.id,
+            JSON.stringify({
+                storeId: storeId ?? null,
+                limit,
+                offset,
+                emails: [...emails].sort(),
+            }),
+        ];
+        return this.cache.getOrSetVersioned(authCustomer.companyId, cacheKey, async () => {
+            const where = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productReviews.companyId, authCustomer.companyId), storeId ? (0, drizzle_orm_1.eq)(schema_1.productReviews.storeId, storeId) : undefined, (0, drizzle_orm_1.sql) `${schema_1.productReviews.deletedAt} IS NULL`, (0, drizzle_orm_1.or)((0, drizzle_orm_1.eq)(schema_1.productReviews.userId, authCustomer.id), emails.length
+                ? (0, drizzle_orm_1.inArray)((0, drizzle_orm_1.sql) `LOWER(${schema_1.productReviews.authorEmail})`, emails)
+                : undefined));
+            const items = await this.db
+                .select({
+                id: schema_1.productReviews.id,
+                productId: schema_1.productReviews.productId,
+                rating: schema_1.productReviews.rating,
+                review: schema_1.productReviews.review,
+                createdAt: schema_1.productReviews.createdAt,
+                productName: schema_1.products.name,
+                productSlug: schema_1.products.slug,
+                productImageUrl: schema_1.productImages.url,
+            })
+                .from(schema_1.productReviews)
+                .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productReviews.companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productReviews.productId)))
+                .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, schema_1.products.companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, schema_1.products.defaultImageId)))
+                .where(where)
+                .orderBy((0, drizzle_orm_1.desc)(schema_1.productReviews.createdAt))
+                .limit(limit)
+                .offset(offset)
+                .execute();
+            const [{ count }] = await this.db
+                .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+                .from(schema_1.productReviews)
+                .where(where)
+                .execute();
+            return {
+                items: items.map((r) => ({
+                    id: r.id,
+                    productId: r.productId,
+                    rating: r.rating,
+                    review: r.review,
+                    createdAt: r.createdAt,
+                    product: r.productId
+                        ? {
+                            id: r.productId,
+                            name: r.productName ?? null,
+                            slug: r.productSlug ?? null,
+                            imageUrl: r.productImageUrl ?? null,
+                        }
+                        : null,
+                })),
+                total: Number(count ?? 0),
+                limit,
+                offset,
+            };
+        });
+    }
 };
 exports.CustomersService = CustomersService;
 exports.CustomersService = CustomersService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
-    __metadata("design:paramtypes", [Object])
+    __metadata("design:paramtypes", [Object, cache_service_1.CacheService])
 ], CustomersService);
 //# sourceMappingURL=customers.service.js.map

@@ -10,6 +10,7 @@ export declare class StorefrontAnalyticsService {
         id: string;
         companyId: string;
         storeId: string | null;
+        referrer: string | null;
         title: string | null;
         meta: unknown;
         cartId: string | null;
@@ -19,7 +20,6 @@ export declare class StorefrontAnalyticsService {
         sessionId: string;
         event: string;
         path: string | null;
-        referrer: string | null;
         ts: Date;
     }>;
 }

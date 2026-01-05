@@ -44,6 +44,7 @@
     "@nestjs/platform-socket.io": "^11.1.2",
     "@nestjs/schedule": "^5.0.1",
     "@nestjs/swagger": "^11.1.5",
+    "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.2",
     "@sendgrid/mail": "^8.1.4",
     "@webundsoehne/nest-fastify-file-upload": "^2.3.1",

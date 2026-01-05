@@ -77,14 +77,14 @@ export declare class ReviewsService {
         updatedAt: Date;
         deletedAt: Date | null;
     }>;
-    createStorefrontReview(companyId: string, productId: string, dto: CreateStorefrontReviewDto, ip?: string, userAgent?: string): Promise<{
+    createStorefrontReview(companyId: string, storeId: string, productId: string, dto: CreateStorefrontReviewDto, ip?: string, userAgent?: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        userId: string | null;
         storeId: string | null;
+        userId: string | null;
         productId: string;
         authorName: string;
         authorEmail: string;

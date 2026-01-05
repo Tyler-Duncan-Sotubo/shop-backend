@@ -64,6 +64,7 @@ export declare class AdminCustomersService {
         isVerified: boolean | null;
         lastLoginAt: Date | null;
     }[]>;
+    listPeople(companyId: string, opts: ListCustomersDto): Promise<QueryResult<import("drizzle-orm").Assume<this["row"], QueryResultRow>>>;
     getCustomer(companyId: string, customerId: string): Promise<{
         addresses: {
             id: string;

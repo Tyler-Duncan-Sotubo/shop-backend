@@ -27,9 +27,9 @@ export declare class ShippingZonesService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        description: string | null;
         storeId: string;
         metadata: Record<string, any> | null;
+        description: string | null;
         priority: number;
     }>;
     updateZone(companyId: string, zoneId: string, patch: Partial<CreateZoneDto>, user?: User, ip?: string): Promise<{
@@ -88,9 +88,9 @@ export declare class ShippingZonesService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        description: string | null;
         storeId: string;
         metadata: Record<string, any> | null;
+        description: string | null;
         priority: number;
     } | null | undefined>;
 }

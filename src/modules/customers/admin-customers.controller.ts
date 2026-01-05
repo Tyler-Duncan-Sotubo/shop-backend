@@ -96,7 +96,7 @@ export class AdminCustomersController extends BaseController {
   @Get()
   @SetMetadata('permissions', ['customers.read'])
   list(@CurrentUser() user: User, @Query() dto: ListCustomersDto) {
-    return this.adminCustomers.listCustomers(user.companyId, dto);
+    return this.adminCustomers.listPeople(user.companyId, dto);
   }
 
   @Get(':customerId')

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { and, eq, ilike, inArray, or } from 'drizzle-orm';
+import { and, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import { db } from 'src/drizzle/types/drizzle';
 import {
@@ -13,6 +13,7 @@ import {
   customers,
   customerAddresses,
   customerCredentials,
+  subscribers,
 } from 'src/drizzle/schema';
 import { CacheService } from 'src/common/cache/cache.service';
 import {
@@ -632,6 +633,139 @@ export class AdminCustomersService {
       .limit(opts.limit)
       .offset(opts.offset)
       .execute();
+  }
+
+  async listPeople(companyId: string, opts: ListCustomersDto) {
+    const s = opts.search?.trim();
+    const includeCustomers =
+      opts.type === 'all'
+        ? (opts.includeCustomers ?? true)
+        : opts.type === 'customer';
+    const includeSubscribers =
+      opts.type === 'all'
+        ? (opts.includeSubscribers ?? true)
+        : opts.type === 'subscriber';
+
+    // If storeId is optional, we’ll apply it to both sides.
+    // includeInactive applies only to customers.
+    const rows = await this.db.execute(sql`
+    WITH people AS (
+      ${
+        includeCustomers
+          ? sql`
+      SELECT
+        ${customers.id}::text                         AS "id",
+        'customer'::text                             AS "entityType",
+        ${customers.storeId}::text                    AS "storeId",
+        ${customers.displayName}                      AS "displayName",
+        ${customers.firstName}                        AS "firstName",
+        ${customers.lastName}                         AS "lastName",
+        ${customers.billingEmail}                     AS "email",
+        ${customers.phone}                            AS "phone",
+        CASE WHEN ${customers.marketingOptIn} THEN 'subscribed' ELSE 'unsubscribed' END
+                                                     AS "marketingStatus",
+        ${customers.createdAt}                        AS "createdAt",
+        ${customers.isActive}                         AS "isActive",
+        ${customerCredentials.email}                  AS "loginEmail",
+        ${customerCredentials.isVerified}             AS "isVerified",
+        ${customerCredentials.lastLoginAt}            AS "lastLoginAt"
+      FROM ${customers}
+      LEFT JOIN ${customerCredentials}
+        ON ${customerCredentials.companyId} = ${customers.companyId}
+       AND ${customerCredentials.customerId} = ${customers.id}
+      WHERE ${customers.companyId} = ${companyId}
+        ${opts.storeId ? sql`AND ${customers.storeId} = ${opts.storeId}` : sql``}
+        ${opts.includeInactive ? sql`` : sql`AND ${customers.isActive} = true`}
+        ${
+          s
+            ? sql`AND (
+            ${customers.displayName} ILIKE ${'%' + s + '%'} OR
+            ${customers.billingEmail} ILIKE ${'%' + s + '%'} OR
+            ${customerCredentials.email} ILIKE ${'%' + s + '%'} OR
+            ${customers.phone} ILIKE ${'%' + s + '%'}
+        )`
+            : sql``
+        }
+      `
+          : sql`
+      SELECT
+        NULL::text AS "id",
+        'customer'::text AS "entityType",
+        NULL::text AS "storeId",
+        NULL::text AS "displayName",
+        NULL::text AS "firstName",
+        NULL::text AS "lastName",
+        NULL::text AS "email",
+        NULL::text AS "phone",
+        NULL::text AS "marketingStatus",
+        NULL::timestamptz AS "createdAt",
+        NULL::boolean AS "isActive",
+        NULL::text AS "loginEmail",
+        NULL::boolean AS "isVerified",
+        NULL::timestamptz AS "lastLoginAt"
+      WHERE false
+      `
+      }
+
+      UNION ALL
+
+      ${
+        includeSubscribers
+          ? sql`
+      SELECT
+        ${subscribers.id}::text                       AS "id",
+        'subscriber'::text                           AS "entityType",
+        ${subscribers.storeId}::text                  AS "storeId",
+        NULL::text                                   AS "displayName",
+        NULL::text                                   AS "firstName",
+        NULL::text                                   AS "lastName",
+        ${subscribers.email}                          AS "email",
+        NULL::text                                   AS "phone",
+        ${subscribers.status}                         AS "marketingStatus",
+        ${subscribers.createdAt}                      AS "createdAt",
+        NULL::boolean                                 AS "isActive",
+        NULL::text                                    AS "loginEmail",
+        NULL::boolean                                 AS "isVerified",
+        NULL::timestamptz                             AS "lastLoginAt"
+      FROM ${subscribers}
+      WHERE ${subscribers.companyId} = ${companyId}
+        ${opts.storeId ? sql`AND ${subscribers.storeId} = ${opts.storeId}` : sql``}
+        ${
+          s
+            ? sql`AND (
+          ${subscribers.email} ILIKE ${'%' + s + '%'}
+        )`
+            : sql``
+        }
+      `
+          : sql`
+      SELECT
+        NULL::text AS "id",
+        'subscriber'::text AS "entityType",
+        NULL::text AS "storeId",
+        NULL::text AS "displayName",
+        NULL::text AS "firstName",
+        NULL::text AS "lastName",
+        NULL::text AS "email",
+        NULL::text AS "phone",
+        NULL::text AS "marketingStatus",
+        NULL::timestamptz AS "createdAt",
+        NULL::boolean AS "isActive",
+        NULL::text AS "loginEmail",
+        NULL::boolean AS "isVerified",
+        NULL::timestamptz AS "lastLoginAt"
+      WHERE false
+      `
+      }
+    )
+    SELECT *
+    FROM people
+    ORDER BY "createdAt" DESC NULLS LAST
+    LIMIT ${opts.limit}
+    OFFSET ${opts.offset};
+  `);
+
+    return rows;
   }
 
   async getCustomer(companyId: string, customerId: string) {

@@ -1,0 +1,2 @@
+ALTER TABLE "contact_messages" ADD COLUMN "subject" varchar(255);--> statement-breakpoint
+CREATE INDEX "contact_messages_company_subject_idx" ON "contact_messages" USING btree ("company_id","subject");

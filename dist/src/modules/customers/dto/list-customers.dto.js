@@ -14,6 +14,9 @@ const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 class ListCustomersDto {
     constructor() {
+        this.includeSubscribers = true;
+        this.includeCustomers = true;
+        this.type = 'all';
         this.limit = 50;
         this.offset = 0;
     }
@@ -35,6 +38,23 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], ListCustomersDto.prototype, "includeInactive", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => value === true || value === 'true'),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], ListCustomersDto.prototype, "includeSubscribers", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => value === true || value === 'true'),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], ListCustomersDto.prototype, "includeCustomers", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['all', 'customer', 'subscriber']),
+    __metadata("design:type", String)
+], ListCustomersDto.prototype, "type", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Type)(() => Number),

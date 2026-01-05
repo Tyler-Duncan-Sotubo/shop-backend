@@ -67,3 +67,5 @@ export * from './schema/analytics/analytics-tags.schema';
 export * from './schema/analytics/storefront-events.schema';
 export * from './schema/analytics/storefront-sessions.schema';
 export * from './schema/storefront/storefront-configs.schema';
+export * from './schema/mail/subscribers.schema';
+export * from './schema/mail/contact-messages.schema';

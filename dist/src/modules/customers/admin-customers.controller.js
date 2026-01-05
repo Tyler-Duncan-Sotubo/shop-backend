@@ -40,7 +40,7 @@ let AdminCustomersController = class AdminCustomersController extends base_contr
         return this.adminCustomers.updateCustomerAddress(user.companyId, customerId, addressId, dto, user.id);
     }
     list(user, dto) {
-        return this.adminCustomers.listCustomers(user.companyId, dto);
+        return this.adminCustomers.listPeople(user.companyId, dto);
     }
     get(user, customerId) {
         return this.adminCustomers.getCustomer(user.companyId, customerId);

@@ -45,4 +45,18 @@ export declare class CustomerAuthService {
             expiresIn: number;
         };
     }>;
+    updatePassword(companyId: string, authCustomer: {
+        id: string;
+        companyId: string;
+    }, input: {
+        currentPassword: string;
+        newPassword: string;
+    }): Promise<{
+        ok: boolean;
+        tokens: {
+            accessToken: string;
+            refreshToken: string;
+            expiresIn: number;
+        };
+    }>;
 }

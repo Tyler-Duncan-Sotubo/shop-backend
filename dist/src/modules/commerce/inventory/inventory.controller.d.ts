@@ -180,11 +180,11 @@ export declare class InventoryController extends BaseController {
             productVariantId: string;
             quantity: number;
         }[];
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;
@@ -199,11 +199,11 @@ export declare class InventoryController extends BaseController {
             productVariantId: string;
             quantity: number;
         }[];
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;

@@ -23,6 +23,7 @@ import { CurrentCompanyId } from '../iam/api-keys/decorators/current-company-id.
 import { StorefrontReviewQueryDto } from './dto/storefront-review-query.dto';
 import { CreateStorefrontReviewDto } from './dto/create-storefront-review.dto';
 import { UserAgent } from '../auth/decorator/user-agent';
+import { CurrentStoreId } from '../iam/api-keys/decorators/current-store.decorator';
 
 @Controller('catalog/reviews')
 export class ReviewsController extends BaseController {
@@ -96,6 +97,7 @@ export class ReviewsController extends BaseController {
   @ApiScopes('reviews.create')
   async createStorefrontReview(
     @CurrentCompanyId() companyId: string,
+    @CurrentStoreId() storeId: string,
     @Param('productId') productId: string,
     @Body() dto: CreateStorefrontReviewDto,
     @Ip() ip: string,
@@ -103,6 +105,7 @@ export class ReviewsController extends BaseController {
   ) {
     return this.reviewsService.createStorefrontReview(
       companyId,
+      storeId,
       productId,
       dto,
       ip,

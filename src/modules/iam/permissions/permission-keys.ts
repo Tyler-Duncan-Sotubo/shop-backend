@@ -206,4 +206,10 @@ export const PermissionKeys = [
   'quotes.create',
   'quotes.update',
   'quotes.delete',
+
+  // Mails
+  'mail.subscribers.read',
+  'mail.subscribers.update',
+  'mail.messages.read',
+  'mail.messages.update',
 ];

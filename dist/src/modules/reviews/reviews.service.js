@@ -163,7 +163,7 @@ let ReviewsService = class ReviewsService {
         }
         return updated;
     }
-    async createStorefrontReview(companyId, productId, dto, ip, userAgent) {
+    async createStorefrontReview(companyId, storeId, productId, dto, ip, userAgent) {
         await this.assertProductBelongsToCompany(companyId, productId);
         const rating = Number(dto.rating);
         if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
@@ -183,6 +183,7 @@ let ReviewsService = class ReviewsService {
             .insert(schema_1.productReviews)
             .values({
             companyId,
+            storeId,
             productId,
             userId: null,
             authorName,

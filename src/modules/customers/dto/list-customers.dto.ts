@@ -1,6 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -20,7 +21,21 @@ export class ListCustomersDto {
   @IsOptional()
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
-  includeInactive?: boolean;
+  includeInactive?: boolean; // applies to customers only
+
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  includeSubscribers?: boolean = true;
+
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  includeCustomers?: boolean = true;
+
+  @IsOptional()
+  @IsIn(['all', 'customer', 'subscriber'])
+  type: 'all' | 'customer' | 'subscriber' = 'all';
 
   @IsOptional()
   @Type(() => Number)

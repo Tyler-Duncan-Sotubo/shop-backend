@@ -7,6 +7,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ModulesModule } from './modules/modules.module';
 import { CacheModule } from './common/cache/cache.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -45,6 +46,14 @@ import { CacheModule } from './common/cache/cache.module';
         },
         isGlobal: true,
       }),
+    }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60,
+          limit: 100, // general safety net
+        },
+      ],
     }),
   ],
 })

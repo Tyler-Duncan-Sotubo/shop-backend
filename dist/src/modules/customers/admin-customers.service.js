@@ -427,6 +427,124 @@ let AdminCustomersService = class AdminCustomersService {
             .offset(opts.offset)
             .execute();
     }
+    async listPeople(companyId, opts) {
+        const s = opts.search?.trim();
+        const includeCustomers = opts.type === 'all'
+            ? (opts.includeCustomers ?? true)
+            : opts.type === 'customer';
+        const includeSubscribers = opts.type === 'all'
+            ? (opts.includeSubscribers ?? true)
+            : opts.type === 'subscriber';
+        const rows = await this.db.execute((0, drizzle_orm_1.sql) `
+    WITH people AS (
+      ${includeCustomers
+            ? (0, drizzle_orm_1.sql) `
+      SELECT
+        ${schema_1.customers.id}::text                         AS "id",
+        'customer'::text                             AS "entityType",
+        ${schema_1.customers.storeId}::text                    AS "storeId",
+        ${schema_1.customers.displayName}                      AS "displayName",
+        ${schema_1.customers.firstName}                        AS "firstName",
+        ${schema_1.customers.lastName}                         AS "lastName",
+        ${schema_1.customers.billingEmail}                     AS "email",
+        ${schema_1.customers.phone}                            AS "phone",
+        CASE WHEN ${schema_1.customers.marketingOptIn} THEN 'subscribed' ELSE 'unsubscribed' END
+                                                     AS "marketingStatus",
+        ${schema_1.customers.createdAt}                        AS "createdAt",
+        ${schema_1.customers.isActive}                         AS "isActive",
+        ${schema_1.customerCredentials.email}                  AS "loginEmail",
+        ${schema_1.customerCredentials.isVerified}             AS "isVerified",
+        ${schema_1.customerCredentials.lastLoginAt}            AS "lastLoginAt"
+      FROM ${schema_1.customers}
+      LEFT JOIN ${schema_1.customerCredentials}
+        ON ${schema_1.customerCredentials.companyId} = ${schema_1.customers.companyId}
+       AND ${schema_1.customerCredentials.customerId} = ${schema_1.customers.id}
+      WHERE ${schema_1.customers.companyId} = ${companyId}
+        ${opts.storeId ? (0, drizzle_orm_1.sql) `AND ${schema_1.customers.storeId} = ${opts.storeId}` : (0, drizzle_orm_1.sql) ``}
+        ${opts.includeInactive ? (0, drizzle_orm_1.sql) `` : (0, drizzle_orm_1.sql) `AND ${schema_1.customers.isActive} = true`}
+        ${s
+                ? (0, drizzle_orm_1.sql) `AND (
+            ${schema_1.customers.displayName} ILIKE ${'%' + s + '%'} OR
+            ${schema_1.customers.billingEmail} ILIKE ${'%' + s + '%'} OR
+            ${schema_1.customerCredentials.email} ILIKE ${'%' + s + '%'} OR
+            ${schema_1.customers.phone} ILIKE ${'%' + s + '%'}
+        )`
+                : (0, drizzle_orm_1.sql) ``}
+      `
+            : (0, drizzle_orm_1.sql) `
+      SELECT
+        NULL::text AS "id",
+        'customer'::text AS "entityType",
+        NULL::text AS "storeId",
+        NULL::text AS "displayName",
+        NULL::text AS "firstName",
+        NULL::text AS "lastName",
+        NULL::text AS "email",
+        NULL::text AS "phone",
+        NULL::text AS "marketingStatus",
+        NULL::timestamptz AS "createdAt",
+        NULL::boolean AS "isActive",
+        NULL::text AS "loginEmail",
+        NULL::boolean AS "isVerified",
+        NULL::timestamptz AS "lastLoginAt"
+      WHERE false
+      `}
+
+      UNION ALL
+
+      ${includeSubscribers
+            ? (0, drizzle_orm_1.sql) `
+      SELECT
+        ${schema_1.subscribers.id}::text                       AS "id",
+        'subscriber'::text                           AS "entityType",
+        ${schema_1.subscribers.storeId}::text                  AS "storeId",
+        NULL::text                                   AS "displayName",
+        NULL::text                                   AS "firstName",
+        NULL::text                                   AS "lastName",
+        ${schema_1.subscribers.email}                          AS "email",
+        NULL::text                                   AS "phone",
+        ${schema_1.subscribers.status}                         AS "marketingStatus",
+        ${schema_1.subscribers.createdAt}                      AS "createdAt",
+        NULL::boolean                                 AS "isActive",
+        NULL::text                                    AS "loginEmail",
+        NULL::boolean                                 AS "isVerified",
+        NULL::timestamptz                             AS "lastLoginAt"
+      FROM ${schema_1.subscribers}
+      WHERE ${schema_1.subscribers.companyId} = ${companyId}
+        ${opts.storeId ? (0, drizzle_orm_1.sql) `AND ${schema_1.subscribers.storeId} = ${opts.storeId}` : (0, drizzle_orm_1.sql) ``}
+        ${s
+                ? (0, drizzle_orm_1.sql) `AND (
+          ${schema_1.subscribers.email} ILIKE ${'%' + s + '%'}
+        )`
+                : (0, drizzle_orm_1.sql) ``}
+      `
+            : (0, drizzle_orm_1.sql) `
+      SELECT
+        NULL::text AS "id",
+        'subscriber'::text AS "entityType",
+        NULL::text AS "storeId",
+        NULL::text AS "displayName",
+        NULL::text AS "firstName",
+        NULL::text AS "lastName",
+        NULL::text AS "email",
+        NULL::text AS "phone",
+        NULL::text AS "marketingStatus",
+        NULL::timestamptz AS "createdAt",
+        NULL::boolean AS "isActive",
+        NULL::text AS "loginEmail",
+        NULL::boolean AS "isVerified",
+        NULL::timestamptz AS "lastLoginAt"
+      WHERE false
+      `}
+    )
+    SELECT *
+    FROM people
+    ORDER BY "createdAt" DESC NULLS LAST
+    LIMIT ${opts.limit}
+    OFFSET ${opts.offset};
+  `);
+        return rows;
+    }
     async getCustomer(companyId, customerId) {
         return this.cache.getOrSetVersioned(companyId, ['customers', 'detail', customerId, 'with-addresses'], async () => {
             const [customer] = await this.db

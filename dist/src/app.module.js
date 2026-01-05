@@ -16,6 +16,7 @@ const bullmq_1 = require("@nestjs/bullmq");
 const schedule_1 = require("@nestjs/schedule");
 const modules_module_1 = require("./modules/modules.module");
 const cache_module_1 = require("./common/cache/cache.module");
+const throttler_1 = require("@nestjs/throttler");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -57,6 +58,14 @@ exports.AppModule = AppModule = __decorate([
                     },
                     isGlobal: true,
                 }),
+            }),
+            throttler_1.ThrottlerModule.forRoot({
+                throttlers: [
+                    {
+                        ttl: 60,
+                        limit: 100,
+                    },
+                ],
             }),
         ],
     })

@@ -83,4 +83,6 @@ __exportStar(require("./schema/analytics/analytics-tags.schema"), exports);
 __exportStar(require("./schema/analytics/storefront-events.schema"), exports);
 __exportStar(require("./schema/analytics/storefront-sessions.schema"), exports);
 __exportStar(require("./schema/storefront/storefront-configs.schema"), exports);
+__exportStar(require("./schema/mail/subscribers.schema"), exports);
+__exportStar(require("./schema/mail/contact-messages.schema"), exports);
 //# sourceMappingURL=schema.js.map

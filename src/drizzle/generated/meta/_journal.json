@@ -169,6 +169,20 @@
       "when": 1767237856380,
       "tag": "0023_futuristic_zzzax",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1767559540433,
+      "tag": "0024_amusing_lockjaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1767562856713,
+      "tag": "0025_fresh_magus",
+      "breakpoints": true
     }
   ]
 }

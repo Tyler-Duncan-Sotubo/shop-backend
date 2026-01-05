@@ -15,6 +15,7 @@ export declare class StorefrontAnalyticsController {
                 id: string;
                 companyId: string;
                 storeId: string | null;
+                referrer: string | null;
                 title: string | null;
                 meta: unknown;
                 cartId: string | null;
@@ -24,7 +25,6 @@ export declare class StorefrontAnalyticsController {
                 sessionId: string;
                 event: string;
                 path: string | null;
-                referrer: string | null;
                 ts: Date;
             };
         };

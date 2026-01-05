@@ -226,4 +226,78 @@ export class CustomerAuthService {
       tokens,
     };
   }
+
+  // -----------------------------
+  // Update password (NEW)
+  // -----------------------------
+  /**
+   * Updates the customer's password.
+   * - Verifies current password matches existing hash first
+   * - Hashes new password and saves it
+   */
+  async updatePassword(
+    companyId: string,
+    authCustomer: { id: string; companyId: string }, // matches your AuthCustomer shape usage
+    input: { currentPassword: string; newPassword: string },
+  ) {
+    // Ensure the customer belongs to this company (extra safety)
+    if (authCustomer.companyId !== companyId) {
+      throw new UnauthorizedException('Invalid company');
+    }
+
+    const [creds] = await this.db
+      .select({
+        id: customerCredentials.id,
+        passwordHash: customerCredentials.passwordHash,
+        email: customerCredentials.email,
+      })
+      .from(customerCredentials)
+      .where(
+        and(
+          eq(customerCredentials.companyId, companyId),
+          eq(customerCredentials.customerId, authCustomer.id),
+        ),
+      )
+      .execute();
+
+    if (!creds || !creds.passwordHash) {
+      throw new UnauthorizedException('Credentials not found');
+    }
+
+    // ✅ 1) Verify current password
+    const ok = await bcrypt.compare(input.currentPassword, creds.passwordHash);
+    if (!ok) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    // (Optional) prevent re-using the same password
+    const sameAsOld = await bcrypt.compare(
+      input.newPassword,
+      creds.passwordHash,
+    );
+    if (sameAsOld) {
+      throw new BadRequestException('New password must be different');
+    }
+
+    // ✅ 2) Hash and update
+    const nextHash = await bcrypt.hash(input.newPassword, 10);
+
+    await this.db
+      .update(customerCredentials)
+      .set({
+        passwordHash: nextHash,
+        updatedAt: new Date() as any, // remove "as any" if you have updatedAt column typed
+      })
+      .where(eq(customerCredentials.id, creds.id))
+      .execute();
+
+    // ✅ 3) (Optional) re-issue tokens so client can keep using new auth state
+    const tokens = await this.issueTokens({
+      customerId: authCustomer.id,
+      companyId,
+      email: creds.email,
+    });
+
+    return { ok: true, tokens };
+  }
 }

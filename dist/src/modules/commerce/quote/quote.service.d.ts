@@ -15,14 +15,14 @@ export declare class QuoteService {
     private findQuoteByIdOrThrow;
     private bumpCompany;
     create(companyId: string, dto: CreateQuoteDto, user?: User, ip?: string): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
+        status: string;
+        expiresAt: Date | null;
         meta: Record<string, unknown> | null;
         customerEmail: string;
         customerNote: string | null;
@@ -31,14 +31,14 @@ export declare class QuoteService {
         convertedOrderId: string | null;
     }>;
     createFromStorefront(storeId: string, dto: CreateQuoteDto, ip?: string): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
+        status: string;
+        expiresAt: Date | null;
         meta: Record<string, unknown> | null;
         customerEmail: string;
         customerNote: string | null;
@@ -82,14 +82,14 @@ export declare class QuoteService {
             createdAt: Date;
             deletedAt: Date | null;
         }[];
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
+        status: string;
+        expiresAt: Date | null;
         meta: Record<string, unknown> | null;
         customerEmail: string;
         customerNote: string | null;

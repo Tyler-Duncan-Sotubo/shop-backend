@@ -255,6 +255,7 @@ export class ReviewsService {
   // =====================================================================
   async createStorefrontReview(
     companyId: string,
+    storeId: string,
     productId: string,
     dto: CreateStorefrontReviewDto,
     ip?: string,
@@ -283,6 +284,7 @@ export class ReviewsService {
       .insert(productReviews)
       .values({
         companyId,
+        storeId,
         productId,
         userId: null,
 

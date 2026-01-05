@@ -119,3 +119,7 @@ export * from './schema/analytics/storefront-sessions.schema';
 
 // Storefront
 export * from './schema/storefront/storefront-configs.schema';
+
+// Mail
+export * from './schema/mail/subscribers.schema';
+export * from './schema/mail/contact-messages.schema';

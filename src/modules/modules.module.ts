@@ -24,6 +24,7 @@ import { MediaModule } from './media/media.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { StorefrontConfigModule } from './commerce/storefront-config/storefront-config.module';
 import { QuoteModule } from './commerce/quote/quote.module';
+import { MailModule } from './mail/mail.module';
 
 @Global()
 @Module({
@@ -53,6 +54,7 @@ import { QuoteModule } from './commerce/quote/quote.module';
     AnalyticsModule,
     StorefrontConfigModule,
     QuoteModule,
+    MailModule,
   ],
   exports: [
     AuditModule,

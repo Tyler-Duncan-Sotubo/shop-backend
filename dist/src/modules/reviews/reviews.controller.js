@@ -25,6 +25,7 @@ const current_company_id_decorator_1 = require("../iam/api-keys/decorators/curre
 const storefront_review_query_dto_1 = require("./dto/storefront-review-query.dto");
 const create_storefront_review_dto_1 = require("./dto/create-storefront-review.dto");
 const user_agent_1 = require("../auth/decorator/user-agent");
+const current_store_decorator_1 = require("../iam/api-keys/decorators/current-store.decorator");
 let ReviewsController = class ReviewsController extends base_controller_1.BaseController {
     constructor(reviewsService) {
         super();
@@ -46,8 +47,8 @@ let ReviewsController = class ReviewsController extends base_controller_1.BaseCo
         const reviews = await this.reviewsService.listStorefrontReviewsByProduct(companyId, productId, query);
         return reviews;
     }
-    async createStorefrontReview(companyId, productId, dto, ip, userAgent) {
-        return this.reviewsService.createStorefrontReview(companyId, productId, dto, ip, userAgent);
+    async createStorefrontReview(companyId, storeId, productId, dto, ip, userAgent) {
+        return this.reviewsService.createStorefrontReview(companyId, storeId, productId, dto, ip, userAgent);
     }
 };
 exports.ReviewsController = ReviewsController;
@@ -101,12 +102,13 @@ __decorate([
     (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
     (0, api_scopes_decorator_1.ApiScopes)('reviews.create'),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
-    __param(1, (0, common_1.Param)('productId')),
-    __param(2, (0, common_1.Body)()),
-    __param(3, (0, common_1.Ip)()),
-    __param(4, (0, user_agent_1.UserAgent)()),
+    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(2, (0, common_1.Param)('productId')),
+    __param(3, (0, common_1.Body)()),
+    __param(4, (0, common_1.Ip)()),
+    __param(5, (0, user_agent_1.UserAgent)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, create_storefront_review_dto_1.CreateStorefrontReviewDto, String, String]),
+    __metadata("design:paramtypes", [String, String, String, create_storefront_review_dto_1.CreateStorefrontReviewDto, String, String]),
     __metadata("design:returntype", Promise)
 ], ReviewsController.prototype, "createStorefrontReview", null);
 exports.ReviewsController = ReviewsController = __decorate([

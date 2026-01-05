@@ -143,5 +143,9 @@ exports.PermissionKeys = [
     'quotes.create',
     'quotes.update',
     'quotes.delete',
+    'mail.subscribers.read',
+    'mail.subscribers.update',
+    'mail.messages.read',
+    'mail.messages.update',
 ];
 //# sourceMappingURL=permission-keys.js.map

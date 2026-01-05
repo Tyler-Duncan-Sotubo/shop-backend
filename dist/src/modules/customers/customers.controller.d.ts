@@ -36,6 +36,17 @@ export declare class CustomersController {
             expiresIn: number;
         };
     }>;
+    updatePassword(customer: AuthCustomer, body: {
+        currentPassword: string;
+        newPassword: string;
+    }, companyId: string): Promise<{
+        ok: boolean;
+        tokens: {
+            accessToken: string;
+            refreshToken: string;
+            expiresIn: number;
+        };
+    }>;
     getProfile(customer: AuthCustomer): Promise<{
         id: string;
         companyId: string;
@@ -87,9 +98,9 @@ export declare class CustomersController {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        phone: string | null;
         firstName: string | null;
         lastName: string | null;
-        phone: string | null;
         customerId: string;
         label: string | null;
         line1: string;
@@ -121,5 +132,133 @@ export declare class CustomersController {
     }>;
     deleteAddress(customer: AuthCustomer, id: string): Promise<{
         success: boolean;
+    }>;
+    getCustomerActivity(customer: AuthCustomer, storeId: string): Promise<{
+        orders: ({
+            id: any;
+            orderNumber: any;
+            status: any;
+            createdAt: any;
+            currency: any;
+            totalMinor: any;
+        } | {
+            id: any;
+            orderNumber: any;
+            status: any;
+            createdAt: any;
+            currency: any;
+            totalMinor: any;
+        })[];
+        products: {
+            id: string;
+            name: string;
+            slug: string;
+            imageUrl: string | null;
+            lastOrderedAt: Date;
+        }[];
+        quotes: {
+            id: string;
+            storeId: string;
+            status: string;
+            customerEmail: string;
+            customerNote: string | null;
+            expiresAt: Date | null;
+            createdAt: Date;
+        }[];
+        reviews: {
+            id: string;
+            productId: string;
+            rating: number;
+            review: string;
+            createdAt: Date;
+            product: {
+                id: string;
+                name: any;
+                slug: any;
+                imageUrl: any;
+            } | null;
+        }[];
+    }>;
+    listMyOrders(customer: AuthCustomer, storeId: string, q: {
+        limit?: string;
+        offset?: string;
+        status?: string;
+    }): Promise<{
+        items: {
+            id: string;
+            orderNumber: string | null;
+            status: string;
+            createdAt: Date;
+            currency: string | null;
+            items: {
+                id: string;
+                variantId: string | null;
+                quantity: number;
+                name: string;
+                imageUrl: string | null;
+                product: {
+                    id: string;
+                    name: string | null;
+                    slug: string | null;
+                } | null;
+            }[];
+        }[];
+        total: number;
+        limit: number;
+        offset: number;
+    }>;
+    listMyProducts(customer: AuthCustomer, storeId: string, q: {
+        limit?: string;
+        offset?: string;
+    }): Promise<{
+        items: ({
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: any;
+            lastOrderedAt: Date;
+        } | {
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: any;
+            lastOrderedAt: Date;
+        } | {
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: any;
+            lastOrderedAt: Date;
+        } | {
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: any;
+            lastOrderedAt: Date;
+        })[];
+        total: number;
+        limit: number;
+        offset: number;
+    }>;
+    listMyReviews(customer: AuthCustomer, storeId: string, q: {
+        limit?: string;
+        offset?: string;
+    }): Promise<{
+        items: {
+            id: string;
+            productId: string;
+            rating: number;
+            review: string;
+            createdAt: Date;
+            product: {
+                id: string;
+                name: any;
+                slug: any;
+                imageUrl: any;
+            } | null;
+        }[];
+        total: number;
+        limit: number;
+        offset: number;
     }>;
 }

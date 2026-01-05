@@ -59,20 +59,7 @@ export declare class AdminCustomersController extends BaseController {
         createdAt: Date;
         updatedAt: Date;
     }>;
-    list(user: User, dto: ListCustomersDto): Promise<{
-        id: string;
-        displayName: string | null;
-        firstName: string | null;
-        lastName: string | null;
-        billingEmail: string | null;
-        phone: string | null;
-        marketingOptIn: boolean;
-        createdAt: Date;
-        isActive: boolean;
-        loginEmail: string | null;
-        isVerified: boolean | null;
-        lastLoginAt: Date | null;
-    }[]>;
+    list(user: User, dto: ListCustomersDto): Promise<QueryResult<import("drizzle-orm").Assume<this["row"], QueryResultRow>>>;
     get(user: User, customerId: string): Promise<{
         addresses: {
             id: string;

@@ -1,11 +1,13 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { EmployeeInvitationService } from './employee-invitation.service';
+import { ContactNotificationService } from './contact-notification.service';
 
 @Processor('emailQueue')
 export class EmailQueueProcessor extends WorkerHost {
   constructor(
     private readonly employeeInvitationService: EmployeeInvitationService,
+    private readonly contactNotificationService: ContactNotificationService,
   ) {
     super();
   }
@@ -15,6 +17,12 @@ export class EmailQueueProcessor extends WorkerHost {
       switch (job.name) {
         case 'sendPasswordResetEmail':
           await this.handleEmployeeInvitationEmail(job.data);
+          break;
+        case 'sendContactNotification':
+          console.log('Processing contact notification email job');
+          await this.contactNotificationService.sendContactNotification(
+            job.data,
+          );
           break;
 
         default:

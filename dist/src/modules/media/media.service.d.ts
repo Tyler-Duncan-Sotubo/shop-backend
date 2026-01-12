@@ -16,11 +16,11 @@ export declare class MediaService {
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        storeId: string;
         size: number | null;
+        storeId: string;
+        url: string;
         fileName: string;
         mimeType: string;
-        url: string;
         storageKey: string | null;
         width: number | null;
         height: number | null;
@@ -33,11 +33,11 @@ export declare class MediaService {
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        storeId: string;
         size: number | null;
+        storeId: string;
+        url: string;
         fileName: string;
         mimeType: string;
-        url: string;
         storageKey: string | null;
         width: number | null;
         height: number | null;

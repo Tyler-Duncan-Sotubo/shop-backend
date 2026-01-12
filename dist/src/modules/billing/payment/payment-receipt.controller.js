@@ -14,12 +14,11 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentReceiptController = void 0;
 const common_1 = require("@nestjs/common");
-const payment_receipt_service_1 = require("./payment-receipt.service");
+const payment_receipt_service_1 = require("./services/payment-receipt.service");
 const jwt_auth_guard_1 = require("../../auth/guards/jwt-auth.guard");
-const api_key_guard_1 = require("../../iam/api-keys/guard/api-key.guard");
 const current_user_decorator_1 = require("../../auth/decorator/current-user.decorator");
-const api_scopes_decorator_1 = require("../../iam/api-keys/decorators/api-scopes.decorator");
-const current_company_id_decorator_1 = require("../../iam/api-keys/decorators/current-company-id.decorator");
+const current_company_id_decorator_1 = require("../../storefront-config/decorators/current-company-id.decorator");
+const storefront_guard_1 = require("../../storefront-config/guard/storefront.guard");
 let PaymentReceiptController = class PaymentReceiptController {
     constructor(receipts) {
         this.receipts = receipts;
@@ -64,8 +63,7 @@ __decorate([
 ], PaymentReceiptController.prototype, "generateReceiptPdfAdmin", null);
 __decorate([
     (0, common_1.Get)('storefront/:paymentId/receipt'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('billing.payments.read'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, common_1.Param)('paymentId')),
     __metadata("design:type", Function),
@@ -74,8 +72,7 @@ __decorate([
 ], PaymentReceiptController.prototype, "getReceiptStorefront", null);
 __decorate([
     (0, common_1.Post)('storefront/:paymentId/receipt/pdf'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('billing.payments.read'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, common_1.Param)('paymentId')),
     __metadata("design:type", Function),

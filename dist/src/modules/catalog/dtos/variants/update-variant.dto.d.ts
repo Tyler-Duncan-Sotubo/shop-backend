@@ -1,4 +1,5 @@
 export declare class UpdateVariantDto {
+    removeSalePrice: boolean;
     title?: string;
     sku?: string;
     barcode?: string;

@@ -22,6 +22,9 @@ export declare class LinkedProductsService {
         billingCustomerId: string | null;
         billingProvider: string | null;
         plan: string;
+        companySize: string | null;
+        industry: string | null;
+        useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
         createdAt: Date;

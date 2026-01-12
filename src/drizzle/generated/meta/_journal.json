@@ -183,6 +183,62 @@
       "when": 1767562856713,
       "tag": "0025_fresh_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1767824940781,
+      "tag": "0026_wealthy_iceman",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1767914780356,
+      "tag": "0027_superb_pestilence",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1767994815467,
+      "tag": "0028_concerned_deathstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1768000825965,
+      "tag": "0029_gray_hellfire_club",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1768145998980,
+      "tag": "0030_cool_orphan",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1768236566461,
+      "tag": "0031_ambitious_meltdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1768251290880,
+      "tag": "0032_adorable_annihilus",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1768257384964,
+      "tag": "0033_nifty_silverclaw",
+      "breakpoints": true
     }
   ]
 }

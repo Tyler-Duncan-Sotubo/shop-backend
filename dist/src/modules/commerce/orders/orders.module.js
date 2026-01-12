@@ -18,6 +18,8 @@ const invoice_service_1 = require("../../billing/invoice/invoice.service");
 const invoice_totals_service_1 = require("../../billing/invoice/invoice-totals.service");
 const storefront_orders_controller_1 = require("./storefront-orders.controller");
 const api_keys_service_1 = require("../../iam/api-keys/api-keys.service");
+const stores_service_1 = require("../stores/stores.service");
+const aws_service_1 = require("../../../common/aws/aws.service");
 let OrdersModule = class OrdersModule {
 };
 exports.OrdersModule = OrdersModule;
@@ -33,6 +35,8 @@ exports.OrdersModule = OrdersModule = __decorate([
             invoice_service_1.InvoiceService,
             invoice_totals_service_1.InvoiceTotalsService,
             api_keys_service_1.ApiKeysService,
+            stores_service_1.StoresService,
+            aws_service_1.AwsService,
         ],
     })
 ], OrdersModule);

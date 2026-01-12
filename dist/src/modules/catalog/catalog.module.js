@@ -25,6 +25,8 @@ const inventory_stock_service_1 = require("../commerce/inventory/services/invent
 const inventory_locations_service_1 = require("../commerce/inventory/services/inventory-locations.service");
 const api_keys_service_1 = require("../iam/api-keys/api-keys.service");
 const inventory_ledger_service_1 = require("../commerce/inventory/services/inventory-ledger.service");
+const stores_service_1 = require("../commerce/stores/stores.service");
+const product_discovery_service_1 = require("./services/product-discovery.service");
 let CatalogModule = class CatalogModule {
 };
 exports.CatalogModule = CatalogModule;
@@ -50,6 +52,8 @@ exports.CatalogModule = CatalogModule = __decorate([
             inventory_locations_service_1.InventoryLocationsService,
             api_keys_service_1.ApiKeysService,
             inventory_ledger_service_1.InventoryLedgerService,
+            stores_service_1.StoresService,
+            product_discovery_service_1.ProductDiscoveryService,
         ],
         exports: [products_service_1.ProductsService, variants_service_1.VariantsService],
     })

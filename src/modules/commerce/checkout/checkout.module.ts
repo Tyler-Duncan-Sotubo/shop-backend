@@ -11,6 +11,9 @@ import { ApiKeysService } from '../../iam/api-keys/api-keys.service';
 import { InventoryLedgerService } from '../inventory/services/inventory-ledger.service';
 import { InvoiceService } from 'src/modules/billing/invoice/invoice.service';
 import { InvoiceTotalsService } from 'src/modules/billing/invoice/invoice-totals.service';
+import { StoresService } from '../stores/stores.service';
+import { AwsService } from 'src/common/aws/aws.service';
+import { CheckoutPaymentsService } from './checkout-payment.service';
 
 @Module({
   controllers: [CheckoutController, StorefrontCheckoutController],
@@ -25,6 +28,9 @@ import { InvoiceTotalsService } from 'src/modules/billing/invoice/invoice-totals
     InventoryLedgerService,
     InvoiceService,
     InvoiceTotalsService,
+    StoresService,
+    AwsService,
+    CheckoutPaymentsService,
   ],
   exports: [CheckoutService],
 })

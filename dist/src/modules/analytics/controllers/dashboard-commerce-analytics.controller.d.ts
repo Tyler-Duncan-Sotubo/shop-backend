@@ -222,6 +222,6 @@ export declare class DashboardCommerceAnalyticsController extends BaseController
             quantity: number;
             revenueMinor: number;
         }[];
-        bucket: "day" | "15m" | "month";
+        bucket: "15m" | "day" | "month";
     }>;
 }

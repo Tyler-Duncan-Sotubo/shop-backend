@@ -34,11 +34,11 @@ export declare class MailController {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        storeId: string | null;
         email: string;
+        storeId: string | null;
         status: string;
-        source: string | null;
         metadata: Record<string, any> | null;
+        source: string | null;
     }>;
     updateSubscriberStatusAdmin(user: User, params: IdParamDto, dto: UpdateSubscriberStatusDto): Promise<{
         id: string;
@@ -76,8 +76,9 @@ export declare class MailController {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        storeId: string | null;
         email: string;
+        storeId: string | null;
+        phone: string | null;
         status: string;
         metadata: {
             [k: string]: any;
@@ -86,7 +87,6 @@ export declare class MailController {
             pageUrl?: string;
             referrer?: string;
         } | null;
-        phone: string | null;
         message: string;
         company: string | null;
         subject: string | null;
@@ -117,11 +117,11 @@ export declare class MailController {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        storeId: string | null;
         email: string;
+        storeId: string | null;
         status: string;
-        source: string | null;
         metadata: Record<string, any> | null;
+        source: string | null;
     }>;
     createContactMessagePublic(companyId: string, storeId: string, dto: CreateContactMessageDto, ip: string): Promise<{
         id: string;
@@ -129,8 +129,9 @@ export declare class MailController {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        storeId: string | null;
         email: string;
+        storeId: string | null;
+        phone: string | null;
         status: string;
         metadata: {
             [k: string]: any;
@@ -139,7 +140,6 @@ export declare class MailController {
             pageUrl?: string;
             referrer?: string;
         } | null;
-        phone: string | null;
         message: string;
         company: string | null;
         subject: string | null;

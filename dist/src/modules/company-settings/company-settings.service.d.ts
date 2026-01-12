@@ -15,17 +15,17 @@ export declare class CompanySettingsService {
         optionalForStaff: boolean;
     }>;
     getOnboardingChecklist(companyId: string): Promise<{
-        branding_setup: boolean;
-        store_setup: boolean;
-        location_setup: boolean;
         payment_setup: boolean;
+        online_store_customization: boolean;
+        shipping_setup: boolean;
+        products_added: boolean;
     }>;
-    markOnboardingStep(companyId: string, step: 'store_setup_complete' | 'location_setup_complete' | 'payment_setup_complete' | 'branding_complete', value?: boolean): Promise<void>;
-    getGeneralSettings(companyId: string): Promise<{
-        storefront_url: {};
-        support_email: {};
-        support_phone: {};
+    getOnboardingOptionalChecklist(companyId: string): Promise<{
+        checkout_review: boolean;
+        tax_review: boolean;
+        team_invite: boolean;
     }>;
+    markOnboardingStep(companyId: string, step: 'payment_setup_complete' | 'online_store_customization_complete' | 'shipping_setup_complete' | 'products_added_complete' | 'checkout_review_complete' | 'tax_review_complete' | 'team_invite_complete', value?: boolean): Promise<void>;
     getPaymentSettings(companyId: string): Promise<{
         enabled_providers: {};
         default_provider: {};
@@ -42,15 +42,6 @@ export declare class CompanySettingsService {
             window_seconds: {};
             max_requests: {};
         };
-    }>;
-    getTaxSettings(companyId: string): Promise<{
-        prices_include_tax: {};
-        charge_tax: {};
-        default_country: {};
-        default_state: {};
-        rounding_strategy: {};
-        enable_vat: {};
-        vat_default_rate: {};
     }>;
     getCheckoutSettings(companyId: string): Promise<{
         allow_guest_checkout: {};

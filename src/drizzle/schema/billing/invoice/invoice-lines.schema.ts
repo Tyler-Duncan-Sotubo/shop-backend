@@ -15,7 +15,7 @@ import { productVariants } from '../../catalogs/variants.schema';
 import { products } from '../../catalogs/products.schema';
 import { companies } from '../../companies/companies.schema';
 import { invoices } from './invoices.schema';
-import { orders } from '../../orders/orders.schema';
+import { orders } from '../../commerce/orders/orders.schema';
 import { taxes } from '../tax/taxes.schema';
 
 export const invoiceLines = pgTable(

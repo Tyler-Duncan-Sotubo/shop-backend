@@ -6,5 +6,6 @@ import { AwsService } from 'src/common/aws/aws.service';
 @Module({
   controllers: [StoresController],
   providers: [StoresService, AwsService],
+  exports: [StoresService, AwsService],
 })
 export class StoresModule {}

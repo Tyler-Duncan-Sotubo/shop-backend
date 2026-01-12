@@ -174,34 +174,38 @@ export class CompanySettingsService {
     const settings = await this.getSettingsByPrefix(companyId, 'onboarding.');
 
     return {
-      branding_setup: !!settings['onboarding.branding_complete'],
-      store_setup: !!settings['onboarding.store_setup_complete'],
-      location_setup: !!settings['onboarding.location_setup_complete'],
       payment_setup: !!settings['onboarding.payment_setup_complete'],
+      online_store_customization:
+        !!settings['onboarding.online_store_customization_complete'],
+      shipping_setup: !!settings['onboarding.shipping_setup_complete'],
+      products_added: !!settings['onboarding.products_added_complete'],
+    };
+  }
+
+  async getOnboardingOptionalChecklist(companyId: string) {
+    const settings = await this.getSettingsByPrefix(companyId, 'onboarding.');
+
+    return {
+      checkout_review: !!settings['onboarding.checkout_review_complete'],
+      tax_review: !!settings['onboarding.tax_review_complete'],
+      team_invite: !!settings['onboarding.team_invite_complete'],
     };
   }
 
   async markOnboardingStep(
     companyId: string,
     step:
-      | 'store_setup_complete'
-      | 'location_setup_complete'
       | 'payment_setup_complete'
-      | 'branding_complete',
+      | 'online_store_customization_complete'
+      | 'shipping_setup_complete'
+      | 'products_added_complete'
+      | 'checkout_review_complete'
+      | 'tax_review_complete'
+      | 'team_invite_complete',
     value: boolean = true,
   ) {
     const key = `onboarding.${step}`;
     await this.setSetting(companyId, key, value);
-  }
-
-  async getGeneralSettings(companyId: string) {
-    const settings = await this.getSettingsByPrefix(companyId, 'general.');
-
-    return {
-      storefront_url: settings['general.storefront_url'] ?? '',
-      support_email: settings['general.support_email'] ?? '',
-      support_phone: settings['general.support_phone'] ?? '',
-    };
   }
 
   async getPaymentSettings(companyId: string) {
@@ -236,20 +240,6 @@ export class CompanySettingsService {
         window_seconds: settings['security.rate_limit.window_seconds'] ?? 60,
         max_requests: settings['security.rate_limit.max_requests'] ?? 120,
       },
-    };
-  }
-
-  async getTaxSettings(companyId: string) {
-    const settings = await this.getSettingsByPrefix(companyId, 'tax.');
-
-    return {
-      prices_include_tax: settings['tax.prices_include_tax'] ?? false,
-      charge_tax: settings['tax.charge_tax'] ?? true,
-      default_country: settings['tax.default_country'] ?? '',
-      default_state: settings['tax.default_state'] ?? '',
-      rounding_strategy: settings['tax.rounding_strategy'] ?? 'per_line',
-      enable_vat: settings['tax.enable_vat'] ?? false,
-      vat_default_rate: settings['tax.vat_default_rate'] ?? 0,
     };
   }
 

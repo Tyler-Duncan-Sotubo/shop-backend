@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, ilike, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { db } from 'src/drizzle/types/drizzle';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import {
@@ -22,6 +22,7 @@ import {
   productReviews,
   productOptions,
   productOptionValues,
+  media,
 } from 'src/drizzle/schema';
 import { CacheService } from 'src/common/cache/cache.service';
 import { AuditService } from 'src/modules/audit/audit.service';
@@ -36,9 +37,22 @@ import {
 import { CategoriesService } from './categories.service';
 import { LinkedProductsService } from './linked-products.service';
 import { AwsService } from 'src/common/aws/aws.service';
-import { mapProductToCollectionListResponse } from '../mappers/product.mapper';
+import {
+  buildDiscountAwarePriceHtml,
+  mapProductToCollectionListResponse,
+} from '../mappers/product.mapper';
 
-type CollectionCategory = { id: string; name: string; slug: string };
+type CollectionCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  imageUrl: string | null;
+  afterContentHtml: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  imageAltText: string | null;
+};
 
 type CollectionResponse<TProduct> = {
   category: CollectionCategory | null;
@@ -333,14 +347,7 @@ export class ProductsService {
 
   // Admin panel
   async listProductsAdmin(companyId: string, query: ProductQueryDto) {
-    const {
-      search,
-      status,
-      categoryId,
-      storeId,
-      limit = 50,
-      offset = 0,
-    } = query;
+    const { search, status, storeId, limit = 50, offset = 0 } = query;
 
     return this.cache.getOrSetVersioned(
       companyId,
@@ -349,10 +356,9 @@ export class ProductsService {
         'products',
         'admin',
         JSON.stringify({
-          storeId: storeId ?? null, // ✅
+          storeId: storeId ?? null,
           search: search ?? null,
           status: status ?? null,
-          categoryId: categoryId ?? null,
           limit,
           offset,
         }),
@@ -365,7 +371,6 @@ export class ProductsService {
           eq(products.status, effectiveStatus),
         ];
 
-        // ✅ store scope
         if (storeId) whereClauses.push(eq(products.storeId, storeId));
 
         if (status === 'archived')
@@ -374,45 +379,14 @@ export class ProductsService {
 
         if (search) whereClauses.push(ilike(products.name, `%${search}%`));
 
-        // ✅ count must respect storeId + categoryId
-        let count: number;
+        // ✅ count (no category joins)
+        const [{ count: basicCount }] = await this.db
+          .select({ count: sql<number>`count(distinct ${products.id})` })
+          .from(products)
+          .where(and(...whereClauses))
+          .execute();
 
-        if (categoryId) {
-          const countWithCategoryQuery = this.db
-            .select({ count: sql<number>`count(distinct ${products.id})` })
-            .from(products)
-            .innerJoin(
-              productCategories,
-              and(
-                eq(productCategories.companyId, products.companyId),
-                eq(productCategories.productId, products.id),
-                eq(productCategories.categoryId, categoryId),
-              ),
-            )
-            .innerJoin(
-              categories,
-              and(
-                eq(categories.companyId, products.companyId),
-                eq(categories.id, productCategories.categoryId),
-              ),
-            );
-
-          const [{ count: categoryCount }] = await countWithCategoryQuery
-            .where(and(...whereClauses))
-            .execute();
-          count = Number(categoryCount) || 0;
-        } else {
-          const countWithoutCategoryQuery = this.db
-            .select({ count: sql<number>`count(distinct ${products.id})` })
-            .from(products);
-
-          const [{ count: basicCount }] = await countWithoutCategoryQuery
-            .where(and(...whereClauses))
-            .execute();
-          count = Number(basicCount) || 0;
-        }
-
-        const total = Number(count) || 0;
+        const total = Number(basicCount) || 0;
 
         // ✅ items list must also receive storeId
         const items = await this.listProducts(
@@ -421,7 +395,40 @@ export class ProductsService {
           query,
         );
 
-        return { items, total, limit, offset };
+        // ✅ add variantCount (1 grouped query)
+        const productIds = items.map((p: any) => p.id).filter(Boolean);
+
+        if (productIds.length === 0) {
+          return { items, total, limit, offset };
+        }
+
+        const variantRows = await this.db
+          .select({
+            productId: productVariants.productId,
+            variantCount: sql<number>`COUNT(*)`,
+          })
+          .from(productVariants)
+          .where(
+            and(
+              eq(productVariants.companyId, companyId),
+              inArray(productVariants.productId, productIds),
+              sql`${productVariants.deletedAt} IS NULL`, // remove if you don't soft-delete variants
+            ),
+          )
+          .groupBy(productVariants.productId)
+          .execute();
+
+        const variantCountByProductId = new Map<string, number>();
+        for (const r of variantRows) {
+          variantCountByProductId.set(r.productId, Number(r.variantCount ?? 0));
+        }
+
+        const itemsWithVariantCount = items.map((p: any) => ({
+          ...p,
+          variantCount: variantCountByProductId.get(p.id) ?? 0,
+        }));
+
+        return { items: itemsWithVariantCount, total, limit, offset };
       },
     );
   }
@@ -1439,7 +1446,7 @@ export class ProductsService {
     const effectiveStatus = status ?? 'active';
     const attr = query.attr ?? {};
 
-    // ✅ stable stringify for cache key (sort keys + values)
+    /* ================= CACHE KEY ================= */
     const stableAttr = Object.fromEntries(
       Object.entries(attr)
         .sort(([a], [b]) => a.localeCompare(b))
@@ -1463,29 +1470,55 @@ export class ProductsService {
     ];
 
     return this.cache.getOrSetVersioned(companyId, cacheKey, async () => {
-      // A) resolve category slug -> category (include name/slug for API response)
-      const category = await this.db.query.categories.findFirst({
-        where: (c, { and, eq, isNull }) =>
+      /* ================= CATEGORY ================= */
+      const [category] = await this.db
+        .select({
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+          description: categories.description,
+          afterContentHtml: categories.afterContentHtml,
+          metaTitle: categories.metaTitle,
+          metaDescription: categories.metaDescription,
+          imageUrl: media.url,
+          imageAltText: media.altText,
+        })
+        .from(categories)
+        .leftJoin(
+          media,
           and(
-            eq(c.companyId, companyId),
-            eq(c.storeId, storeId),
-            eq(c.slug, categorySlug),
-            isNull(c.deletedAt),
+            eq(media.companyId, categories.companyId),
+            eq(media.storeId, categories.storeId),
+            eq(media.id, (categories as any).imageMediaId),
+            isNull(media.deletedAt),
           ),
-        columns: { id: true, name: true, slug: true }, // ✅ include these
-      });
+        )
+        .where(
+          and(
+            eq(categories.companyId, companyId),
+            eq(categories.storeId, storeId),
+            eq(categories.slug, categorySlug),
+            isNull(categories.deletedAt),
+          ),
+        )
+        .limit(1)
+        .execute();
 
-      if (!category) {
-        return { category: null, products: [] };
-      }
+      if (!category) return { category: null, products: [] };
 
       const categoryForResponse: CollectionCategory = {
         id: category.id,
         name: category.name,
         slug: category.slug,
+        description: category.description ?? null,
+        afterContentHtml: category.afterContentHtml ?? null,
+        metaTitle: category.metaTitle ?? null,
+        metaDescription: category.metaDescription ?? null,
+        imageUrl: category.imageUrl ?? null,
+        imageAltText: category.imageAltText ?? null,
       };
 
-      // B) leaf vs parent -> categoryIds
+      /* ================= CATEGORY IDS ================= */
       const hasChild = await this.db.query.categories.findFirst({
         where: (c, { and, eq, isNull }) =>
           and(
@@ -1505,7 +1538,7 @@ export class ProductsService {
           )
         : [category.id];
 
-      // ---- 1) Get paged product ids matching category + search + attributes ----
+      /* ================= PRODUCT IDS ================= */
       const whereSql: any[] = [
         sql`${products.companyId} = ${companyId}`,
         sql`${products.storeId} = ${storeId}`,
@@ -1524,7 +1557,6 @@ export class ProductsService {
 
       if (search) whereSql.push(sql`${products.name} ILIKE ${`%${search}%`}`);
 
-      // Attribute filters as EXISTS clauses (options/values)
       for (const [attrName, attrValue] of Object.entries(attr)) {
         const values = Array.isArray(attrValue) ? attrValue : [attrValue];
 
@@ -1556,12 +1588,10 @@ export class ProductsService {
         .execute();
 
       const productIds = idRows.map((r) => r.id);
-
-      if (productIds.length === 0) {
+      if (!productIds.length)
         return { category: categoryForResponse, products: [] };
-      }
 
-      // ---- 2) Load product graph for those ids (NO variants) ----
+      /* ================= PRODUCT GRAPH ================= */
       const fullProducts = await this.db.query.products.findMany({
         where: (p, { and, eq, inArray, isNull }) =>
           and(
@@ -1578,13 +1608,12 @@ export class ProductsService {
         },
       });
 
-      // Keep original order of ids
       const fullById = new Map(fullProducts.map((p) => [p.id, p]));
       const ordered = productIds
         .map((id) => fullById.get(id))
         .filter(Boolean) as any[];
 
-      // ---- 3) ratings for selected ids ----
+      /* ================= RATINGS ================= */
       const ratingRows = await this.db
         .select({
           productId: productReviews.productId,
@@ -1609,6 +1638,7 @@ export class ProductsService {
         string,
         { rating_count: number; average_rating: number }
       >();
+
       for (const r of ratingRows) {
         ratingsByProduct.set(r.productId, {
           rating_count: Number(r.ratingCount ?? 0),
@@ -1616,22 +1646,48 @@ export class ProductsService {
         });
       }
 
-      // ---- 4) price range per product ----
+      /* ================= PRICING (SALE AWARE) ================= */
       const priceRows = await this.db
         .select({
           productId: productVariants.productId,
-          minPrice: sql<
+
+          minRegular: sql<
             string | null
           >`MIN(NULLIF(${productVariants.regularPrice}, 0))`,
-          maxPrice: sql<
+          maxRegular: sql<
             string | null
           >`MAX(NULLIF(${productVariants.regularPrice}, 0))`,
+
+          minSale: sql<string | null>`
+          MIN(
+            CASE
+              WHEN ${productVariants.salePrice} > 0
+               AND ${productVariants.salePrice} < ${productVariants.regularPrice}
+              THEN ${productVariants.salePrice}
+              ELSE NULL
+            END
+          )
+        `,
+
+          onSale: sql<number>`
+          CASE
+            WHEN SUM(
+              CASE
+                WHEN ${productVariants.salePrice} > 0
+                 AND ${productVariants.salePrice} < ${productVariants.regularPrice}
+                THEN 1 ELSE 0
+              END
+            ) > 0 THEN 1 ELSE 0
+          END
+        `,
         })
         .from(productVariants)
         .where(
           and(
             eq(productVariants.companyId, companyId),
             inArray(productVariants.productId, productIds),
+            sql`${productVariants.deletedAt} IS NULL`,
+            eq(productVariants.isActive, true),
           ),
         )
         .groupBy(productVariants.productId)
@@ -1639,28 +1695,42 @@ export class ProductsService {
 
       const priceByProduct = new Map<
         string,
-        { minPrice: number; maxPrice: number }
+        {
+          minRegular: number;
+          maxRegular: number;
+          minSale: number;
+          onSale: boolean;
+        }
       >();
+
       for (const r of priceRows) {
-        const min = r.minPrice == null ? 0 : Number(r.minPrice);
-        const max = r.maxPrice == null ? min : Number(r.maxPrice);
-        priceByProduct.set(r.productId, { minPrice: min, maxPrice: max });
+        priceByProduct.set(r.productId, {
+          minRegular: Number(r.minRegular ?? 0),
+          maxRegular: Number(r.maxRegular ?? r.minRegular ?? 0),
+          minSale: Number(r.minSale ?? 0),
+          onSale: Number(r.onSale) === 1,
+        });
       }
 
-      // ---- 5) Map to lightweight list items ----
+      /* ================= MAP ================= */
       const productsList = ordered.map((p) => {
         const ratings = ratingsByProduct.get(p.id) ?? {
           rating_count: 0,
           average_rating: 0,
         };
-        const price = priceByProduct.get(p.id) ?? { minPrice: 0, maxPrice: 0 };
+
+        const price = priceByProduct.get(p.id) ?? {
+          minRegular: 0,
+          maxRegular: 0,
+          minSale: 0,
+          onSale: false,
+        };
 
         return mapProductToCollectionListResponse({
           ...p,
           rating_count: ratings.rating_count,
           average_rating: ratings.average_rating,
-          minPrice: price.minPrice,
-          maxPrice: price.maxPrice,
+          ...price,
         } as any);
       });
 
@@ -1677,17 +1747,68 @@ export class ProductsService {
     parentCategoryId: string,
     query: ProductQueryDto,
   ) {
-    const { status, search, limit = 8, offset = 0 } = query; // limit per category is usually 8
+    const { status, search, limit = 8, offset = 0 } = query;
     const effectiveStatus = status ?? 'active';
 
-    // 1) fetch direct child categories (the buckets)
+    // 0) Fetch parent category (SEO should come from here)
+    const parent = await this.db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        slug: categories.slug,
+        description: categories.description,
+        imageUrl: media.url,
+        imageAltText: media.altText,
+        afterContentHtml: categories.afterContentHtml,
+        metaTitle: categories.metaTitle,
+        metaDescription: categories.metaDescription,
+      })
+      .from(categories)
+      .leftJoin(
+        media,
+        and(
+          eq(media.companyId, categories.companyId),
+          eq(media.storeId, categories.storeId),
+          eq(media.id, (categories as any).imageMediaId),
+          isNull(media.deletedAt),
+        ),
+      )
+      .where(
+        and(
+          eq(categories.companyId, companyId),
+          eq(categories.storeId, storeId),
+          eq(categories.id, parentCategoryId),
+          sql`${categories.deletedAt} IS NULL`,
+        ),
+      )
+      .limit(1)
+      .execute()
+      .then((r) => r[0]);
+
+    if (!parent?.id) return { parent: null, groups: [], exploreMore: [] };
+
+    // 1) fetch direct child categories (buckets) - ✅ NO SEO META on children
     const childCats = await this.db
       .select({
         id: categories.id,
         name: categories.name,
         slug: categories.slug,
+        description: categories.description,
+        imageUrl: media.url,
+        imageAltText: media.altText,
+        afterContentHtml: categories.afterContentHtml,
+        // ❌ metaTitle/metaDescription removed from children
       })
       .from(categories)
+      .leftJoin(
+        media,
+        and(
+          eq(media.companyId, categories.companyId),
+          eq(media.storeId, categories.storeId),
+          eq(media.id, (categories as any).imageMediaId),
+          isNull(media.deletedAt),
+        ),
+      )
       .where(
         and(
           eq(categories.companyId, companyId),
@@ -1699,14 +1820,60 @@ export class ProductsService {
       .orderBy(categories.name)
       .execute();
 
-    if (childCats.length === 0) {
-      return []; // parent has no children
-    }
-
+    // If parent has no children, still return parent + exploreMore
     const childCatIds = childCats.map((c) => c.id);
 
+    const exploreMore = await this.db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        slug: categories.slug,
+        imageUrl: media.url,
+      })
+      .from(categories)
+      .leftJoin(
+        media,
+        and(
+          eq(media.companyId, categories.companyId),
+          eq(media.storeId, categories.storeId),
+          eq(media.id, (categories as any).imageMediaId),
+          isNull(media.deletedAt),
+        ),
+      )
+      .where(
+        and(
+          eq(categories.companyId, companyId),
+          eq(categories.storeId, storeId),
+          sql`${categories.deletedAt} IS NULL`,
+
+          // ✅ require image
+          isNotNull(media.url),
+
+          // not the parent
+          sql`${categories.id} <> ${parentCategoryId}`,
+
+          // not direct children under the parent
+          childCatIds.length
+            ? sql`${categories.id} NOT IN (${sql.join(
+                childCatIds.map((id) => sql`${id}`),
+                sql`, `,
+              )})`
+            : sql`TRUE`,
+
+          // must not be under the parent (directly)
+          sql`${categories.parentId} <> ${parentCategoryId}`,
+        ),
+      )
+      .orderBy(sql`RANDOM()`)
+      .limit(3)
+      .execute();
+
+    // If no child categories, return now (still with exploreMore)
+    if (childCats.length === 0) {
+      return { parent, groups: [], exploreMore };
+    }
+
     // 2) pick products for those categories with per-category pagination
-    //    row_number partitioned by category, then filter rn between offset+1..offset+limit
     const productRows = await this.db.execute(sql`
     WITH ranked AS (
       SELECT
@@ -1740,13 +1907,16 @@ export class ProductsService {
     ).rows ?? []) as any[];
 
     if (pairs.length === 0) {
-      // return buckets with empty products
-      return childCats.map((c) => ({ category: c, products: [] }));
+      return {
+        parent,
+        groups: childCats.map((c) => ({ category: c, products: [] })),
+        exploreMore,
+      };
     }
 
     const productIds = [...new Set(pairs.map((x) => x.product_id))];
 
-    // 3) fetch base product info + default image (only for selected productIds)
+    // 3) fetch base product info + default image
     const base = await this.db
       .select({
         id: products.id,
@@ -1786,6 +1956,28 @@ export class ProductsService {
         maxPrice: sql<
           string | null
         >`MAX(NULLIF(${productVariants.regularPrice}, 0))`,
+        minSale: sql<string | null>`
+      MIN(
+        CASE
+          WHEN ${productVariants.salePrice} > 0
+           AND ${productVariants.salePrice} < ${productVariants.regularPrice}
+          THEN ${productVariants.salePrice}
+          ELSE NULL
+        END
+      )
+    `,
+        // ✅ add: any on sale?
+        onSale: sql<number>`
+      CASE
+        WHEN SUM(
+          CASE
+            WHEN ${productVariants.salePrice} > 0
+             AND ${productVariants.salePrice} < ${productVariants.regularPrice}
+            THEN 1 ELSE 0
+          END
+        ) > 0 THEN 1 ELSE 0
+      END
+    `,
       })
       .from(productVariants)
       .leftJoin(
@@ -1806,13 +1998,21 @@ export class ProductsService {
 
     const spByProduct = new Map<
       string,
-      { stock: number; minPrice: number | null; maxPrice: number | null }
+      {
+        stock: number;
+        minPrice: number | null;
+        maxPrice: number | null;
+        minSale: number | null;
+        onSale: boolean;
+      }
     >();
     for (const r of stockPriceRows) {
       spByProduct.set(r.productId, {
         stock: Number(r.stock ?? 0),
         minPrice: r.minPrice == null ? null : Number(r.minPrice),
         maxPrice: r.maxPrice == null ? null : Number(r.maxPrice),
+        minSale: r.minSale == null ? null : Number(r.minSale),
+        onSale: Number(r.onSale ?? 0) === 1,
       });
     }
 
@@ -1821,9 +2021,7 @@ export class ProductsService {
       .select({
         productId: productReviews.productId,
         ratingCount: sql<number>`COUNT(*)`,
-        averageRating: sql<number>`
-        COALESCE(ROUND(AVG(${productReviews.rating})::numeric, 2), 0)
-      `,
+        averageRating: sql<number>`COALESCE(ROUND(AVG(${productReviews.rating})::numeric, 2), 0)`,
       })
       .from(productReviews)
       .where(
@@ -1858,23 +2056,56 @@ export class ProductsService {
         stock: 0,
         minPrice: null,
         maxPrice: null,
+        minSale: null,
+        onSale: false,
       };
+
       const rt = ratingsByProduct.get(product_id) ?? {
         ratingCount: 0,
         averageRating: 0,
       };
 
+      const minRegular = Number(sp.minPrice ?? 0);
+      const maxRegular = Number(sp.maxPrice ?? sp.minPrice ?? 0);
+
+      const onSale = Boolean(sp.onSale);
+      const minSale = sp.minSale == null ? null : Number(sp.minSale);
+
+      const images = b.imageUrl
+        ? {
+            id: 'default',
+            src: b.imageUrl,
+            alt: null,
+          }
+        : null;
+
+      // keep your old `price` behavior (min regular)
       const productDto = {
         id: b.id,
         name: b.name,
         slug: b.slug,
-        imageUrl: b.imageUrl ?? null,
+        images: images ? [images] : [],
+
         stock: sp.stock,
-        minPrice: sp.minPrice,
-        maxPrice: sp.maxPrice,
+
+        // ✅ keep existing fields
+        price: String(minRegular),
+        regular_price: String(minRegular),
+
+        // ✅ add sale fields
+        sale_price: onSale && minSale ? String(minSale) : null,
+        on_sale: onSale,
+
+        // ✅ discount-aware html (otherwise same range)
+        price_html: buildDiscountAwarePriceHtml(
+          minRegular,
+          maxRegular,
+          minSale,
+          onSale,
+        ),
+
         averageRating: rt.averageRating,
         ratingCount: rt.ratingCount,
-        // you can add priceLabel here if you want
       };
 
       const list = productsByCategory.get(category_id) ?? [];
@@ -1882,10 +2113,14 @@ export class ProductsService {
       productsByCategory.set(category_id, list);
     }
 
-    return childCats.map((c) => ({
-      category: c,
-      products: productsByCategory.get(c.id) ?? [],
-    }));
+    return {
+      parent,
+      groups: childCats.map((c) => ({
+        category: c,
+        products: productsByCategory.get(c.id) ?? [],
+      })),
+      exploreMore,
+    };
   }
 
   async listProductsGroupedUnderParentCategorySlug(
@@ -1894,14 +2129,8 @@ export class ProductsService {
     parentSlug: string,
     query: ProductQueryDto,
   ) {
-    console.log(
-      'listProductsGroupedUnderParentCategorySlug called with parentSlug:',
-      parentSlug,
-    );
     const parent = await this.db
-      .select({
-        id: categories.id,
-      })
+      .select({ id: categories.id })
       .from(categories)
       .where(
         and(
@@ -1915,9 +2144,8 @@ export class ProductsService {
       .execute()
       .then((r) => r[0]);
 
-    if (!parent?.id) return [];
+    if (!parent?.id) return { parent: null, groups: [], exploreMore: [] };
 
-    // 1) reuse your existing logic
     return this.listProductsGroupedUnderParentCategory(
       companyId,
       storeId,

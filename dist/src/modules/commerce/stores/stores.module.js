@@ -18,6 +18,7 @@ exports.StoresModule = StoresModule = __decorate([
     (0, common_1.Module)({
         controllers: [stores_controller_1.StoresController],
         providers: [stores_service_1.StoresService, aws_service_1.AwsService],
+        exports: [stores_service_1.StoresService, aws_service_1.AwsService],
     })
 ], StoresModule);
 //# sourceMappingURL=stores.module.js.map

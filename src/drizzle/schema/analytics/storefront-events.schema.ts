@@ -9,7 +9,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { defaultId } from 'src/drizzle/id';
 import { companies } from '../companies/companies.schema';
-import { stores } from '../stores/stores.schema';
+import { stores } from '../commerce/stores/stores.schema';
 
 export const storefrontEvents = pgTable(
   'storefront_events',

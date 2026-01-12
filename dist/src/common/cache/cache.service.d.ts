@@ -26,4 +26,18 @@ export declare class CacheService {
     resetCompanyVersion(companyId: string): Promise<number>;
     private attachTags;
     invalidateTags(tags: string[]): Promise<void>;
+    private globalVersionKey;
+    buildGlobalVersionedKey(ver: number, ...parts: string[]): string;
+    getGlobalVersion(): Promise<number>;
+    bumpGlobalVersion(): Promise<number>;
+    resetGlobalVersion(): Promise<number>;
+    getOrSetGlobalVersioned<T>(keyParts: string[], compute: () => Promise<T>, opts?: {
+        ttlSeconds?: number;
+        tags?: string[];
+    }): Promise<T>;
+    buildCompanyAndGlobalVersionedKey(companyId: string, companyVer: number, globalVer: number, ...parts: string[]): string;
+    getOrSetCompanyAndGlobalVersioned<T>(companyId: string, keyParts: string[], compute: () => Promise<T>, opts?: {
+        ttlSeconds?: number;
+        tags?: string[];
+    }): Promise<T>;
 }

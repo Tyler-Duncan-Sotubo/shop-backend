@@ -1,4 +1,9 @@
 export const PermissionKeys = [
+  // setup
+  'setup.create',
+  'setup.update',
+  'setup.complete',
+
   // Products / Catalog
   'products.read',
   'products.create',
@@ -79,6 +84,7 @@ export const PermissionKeys = [
   'payments.manage_providers',
   'payments.capture',
   'payments.refund',
+  'payments.write',
 
   // Settings
   'settings.read',
@@ -212,4 +218,8 @@ export const PermissionKeys = [
   'mail.subscribers.update',
   'mail.messages.read',
   'mail.messages.update',
+
+  // Integrations - Analytics
+  'integrations.analytics.read',
+  'integrations.analytics.update',
 ];

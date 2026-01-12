@@ -92,7 +92,7 @@ export class AuthController {
     }
 
     // Destructure only if login is complete
-    const { user, backendTokens, permissions } = result;
+    const { user, backendTokens, permissions, onboardingCompleted } = result;
     // Set cookie or headers as needed:
     res.cookie('Authentication', backendTokens.refreshToken, {
       httpOnly: true,
@@ -106,6 +106,7 @@ export class AuthController {
       user,
       backendTokens,
       permissions,
+      onboardingCompleted,
     };
   }
 
@@ -206,7 +207,7 @@ export class AuthController {
     @Ip() ip: string,
   ) {
     const result = await this.auth.verifyCode(dto.tempToken, dto.code, ip);
-    const { user, backendTokens, permissions } = result;
+    const { user, backendTokens, permissions, onboardingCompleted } = result;
     // Set cookie or headers as needed:
     res.cookie('Authentication', backendTokens.refreshToken, {
       httpOnly: true,
@@ -220,6 +221,7 @@ export class AuthController {
       user,
       backendTokens,
       permissions,
+      onboardingCompleted,
     };
   }
 

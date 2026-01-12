@@ -17,9 +17,6 @@ const common_1 = require("@nestjs/common");
 const mail_service_1 = require("./mail.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../auth/decorator/current-user.decorator");
-const api_key_guard_1 = require("../iam/api-keys/guard/api-key.guard");
-const current_store_decorator_1 = require("../iam/api-keys/decorators/current-store.decorator");
-const api_scopes_decorator_1 = require("../iam/api-keys/decorators/api-scopes.decorator");
 const list_subscribers_query_dto_1 = require("./dto/list-subscribers.query.dto");
 const update_subscriber_status_dto_1 = require("./dto/update-subscriber-status.dto");
 const list_contact_messages_query_dto_1 = require("./dto/list-contact-messages.query.dto");
@@ -27,8 +24,10 @@ const update_contact_status_dto_1 = require("./dto/update-contact-status.dto");
 const create_subscriber_dto_1 = require("./dto/create-subscriber.dto");
 const create_contact_message_dto_1 = require("./dto/create-contact-message.dto");
 const class_validator_1 = require("class-validator");
-const current_company_id_decorator_1 = require("../iam/api-keys/decorators/current-company-id.decorator");
 const throttler_1 = require("@nestjs/throttler");
+const current_company_id_decorator_1 = require("../storefront-config/decorators/current-company-id.decorator");
+const current_store_decorator_1 = require("../storefront-config/decorators/current-store.decorator");
+const storefront_guard_1 = require("../storefront-config/guard/storefront.guard");
 class IdParamDto {
 }
 __decorate([
@@ -143,8 +142,7 @@ __decorate([
 ], MailController.prototype, "updateContactMessageStatusAdmin", null);
 __decorate([
     (0, common_1.Post)('public/subscribe'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('mail.subscribe'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     (0, throttler_1.Throttle)({ default: { limit: 10, ttl: 60000 } }),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
@@ -156,8 +154,7 @@ __decorate([
 ], MailController.prototype, "createSubscriberPublic", null);
 __decorate([
     (0, common_1.Post)('public/contact'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('mail.contact'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     (0, throttler_1.Throttle)({ default: { limit: 10, ttl: 60000 } }),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, current_store_decorator_1.CurrentStoreId)()),

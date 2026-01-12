@@ -30,6 +30,9 @@ exports.users = (0, pg_core_1.pgTable)('users', {
     allowMarketingEmails: (0, pg_core_1.boolean)('allow_marketing_emails')
         .notNull()
         .default(false),
+    onboardingCompleted: (0, pg_core_1.boolean)('onboarding_completed')
+        .notNull()
+        .default(false),
 }, (table) => [
     (0, pg_core_1.uniqueIndex)('uq_users_email').on(table.email),
     (0, pg_core_1.index)('idx_users_company_id').on(table.companyId),

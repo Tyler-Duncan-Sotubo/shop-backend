@@ -22,13 +22,15 @@ const audit_service_1 = require("../../audit/audit.service");
 const option_combinations_1 = require("../utils/option-combinations");
 const images_service_1 = require("./images.service");
 const inventory_stock_service_1 = require("../../commerce/inventory/services/inventory-stock.service");
+const categories_service_1 = require("./categories.service");
 let VariantsService = class VariantsService {
-    constructor(db, cache, auditService, imagesService, inventoryService) {
+    constructor(db, cache, auditService, imagesService, inventoryService, categoriesService) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
         this.imagesService = imagesService;
         this.inventoryService = inventoryService;
+        this.categoriesService = categoriesService;
     }
     async assertCompanyExists(companyId) {
         const company = await this.db.query.companies.findFirst({
@@ -79,6 +81,7 @@ let VariantsService = class VariantsService {
             .values({
             companyId,
             productId,
+            storeId: dto.storeId,
             title: dto.title ?? null,
             sku: dto.sku ?? null,
             barcode: dto.barcode ?? null,
@@ -97,6 +100,20 @@ let VariantsService = class VariantsService {
         })
             .returning()
             .execute();
+        const hasSale = created.salePrice != null && String(created.salePrice).trim() !== '';
+        if (hasSale) {
+            const product = await this.db.query.products.findFirst({
+                where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, productId)),
+                columns: { storeId: true },
+            });
+            if (product?.storeId) {
+                await this.categoriesService.syncSalesCategoryForProduct({
+                    companyId,
+                    storeId: product.storeId,
+                    productId,
+                });
+            }
+        }
         await this.cache.bumpCompanyVersion(companyId);
         if (user && ip) {
             await this.auditService.logAction({
@@ -258,6 +275,11 @@ let VariantsService = class VariantsService {
         }
         const shouldCreateImage = !!dto.base64Image?.trim();
         const shouldUpdateStock = dto.stockQuantity !== undefined;
+        const nextSalePrice = dto.removeSalePrice
+            ? null
+            : dto.salePrice === undefined
+                ? existing.salePrice
+                : dto.salePrice;
         const result = await this.db.transaction(async (tx) => {
             const [updated] = await tx
                 .update(schema_1.productVariants)
@@ -271,7 +293,7 @@ let VariantsService = class VariantsService {
                 regularPrice: dto.regularPrice === undefined
                     ? existing.regularPrice
                     : dto.regularPrice,
-                salePrice: dto.salePrice === undefined ? existing.salePrice : dto.salePrice,
+                salePrice: nextSalePrice,
                 weight: dto.weight ?? existing.weight,
                 length: dto.length ?? existing.length,
                 width: dto.width ?? existing.width,
@@ -284,7 +306,6 @@ let VariantsService = class VariantsService {
                 .execute();
             if (!updated)
                 throw new common_1.NotFoundException('Variant not found');
-            console.log('filename', dto.imageFileName);
             let createdImage = null;
             if (shouldCreateImage) {
                 createdImage = await this.imagesService.createImage(companyId, existing.productId, {
@@ -301,6 +322,20 @@ let VariantsService = class VariantsService {
             }
             return { updated, createdImage, inventoryRow };
         });
+        const pricingTouched = dto.salePrice !== undefined || dto.removeSalePrice === true;
+        if (pricingTouched) {
+            const product = await this.db.query.products.findFirst({
+                where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, existing.productId)),
+                columns: { storeId: true },
+            });
+            if (product?.storeId) {
+                await this.categoriesService.syncSalesCategoryForProduct({
+                    companyId,
+                    storeId: product.storeId,
+                    productId: existing.productId,
+                });
+            }
+        }
         await this.cache.bumpCompanyVersion(companyId);
         if (user && ip) {
             await this.auditService.logAction({
@@ -440,6 +475,7 @@ exports.VariantsService = VariantsService = __decorate([
     __metadata("design:paramtypes", [Object, cache_service_1.CacheService,
         audit_service_1.AuditService,
         images_service_1.ImagesService,
-        inventory_stock_service_1.InventoryStockService])
+        inventory_stock_service_1.InventoryStockService,
+        categories_service_1.CategoriesService])
 ], VariantsService);
 //# sourceMappingURL=variants.service.js.map

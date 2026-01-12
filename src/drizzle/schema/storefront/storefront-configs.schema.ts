@@ -7,7 +7,7 @@ import {
   uniqueIndex,
   index,
 } from 'drizzle-orm/pg-core';
-import { stores } from '../stores/stores.schema';
+import { stores } from '../commerce/stores/stores.schema';
 import { defaultId } from 'src/drizzle/id';
 
 export const storefrontConfigs = pgTable(

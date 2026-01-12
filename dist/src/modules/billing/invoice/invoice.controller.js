@@ -26,7 +26,7 @@ const update_invoice_line_dto_1 = require("./dto/update-invoice-line.dto");
 const list_invoices_query_dto_1 = require("./dto/list-invoices.query.dto");
 const update_invoice_draft_dto_1 = require("./dto/update-invoice-draft.dto");
 const record_invoice_payment_dto_1 = require("../payment/dto/record-invoice-payment.dto");
-const payment_service_1 = require("../payment/payment.service");
+const payment_service_1 = require("../payment/services/payment.service");
 let InvoiceController = class InvoiceController extends base_controller_1.BaseController {
     constructor(invoiceService, paymentService) {
         super();

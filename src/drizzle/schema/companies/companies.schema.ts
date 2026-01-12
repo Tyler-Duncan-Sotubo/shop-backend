@@ -37,6 +37,11 @@ export const companies = pgTable(
 
     plan: text('plan').notNull().default('free'),
 
+    // New fields
+    companySize: text('company_size'), // e.g. 'solo' | '2-10' | '11-50' | '51-200' | '200+'
+    industry: text('industry'), // e.g. 'fashion', 'food', 'electronics', 'services'
+    useCase: text('use_case'), // e.g. 'online-store', 'catalog', 'booking', 'subscriptions'
+
     trialEndsAt: timestamp('trial_ends_at', { mode: 'date' }),
 
     isActive: boolean('is_active').notNull().default(true),

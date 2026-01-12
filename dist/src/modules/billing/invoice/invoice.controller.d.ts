@@ -9,7 +9,7 @@ import { UpdateInvoiceLineDto } from './dto/update-invoice-line.dto';
 import { ListInvoicesQueryDto } from './dto/list-invoices.query.dto';
 import { UpdateInvoiceDraftDto } from './dto/update-invoice-draft.dto';
 import { RecordInvoicePaymentDto } from '../payment/dto/record-invoice-payment.dto';
-import { PaymentService } from '../payment/payment.service';
+import { PaymentService } from '../payment/services/payment.service';
 export declare class InvoiceController extends BaseController {
     private readonly invoiceService;
     private readonly paymentService;
@@ -204,6 +204,7 @@ export declare class InvoiceController extends BaseController {
         };
         paymentId: string;
         receipt: any;
+        receiptId: any;
         appliedMinor: number;
         evidence: any;
     }>;

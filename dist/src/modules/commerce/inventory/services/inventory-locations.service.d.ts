@@ -3,13 +3,11 @@ import { CacheService } from 'src/common/cache/cache.service';
 import { AuditService } from 'src/modules/audit/audit.service';
 import { User } from 'src/common/types/user.type';
 import { CreateLocationDto, UpdateLocationDto, UpdateStoreLocationsDto } from '../dto';
-import { CompanySettingsService } from 'src/modules/company-settings/company-settings.service';
 export declare class InventoryLocationsService {
     private readonly db;
     private readonly cache;
     private readonly auditService;
-    private readonly companySettingsService;
-    constructor(db: db, cache: CacheService, auditService: AuditService, companySettingsService: CompanySettingsService);
+    constructor(db: db, cache: CacheService, auditService: AuditService);
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;
@@ -24,6 +22,9 @@ export declare class InventoryLocationsService {
         billingCustomerId: string | null;
         billingProvider: string | null;
         plan: string;
+        companySize: string | null;
+        industry: string | null;
+        useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
         createdAt: Date;
@@ -41,13 +42,13 @@ export declare class InventoryLocationsService {
         companyId: string;
         storeId: string;
         type: string;
-        city: string | null;
-        postalCode: string | null;
-        code: string | null;
         isDefault: boolean;
+        code: string | null;
         addressLine1: string | null;
         addressLine2: string | null;
+        city: string | null;
         region: string | null;
+        postalCode: string | null;
     }>;
     assertStoreBelongsToCompany(companyId: string, storeId: string): Promise<{
         id: string;
@@ -62,6 +63,7 @@ export declare class InventoryLocationsService {
         companyId: string;
         imageUrl: string | null;
         imageAltText: string | null;
+        supportedCurrencies: string[] | null;
     } | null>;
     createLocation(companyId: string, dto: CreateLocationDto, user?: User, ip?: string): Promise<{
         id: string;
@@ -74,13 +76,13 @@ export declare class InventoryLocationsService {
         companyId: string;
         storeId: string;
         type: string;
-        city: string | null;
-        postalCode: string | null;
-        code: string | null;
         isDefault: boolean;
+        code: string | null;
         addressLine1: string | null;
         addressLine2: string | null;
+        city: string | null;
         region: string | null;
+        postalCode: string | null;
     }>;
     getLocationsByCompany(companyId: string): Promise<{
         id: string;

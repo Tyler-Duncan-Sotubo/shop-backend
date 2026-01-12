@@ -1,6 +1,6 @@
 import { User } from 'src/common/types/user.type';
 import { BaseController } from 'src/common/interceptor/base.controller';
-import { PaymentService } from './payment.service';
+import { PaymentService } from './services/payment.service';
 import { PaystackSuccessDto } from './dto/paystack-success.dto';
 import { ListPaymentsQueryDto } from './dto/payment-list.dto';
 export declare class PaymentController extends BaseController {
@@ -57,7 +57,7 @@ export declare class PaymentController extends BaseController {
         companyId: string;
         orderId: string | null;
         invoiceId: string | null;
-        method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+        method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
         status: "pending" | "succeeded" | "reversed";
         currency: string;
         amountMinor: number;

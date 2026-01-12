@@ -13,6 +13,8 @@ import { JwtService } from '@nestjs/jwt';
 import { InventoryLedgerService } from '../inventory/services/inventory-ledger.service';
 import { InvoiceService } from 'src/modules/billing/invoice/invoice.service';
 import { InvoiceTotalsService } from 'src/modules/billing/invoice/invoice-totals.service';
+import { StoresService } from '../stores/stores.service';
+import { AwsService } from 'src/common/aws/aws.service';
 
 @Module({
   controllers: [CartController, StorefrontCartController],
@@ -29,6 +31,8 @@ import { InvoiceTotalsService } from 'src/modules/billing/invoice/invoice-totals
     InventoryLedgerService,
     InvoiceService,
     InvoiceTotalsService,
+    StoresService,
+    AwsService,
   ],
   exports: [CartService],
 })

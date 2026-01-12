@@ -7,7 +7,8 @@ import { CustomerPrimaryGuard } from './guards/customer-primary.guard';
 import { JwtService } from '@nestjs/jwt';
 import { AdminCustomersController } from './admin-customers.controller';
 import { AdminCustomersService } from './admin-customers.service';
-import { ApiKeysService } from '../iam/api-keys/api-keys.service';
+import { StoresService } from '../commerce/stores/stores.service';
+import { AwsService } from 'src/common/aws/aws.service';
 
 @Module({
   controllers: [CustomersController, AdminCustomersController],
@@ -18,7 +19,8 @@ import { ApiKeysService } from '../iam/api-keys/api-keys.service';
     CustomerPrimaryGuard,
     JwtService,
     AdminCustomersService,
-    ApiKeysService,
+    StoresService,
+    AwsService,
   ],
 })
 export class CustomersModule {}

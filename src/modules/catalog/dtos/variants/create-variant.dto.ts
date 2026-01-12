@@ -4,10 +4,14 @@ import {
   IsBoolean,
   IsNumber,
   IsObject,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateVariantDto {
+  @IsUUID()
+  storeId: string;
+
   @IsOptional()
   @IsString()
   title?: string;

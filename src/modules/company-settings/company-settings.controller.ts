@@ -44,14 +44,6 @@ export class CompanySettingsController extends BaseController {
   }
 
   // -----------------------------
-  // GET /company-settings/general
-  // -----------------------------
-  @Get('general')
-  async getGeneralSettings(@CurrentUser() user: User) {
-    return this.companySettingsService.getGeneralSettings(user.companyId);
-  }
-
-  // -----------------------------
   // GET /company-settings/payments
   // -----------------------------
   @Get('payments')
@@ -65,14 +57,6 @@ export class CompanySettingsController extends BaseController {
   @Get('security')
   async getSecuritySettings(@CurrentUser() user: User) {
     return this.companySettingsService.getSecuritySettings(user.companyId);
-  }
-
-  // -----------------------------
-  // GET /company-settings/tax
-  // -----------------------------
-  @Get('tax')
-  async getTaxSettings(@CurrentUser() user: User) {
-    return this.companySettingsService.getTaxSettings(user.companyId);
   }
 
   // -----------------------------

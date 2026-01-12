@@ -8,7 +8,7 @@ import {
   jsonb,
 } from 'drizzle-orm/pg-core';
 import { companies } from '../companies/companies.schema';
-import { stores } from '../stores/stores.schema';
+import { stores } from '../commerce/stores/stores.schema';
 import { defaultId } from 'src/drizzle/id';
 
 export const contactMessages = pgTable(

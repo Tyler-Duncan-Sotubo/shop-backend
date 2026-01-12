@@ -19,14 +19,12 @@ import { AuthCustomer } from './types/customers';
 import { CustomerAuthService } from './customer-auth.service';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { LoginCustomerDto } from './dto/login-customer.dto';
-import { ApiScopes } from 'src/modules/iam/api-keys/decorators/api-scopes.decorator';
-import { ApiKeyGuard } from 'src/modules/iam/api-keys/guard/api-key.guard';
-import { CurrentCompanyId } from 'src/modules/iam/api-keys/decorators/current-company-id.decorator';
-import { CurrentStoreId } from '../iam/api-keys/decorators/current-store.decorator';
+import { StorefrontGuard } from '../storefront-config/guard/storefront.guard';
+import { CurrentCompanyId } from '../storefront-config/decorators/current-company-id.decorator';
+import { CurrentStoreId } from '../storefront-config/decorators/current-store.decorator';
 
 @Controller('storefront/customers')
-@UseGuards(ApiKeyGuard) // ✅ storefront always requires API key
-@ApiScopes('storefront') // ✅ or whatever scope you use for storefront
+@UseGuards(StorefrontGuard)
 export class CustomersController {
   constructor(
     private readonly customersService: CustomersService,

@@ -29,6 +29,9 @@ export const paymentFiles = pgTable(
     mimeType: text('mime_type').notNull(),
     sizeBytes: bigint('size_bytes', { mode: 'number' }),
 
+    kind: text('kind').notNull().default('evidence'), // 'evidence' | 'receipt'
+    note: text('note'),
+
     uploadedByUserId: uuid('uploaded_by_user_id').references(() => users.id, {
       onDelete: 'set null',
     }),

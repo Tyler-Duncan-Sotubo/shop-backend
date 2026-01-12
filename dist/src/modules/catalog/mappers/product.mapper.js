@@ -1,5 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.buildPriceHtmlRange = buildPriceHtmlRange;
+exports.buildDiscountAwarePriceHtml = buildDiscountAwarePriceHtml;
 exports.mapProductToDetailResponse = mapProductToDetailResponse;
 exports.mapProductsListToStorefront = mapProductsListToStorefront;
 exports.mapProductToCollectionListResponse = mapProductToCollectionListResponse;
@@ -28,6 +30,16 @@ function buildPriceHtmlRange(min, max) {
         return minF;
     return `${minF} – ${maxF}`;
 }
+function buildDiscountAwarePriceHtml(minRegular, maxRegular, minSale, onSale) {
+    if (!minRegular)
+        return '';
+    if (!onSale || !minSale || minSale <= 0 || minSale >= minRegular) {
+        return buildPriceHtmlRange(minRegular, maxRegular || minRegular);
+    }
+    const regularHtml = buildPriceHtmlRange(minRegular, maxRegular || minRegular);
+    const saleHtml = buildPriceHtmlRange(minSale, minSale);
+    return `<del>${regularHtml}</del> <ins>${saleHtml}</ins>`;
+}
 function getVariantEffectivePrice(v) {
     const effective = (0, pricing_1.getEffectivePrice)({
         regularPrice: v.regularPrice,
@@ -42,24 +54,6 @@ function getVariantRegularPrice(v) {
 }
 function getVariantSalePrice(v) {
     return v.salePrice != null ? Number(v.salePrice) : null;
-}
-function computeMinMaxPrices(activeVariants) {
-    if (!activeVariants.length)
-        return { min: 0, max: 0 };
-    let min = Infinity;
-    let max = -Infinity;
-    for (const v of activeVariants) {
-        const p = getVariantEffectivePrice(v);
-        if (p < min)
-            min = p;
-        if (p > max)
-            max = p;
-    }
-    if (!Number.isFinite(min))
-        min = 0;
-    if (!Number.isFinite(max))
-        max = 0;
-    return { min, max };
 }
 function mapProductAttributes(product) {
     const opts = (product.options ?? [])
@@ -178,9 +172,46 @@ function mapProductToDetailResponse(product) {
     const attributes = mapProductAttributes(product);
     const activeVariants = (product.variants ?? []).filter((v) => v.isActive);
     const isVariable = attributes.some((a) => a.variation) && activeVariants.length > 0;
-    const pricedVariants = activeVariants.filter((v) => getVariantEffectivePrice(v) > 0);
-    const pricingBase = pricedVariants.length ? pricedVariants : activeVariants;
-    const { min, max } = computeMinMaxPrices(pricingBase);
+    const getVariantRegular = (v) => Number(v.regularPrice ?? v.price ?? 0);
+    const getVariantSale = (v) => Number(v.salePrice ?? 0);
+    const isVariantOnSale = (v) => {
+        const r = getVariantRegular(v);
+        const s = getVariantSale(v);
+        return s > 0 && r > 0 && s < r;
+    };
+    const getVariantEffective = (v) => {
+        const r = getVariantRegular(v);
+        const s = getVariantSale(v);
+        return isVariantOnSale(v) ? s : r;
+    };
+    const pricingBase = activeVariants.length ? activeVariants : [];
+    const effectivePrices = pricingBase
+        .map(getVariantEffective)
+        .filter((n) => n > 0);
+    const regularPrices = pricingBase.map(getVariantRegular).filter((n) => n > 0);
+    const salePrices = pricingBase
+        .filter(isVariantOnSale)
+        .map(getVariantSale)
+        .filter((n) => n > 0);
+    const minEffective = effectivePrices.length
+        ? Math.min(...effectivePrices)
+        : 0;
+    const maxEffective = effectivePrices.length
+        ? Math.max(...effectivePrices)
+        : 0;
+    const minRegular = regularPrices.length ? Math.min(...regularPrices) : 0;
+    const minSale = salePrices.length ? Math.min(...salePrices) : 0;
+    const onSale = pricingBase.some(isVariantOnSale);
+    const primaryVariant = activeVariants[0] ?? null;
+    const simpleRegular = primaryVariant
+        ? getVariantRegular(primaryVariant)
+        : minRegular;
+    const simpleSale = primaryVariant && isVariantOnSale(primaryVariant)
+        ? getVariantSale(primaryVariant)
+        : 0;
+    const simpleOnSale = primaryVariant
+        ? isVariantOnSale(primaryVariant)
+        : onSale;
     const variations = activeVariants.map((v) => mapVariantToWooLike(v, product));
     return {
         id: product.id,
@@ -188,10 +219,16 @@ function mapProductToDetailResponse(product) {
         slug: product.slug,
         permalink: buildPermalink(product.slug),
         type: isVariable ? 'variable' : 'simple',
-        price: String(min),
-        regular_price: isVariable ? '' : String(min),
-        sale_price: '',
-        on_sale: false,
+        price: String(isVariable ? minEffective : simpleOnSale ? simpleSale : simpleRegular),
+        regular_price: String(isVariable ? minRegular : simpleRegular),
+        sale_price: isVariable
+            ? minSale > 0
+                ? String(minSale)
+                : ''
+            : simpleSale > 0
+                ? String(simpleSale)
+                : '',
+        on_sale: Boolean(isVariable ? onSale : simpleOnSale),
         average_rating: Number(product.average_rating ?? 0).toFixed(2),
         rating_count: Number(product.rating_count ?? 0),
         images,
@@ -205,7 +242,7 @@ function mapProductToDetailResponse(product) {
         stock_quantity: null,
         weight: '',
         stock_status: 'instock',
-        price_html: buildPriceHtmlRange(min, max),
+        price_html: buildPriceHtmlRange(minEffective, maxEffective),
         meta_data: buildProductMetaData(product),
     };
 }
@@ -261,26 +298,30 @@ function mapProductToCollectionListResponse(product) {
         slug: pc.category.slug,
     }));
     const attributes = mapProductAttributes(product);
-    const min = Number(product.minPrice ?? 0);
-    const max = Number(product.maxPrice ?? min);
     const isVariable = attributes.some((a) => a.variation);
+    const minRegular = Number(product.minRegular ?? 0);
+    const maxRegular = Number(product.maxRegular ?? minRegular);
+    const minSale = Number(product.minSale ?? 0);
+    const onSale = Boolean(product.onSale);
+    const minEffective = onSale && minSale > 0 ? minSale : minRegular;
+    const maxEffective = maxRegular || minEffective;
     return {
         id: product.id,
         name: product.name,
         slug: product.slug,
         permalink: buildPermalink(product.slug),
         type: isVariable ? 'variable' : 'simple',
-        price: String(min),
-        regular_price: isVariable ? '' : String(min),
-        sale_price: '',
-        on_sale: false,
+        price: String(minEffective),
+        regular_price: String(minRegular),
+        sale_price: onSale && minSale > 0 ? String(minSale) : '',
+        on_sale: onSale,
         average_rating: Number(product.average_rating ?? 0).toFixed(2),
         rating_count: Number(product.rating_count ?? 0),
         images,
         tags: [],
         categories,
         attributes,
-        price_html: buildPriceHtmlRange(min, max),
+        price_html: buildPriceHtmlRange(minEffective, maxEffective),
     };
 }
 //# sourceMappingURL=product.mapper.js.map

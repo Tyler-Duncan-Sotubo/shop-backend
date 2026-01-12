@@ -52,7 +52,7 @@ let AuthController = class AuthController {
         if ('status' in result) {
             return result;
         }
-        const { user, backendTokens, permissions } = result;
+        const { user, backendTokens, permissions, onboardingCompleted } = result;
         res.cookie('Authentication', backendTokens.refreshToken, {
             httpOnly: true,
             secure: isProd,
@@ -65,6 +65,7 @@ let AuthController = class AuthController {
             user,
             backendTokens,
             permissions,
+            onboardingCompleted,
         };
     }
     async refreshToken(user, dto) {
@@ -102,7 +103,7 @@ let AuthController = class AuthController {
     }
     async verifyLogin(dto, res, ip) {
         const result = await this.auth.verifyCode(dto.tempToken, dto.code, ip);
-        const { user, backendTokens, permissions } = result;
+        const { user, backendTokens, permissions, onboardingCompleted } = result;
         res.cookie('Authentication', backendTokens.refreshToken, {
             httpOnly: true,
             secure: true,
@@ -114,6 +115,7 @@ let AuthController = class AuthController {
             user,
             backendTokens,
             permissions,
+            onboardingCompleted,
         };
     }
     async resendCode(token) {

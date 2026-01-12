@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { PickupService } from './pickup.service';
 import { PickupController } from './pickup.controller';
-import { ApiKeysService } from 'src/modules/iam/api-keys/api-keys.service';
+import { StoresService } from 'src/modules/commerce/stores/stores.service';
+import { AwsService } from 'src/common/aws/aws.service';
 
 @Module({
   controllers: [PickupController],
-  providers: [PickupService, ApiKeysService],
+  providers: [PickupService, StoresService, AwsService],
 })
 export class PickupModule {}

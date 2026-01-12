@@ -20,6 +20,9 @@ const api_keys_service_1 = require("../../iam/api-keys/api-keys.service");
 const inventory_ledger_service_1 = require("../inventory/services/inventory-ledger.service");
 const invoice_service_1 = require("../../billing/invoice/invoice.service");
 const invoice_totals_service_1 = require("../../billing/invoice/invoice-totals.service");
+const stores_service_1 = require("../stores/stores.service");
+const aws_service_1 = require("../../../common/aws/aws.service");
+const checkout_payment_service_1 = require("./checkout-payment.service");
 let CheckoutModule = class CheckoutModule {
 };
 exports.CheckoutModule = CheckoutModule;
@@ -37,6 +40,9 @@ exports.CheckoutModule = CheckoutModule = __decorate([
             inventory_ledger_service_1.InventoryLedgerService,
             invoice_service_1.InvoiceService,
             invoice_totals_service_1.InvoiceTotalsService,
+            stores_service_1.StoresService,
+            aws_service_1.AwsService,
+            checkout_payment_service_1.CheckoutPaymentsService,
         ],
         exports: [checkout_service_1.CheckoutService],
     })

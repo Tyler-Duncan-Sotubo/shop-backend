@@ -13,7 +13,7 @@ import { defaultId } from 'src/drizzle/id';
 import { companies } from '../../companies/companies.schema';
 import { payments } from './payments.schema';
 import { invoices } from '../invoice/invoices.schema';
-import { orders } from '../../orders/orders.schema';
+import { orders } from '../../commerce/orders/orders.schema';
 import { paymentMethodEnum } from '../../enum.schema';
 
 export const paymentReceipts = pgTable(
@@ -48,6 +48,9 @@ export const paymentReceipts = pgTable(
     currency: text('currency').notNull(),
     amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
 
+    pdfUrl: text('pdf_url'),
+    pdfStorageKey: text('pdf_storage_key'),
+
     method: paymentMethodEnum('method').notNull(),
     reference: text('reference'),
 
@@ -62,6 +65,10 @@ export const paymentReceipts = pgTable(
     createdByUserId: uuid('created_by_user_id'),
 
     createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
   },

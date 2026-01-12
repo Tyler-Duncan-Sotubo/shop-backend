@@ -25,6 +25,7 @@ export declare class UserService {
         verificationCode: string | null;
         verificationCodeExpiresAt: Date | null;
         allowMarketingEmails: boolean;
+        onboardingCompleted: boolean;
     }>;
     getUserProfile(userId: string): Promise<{
         id: string;

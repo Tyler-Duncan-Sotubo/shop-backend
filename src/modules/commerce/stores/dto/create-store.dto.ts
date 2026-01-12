@@ -1,5 +1,6 @@
 // src/modules/stores/dto/create-store.dto.ts
 import {
+  IsArray,
   IsBoolean,
   IsOptional,
   IsString,
@@ -42,4 +43,9 @@ export class CreateStoreDto {
   @IsOptional()
   @IsBoolean()
   removeImage?: boolean;
+
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  supportedCurrencies?: string[];
 }

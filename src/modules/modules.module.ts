@@ -22,9 +22,11 @@ import { BillingModule } from './billing/billing.module';
 import { BlogModule } from './blog/blog.module';
 import { MediaModule } from './media/media.module';
 import { AnalyticsModule } from './analytics/analytics.module';
-import { StorefrontConfigModule } from './commerce/storefront-config/storefront-config.module';
+import { StorefrontConfigModule } from './storefront-config/storefront-config.module';
 import { QuoteModule } from './commerce/quote/quote.module';
 import { MailModule } from './mail/mail.module';
+import { IntegrationModule } from './integration/integration.module';
+import { SetupModule } from './setup/setup.module';
 
 @Global()
 @Module({
@@ -55,6 +57,8 @@ import { MailModule } from './mail/mail.module';
     StorefrontConfigModule,
     QuoteModule,
     MailModule,
+    IntegrationModule,
+    SetupModule,
   ],
   exports: [
     AuditModule,
@@ -65,6 +69,7 @@ import { MailModule } from './mail/mail.module';
     CompaniesModule,
     IamModule,
     NotificationModule,
+    IntegrationModule,
   ],
 })
 export class ModulesModule {}

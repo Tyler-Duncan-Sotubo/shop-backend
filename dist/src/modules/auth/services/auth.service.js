@@ -60,6 +60,7 @@ let AuthService = class AuthService {
             roleId: schema_1.users.companyRoleId,
             plan: schema_1.companies.plan,
             trialEndsAt: schema_1.companies.trialEndsAt,
+            onboardingCompleted: schema_1.users.onboardingCompleted,
         })
             .from(schema_1.users)
             .innerJoin(schema_1.companyRoles, (0, drizzle_orm_1.eq)(schema_1.users.companyRoleId, schema_1.companyRoles.id))
@@ -102,6 +103,7 @@ let AuthService = class AuthService {
                 : []),
         ];
         const permissions = Array.from(new Set([...permissionKeys, ...tags]));
+        const onboardingCompleted = !!user.onboardingCompleted;
         return {
             user: updatedUser,
             backendTokens: {
@@ -110,6 +112,7 @@ let AuthService = class AuthService {
                 expiresIn: Date.now() + 1000 * 60 * 10,
             },
             permissions,
+            onboardingCompleted,
         };
     }
     async login(dto, ip) {

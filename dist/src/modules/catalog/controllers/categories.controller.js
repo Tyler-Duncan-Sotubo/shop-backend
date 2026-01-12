@@ -19,10 +19,16 @@ const current_user_decorator_1 = require("../../auth/decorator/current-user.deco
 const base_controller_1 = require("../../../common/interceptor/base.controller");
 const categories_service_1 = require("../services/categories.service");
 const categories_1 = require("../dtos/categories");
+const storefront_guard_1 = require("../../storefront-config/guard/storefront.guard");
+const current_company_id_decorator_1 = require("../../storefront-config/decorators/current-company-id.decorator");
+const current_store_decorator_1 = require("../../storefront-config/decorators/current-store.decorator");
 let CategoriesController = class CategoriesController extends base_controller_1.BaseController {
     constructor(categoriesService) {
         super();
         this.categoriesService = categoriesService;
+    }
+    async getStoreFrontCategories(companyId, storeId, limit) {
+        return this.categoriesService.getCategoriesWithLimit(companyId, storeId ?? null, limit ? Number(limit) : undefined);
     }
     async getCategories(user, storeId) {
         return this.categoriesService.getCategories(user.companyId, storeId ?? null);
@@ -42,8 +48,44 @@ let CategoriesController = class CategoriesController extends base_controller_1.
     async assignCategoriesToProduct(user, productId, dto, ip) {
         return this.categoriesService.assignCategoriesToProduct(user.companyId, productId, dto, user, ip);
     }
+    async listCategoriesAdmin(user, storeId) {
+        if (!storeId) {
+            return [];
+        }
+        return this.categoriesService.listCategoriesAdmin(user.companyId, storeId);
+    }
+    async getCategoryAdmin(user, categoryId, storeId) {
+        if (!storeId) {
+            return [];
+        }
+        return this.categoriesService.getCategoryAdmin(user.companyId, storeId, categoryId);
+    }
+    async listCategoryProductsAdmin(user, categoryId, storeId, limit, offset, search) {
+        if (!storeId) {
+            throw new common_1.BadRequestException('storeId is required');
+        }
+        return this.categoriesService.getCategoryAdminWithProducts(user.companyId, storeId, categoryId, {
+            limit: limit ? Number(limit) : undefined,
+            offset: offset ? Number(offset) : undefined,
+            search: search ?? undefined,
+        });
+    }
+    async reorderCategoryProducts(user, categoryId, body) {
+        return this.categoriesService.reorderCategoryProducts(user.companyId, categoryId, body.items ?? []);
+    }
 };
 exports.CategoriesController = CategoriesController;
+__decorate([
+    (0, common_1.Get)('categories-storefront'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
+    (0, common_1.SetMetadata)('permissions', ['categories.read']),
+    __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(2, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], CategoriesController.prototype, "getStoreFrontCategories", null);
 __decorate([
     (0, common_1.Get)('categories'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
@@ -91,7 +133,7 @@ __decorate([
 __decorate([
     (0, common_1.Get)('products/:productId/categories'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    (0, common_1.SetMetadata)('permissions', ['products.read', 'categories.read']),
+    (0, common_1.SetMetadata)('permissions', ['categories.read']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('productId')),
     __metadata("design:type", Function),
@@ -101,7 +143,7 @@ __decorate([
 __decorate([
     (0, common_1.Put)('products/:productId/categories'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    (0, common_1.SetMetadata)('permissions', ['products.update', 'categories.update']),
+    (0, common_1.SetMetadata)('permissions', ['categories.update']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('productId')),
     __param(2, (0, common_1.Body)()),
@@ -110,6 +152,52 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, categories_1.AssignCategoriesDto, String]),
     __metadata("design:returntype", Promise)
 ], CategoriesController.prototype, "assignCategoriesToProduct", null);
+__decorate([
+    (0, common_1.Get)('categories/admin'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['categories.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)('storeId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], CategoriesController.prototype, "listCategoriesAdmin", null);
+__decorate([
+    (0, common_1.Get)('categories/:categoryId/admin'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['categories.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('categoryId')),
+    __param(2, (0, common_1.Query)('storeId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", Promise)
+], CategoriesController.prototype, "getCategoryAdmin", null);
+__decorate([
+    (0, common_1.Get)('categories/:categoryId/products/admin'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['categories.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('categoryId')),
+    __param(2, (0, common_1.Query)('storeId')),
+    __param(3, (0, common_1.Query)('limit')),
+    __param(4, (0, common_1.Query)('offset')),
+    __param(5, (0, common_1.Query)('search')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], CategoriesController.prototype, "listCategoryProductsAdmin", null);
+__decorate([
+    (0, common_1.Patch)('categories/:categoryId/products/reorder'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['categories.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('categoryId')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", Promise)
+], CategoriesController.prototype, "reorderCategoryProducts", null);
 exports.CategoriesController = CategoriesController = __decorate([
     (0, common_1.Controller)('catalog'),
     __metadata("design:paramtypes", [categories_service_1.CategoriesService])

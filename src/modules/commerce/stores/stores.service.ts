@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { db } from 'src/drizzle/types/drizzle';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import { companies, stores, storeDomains } from 'src/drizzle/schema';
@@ -12,7 +12,6 @@ import { CacheService } from 'src/common/cache/cache.service';
 import { AuditService } from 'src/modules/audit/audit.service';
 import { User } from 'src/common/types/user.type';
 import { CreateStoreDto } from './dto/create-store.dto';
-import { CompanySettingsService } from '../../company-settings/company-settings.service';
 import { AwsService } from 'src/common/aws/aws.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
 
@@ -22,7 +21,6 @@ export class StoresService {
     @Inject(DRIZZLE) private readonly db: db,
     private readonly cache: CacheService,
     private readonly auditService: AuditService,
-    private readonly companySettingsService: CompanySettingsService,
     private readonly aws: AwsService,
   ) {}
 
@@ -85,8 +83,7 @@ export class StoresService {
           defaultCurrency: payload.defaultCurrency ?? 'NGN',
           defaultLocale: payload.defaultLocale ?? 'en-US',
           isActive: payload.isActive ?? true,
-
-          // optionally set null first; we'll update after upload
+          supportedCurrencies: payload.supportedCurrencies ?? ['NGN'],
           imageUrl: null,
           imageAltText: payload.imageAltText ?? null,
         })
@@ -141,23 +138,59 @@ export class StoresService {
       });
     }
 
-    await this.companySettingsService.markOnboardingStep(
-      companyId,
-      'store_setup_complete',
-      true,
-    );
-
     return created;
   }
 
   async getStoresByCompany(companyId: string) {
-    return this.cache.getOrSetVersioned(companyId, ['stores'], async () => {
-      return this.db
-        .select()
-        .from(stores)
-        .where(eq(stores.companyId, companyId))
-        .execute();
-    });
+    // 1) Fetch stores
+    const storeRows = await this.db
+      .select()
+      .from(stores)
+      .where(eq(stores.companyId, companyId))
+      .execute();
+
+    if (storeRows.length === 0) return [];
+
+    const storeIds = storeRows.map((s) => s.id);
+
+    // 2) Fetch ONLY needed domain fields
+    const domainsRows = await this.db
+      .select({
+        storeId: storeDomains.storeId,
+        domain: storeDomains.domain,
+        isPrimary: storeDomains.isPrimary,
+      })
+      .from(storeDomains)
+      .where(
+        and(
+          inArray(storeDomains.storeId, storeIds),
+          isNull(storeDomains.deletedAt),
+        ),
+      )
+      .execute();
+
+    // 3) Group domains by storeId
+    const domainsByStore: Record<string, { primary?: string; all: string[] }> =
+      {};
+
+    for (const d of domainsRows) {
+      if (!domainsByStore[d.storeId]) {
+        domainsByStore[d.storeId] = { all: [] };
+      }
+
+      domainsByStore[d.storeId].all.push(d.domain);
+
+      if (d.isPrimary) {
+        domainsByStore[d.storeId].primary = d.domain;
+      }
+    }
+
+    // 4) Attach minimal domain info
+    return storeRows.map((s) => ({
+      ...s,
+      primaryDomain: domainsByStore[s.id]?.primary ?? null,
+      domains: domainsByStore[s.id]?.all ?? [],
+    }));
   }
 
   async getStoreById(companyId: string, storeId: string) {
@@ -229,6 +262,8 @@ export class StoresService {
             payload.isActive === undefined
               ? existing.isActive
               : payload.isActive,
+          supportedCurrencies:
+            payload.supportedCurrencies ?? existing.supportedCurrencies,
 
           // ✅ NEW fields
           imageUrl: nextImageUrl,
@@ -362,36 +397,105 @@ export class StoresService {
   ) {
     await this.findStoreByIdOrThrow(companyId, storeId);
 
-    // If more than one primary is set, throw
-    const primaryCount = domains.filter((d) => d.isPrimary).length;
+    // 1) Normalize + remove empties
+    const normalized = (domains ?? [])
+      .map((d) => ({
+        domain: this.normalizeHost(d.domain), // ✅ reuse your normalizeHost
+        isPrimary: !!d.isPrimary,
+      }))
+      .filter((d) => !!d.domain);
+
+    // 2) Ensure at most one primary
+    const primaryCount = normalized.filter((d) => d.isPrimary).length;
     if (primaryCount > 1) {
       throw new BadRequestException(
         'Only one primary domain is allowed per store.',
       );
     }
 
-    // Clear existing
-    await this.db
-      .delete(storeDomains)
-      .where(eq(storeDomains.storeId, storeId))
+    // 3) Deduplicate domains in payload (prevents unique constraint during insert)
+    const seen = new Set<string>();
+    const deduped: { domain: string; isPrimary: boolean }[] = [];
+    for (const d of normalized) {
+      if (!seen.has(d.domain)) {
+        seen.add(d.domain);
+        deduped.push(d);
+      } else {
+        // If same domain appears twice and one is primary, keep primary
+        const idx = deduped.findIndex((x) => x.domain === d.domain);
+        if (idx >= 0 && d.isPrimary) deduped[idx].isPrimary = true;
+      }
+    }
+
+    // 4) If no domains after normalization, just clear
+    if (deduped.length === 0) {
+      await this.db
+        .delete(storeDomains)
+        .where(eq(storeDomains.storeId, storeId))
+        .execute();
+      await this.cache.bumpCompanyVersion(companyId);
+      return [];
+    }
+
+    // 5) Ensure there is a primary (optional but recommended)
+    if (!deduped.some((d) => d.isPrimary)) {
+      // default first domain to primary
+      deduped[0].isPrimary = true;
+    }
+
+    const domainList = deduped.map((d) => d.domain);
+
+    // 6) Check conflicts with OTHER stores in same company
+    const conflicts = await this.db
+      .select({
+        domain: storeDomains.domain,
+        storeId: storeDomains.storeId,
+      })
+      .from(storeDomains)
+      .innerJoin(stores, eq(stores.id, storeDomains.storeId))
+      .where(
+        and(
+          inArray(storeDomains.domain, domainList),
+          eq(stores.companyId, companyId),
+          ne(storeDomains.storeId, storeId), // ✅ other stores only
+          isNull(storeDomains.deletedAt),
+        ),
+      )
       .execute();
 
-    let inserted: (typeof storeDomains.$inferSelect)[] = [];
-    if (domains.length > 0) {
-      inserted = await this.db
+    if (conflicts.length > 0) {
+      const conflictList = conflicts
+        .map((d) => `${d.domain} (store ID: ${d.storeId})`)
+        .join(', ');
+      throw new BadRequestException(
+        `The following domains are already in use by other stores: ${conflictList}`,
+      );
+    }
+
+    // 7) Transaction: clear + insert
+    const inserted = await this.db.transaction(async (tx) => {
+      await tx
+        .delete(storeDomains)
+        .where(eq(storeDomains.storeId, storeId))
+        .execute();
+
+      return tx
         .insert(storeDomains)
         .values(
-          domains.map((d) => ({
+          deduped.map((d) => ({
             storeId,
             domain: d.domain,
-            isPrimary: d.isPrimary ?? false,
+            isPrimary: d.isPrimary,
           })),
         )
         .returning()
         .execute();
-    }
+    });
 
     await this.cache.bumpCompanyVersion(companyId);
+
+    // Optional: also bump a global cache version if you're caching host->store globally
+    // await this.cache.bumpVersion?.('global'); // depending on your CacheService API
 
     if (user && ip) {
       await this.auditService.logAction({
@@ -404,7 +508,7 @@ export class StoresService {
         changes: {
           companyId,
           storeId,
-          domains,
+          domains: deduped,
         },
       });
     }
@@ -456,6 +560,78 @@ export class StoresService {
           })),
         };
       },
+    );
+  }
+
+  normalizeHost(hostRaw: string): string {
+    const host = (hostRaw || '').toLowerCase().trim();
+    const noPort = host.split(':')[0];
+    const noDot = noPort.endsWith('.') ? noPort.slice(0, -1) : noPort;
+    return noDot.startsWith('www.') ? noDot.slice(4) : noDot;
+  }
+
+  async resolveStoreByHost(hostRaw: string) {
+    const host = this.normalizeHost(hostRaw);
+    if (!host) return null;
+
+    // ✅ cache per-domain
+    const cacheKey = ['store-domain', host];
+
+    return this.cache.getOrSetVersioned(
+      'global',
+      cacheKey,
+      async () => {
+        if (
+          process.env.NODE_ENV !== 'production' &&
+          (host === 'localhost' || host.endsWith('.localhost'))
+        ) {
+          // pick a deterministic dev store
+          const [row] = await this.db
+            .select({
+              storeId: stores.id,
+              companyId: stores.companyId,
+              domain: sql<string>`'localhost'`,
+              isPrimary: sql<boolean>`true`,
+            })
+            .from(stores)
+            .where(eq(stores.isActive, true))
+            .limit(1)
+            .execute();
+
+          return row ?? null;
+        }
+
+        // normal domain lookup
+        const [row] = await this.db
+          .select({
+            storeId: storeDomains.storeId,
+            domain: storeDomains.domain,
+            isPrimary: storeDomains.isPrimary,
+            companyId: stores.companyId,
+          })
+          .from(storeDomains)
+          .innerJoin(stores, eq(stores.id, storeDomains.storeId))
+          .where(
+            and(
+              eq(storeDomains.domain, host),
+              isNull(storeDomains.deletedAt),
+              eq(stores.isActive, true),
+            ),
+          )
+          .execute();
+
+        if (
+          process.env.NODE_ENV === 'production' &&
+          row.domain === 'localhost'
+        ) {
+          throw new BadRequestException(
+            'localhost is not allowed in production',
+          );
+        }
+
+        return row ?? null;
+      },
+      { ttlSeconds: 60 },
     );
   }
 }

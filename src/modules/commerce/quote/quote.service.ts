@@ -10,7 +10,7 @@ import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import {
   quoteRequests,
   quoteRequestItems,
-} from 'src/drizzle/schema/quotes/quote-requests.schema';
+} from 'src/drizzle/schema/commerce/quotes/quote-requests.schema';
 
 import { CacheService } from 'src/common/cache/cache.service';
 import { AuditService } from 'src/modules/audit/audit.service';

@@ -9,6 +9,8 @@ import { InvoiceService } from 'src/modules/billing/invoice/invoice.service';
 import { InvoiceTotalsService } from 'src/modules/billing/invoice/invoice-totals.service';
 import { StorefrontOrdersController } from './storefront-orders.controller';
 import { ApiKeysService } from 'src/modules/iam/api-keys/api-keys.service';
+import { StoresService } from '../stores/stores.service';
+import { AwsService } from 'src/common/aws/aws.service';
 
 @Module({
   controllers: [OrdersController, StorefrontOrdersController],
@@ -21,6 +23,8 @@ import { ApiKeysService } from 'src/modules/iam/api-keys/api-keys.service';
     InvoiceService,
     InvoiceTotalsService,
     ApiKeysService,
+    StoresService,
+    AwsService,
   ],
 })
 export class OrdersModule {}

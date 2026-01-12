@@ -42,6 +42,9 @@ let AdminCustomersController = class AdminCustomersController extends base_contr
     list(user, dto) {
         return this.adminCustomers.listPeople(user.companyId, dto);
     }
+    listCustomersOnly(user, dto) {
+        return this.adminCustomers.listCustomers(user.companyId, dto);
+    }
     get(user, customerId) {
         return this.adminCustomers.getCustomer(user.companyId, customerId);
     }
@@ -100,6 +103,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, dto_1.ListCustomersDto]),
     __metadata("design:returntype", void 0)
 ], AdminCustomersController.prototype, "list", null);
+__decorate([
+    (0, common_1.Get)('only'),
+    (0, common_1.SetMetadata)('permissions', ['customers.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, dto_1.ListCustomersDto]),
+    __metadata("design:returntype", void 0)
+], AdminCustomersController.prototype, "listCustomersOnly", null);
 __decorate([
     (0, common_1.Get)(':customerId'),
     (0, common_1.SetMetadata)('permissions', ['customers.read']),

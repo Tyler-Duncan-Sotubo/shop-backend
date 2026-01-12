@@ -11,8 +11,8 @@ export declare class MediaController {
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        storeId: string;
         size: number | null;
+        storeId: string;
         fileName: string;
         mimeType: string;
         url: string;
@@ -28,8 +28,8 @@ export declare class MediaController {
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        storeId: string;
         size: number | null;
+        storeId: string;
         fileName: string;
         mimeType: string;
         url: string;

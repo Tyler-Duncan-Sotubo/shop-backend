@@ -24,13 +24,13 @@ export declare class ShippingController extends BaseController {
     createZone(user: User, dto: CreateZoneDto, ip: string): Promise<{
         id: string;
         name: string;
-        isActive: boolean;
+        description: string | null;
         createdAt: Date;
+        isActive: boolean;
         updatedAt: Date;
         companyId: string;
         storeId: string;
         metadata: Record<string, any> | null;
-        description: string | null;
         priority: number;
     }>;
     updateZone(user: User, zoneId: string, dto: Partial<CreateZoneDto>, ip: string): Promise<{
@@ -91,8 +91,8 @@ export declare class ShippingController extends BaseController {
     createCarrier(user: User, dto: CreateCarrierDto, ip: string): Promise<{
         id: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
+        isActive: boolean;
         updatedAt: Date;
         companyId: string;
         providerKey: string;
@@ -125,13 +125,13 @@ export declare class ShippingController extends BaseController {
     createRate(user: User, dto: CreateRateDto, ip: string): Promise<{
         id: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
+        isActive: boolean;
         updatedAt: Date;
         companyId: string;
-        metadata: Record<string, any> | null;
         type: "weight" | "flat" | "price";
         isDefault: boolean;
+        metadata: Record<string, any> | null;
         priority: number;
         zoneId: string;
         flatAmount: string | null;
@@ -220,13 +220,13 @@ export declare class ShippingController extends BaseController {
         zone: {
             id: string;
             name: string;
-            isActive: boolean;
+            description: string | null;
             createdAt: Date;
+            isActive: boolean;
             updatedAt: Date;
             companyId: string;
             storeId: string;
             metadata: Record<string, any> | null;
-            description: string | null;
             priority: number;
         };
         rate: null;
@@ -235,25 +235,25 @@ export declare class ShippingController extends BaseController {
         zone: {
             id: string;
             name: string;
-            isActive: boolean;
+            description: string | null;
             createdAt: Date;
+            isActive: boolean;
             updatedAt: Date;
             companyId: string;
             storeId: string;
             metadata: Record<string, any> | null;
-            description: string | null;
             priority: number;
         };
         rate: {
             id: string;
             name: string;
-            isActive: boolean;
             createdAt: Date;
+            isActive: boolean;
             updatedAt: Date;
             companyId: string;
-            metadata: Record<string, any> | null;
             type: "weight" | "flat" | "price";
             isDefault: boolean;
+            metadata: Record<string, any> | null;
             priority: number;
             zoneId: string;
             flatAmount: string | null;

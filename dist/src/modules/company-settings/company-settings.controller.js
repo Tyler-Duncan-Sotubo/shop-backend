@@ -34,17 +34,11 @@ let CompanySettingsController = class CompanySettingsController extends base_con
         await this.companySettingsService.markOnboardingStep(user.companyId, body.step, body.value ?? true);
         return { success: true };
     }
-    async getGeneralSettings(user) {
-        return this.companySettingsService.getGeneralSettings(user.companyId);
-    }
     async getPaymentSettings(user) {
         return this.companySettingsService.getPaymentSettings(user.companyId);
     }
     async getSecuritySettings(user) {
         return this.companySettingsService.getSecuritySettings(user.companyId);
-    }
-    async getTaxSettings(user) {
-        return this.companySettingsService.getTaxSettings(user.companyId);
     }
     async getCheckoutSettings(user) {
         return this.companySettingsService.getCheckoutSettings(user.companyId);
@@ -76,13 +70,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], CompanySettingsController.prototype, "markOnboardingStep", null);
 __decorate([
-    (0, common_1.Get)('general'),
-    __param(0, (0, current_user_decorator_1.CurrentUser)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], CompanySettingsController.prototype, "getGeneralSettings", null);
-__decorate([
     (0, common_1.Get)('payments'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
@@ -96,13 +83,6 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], CompanySettingsController.prototype, "getSecuritySettings", null);
-__decorate([
-    (0, common_1.Get)('tax'),
-    __param(0, (0, current_user_decorator_1.CurrentUser)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], CompanySettingsController.prototype, "getTaxSettings", null);
 __decorate([
     (0, common_1.Get)('checkout'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

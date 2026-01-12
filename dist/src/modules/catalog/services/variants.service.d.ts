@@ -6,13 +6,15 @@ import { CreateVariantDto, UpdateVariantDto, VariantQueryDto } from '../dtos/var
 import { ImagesService } from './images.service';
 import { InventoryStockService } from 'src/modules/commerce/inventory/services/inventory-stock.service';
 import { StoreVariantQueryDto } from '../dtos/variants/store-vairants.dto';
+import { CategoriesService } from './categories.service';
 export declare class VariantsService {
     private readonly db;
     private readonly cache;
     private readonly auditService;
     private readonly imagesService;
     private readonly inventoryService;
-    constructor(db: db, cache: CacheService, auditService: AuditService, imagesService: ImagesService, inventoryService: InventoryStockService);
+    private readonly categoriesService;
+    constructor(db: db, cache: CacheService, auditService: AuditService, imagesService: ImagesService, inventoryService: InventoryStockService, categoriesService: CategoriesService);
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;
@@ -27,6 +29,9 @@ export declare class VariantsService {
         billingCustomerId: string | null;
         billingProvider: string | null;
         plan: string;
+        companySize: string | null;
+        industry: string | null;
+        useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
         createdAt: Date;

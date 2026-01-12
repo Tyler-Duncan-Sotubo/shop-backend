@@ -11,8 +11,9 @@ import {
 import { defaultId } from 'src/drizzle/id';
 import { paymentMethodEnum, paymentStatusEnum } from '../../enum.schema';
 import { companies } from '../../companies/companies.schema';
-import { orders } from '../../orders/orders.schema';
+import { orders } from '../../commerce/orders/orders.schema';
 import { invoices } from '../invoice/invoices.schema';
+import { stores } from '../../commerce/stores/stores.schema';
 
 export const payments = pgTable(
   'payments',
@@ -22,6 +23,10 @@ export const payments = pgTable(
     companyId: uuid('company_id')
       .notNull()
       .references(() => companies.id, { onDelete: 'cascade' }),
+
+    storeId: uuid('store_id').references(() => stores.id, {
+      onDelete: 'cascade',
+    }),
 
     // where this payment is intended to go (optional pointers)
     orderId: uuid('order_id').references(() => orders.id, {

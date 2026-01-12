@@ -10,7 +10,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { products } from './products.schema';
 import { defaultId } from 'src/drizzle/id';
-import { stores } from '../stores/stores.schema';
+import { stores } from '../commerce/stores/stores.schema';
 
 export const productReviews = pgTable(
   'product_reviews',

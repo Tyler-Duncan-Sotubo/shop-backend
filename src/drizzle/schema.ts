@@ -18,7 +18,7 @@ export * from './schema/iam/api-keys.schema';
 export * from './schema/audit/audit.schema';
 
 // Media
-export * from './schema/media/media.schema';
+export * from './schema/content/media/media.schema';
 
 // --- Enums ---
 export * from './schema/enum.schema';
@@ -31,16 +31,16 @@ export * from './schema/customers/customer-credentials.schema';
 // ---------------------------------------------------------
 //  STORES (multi-storefront support)
 // ---------------------------------------------------------
-export * from './schema/stores/stores.schema';
-export * from './schema/stores/store-domains.schema';
-export * from './schema/stores/store-locations.schema';
+export * from './schema/commerce/stores/stores.schema';
+export * from './schema/commerce/stores/store-domains.schema';
+export * from './schema/commerce/stores/store-locations.schema';
 
 // Inventories
-export * from './schema/inventory/inventory-transfers.schema';
-export * from './schema/inventory/inventory-transfer-items.schema';
-export * from './schema/inventory/inventory-locations.schema';
-export * from './schema/inventory/inventory-items.schema';
-export * from './schema/inventory/inventory-movements.schema';
+export * from './schema/commerce/inventory/inventory-transfers.schema';
+export * from './schema/commerce/inventory/inventory-transfer-items.schema';
+export * from './schema/commerce/inventory/inventory-locations.schema';
+export * from './schema/commerce/inventory/inventory-items.schema';
+export * from './schema/commerce/inventory/inventory-movements.schema';
 
 // CATALOGS
 export * from './schema/catalogs/products.schema';
@@ -65,28 +65,28 @@ export * from './schema/shipping/shipping-rate-tiers.schema';
 // ---------------------------------------------------------
 //  CARTS
 // ---------------------------------------------------------
-export * from './schema/cart/cart.enums';
-export * from './schema/cart/carts.schema';
-export * from './schema/cart/cart-items.schema';
+export * from './schema/commerce/cart/cart.enums';
+export * from './schema/commerce/cart/carts.schema';
+export * from './schema/commerce/cart/cart-items.schema';
 
 //  ---------------------------------------------------------
 //  CHECKOUTS
 // ---------------------------------------------------------
-export * from './schema/checkout/checkouts.schema';
-export * from './schema/checkout/checkout-items.schema';
-export * from './schema/checkout/pickup-locations.schema';
+export * from './schema/commerce/checkout/checkouts.schema';
+export * from './schema/commerce/checkout/checkout-items.schema';
+export * from './schema/commerce/checkout/pickup-locations.schema';
 
 // ---------------------------------------------------------
 //  ORDERS
 // ---------------------------------------------------------
-export * from './schema/orders/orders.schema';
-export * from './schema/orders/order-items.schema';
-export * from './schema/orders/inventory-reservations.schema';
-export * from './schema/orders/order-events.schema';
+export * from './schema/commerce/orders/orders.schema';
+export * from './schema/commerce/orders/order-items.schema';
+export * from './schema/commerce/orders/inventory-reservations.schema';
+export * from './schema/commerce/orders/order-events.schema';
 // ---------------------------------------------------------
 
 //  QUOTE REQUESTS
-export * from './schema/quotes/quote-requests.schema';
+export * from './schema/commerce/quotes/quote-requests.schema';
 
 // INVOICE
 export * from './schema/billing/invoice/invoice-series.schema';
@@ -105,12 +105,14 @@ export * from './schema/billing/payment/payment-allocations.schema';
 export * from './schema/billing/payment/payment-files.schema';
 export * from './schema/billing/payment/payment-provider-events.schema';
 export * from './schema/billing/payment/payment-receipts.schema';
-
+export * from './schema/billing/payment/payment-methods.schema';
+export * from './schema/billing/payment/bank-transfer-details.schema';
+export * from './schema/billing/payment/payment-provider-connections.schema';
 // TAXES
 export * from './schema/billing/tax/taxes.schema';
 
 // BLOG POSTS
-export * from './schema/blog/blog.schema';
+export * from './schema/content/blog/blog.schema';
 
 // ANALYTICS
 export * from './schema/analytics/analytics-tags.schema';
@@ -119,7 +121,11 @@ export * from './schema/analytics/storefront-sessions.schema';
 
 // Storefront
 export * from './schema/storefront/storefront-configs.schema';
+export * from './schema/storefront/configs.schema';
 
 // Mail
 export * from './schema/mail/subscribers.schema';
 export * from './schema/mail/contact-messages.schema';
+
+// Integrations
+export * from './schema/integrations/analytics/analytics-integration.schema';

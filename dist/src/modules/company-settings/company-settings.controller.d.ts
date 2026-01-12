@@ -7,18 +7,13 @@ export declare class CompanySettingsController extends BaseController {
     constructor(companySettingsService: CompanySettingsService);
     syncAllCompanyPermissions(): Promise<string>;
     getOnboardingChecklist(user: User): Promise<{
-        branding_setup: boolean;
-        store_setup: boolean;
-        location_setup: boolean;
         payment_setup: boolean;
+        online_store_customization: boolean;
+        shipping_setup: boolean;
+        products_added: boolean;
     }>;
     markOnboardingStep(user: User, body: MarkOnboardingStepDto): Promise<{
         success: boolean;
-    }>;
-    getGeneralSettings(user: User): Promise<{
-        storefront_url: {};
-        support_email: {};
-        support_phone: {};
     }>;
     getPaymentSettings(user: User): Promise<{
         enabled_providers: {};
@@ -36,15 +31,6 @@ export declare class CompanySettingsController extends BaseController {
             window_seconds: {};
             max_requests: {};
         };
-    }>;
-    getTaxSettings(user: User): Promise<{
-        prices_include_tax: {};
-        charge_tax: {};
-        default_country: {};
-        default_state: {};
-        rounding_strategy: {};
-        enable_vat: {};
-        vat_default_rate: {};
     }>;
     getCheckoutSettings(user: User): Promise<{
         allow_guest_checkout: {};

@@ -31,4 +31,40 @@ export class UpdateCategoryDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
+
+  @IsOptional()
+  @IsUUID()
+  imageMediaId?: string;
+
+  @IsOptional()
+  @IsString()
+  afterContentHtml?: string;
+
+  @IsOptional()
+  @IsString()
+  metaTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  metaDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  base64Image?: string;
+
+  @IsOptional()
+  @IsString()
+  imageMimeType?: string;
+
+  @IsOptional()
+  @IsString()
+  imageFileName?: string;
+
+  @IsOptional()
+  @IsString()
+  imageAltText?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  removeImage?: boolean;
 }

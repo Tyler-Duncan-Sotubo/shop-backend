@@ -1,0 +1,51 @@
+import { db } from 'src/drizzle/types/drizzle';
+import { CacheService } from 'src/common/cache/cache.service';
+import { UpsertStorefrontOverrideDto } from '../dto/upsert-storefront-override.dto';
+import { StorefrontConfigService } from './storefront-config.service';
+import { StorefrontRevalidateService } from './storefront-revalidate.service';
+export declare class StorefrontOverrideService {
+    private readonly db;
+    private readonly cache;
+    private readonly storefrontConfigService;
+    private readonly storefrontRevalidateService;
+    constructor(db: db, cache: CacheService, storefrontConfigService: StorefrontConfigService, storefrontRevalidateService: StorefrontRevalidateService);
+    private assertStore;
+    getPublishedOverride(companyId: string, storeId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        storeId: string;
+        status: "draft" | "published";
+        publishedAt: Date | null;
+        theme: unknown;
+        header: unknown;
+        pages: unknown;
+        ui: unknown;
+        seo: unknown;
+        footer: unknown;
+        baseId: string;
+        themeId: string | null;
+    } | undefined>;
+    private validateOverridePayloadOrThrow;
+    upsertOverride(companyId: string, storeId: string, dto: UpsertStorefrontOverrideDto): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        storeId: string;
+        status: "draft" | "published";
+        publishedAt: Date | null;
+        theme: unknown;
+        header: unknown;
+        pages: unknown;
+        ui: unknown;
+        seo: unknown;
+        footer: unknown;
+        baseId: string;
+        themeId: string | null;
+    }>;
+    publishDraft(companyId: string, storeId: string): Promise<{
+        ok: boolean;
+    }>;
+}

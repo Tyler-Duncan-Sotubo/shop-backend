@@ -6,7 +6,7 @@ const id_1 = require("../../../id");
 const companies_schema_1 = require("../../companies/companies.schema");
 const payments_schema_1 = require("./payments.schema");
 const invoices_schema_1 = require("../invoice/invoices.schema");
-const orders_schema_1 = require("../../orders/orders.schema");
+const orders_schema_1 = require("../../commerce/orders/orders.schema");
 const enum_schema_1 = require("../../enum.schema");
 exports.paymentReceipts = (0, pg_core_1.pgTable)('payment_receipts', {
     id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),
@@ -28,6 +28,8 @@ exports.paymentReceipts = (0, pg_core_1.pgTable)('payment_receipts', {
     receiptNumber: (0, pg_core_1.text)('receipt_number').notNull(),
     currency: (0, pg_core_1.text)('currency').notNull(),
     amountMinor: (0, pg_core_1.bigint)('amount_minor', { mode: 'number' }).notNull(),
+    pdfUrl: (0, pg_core_1.text)('pdf_url'),
+    pdfStorageKey: (0, pg_core_1.text)('pdf_storage_key'),
     method: (0, enum_schema_1.paymentMethodEnum)('method').notNull(),
     reference: (0, pg_core_1.text)('reference'),
     customerSnapshot: (0, pg_core_1.jsonb)('customer_snapshot'),
@@ -38,6 +40,9 @@ exports.paymentReceipts = (0, pg_core_1.pgTable)('payment_receipts', {
         .notNull(),
     createdByUserId: (0, pg_core_1.uuid)('created_by_user_id'),
     createdAt: (0, pg_core_1.timestamp)('created_at', { withTimezone: true })
+        .defaultNow()
+        .notNull(),
+    updatedAt: (0, pg_core_1.timestamp)('updated_at', { withTimezone: true })
         .defaultNow()
         .notNull(),
 }, (t) => [

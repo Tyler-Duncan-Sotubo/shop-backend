@@ -13,7 +13,7 @@ import { companies } from '../companies/companies.schema';
 import { productStatusEnum, productTypeEnum } from '../enum.schema';
 import { defaultId } from 'src/drizzle/id';
 import { productImages } from './images.schema';
-import { stores } from '../stores/stores.schema';
+import { stores } from '../commerce/stores/stores.schema';
 
 export const products = pgTable(
   'products',

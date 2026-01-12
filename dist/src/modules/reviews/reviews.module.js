@@ -10,14 +10,15 @@ exports.ReviewsModule = void 0;
 const common_1 = require("@nestjs/common");
 const reviews_service_1 = require("./reviews.service");
 const reviews_controller_1 = require("./reviews.controller");
-const api_keys_service_1 = require("../iam/api-keys/api-keys.service");
+const stores_service_1 = require("../commerce/stores/stores.service");
+const aws_service_1 = require("../../common/aws/aws.service");
 let ReviewsModule = class ReviewsModule {
 };
 exports.ReviewsModule = ReviewsModule;
 exports.ReviewsModule = ReviewsModule = __decorate([
     (0, common_1.Module)({
         controllers: [reviews_controller_1.ReviewsController],
-        providers: [reviews_service_1.ReviewsService, api_keys_service_1.ApiKeysService],
+        providers: [reviews_service_1.ReviewsService, stores_service_1.StoresService, aws_service_1.AwsService],
     })
 ], ReviewsModule);
 //# sourceMappingURL=reviews.module.js.map

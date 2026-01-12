@@ -4,7 +4,7 @@ exports.invoiceSeries = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 const id_1 = require("../../../id");
 const companies_schema_1 = require("../../companies/companies.schema");
-const stores_schema_1 = require("../../stores/stores.schema");
+const stores_schema_1 = require("../../commerce/stores/stores.schema");
 const enum_schema_1 = require("../../enum.schema");
 exports.invoiceSeries = (0, pg_core_1.pgTable)('invoice_series', {
     id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),

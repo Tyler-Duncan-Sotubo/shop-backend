@@ -11,6 +11,12 @@ type CollectionCategory = {
     id: string;
     name: string;
     slug: string;
+    description: string | null;
+    imageUrl: string | null;
+    afterContentHtml: string | null;
+    metaTitle: string | null;
+    metaDescription: string | null;
+    imageAltText: string | null;
 };
 type CollectionResponse<TProduct> = {
     category: CollectionCategory | null;
@@ -38,6 +44,9 @@ export declare class ProductsService {
         billingCustomerId: string | null;
         billingProvider: string | null;
         plan: string;
+        companySize: string | null;
+        industry: string | null;
+        useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
         createdAt: Date;
@@ -52,30 +61,7 @@ export declare class ProductsService {
     private extractStorageKeyFromUrl;
     createProduct(companyId: string, dto: CreateProductDto, user?: User, ip?: string): Promise<any>;
     listProductsAdmin(companyId: string, query: ProductQueryDto): Promise<{
-        items: {
-            id: any;
-            name: any;
-            createdAt: any;
-            status: any;
-            slug: any;
-            imageUrl: any;
-            stock: number;
-            regular_price: string | null;
-            sale_price: string | null;
-            on_sale: boolean;
-            price: string;
-            price_html: string;
-            minPrice: number | null;
-            maxPrice: number | null;
-            minSalePrice: number | null;
-            maxSalePrice: number | null;
-            categories: {
-                id: string;
-                name: string;
-            }[];
-            ratingCount: number;
-            averageRating: number;
-        }[];
+        items: any[];
         total: number;
         limit: number;
         offset: number;
@@ -145,33 +131,127 @@ export declare class ProductsService {
         createdAt: Date;
         companyId: string;
         productId: string;
+        position: number;
         categoryId: string;
+        pinned: boolean;
     }[]>;
     private getCategoryAndDescendantIds;
     listCollectionProductsByCategorySlug(companyId: string, storeId: string, categorySlug: string, query: ProductQueryDto): Promise<CollectionResponse<ReturnType<typeof mapProductToCollectionListResponse>>>;
     listProductsGroupedUnderParentCategory(companyId: string, storeId: string, parentCategoryId: string, query: ProductQueryDto): Promise<{
-        category: {
+        parent: null;
+        groups: never[];
+        exploreMore: never[];
+    } | {
+        parent: {
             id: any;
             name: any;
             slug: any;
+            description: any;
+            imageUrl: string | null;
+            imageAltText: string | null;
+            afterContentHtml: any;
+            metaTitle: any;
+            metaDescription: any;
         } | {
             id: any;
             name: any;
             slug: any;
+            description: any;
+            imageUrl: string | null;
+            imageAltText: string | null;
+            afterContentHtml: any;
+            metaTitle: any;
+            metaDescription: any;
         };
-        products: any[];
-    }[]>;
+        groups: {
+            category: {
+                id: any;
+                name: any;
+                slug: any;
+                description: any;
+                imageUrl: string | null;
+                imageAltText: string | null;
+                afterContentHtml: any;
+            } | {
+                id: any;
+                name: any;
+                slug: any;
+                description: any;
+                imageUrl: string | null;
+                imageAltText: string | null;
+                afterContentHtml: any;
+            };
+            products: any[];
+        }[];
+        exploreMore: ({
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: string | null;
+        } | {
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: string | null;
+        })[];
+    }>;
     listProductsGroupedUnderParentCategorySlug(companyId: string, storeId: string, parentSlug: string, query: ProductQueryDto): Promise<{
-        category: {
+        parent: null;
+        groups: never[];
+        exploreMore: never[];
+    } | {
+        parent: {
             id: any;
             name: any;
             slug: any;
+            description: any;
+            imageUrl: string | null;
+            imageAltText: string | null;
+            afterContentHtml: any;
+            metaTitle: any;
+            metaDescription: any;
         } | {
             id: any;
             name: any;
             slug: any;
+            description: any;
+            imageUrl: string | null;
+            imageAltText: string | null;
+            afterContentHtml: any;
+            metaTitle: any;
+            metaDescription: any;
         };
-        products: any[];
-    }[]>;
+        groups: {
+            category: {
+                id: any;
+                name: any;
+                slug: any;
+                description: any;
+                imageUrl: string | null;
+                imageAltText: string | null;
+                afterContentHtml: any;
+            } | {
+                id: any;
+                name: any;
+                slug: any;
+                description: any;
+                imageUrl: string | null;
+                imageAltText: string | null;
+                afterContentHtml: any;
+            };
+            products: any[];
+        }[];
+        exploreMore: ({
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: string | null;
+        } | {
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: string | null;
+        })[];
+    }>;
 }
 export {};

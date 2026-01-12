@@ -2,6 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PermissionKeys = void 0;
 exports.PermissionKeys = [
+    'setup.create',
+    'setup.update',
+    'setup.complete',
     'products.read',
     'products.create',
     'products.update',
@@ -58,6 +61,7 @@ exports.PermissionKeys = [
     'payments.manage_providers',
     'payments.capture',
     'payments.refund',
+    'payments.write',
     'settings.read',
     'settings.manage_general',
     'settings.manage_checkout',
@@ -147,5 +151,7 @@ exports.PermissionKeys = [
     'mail.subscribers.update',
     'mail.messages.read',
     'mail.messages.update',
+    'integrations.analytics.read',
+    'integrations.analytics.update',
 ];
 //# sourceMappingURL=permission-keys.js.map

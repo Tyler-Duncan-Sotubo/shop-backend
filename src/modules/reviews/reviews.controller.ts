@@ -17,13 +17,12 @@ import { User } from 'src/common/types/user.type';
 import { BaseController } from 'src/common/interceptor/base.controller';
 import { ReviewsService } from './reviews.service';
 import { UpdateReviewDto } from './dto';
-import { ApiKeyGuard } from '../iam/api-keys/guard/api-key.guard';
-import { ApiScopes } from '../iam/api-keys/decorators/api-scopes.decorator';
-import { CurrentCompanyId } from '../iam/api-keys/decorators/current-company-id.decorator';
 import { StorefrontReviewQueryDto } from './dto/storefront-review-query.dto';
 import { CreateStorefrontReviewDto } from './dto/create-storefront-review.dto';
 import { UserAgent } from '../auth/decorator/user-agent';
-import { CurrentStoreId } from '../iam/api-keys/decorators/current-store.decorator';
+import { StorefrontGuard } from '../storefront-config/guard/storefront.guard';
+import { CurrentCompanyId } from '../storefront-config/decorators/current-company-id.decorator';
+import { CurrentStoreId } from '../storefront-config/decorators/current-store.decorator';
 
 @Controller('catalog/reviews')
 export class ReviewsController extends BaseController {
@@ -76,8 +75,7 @@ export class ReviewsController extends BaseController {
 
   // ✅ STOREFRONT: List reviews for product
   @Get('storefront/:productId')
-  @UseGuards(ApiKeyGuard)
-  @ApiScopes('reviews.read')
+  @UseGuards(StorefrontGuard)
   async listStorefrontReviews(
     @CurrentCompanyId() companyId: string,
     @Param('productId') productId: string,
@@ -93,8 +91,7 @@ export class ReviewsController extends BaseController {
 
   // ✅ STOREFRONT: Create review for product (no login)
   @Post('storefront/:productId')
-  @UseGuards(ApiKeyGuard)
-  @ApiScopes('reviews.create')
+  @UseGuards(StorefrontGuard)
   async createStorefrontReview(
     @CurrentCompanyId() companyId: string,
     @CurrentStoreId() storeId: string,

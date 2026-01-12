@@ -16,6 +16,10 @@ class CreateVariantDto {
 }
 exports.CreateVariantDto = CreateVariantDto;
 __decorate([
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateVariantDto.prototype, "storeId", void 0);
+__decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)

@@ -17,6 +17,8 @@ import { InventoryStockService } from '../commerce/inventory/services/inventory-
 import { InventoryLocationsService } from '../commerce/inventory/services/inventory-locations.service';
 import { ApiKeysService } from '../iam/api-keys/api-keys.service';
 import { InventoryLedgerService } from '../commerce/inventory/services/inventory-ledger.service';
+import { StoresService } from '../commerce/stores/stores.service';
+import { ProductDiscoveryService } from './services/product-discovery.service';
 
 @Module({
   controllers: [
@@ -39,6 +41,8 @@ import { InventoryLedgerService } from '../commerce/inventory/services/inventory
     InventoryLocationsService,
     ApiKeysService,
     InventoryLedgerService,
+    StoresService,
+    ProductDiscoveryService,
   ],
   exports: [ProductsService, VariantsService],
 })

@@ -4,7 +4,7 @@ exports.productReviews = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 const products_schema_1 = require("./products.schema");
 const id_1 = require("../../id");
-const stores_schema_1 = require("../stores/stores.schema");
+const stores_schema_1 = require("../commerce/stores/stores.schema");
 exports.productReviews = (0, pg_core_1.pgTable)('product_reviews', {
     id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),
     companyId: (0, pg_core_1.uuid)('company_id').notNull(),

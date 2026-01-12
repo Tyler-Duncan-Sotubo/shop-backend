@@ -18,6 +18,8 @@ exports.paymentFiles = (0, pg_core_1.pgTable)('payment_files', {
     fileName: (0, pg_core_1.text)('file_name').notNull(),
     mimeType: (0, pg_core_1.text)('mime_type').notNull(),
     sizeBytes: (0, pg_core_1.bigint)('size_bytes', { mode: 'number' }),
+    kind: (0, pg_core_1.text)('kind').notNull().default('evidence'),
+    note: (0, pg_core_1.text)('note'),
     uploadedByUserId: (0, pg_core_1.uuid)('uploaded_by_user_id').references(() => users_schema_1.users.id, {
         onDelete: 'set null',
     }),

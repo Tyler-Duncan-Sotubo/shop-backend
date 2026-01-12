@@ -223,4 +223,153 @@ export class CacheService {
       },
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Global versioned cache API (for cross-company invalidation)
+  // ---------------------------------------------------------------------------
+
+  /** Global version key for things like storefront bases that affect everyone */
+  private globalVersionKey() {
+    return `global:ver`;
+  }
+
+  /** Build a versioned key: global:v{ver}:{...parts} */
+  buildGlobalVersionedKey(ver: number, ...parts: string[]) {
+    return ['global', `v${ver}`, ...parts].join(':');
+  }
+
+  /** Get the current global version (initialize to 1 if missing). */
+  async getGlobalVersion(): Promise<number> {
+    const versionKey = this.globalVersionKey();
+
+    return (await this.safeRedisCall(
+      async (client) => {
+        const raw = await client.get(versionKey);
+        if (raw) return Number(raw);
+        if (client.set) await client.set(versionKey, '1');
+        return 1;
+      },
+      async () => {
+        const raw = await this.cacheManager.get<string>(versionKey);
+        if (raw) return Number(raw);
+        await this.cacheManager.set(versionKey, '1');
+        return 1;
+      },
+    )) as number;
+  }
+
+  /** Atomically bump the global version, fallback non-atomic */
+  async bumpGlobalVersion(): Promise<number> {
+    const versionKey = this.globalVersionKey();
+
+    return (await this.safeRedisCall(
+      async (client) => {
+        if (!client.incr) throw new Error('INCR not available');
+        const v = await client.incr(versionKey);
+        return Number(v);
+      },
+      async () => {
+        this.logger.warn(
+          `bumpGlobalVersion: falling back to non-atomic increment`,
+        );
+        const current = await this.getGlobalVersion();
+        const next = current + 1;
+        await this.cacheManager.set(versionKey, String(next));
+        return next;
+      },
+    )) as number;
+  }
+
+  async resetGlobalVersion(): Promise<number> {
+    const versionKey = this.globalVersionKey();
+
+    return (await this.safeRedisCall(
+      async (client) => {
+        await client.set(versionKey, '1');
+        return 1;
+      },
+      async () => {
+        await this.cacheManager.set(versionKey, '1');
+        return 1;
+      },
+    )) as number;
+  }
+
+  /** Global versioned get-or-set */
+  async getOrSetGlobalVersioned<T>(
+    keyParts: string[],
+    compute: () => Promise<T>,
+    opts?: { ttlSeconds?: number; tags?: string[] },
+  ): Promise<T> {
+    const ver = await this.getGlobalVersion();
+    const key = this.buildGlobalVersionedKey(ver, ...keyParts);
+
+    const hit = await this.cacheManager.get<T>(key);
+    if (hit !== undefined && hit !== null) return hit;
+
+    const val = await compute();
+    const ttl = opts?.ttlSeconds ? opts.ttlSeconds * 1000 : this.ttlMs;
+    await this.cacheManager.set(key, val as any, ttl);
+
+    if (opts?.tags?.length) {
+      await this.attachTags(key, opts.tags);
+    }
+
+    return val;
+  }
+
+  /**
+   * Optional helper: invalidate on either company changes OR global changes.
+   * Useful if you cache "resolved storefront config" and want it to invalidate
+   * when:
+   * - store override changes (company bump)
+   * - base changes (global bump)
+   */
+  buildCompanyAndGlobalVersionedKey(
+    companyId: string,
+    companyVer: number,
+    globalVer: number,
+    ...parts: string[]
+  ) {
+    return [
+      'company',
+      companyId,
+      `v${companyVer}`,
+      'global',
+      `v${globalVer}`,
+      ...parts,
+    ].join(':');
+  }
+
+  async getOrSetCompanyAndGlobalVersioned<T>(
+    companyId: string,
+    keyParts: string[],
+    compute: () => Promise<T>,
+    opts?: { ttlSeconds?: number; tags?: string[] },
+  ): Promise<T> {
+    const [companyVer, globalVer] = await Promise.all([
+      this.getCompanyVersion(companyId),
+      this.getGlobalVersion(),
+    ]);
+
+    const key = this.buildCompanyAndGlobalVersionedKey(
+      companyId,
+      companyVer,
+      globalVer,
+      ...keyParts,
+    );
+
+    const hit = await this.cacheManager.get<T>(key);
+    if (hit !== undefined && hit !== null) return hit;
+
+    const val = await compute();
+    const ttl = opts?.ttlSeconds ? opts.ttlSeconds * 1000 : this.ttlMs;
+    await this.cacheManager.set(key, val as any, ttl);
+
+    if (opts?.tags?.length) {
+      await this.attachTags(key, opts.tags);
+    }
+
+    return val;
+  }
 }

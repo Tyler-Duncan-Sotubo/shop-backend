@@ -20,7 +20,7 @@ export declare class PaymentReceiptService {
             amount: string;
             amountMinor: number;
             currency: string;
-            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+            method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
             methodLabel: string;
             reference: string | null;
         };

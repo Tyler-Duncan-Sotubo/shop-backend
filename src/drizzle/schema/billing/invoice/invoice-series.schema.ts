@@ -10,7 +10,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { defaultId } from 'src/drizzle/id';
 import { companies } from '../../companies/companies.schema';
-import { stores } from '../../stores/stores.schema';
+import { stores } from '../../commerce/stores/stores.schema';
 import { invoiceTypeEnum } from '../../enum.schema';
 
 export const invoiceSeries = pgTable(

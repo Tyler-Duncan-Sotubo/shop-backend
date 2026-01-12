@@ -21,9 +21,8 @@ const blog_service_1 = require("./blog.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../auth/decorator/current-user.decorator");
 const blog_posts_admin_query_dto_1 = require("./dto/blog-posts-admin-query.dto");
-const api_key_guard_1 = require("../iam/api-keys/guard/api-key.guard");
-const current_store_decorator_1 = require("../iam/api-keys/decorators/current-store.decorator");
-const api_scopes_decorator_1 = require("../iam/api-keys/decorators/api-scopes.decorator");
+const current_store_decorator_1 = require("../storefront-config/decorators/current-store.decorator");
+const storefront_guard_1 = require("../storefront-config/guard/storefront.guard");
 let BlogController = class BlogController extends base_controller_1.BaseController {
     constructor(blogService) {
         super();
@@ -140,8 +139,7 @@ __decorate([
 ], BlogController.prototype, "remove", null);
 __decorate([
     (0, common_1.Get)('/public/list'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('quotes.create'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __param(0, (0, current_store_decorator_1.CurrentStoreId)()),
     __param(1, (0, common_1.Query)('page')),
     __param(2, (0, common_1.Query)('limit')),
@@ -151,8 +149,7 @@ __decorate([
 ], BlogController.prototype, "listPublic", null);
 __decorate([
     (0, common_1.Get)('/public/:slug'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('quotes.create'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __param(0, (0, current_store_decorator_1.CurrentStoreId)()),
     __param(1, (0, common_1.Param)('slug')),
     __metadata("design:type", Function),

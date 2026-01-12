@@ -8,27 +8,29 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ApiKeyGuard } from '../../iam/api-keys/guard/api-key.guard';
-import { ApiScopes } from '../../iam/api-keys/decorators/api-scopes.decorator';
-import { CurrentCompanyId } from '../../iam/api-keys/decorators/current-company-id.decorator';
 import { CartTokenGuard } from '../cart/guard/cart-token.guard'; // adjust path
 import { CheckoutService } from './checkout.service';
 import { CreateCheckoutFromCartDto } from './dto/create-checkout-from-cart.dto';
 import { SetCheckoutShippingDto } from './dto/set-checkout-shipping.dto';
 import { SetCheckoutPickupDto } from './dto/set-checkout-pickup.dto';
-import { CurrentStoreId } from 'src/modules/iam/api-keys/decorators/current-store.decorator';
+import { StorefrontGuard } from 'src/modules/storefront-config/guard/storefront.guard';
+import { CurrentCompanyId } from 'src/modules/storefront-config/decorators/current-company-id.decorator';
+import { CurrentStoreId } from 'src/modules/storefront-config/decorators/current-store.decorator';
+import { CheckoutPaymentsService } from './checkout-payment.service';
 
 @Controller('/storefront/checkouts')
-@UseGuards(ApiKeyGuard)
+@UseGuards(StorefrontGuard)
 export class StorefrontCheckoutController {
-  constructor(private readonly checkout: CheckoutService) {}
+  constructor(
+    private readonly checkout: CheckoutService,
+    private readonly checkoutPayments: CheckoutPaymentsService,
+  ) {}
 
   // -----------------------------
   // Create checkout from cart
   // Requires cart session token
   // -----------------------------
   @UseGuards(CartTokenGuard)
-  @ApiScopes('checkout.create')
   @Post('from-cart/:cartId')
   createFromCart(
     @CurrentCompanyId() companyId: string,
@@ -52,7 +54,6 @@ export class StorefrontCheckoutController {
   // Still requires cart session token
   // -----------------------------
   @UseGuards(CartTokenGuard)
-  @ApiScopes('checkout.create')
   @Get(':checkoutId')
   get(
     @CurrentCompanyId() companyId: string,
@@ -65,7 +66,6 @@ export class StorefrontCheckoutController {
   // Set delivery method: shipping
   // -----------------------------
   @UseGuards(CartTokenGuard)
-  @ApiScopes('checkout.create')
   @Patch(':checkoutId/shipping')
   setShipping(
     @CurrentCompanyId() companyId: string,
@@ -80,7 +80,6 @@ export class StorefrontCheckoutController {
   // Set delivery method: pickup
   // -----------------------------
   @UseGuards(CartTokenGuard)
-  @ApiScopes('checkout.create')
   @Patch(':checkoutId/pickup')
   setPickup(
     @CurrentCompanyId() companyId: string,
@@ -95,7 +94,6 @@ export class StorefrontCheckoutController {
   // Lock checkout (optional but useful)
   // -----------------------------
   @UseGuards(CartTokenGuard)
-  @ApiScopes('checkout.create')
   @Patch(':checkoutId/lock')
   lock(
     @CurrentCompanyId() companyId: string,
@@ -109,7 +107,6 @@ export class StorefrontCheckoutController {
   // Complete checkout -> order
   // -----------------------------
   @UseGuards(CartTokenGuard)
-  @ApiScopes('checkout.create')
   @Post(':checkoutId/complete')
   complete(
     @CurrentCompanyId() companyId: string,
@@ -117,5 +114,21 @@ export class StorefrontCheckoutController {
     @Ip() ip: string,
   ) {
     return this.checkout.complete(companyId, checkoutId, undefined, ip);
+  }
+
+  @Post('bank-transfer/init')
+  @UseGuards(StorefrontGuard)
+  async initBankTransfer(
+    @CurrentCompanyId() companyId: string,
+    @CurrentStoreId() storeId: string,
+    @Body()
+    dto: { checkoutId: string; customerEmail?: string; customerPhone?: string },
+  ) {
+    const data = await this.checkoutPayments.initBankTransferForCheckout(
+      companyId,
+      storeId,
+      dto,
+    );
+    return { data };
   }
 }

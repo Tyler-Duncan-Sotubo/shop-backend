@@ -7,7 +7,7 @@ const variants_schema_1 = require("../../catalogs/variants.schema");
 const products_schema_1 = require("../../catalogs/products.schema");
 const companies_schema_1 = require("../../companies/companies.schema");
 const invoices_schema_1 = require("./invoices.schema");
-const orders_schema_1 = require("../../orders/orders.schema");
+const orders_schema_1 = require("../../commerce/orders/orders.schema");
 const taxes_schema_1 = require("../tax/taxes.schema");
 exports.invoiceLines = (0, pg_core_1.pgTable)('invoice_lines', {
     id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),

@@ -15,7 +15,7 @@ import { companies } from '../companies/companies.schema';
 import { products } from './products.schema';
 import { defaultId } from 'src/drizzle/id';
 import { productImages } from './images.schema';
-import { stores } from '../stores/stores.schema';
+import { stores } from '../commerce/stores/stores.schema';
 
 export const productVariants = pgTable(
   'product_variants',

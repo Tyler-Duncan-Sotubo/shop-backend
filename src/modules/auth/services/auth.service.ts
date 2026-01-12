@@ -65,6 +65,7 @@ export class AuthService {
         roleId: users.companyRoleId,
         plan: companies.plan,
         trialEndsAt: companies.trialEndsAt,
+        onboardingCompleted: users.onboardingCompleted,
       })
       .from(users)
       .innerJoin(companyRoles, eq(users.companyRoleId, companyRoles.id))
@@ -127,6 +128,8 @@ export class AuthService {
 
     const permissions = Array.from(new Set([...permissionKeys, ...tags]));
 
+    const onboardingCompleted = !!user.onboardingCompleted;
+
     return {
       user: updatedUser,
       backendTokens: {
@@ -135,6 +138,7 @@ export class AuthService {
         expiresIn: Date.now() + 1000 * 60 * 10,
       },
       permissions, // includes plan.* and trial.* tags
+      onboardingCompleted,
     };
   }
 

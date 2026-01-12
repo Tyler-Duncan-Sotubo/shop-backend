@@ -160,7 +160,6 @@ let CompaniesService = class CompaniesService {
         if (!updated) {
             throw new common_1.NotFoundException('Company not found.');
         }
-        await this.companySettingsService.markOnboardingStep(companyId, 'branding_complete', true);
         return updated;
     }
 };

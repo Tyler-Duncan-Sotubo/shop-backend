@@ -19,13 +19,12 @@ const current_user_decorator_1 = require("../auth/decorator/current-user.decorat
 const base_controller_1 = require("../../common/interceptor/base.controller");
 const reviews_service_1 = require("./reviews.service");
 const dto_1 = require("./dto");
-const api_key_guard_1 = require("../iam/api-keys/guard/api-key.guard");
-const api_scopes_decorator_1 = require("../iam/api-keys/decorators/api-scopes.decorator");
-const current_company_id_decorator_1 = require("../iam/api-keys/decorators/current-company-id.decorator");
 const storefront_review_query_dto_1 = require("./dto/storefront-review-query.dto");
 const create_storefront_review_dto_1 = require("./dto/create-storefront-review.dto");
 const user_agent_1 = require("../auth/decorator/user-agent");
-const current_store_decorator_1 = require("../iam/api-keys/decorators/current-store.decorator");
+const storefront_guard_1 = require("../storefront-config/guard/storefront.guard");
+const current_company_id_decorator_1 = require("../storefront-config/decorators/current-company-id.decorator");
+const current_store_decorator_1 = require("../storefront-config/decorators/current-store.decorator");
 let ReviewsController = class ReviewsController extends base_controller_1.BaseController {
     constructor(reviewsService) {
         super();
@@ -88,8 +87,7 @@ __decorate([
 ], ReviewsController.prototype, "updateReview", null);
 __decorate([
     (0, common_1.Get)('storefront/:productId'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('reviews.read'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, common_1.Param)('productId')),
     __param(2, (0, common_1.Query)()),
@@ -99,8 +97,7 @@ __decorate([
 ], ReviewsController.prototype, "listStorefrontReviews", null);
 __decorate([
     (0, common_1.Post)('storefront/:productId'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('reviews.create'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
     __param(2, (0, common_1.Param)('productId')),

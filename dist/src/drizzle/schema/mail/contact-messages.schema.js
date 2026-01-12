@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.contactMessages = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 const companies_schema_1 = require("../companies/companies.schema");
-const stores_schema_1 = require("../stores/stores.schema");
+const stores_schema_1 = require("../commerce/stores/stores.schema");
 const id_1 = require("../../id");
 exports.contactMessages = (0, pg_core_1.pgTable)('contact_messages', {
     id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),

@@ -46,6 +46,7 @@ export declare class AuthController {
             roleId: string;
             plan: string;
             trialEndsAt: Date | null;
+            onboardingCompleted: boolean;
         };
         backendTokens: {
             accessToken: string;
@@ -53,6 +54,7 @@ export declare class AuthController {
             expiresIn: number;
         };
         permissions: string[];
+        onboardingCompleted: boolean;
     }>;
     refreshToken(user: JwtType, dto: TokenDto): Promise<{
         accessToken: string;
@@ -111,6 +113,7 @@ export declare class AuthController {
             roleId: string;
             plan: string;
             trialEndsAt: Date | null;
+            onboardingCompleted: boolean;
         };
         backendTokens: {
             accessToken: string;
@@ -118,6 +121,7 @@ export declare class AuthController {
             expiresIn: number;
         };
         permissions: string[];
+        onboardingCompleted: boolean;
     }>;
     resendCode(token: string): Promise<string>;
 }

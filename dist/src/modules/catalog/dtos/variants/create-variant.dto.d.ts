@@ -1,4 +1,5 @@
 export declare class CreateVariantDto {
+    storeId: string;
     title?: string;
     sku?: string;
     barcode?: string;

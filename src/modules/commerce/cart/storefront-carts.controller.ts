@@ -15,17 +15,16 @@ import { FastifyReply } from 'fastify';
 import { BaseController } from 'src/common/interceptor/base.controller';
 import { CartService } from './cart.service';
 import { CreateCartDto, AddCartItemDto, UpdateCartItemDto } from './dto';
-import { ApiKeyGuard } from '../../iam/api-keys/guard/api-key.guard';
-import { ApiScopes } from '../../iam/api-keys/decorators/api-scopes.decorator';
-import { CurrentCompanyId } from '../../iam/api-keys/decorators/current-company-id.decorator';
 import { CartTokenGuard } from './guard/cart-token.guard';
 import { AuthCustomer } from '../../customers/types/customers';
 import { CurrentCustomer } from '../../customers/decorators/current-customer.decorator';
 import { CustomerJwtGuard } from '../../customers/guards/customer-jwt.guard';
-import { CurrentStoreId } from 'src/modules/iam/api-keys/decorators/current-store.decorator';
+import { CurrentCompanyId } from 'src/modules/storefront-config/decorators/current-company-id.decorator';
+import { CurrentStoreId } from 'src/modules/storefront-config/decorators/current-store.decorator';
+import { StorefrontGuard } from 'src/modules/storefront-config/guard/storefront.guard';
 
 @Controller('/storefront/carts')
-@UseGuards(ApiKeyGuard)
+@UseGuards(StorefrontGuard)
 export class StorefrontCartController extends BaseController {
   constructor(private readonly cartService: CartService) {
     super();
@@ -39,7 +38,6 @@ export class StorefrontCartController extends BaseController {
   }
 
   // ----------------- Carts -----------------
-  @ApiScopes('carts.create')
   @Post()
   async createGuestCart(
     @CurrentCompanyId() companyId: string,
@@ -62,7 +60,6 @@ export class StorefrontCartController extends BaseController {
   }
 
   @UseGuards(CartTokenGuard)
-  @ApiScopes('carts.read')
   @Get(':cartId')
   async getCart(
     @Req() req: any,
@@ -77,7 +74,6 @@ export class StorefrontCartController extends BaseController {
   }
 
   @UseGuards(CartTokenGuard)
-  @ApiScopes('carts.read')
   @Get(':cartId/items')
   async items(
     @Req() req: any,
@@ -97,7 +93,6 @@ export class StorefrontCartController extends BaseController {
 
   // ----------------- Items -----------------
   @UseGuards(CartTokenGuard)
-  @ApiScopes('carts.update')
   @Post(':cartId/items')
   async addItem(
     @Req() req: any,
@@ -121,7 +116,6 @@ export class StorefrontCartController extends BaseController {
   }
 
   @UseGuards(CartTokenGuard)
-  @ApiScopes('carts.update')
   @Patch(':cartId/items/:cartItemId')
   async updateItemQty(
     @Req() req: any,
@@ -147,7 +141,6 @@ export class StorefrontCartController extends BaseController {
   }
 
   @UseGuards(CartTokenGuard)
-  @ApiScopes('carts.update')
   @Delete(':cartId/items/:cartItemId')
   async removeItem(
     @Req() req: any,
@@ -172,7 +165,6 @@ export class StorefrontCartController extends BaseController {
 
   // Claim a cart
   @UseGuards(CustomerJwtGuard, CartTokenGuard)
-  @ApiScopes('carts.update')
   @Post('claim')
   async claimCart(
     @Req() req: any,

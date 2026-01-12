@@ -23,10 +23,9 @@ const update_address_dto_1 = require("./dto/update-address.dto");
 const customer_auth_service_1 = require("./customer-auth.service");
 const register_customer_dto_1 = require("./dto/register-customer.dto");
 const login_customer_dto_1 = require("./dto/login-customer.dto");
-const api_scopes_decorator_1 = require("../iam/api-keys/decorators/api-scopes.decorator");
-const api_key_guard_1 = require("../iam/api-keys/guard/api-key.guard");
-const current_company_id_decorator_1 = require("../iam/api-keys/decorators/current-company-id.decorator");
-const current_store_decorator_1 = require("../iam/api-keys/decorators/current-store.decorator");
+const storefront_guard_1 = require("../storefront-config/guard/storefront.guard");
+const current_company_id_decorator_1 = require("../storefront-config/decorators/current-company-id.decorator");
+const current_store_decorator_1 = require("../storefront-config/decorators/current-store.decorator");
 let CustomersController = class CustomersController {
     constructor(customersService, customerAuthService) {
         this.customersService = customersService;
@@ -211,8 +210,7 @@ __decorate([
 ], CustomersController.prototype, "listMyReviews", null);
 exports.CustomersController = CustomersController = __decorate([
     (0, common_1.Controller)('storefront/customers'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('storefront'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __metadata("design:paramtypes", [customers_service_1.CustomersService,
         customer_auth_service_1.CustomerAuthService])
 ], CustomersController);

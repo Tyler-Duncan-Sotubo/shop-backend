@@ -25,14 +25,17 @@ import {
   mapProductToDetailResponse,
   mapProductsListToStorefront,
 } from '../mappers/product.mapper';
-import { ApiScopes } from 'src/modules/iam/api-keys/decorators/api-scopes.decorator';
-import { CurrentCompanyId } from 'src/modules/iam/api-keys/decorators/current-company-id.decorator';
-import { ApiKeyGuard } from 'src/modules/iam/api-keys/guard/api-key.guard';
-import { CurrentStoreId } from 'src/modules/iam/api-keys/decorators/current-store.decorator';
+import { StorefrontGuard } from 'src/modules/storefront-config/guard/storefront.guard';
+import { CurrentCompanyId } from 'src/modules/storefront-config/decorators/current-company-id.decorator';
+import { CurrentStoreId } from 'src/modules/storefront-config/decorators/current-store.decorator';
+import { ProductDiscoveryService } from '../services/product-discovery.service';
 
 @Controller('catalog/products')
 export class ProductsController extends BaseController {
-  constructor(private readonly productsService: ProductsService) {
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly productDiscoveryService: ProductDiscoveryService,
+  ) {
     super();
   }
 
@@ -65,14 +68,12 @@ export class ProductsController extends BaseController {
 
   // ----------------- Storefront -----------------
   @Get('storefront')
-  @UseGuards(ApiKeyGuard)
-  @ApiScopes('catalog.products.read')
+  @UseGuards(StorefrontGuard)
   async listStorefrontProducts(
     @CurrentCompanyId() companyId: string,
     @CurrentStoreId() storeId: string,
     @Query() query: ProductQueryDto,
   ) {
-    console.log(storeId);
     const products = await this.productsService.listProducts(
       companyId,
       storeId,
@@ -82,8 +83,7 @@ export class ProductsController extends BaseController {
   }
 
   @Get('storefront/:slug')
-  @UseGuards(ApiKeyGuard)
-  @ApiScopes('catalog.products.read')
+  @UseGuards(StorefrontGuard)
   async getProductBySlug(
     @CurrentCompanyId() companyId: string,
     @Param('slug') slug: string,
@@ -96,8 +96,7 @@ export class ProductsController extends BaseController {
   }
 
   @Get('storefront/collections/:slug')
-  @UseGuards(ApiKeyGuard)
-  @ApiScopes('catalog.products.read')
+  @UseGuards(StorefrontGuard)
   async listCollectionProducts(
     @CurrentCompanyId() companyId: string,
     @CurrentStoreId() storeId: string,
@@ -114,8 +113,7 @@ export class ProductsController extends BaseController {
     return collection;
   }
 
-  @UseGuards(ApiKeyGuard)
-  @ApiScopes('catalog.products.read')
+  @UseGuards(StorefrontGuard)
   @Get('storefront/collections/:slug/grouped')
   async listProductsGroupedByCollectionSlug(
     @CurrentCompanyId() companyId: string,
@@ -123,7 +121,7 @@ export class ProductsController extends BaseController {
     @Param('slug') slug: string,
     @Query() query: ProductQueryDto,
   ) {
-    const groups =
+    const result =
       await this.productsService.listProductsGroupedUnderParentCategorySlug(
         companyId,
         storeId,
@@ -131,10 +129,85 @@ export class ProductsController extends BaseController {
         query,
       );
 
-    return groups.map((group) => ({
-      category: group.category,
-      products: mapProductsListToStorefront(group.products), // ✅ IMPORTANT (no extra .map)
-    }));
+    if (!result?.parent) {
+      return {
+        parent: null,
+        groups: [],
+        exploreMore: [],
+      };
+    }
+
+    return {
+      parent: result.parent,
+      groups: result.groups.map((group) => ({
+        category: group.category,
+        products: group.products,
+      })),
+      exploreMore: result.exploreMore,
+    };
+  }
+
+  @Get('storefront/latest')
+  @UseGuards(StorefrontGuard)
+  async latest(
+    @CurrentCompanyId() companyId: string,
+    @CurrentStoreId() storeId: string,
+    @Query() query: ProductQueryDto,
+  ) {
+    const rows =
+      await this.productDiscoveryService.listLatestStorefrontProducts(
+        companyId,
+        storeId,
+        {
+          limit: query.limit ?? 12,
+          offset: query.offset ?? 0,
+          search: query.search,
+        },
+      );
+
+    return mapProductsListToStorefront(rows as any);
+  }
+
+  @Get('storefront/on-sale')
+  @UseGuards(StorefrontGuard)
+  async onSale(
+    @CurrentCompanyId() companyId: string,
+    @CurrentStoreId() storeId: string,
+    @Query() query: ProductQueryDto,
+  ) {
+    const rows =
+      await this.productDiscoveryService.listOnSaleStorefrontProducts(
+        companyId,
+        storeId,
+        {
+          limit: query.limit ?? 12,
+          offset: query.offset ?? 0,
+          search: query.search,
+        },
+      );
+
+    return mapProductsListToStorefront(rows as any);
+  }
+
+  @Get('storefront/best-sellers')
+  @UseGuards(StorefrontGuard)
+  async bestSellers(
+    @CurrentCompanyId() companyId: string,
+    @CurrentStoreId() storeId: string,
+    @Query() query: ProductQueryDto & { windowDays?: number },
+  ) {
+    const rows =
+      await this.productDiscoveryService.listBestSellerStorefrontProducts(
+        companyId,
+        storeId,
+        {
+          limit: query.limit ?? 12,
+          offset: query.offset ?? 0,
+          windowDays: Number(query.windowDays ?? 30),
+        },
+      );
+
+    return mapProductsListToStorefront(rows as any);
   }
 
   // ----------------- Get Single Product -----------------

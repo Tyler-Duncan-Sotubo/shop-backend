@@ -10,14 +10,15 @@ exports.PickupModule = void 0;
 const common_1 = require("@nestjs/common");
 const pickup_service_1 = require("./pickup.service");
 const pickup_controller_1 = require("./pickup.controller");
-const api_keys_service_1 = require("../../iam/api-keys/api-keys.service");
+const stores_service_1 = require("../../commerce/stores/stores.service");
+const aws_service_1 = require("../../../common/aws/aws.service");
 let PickupModule = class PickupModule {
 };
 exports.PickupModule = PickupModule;
 exports.PickupModule = PickupModule = __decorate([
     (0, common_1.Module)({
         controllers: [pickup_controller_1.PickupController],
-        providers: [pickup_service_1.PickupService, api_keys_service_1.ApiKeysService],
+        providers: [pickup_service_1.PickupService, stores_service_1.StoresService, aws_service_1.AwsService],
     })
 ], PickupModule);
 //# sourceMappingURL=pickup.module.js.map

@@ -213,12 +213,6 @@ export class CompaniesService {
       throw new NotFoundException('Company not found.');
     }
 
-    await this.companySettingsService.markOnboardingStep(
-      companyId,
-      'branding_complete',
-      true,
-    );
-
     return updated;
   }
 }

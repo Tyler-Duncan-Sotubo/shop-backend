@@ -17,13 +17,12 @@ const common_1 = require("@nestjs/common");
 const base_controller_1 = require("../../../common/interceptor/base.controller");
 const cart_service_1 = require("./cart.service");
 const dto_1 = require("./dto");
-const api_key_guard_1 = require("../../iam/api-keys/guard/api-key.guard");
-const api_scopes_decorator_1 = require("../../iam/api-keys/decorators/api-scopes.decorator");
-const current_company_id_decorator_1 = require("../../iam/api-keys/decorators/current-company-id.decorator");
 const cart_token_guard_1 = require("./guard/cart-token.guard");
 const current_customer_decorator_1 = require("../../customers/decorators/current-customer.decorator");
 const customer_jwt_guard_1 = require("../../customers/guards/customer-jwt.guard");
-const current_store_decorator_1 = require("../../iam/api-keys/decorators/current-store.decorator");
+const current_company_id_decorator_1 = require("../../storefront-config/decorators/current-company-id.decorator");
+const current_store_decorator_1 = require("../../storefront-config/decorators/current-store.decorator");
+const storefront_guard_1 = require("../../storefront-config/guard/storefront.guard");
 let StorefrontCartController = class StorefrontCartController extends base_controller_1.BaseController {
     constructor(cartService) {
         super();
@@ -75,7 +74,6 @@ let StorefrontCartController = class StorefrontCartController extends base_contr
 };
 exports.StorefrontCartController = StorefrontCartController;
 __decorate([
-    (0, api_scopes_decorator_1.ApiScopes)('carts.create'),
     (0, common_1.Post)(),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
@@ -88,7 +86,6 @@ __decorate([
 ], StorefrontCartController.prototype, "createGuestCart", null);
 __decorate([
     (0, common_1.UseGuards)(cart_token_guard_1.CartTokenGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('carts.read'),
     (0, common_1.Get)(':cartId'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)()),
@@ -101,7 +98,6 @@ __decorate([
 ], StorefrontCartController.prototype, "getCart", null);
 __decorate([
     (0, common_1.UseGuards)(cart_token_guard_1.CartTokenGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('carts.read'),
     (0, common_1.Get)(':cartId/items'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)()),
@@ -114,7 +110,6 @@ __decorate([
 ], StorefrontCartController.prototype, "items", null);
 __decorate([
     (0, common_1.UseGuards)(cart_token_guard_1.CartTokenGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('carts.update'),
     (0, common_1.Post)(':cartId/items'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)()),
@@ -129,7 +124,6 @@ __decorate([
 ], StorefrontCartController.prototype, "addItem", null);
 __decorate([
     (0, common_1.UseGuards)(cart_token_guard_1.CartTokenGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('carts.update'),
     (0, common_1.Patch)(':cartId/items/:cartItemId'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)()),
@@ -145,7 +139,6 @@ __decorate([
 ], StorefrontCartController.prototype, "updateItemQty", null);
 __decorate([
     (0, common_1.UseGuards)(cart_token_guard_1.CartTokenGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('carts.update'),
     (0, common_1.Delete)(':cartId/items/:cartItemId'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)()),
@@ -160,7 +153,6 @@ __decorate([
 ], StorefrontCartController.prototype, "removeItem", null);
 __decorate([
     (0, common_1.UseGuards)(customer_jwt_guard_1.CustomerJwtGuard, cart_token_guard_1.CartTokenGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('carts.update'),
     (0, common_1.Post)('claim'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)()),
@@ -174,7 +166,7 @@ __decorate([
 ], StorefrontCartController.prototype, "claimCart", null);
 exports.StorefrontCartController = StorefrontCartController = __decorate([
     (0, common_1.Controller)('/storefront/carts'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __metadata("design:paramtypes", [cart_service_1.CartService])
 ], StorefrontCartController);
 //# sourceMappingURL=storefront-carts.controller.js.map

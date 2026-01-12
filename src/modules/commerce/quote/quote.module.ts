@@ -8,6 +8,8 @@ import { InvoiceService } from 'src/modules/billing/invoice/invoice.service';
 import { InventoryLocationsService } from '../inventory/services/inventory-locations.service';
 import { InventoryLedgerService } from '../inventory/services/inventory-ledger.service';
 import { InvoiceTotalsService } from 'src/modules/billing/invoice/invoice-totals.service';
+import { StoresService } from '../stores/stores.service';
+import { AwsService } from 'src/common/aws/aws.service';
 
 @Module({
   controllers: [QuoteController],
@@ -20,6 +22,8 @@ import { InvoiceTotalsService } from 'src/modules/billing/invoice/invoice-totals
     InventoryLocationsService,
     InventoryLedgerService,
     InvoiceTotalsService,
+    StoresService,
+    AwsService,
   ],
 })
 export class QuoteModule {}

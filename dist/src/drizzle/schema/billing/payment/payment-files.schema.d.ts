@@ -121,6 +121,40 @@ export declare const paymentFiles: import("drizzle-orm/pg-core").PgTableWithColu
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        kind: import("drizzle-orm/pg-core").PgColumn<{
+            name: "kind";
+            tableName: "payment_files";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        note: import("drizzle-orm/pg-core").PgColumn<{
+            name: "note";
+            tableName: "payment_files";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         uploadedByUserId: import("drizzle-orm/pg-core").PgColumn<{
             name: "uploaded_by_user_id";
             tableName: "payment_files";

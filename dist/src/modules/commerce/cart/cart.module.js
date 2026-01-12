@@ -22,6 +22,8 @@ const jwt_1 = require("@nestjs/jwt");
 const inventory_ledger_service_1 = require("../inventory/services/inventory-ledger.service");
 const invoice_service_1 = require("../../billing/invoice/invoice.service");
 const invoice_totals_service_1 = require("../../billing/invoice/invoice-totals.service");
+const stores_service_1 = require("../stores/stores.service");
+const aws_service_1 = require("../../../common/aws/aws.service");
 let CartModule = class CartModule {
 };
 exports.CartModule = CartModule;
@@ -41,6 +43,8 @@ exports.CartModule = CartModule = __decorate([
             inventory_ledger_service_1.InventoryLedgerService,
             invoice_service_1.InvoiceService,
             invoice_totals_service_1.InvoiceTotalsService,
+            stores_service_1.StoresService,
+            aws_service_1.AwsService,
         ],
         exports: [cart_service_1.CartService],
     })

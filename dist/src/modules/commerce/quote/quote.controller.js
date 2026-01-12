@@ -21,10 +21,9 @@ const quote_service_1 = require("./quote.service");
 const create_quote_dto_1 = require("./dto/create-quote.dto");
 const update_quote_dto_1 = require("./dto/update-quote.dto");
 const get_quotes_query_dto_1 = require("./dto/get-quotes-query.dto");
-const api_key_guard_1 = require("../../iam/api-keys/guard/api-key.guard");
-const api_scopes_decorator_1 = require("../../iam/api-keys/decorators/api-scopes.decorator");
-const current_store_decorator_1 = require("../../iam/api-keys/decorators/current-store.decorator");
 const convert_quote_to_manual_order_dto_1 = require("./dto/convert-quote-to-manual-order.dto");
+const current_store_decorator_1 = require("../../storefront-config/decorators/current-store.decorator");
+const storefront_guard_1 = require("../../storefront-config/guard/storefront.guard");
 let QuoteController = class QuoteController extends base_controller_1.BaseController {
     constructor(quoteService) {
         super();
@@ -121,8 +120,7 @@ __decorate([
 ], QuoteController.prototype, "deleteQuote", null);
 __decorate([
     (0, common_1.Post)('storefront-quotes'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('quotes.create'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __param(0, (0, current_store_decorator_1.CurrentStoreId)()),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Ip)()),

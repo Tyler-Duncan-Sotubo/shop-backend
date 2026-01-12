@@ -20,14 +20,15 @@ const base_controller_1 = require("../../../common/interceptor/base.controller")
 const products_service_1 = require("../services/products.service");
 const products_1 = require("../dtos/products");
 const product_mapper_1 = require("../mappers/product.mapper");
-const api_scopes_decorator_1 = require("../../iam/api-keys/decorators/api-scopes.decorator");
-const current_company_id_decorator_1 = require("../../iam/api-keys/decorators/current-company-id.decorator");
-const api_key_guard_1 = require("../../iam/api-keys/guard/api-key.guard");
-const current_store_decorator_1 = require("../../iam/api-keys/decorators/current-store.decorator");
+const storefront_guard_1 = require("../../storefront-config/guard/storefront.guard");
+const current_company_id_decorator_1 = require("../../storefront-config/decorators/current-company-id.decorator");
+const current_store_decorator_1 = require("../../storefront-config/decorators/current-store.decorator");
+const product_discovery_service_1 = require("../services/product-discovery.service");
 let ProductsController = class ProductsController extends base_controller_1.BaseController {
-    constructor(productsService) {
+    constructor(productsService, productDiscoveryService) {
         super();
         this.productsService = productsService;
+        this.productDiscoveryService = productDiscoveryService;
     }
     listProductsAdmin(user, query) {
         return this.productsService.listProductsAdmin(user.companyId, query);
@@ -37,7 +38,6 @@ let ProductsController = class ProductsController extends base_controller_1.Base
         return products;
     }
     async listStorefrontProducts(companyId, storeId, query) {
-        console.log(storeId);
         const products = await this.productsService.listProducts(companyId, storeId, query);
         return (0, product_mapper_1.mapProductsListToStorefront)(products);
     }
@@ -50,11 +50,46 @@ let ProductsController = class ProductsController extends base_controller_1.Base
         return collection;
     }
     async listProductsGroupedByCollectionSlug(companyId, storeId, slug, query) {
-        const groups = await this.productsService.listProductsGroupedUnderParentCategorySlug(companyId, storeId, slug, query);
-        return groups.map((group) => ({
-            category: group.category,
-            products: (0, product_mapper_1.mapProductsListToStorefront)(group.products),
-        }));
+        const result = await this.productsService.listProductsGroupedUnderParentCategorySlug(companyId, storeId, slug, query);
+        if (!result?.parent) {
+            return {
+                parent: null,
+                groups: [],
+                exploreMore: [],
+            };
+        }
+        return {
+            parent: result.parent,
+            groups: result.groups.map((group) => ({
+                category: group.category,
+                products: group.products,
+            })),
+            exploreMore: result.exploreMore,
+        };
+    }
+    async latest(companyId, storeId, query) {
+        const rows = await this.productDiscoveryService.listLatestStorefrontProducts(companyId, storeId, {
+            limit: query.limit ?? 12,
+            offset: query.offset ?? 0,
+            search: query.search,
+        });
+        return (0, product_mapper_1.mapProductsListToStorefront)(rows);
+    }
+    async onSale(companyId, storeId, query) {
+        const rows = await this.productDiscoveryService.listOnSaleStorefrontProducts(companyId, storeId, {
+            limit: query.limit ?? 12,
+            offset: query.offset ?? 0,
+            search: query.search,
+        });
+        return (0, product_mapper_1.mapProductsListToStorefront)(rows);
+    }
+    async bestSellers(companyId, storeId, query) {
+        const rows = await this.productDiscoveryService.listBestSellerStorefrontProducts(companyId, storeId, {
+            limit: query.limit ?? 12,
+            offset: query.offset ?? 0,
+            windowDays: Number(query.windowDays ?? 30),
+        });
+        return (0, product_mapper_1.mapProductsListToStorefront)(rows);
     }
     async getProduct(user, productId) {
         const product = await this.productsService.getProductWithRelations(user.companyId, productId);
@@ -102,8 +137,7 @@ __decorate([
 ], ProductsController.prototype, "listProducts", null);
 __decorate([
     (0, common_1.Get)('storefront'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('catalog.products.read'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
     __param(2, (0, common_1.Query)()),
@@ -113,8 +147,7 @@ __decorate([
 ], ProductsController.prototype, "listStorefrontProducts", null);
 __decorate([
     (0, common_1.Get)('storefront/:slug'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('catalog.products.read'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, common_1.Param)('slug')),
     __metadata("design:type", Function),
@@ -123,8 +156,7 @@ __decorate([
 ], ProductsController.prototype, "getProductBySlug", null);
 __decorate([
     (0, common_1.Get)('storefront/collections/:slug'),
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('catalog.products.read'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
     __param(2, (0, common_1.Param)('slug')),
@@ -134,8 +166,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "listCollectionProducts", null);
 __decorate([
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('catalog.products.read'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     (0, common_1.Get)('storefront/collections/:slug/grouped'),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
@@ -145,6 +176,36 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String, products_1.ProductQueryDto]),
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "listProductsGroupedByCollectionSlug", null);
+__decorate([
+    (0, common_1.Get)('storefront/latest'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
+    __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(2, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, products_1.ProductQueryDto]),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "latest", null);
+__decorate([
+    (0, common_1.Get)('storefront/on-sale'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
+    __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(2, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, products_1.ProductQueryDto]),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "onSale", null);
+__decorate([
+    (0, common_1.Get)('storefront/best-sellers'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
+    __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
+    __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(2, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "bestSellers", null);
 __decorate([
     (0, common_1.Get)(':productId'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
@@ -211,6 +272,7 @@ __decorate([
 ], ProductsController.prototype, "deleteProduct", null);
 exports.ProductsController = ProductsController = __decorate([
     (0, common_1.Controller)('catalog/products'),
-    __metadata("design:paramtypes", [products_service_1.ProductsService])
+    __metadata("design:paramtypes", [products_service_1.ProductsService,
+        product_discovery_service_1.ProductDiscoveryService])
 ], ProductsController);
 //# sourceMappingURL=products.controller.js.map

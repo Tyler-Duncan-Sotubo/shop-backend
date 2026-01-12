@@ -16,14 +16,13 @@ exports.PickupController = void 0;
 const common_1 = require("@nestjs/common");
 const pickup_service_1 = require("./pickup.service");
 const create_pickup_dto_1 = require("./dto/create-pickup.dto");
-const current_company_id_decorator_1 = require("../../iam/api-keys/decorators/current-company-id.decorator");
-const api_key_guard_1 = require("../../iam/api-keys/guard/api-key.guard");
-const api_scopes_decorator_1 = require("../../iam/api-keys/decorators/api-scopes.decorator");
 const jwt_auth_guard_1 = require("../../auth/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../../auth/decorator/current-user.decorator");
 const update_pickup_dto_1 = require("./dto/update-pickup.dto");
 const base_controller_1 = require("../../../common/interceptor/base.controller");
-const current_store_decorator_1 = require("../../iam/api-keys/decorators/current-store.decorator");
+const current_store_decorator_1 = require("../../storefront-config/decorators/current-store.decorator");
+const current_company_id_decorator_1 = require("../../storefront-config/decorators/current-company-id.decorator");
+const storefront_guard_1 = require("../../storefront-config/guard/storefront.guard");
 let PickupController = class PickupController extends base_controller_1.BaseController {
     constructor(pickup) {
         super();
@@ -47,8 +46,7 @@ let PickupController = class PickupController extends base_controller_1.BaseCont
 };
 exports.PickupController = PickupController;
 __decorate([
-    (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),
-    (0, api_scopes_decorator_1.ApiScopes)('checkout.shipping.read'),
+    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     (0, common_1.Get)('storefront'),
     __param(0, (0, current_company_id_decorator_1.CurrentCompanyId)()),
     __param(1, (0, current_store_decorator_1.CurrentStoreId)()),

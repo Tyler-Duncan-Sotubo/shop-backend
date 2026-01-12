@@ -3,16 +3,14 @@ import { CacheService } from 'src/common/cache/cache.service';
 import { AuditService } from 'src/modules/audit/audit.service';
 import { User } from 'src/common/types/user.type';
 import { CreateStoreDto } from './dto/create-store.dto';
-import { CompanySettingsService } from '../../company-settings/company-settings.service';
 import { AwsService } from 'src/common/aws/aws.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
 export declare class StoresService {
     private readonly db;
     private readonly cache;
     private readonly auditService;
-    private readonly companySettingsService;
     private readonly aws;
-    constructor(db: db, cache: CacheService, auditService: AuditService, companySettingsService: CompanySettingsService, aws: AwsService);
+    constructor(db: db, cache: CacheService, auditService: AuditService, aws: AwsService);
     private findStoreByIdOrThrow;
     private ensureSlugUniqueForCompany;
     createStore(companyId: string, payload: CreateStoreDto, user?: User, ip?: string): Promise<{
@@ -28,8 +26,11 @@ export declare class StoresService {
         companyId: string;
         imageUrl: string | null;
         imageAltText: string | null;
+        supportedCurrencies: string[] | null;
     }>;
     getStoresByCompany(companyId: string): Promise<{
+        primaryDomain: string | null;
+        domains: string[];
         id: string;
         companyId: string;
         name: string;
@@ -38,6 +39,7 @@ export declare class StoresService {
         imageAltText: string | null;
         defaultCurrency: string;
         defaultLocale: string;
+        supportedCurrencies: string[] | null;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -56,6 +58,7 @@ export declare class StoresService {
         companyId: string;
         imageUrl: string | null;
         imageAltText: string | null;
+        supportedCurrencies: string[] | null;
     }>;
     updateStore(companyId: string, storeId: string, payload: UpdateStoreDto, user?: User, ip?: string): Promise<{
         id: string;
@@ -66,6 +69,7 @@ export declare class StoresService {
         imageAltText: string | null;
         defaultCurrency: string;
         defaultLocale: string;
+        supportedCurrencies: string[] | null;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -119,10 +123,18 @@ export declare class StoresService {
             imageAltText: string | null;
             defaultCurrency: string;
             defaultLocale: string;
+            supportedCurrencies: string[] | null;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
         }[];
     }>;
+    normalizeHost(hostRaw: string): string;
+    resolveStoreByHost(hostRaw: string): Promise<{
+        storeId: string;
+        companyId: string;
+        domain: string;
+        isPrimary: boolean;
+    } | null>;
 }

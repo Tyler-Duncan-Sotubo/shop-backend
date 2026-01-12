@@ -13,13 +13,13 @@ import {
 } from 'drizzle-orm/pg-core';
 import { defaultId } from 'src/drizzle/id';
 import { invoiceStatusEnum, invoiceTypeEnum } from '../../enum.schema';
-import { orders } from '../../orders/orders.schema';
-import { stores } from '../../stores/stores.schema';
+import { orders } from '../../commerce/orders/orders.schema';
+import { stores } from '../../commerce/stores/stores.schema';
 import { companies } from '../../companies/companies.schema';
 import { customers } from '../../customers/customers.schema';
 import { customerAddresses } from '../../customers/customer-addresses.schema';
 import { invoiceSeries } from './invoice-series.schema';
-import { quoteRequests } from '../../quotes/quote-requests.schema';
+import { quoteRequests } from '../../commerce/quotes/quote-requests.schema';
 
 export const invoices = pgTable(
   'invoices',

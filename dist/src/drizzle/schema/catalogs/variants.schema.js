@@ -6,7 +6,7 @@ const companies_schema_1 = require("../companies/companies.schema");
 const products_schema_1 = require("./products.schema");
 const id_1 = require("../../id");
 const images_schema_1 = require("./images.schema");
-const stores_schema_1 = require("../stores/stores.schema");
+const stores_schema_1 = require("../commerce/stores/stores.schema");
 exports.productVariants = (0, pg_core_1.pgTable)('product_variants', {
     id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),
     varId: (0, pg_core_1.integer)('var_id').generatedAlwaysAsIdentity(),

@@ -1,0 +1,3 @@
+DROP INDEX "store_payment_methods_store_method_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "uq_store_method_provider_gateway" ON "payment_methods" USING btree ("store_id","method","provider") WHERE "payment_methods"."provider" IS NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "uq_store_method_non_gateway" ON "payment_methods" USING btree ("store_id","method") WHERE "payment_methods"."provider" IS NULL;

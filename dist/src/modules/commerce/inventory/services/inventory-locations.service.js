@@ -19,13 +19,11 @@ const drizzle_module_1 = require("../../../../drizzle/drizzle.module");
 const schema_1 = require("../../../../drizzle/schema");
 const cache_service_1 = require("../../../../common/cache/cache.service");
 const audit_service_1 = require("../../../audit/audit.service");
-const company_settings_service_1 = require("../../../company-settings/company-settings.service");
 let InventoryLocationsService = class InventoryLocationsService {
-    constructor(db, cache, auditService, companySettingsService) {
+    constructor(db, cache, auditService) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
-        this.companySettingsService = companySettingsService;
     }
     async assertCompanyExists(companyId) {
         const company = await this.db.query.companies.findFirst({
@@ -113,7 +111,6 @@ let InventoryLocationsService = class InventoryLocationsService {
                 },
             });
         }
-        await this.companySettingsService.markOnboardingStep(companyId, 'location_setup_complete', true);
         return loc;
     }
     async getLocationsByCompany(companyId) {
@@ -190,7 +187,6 @@ let InventoryLocationsService = class InventoryLocationsService {
                 },
             });
         }
-        await this.companySettingsService.markOnboardingStep(companyId, 'location_setup_complete', true);
         return updated;
     }
     async deleteLocation(companyId, locationId, user, ip) {
@@ -359,7 +355,6 @@ exports.InventoryLocationsService = InventoryLocationsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, cache_service_1.CacheService,
-        audit_service_1.AuditService,
-        company_settings_service_1.CompanySettingsService])
+        audit_service_1.AuditService])
 ], InventoryLocationsService);
 //# sourceMappingURL=inventory-locations.service.js.map

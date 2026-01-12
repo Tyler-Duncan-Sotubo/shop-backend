@@ -189,12 +189,46 @@ export declare const paymentReceipts: import("drizzle-orm/pg-core").PgTableWithC
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        pdfUrl: import("drizzle-orm/pg-core").PgColumn<{
+            name: "pdf_url";
+            tableName: "payment_receipts";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        pdfStorageKey: import("drizzle-orm/pg-core").PgColumn<{
+            name: "pdf_storage_key";
+            tableName: "payment_receipts";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         method: import("drizzle-orm/pg-core").PgColumn<{
             name: "method";
             tableName: "payment_receipts";
             dataType: "string";
             columnType: "PgEnumColumn";
-            data: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+            data: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
             driverParam: string;
             notNull: true;
             hasDefault: false;
@@ -310,6 +344,23 @@ export declare const paymentReceipts: import("drizzle-orm/pg-core").PgTableWithC
         }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
+            tableName: "payment_receipts";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updated_at";
             tableName: "payment_receipts";
             dataType: "date";
             columnType: "PgTimestamp";

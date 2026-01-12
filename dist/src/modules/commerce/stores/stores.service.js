@@ -19,14 +19,12 @@ const drizzle_module_1 = require("../../../drizzle/drizzle.module");
 const schema_1 = require("../../../drizzle/schema");
 const cache_service_1 = require("../../../common/cache/cache.service");
 const audit_service_1 = require("../../audit/audit.service");
-const company_settings_service_1 = require("../../company-settings/company-settings.service");
 const aws_service_1 = require("../../../common/aws/aws.service");
 let StoresService = class StoresService {
-    constructor(db, cache, auditService, companySettingsService, aws) {
+    constructor(db, cache, auditService, aws) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
-        this.companySettingsService = companySettingsService;
         this.aws = aws;
     }
     async findStoreByIdOrThrow(companyId, storeId) {
@@ -62,6 +60,7 @@ let StoresService = class StoresService {
                 defaultCurrency: payload.defaultCurrency ?? 'NGN',
                 defaultLocale: payload.defaultLocale ?? 'en-US',
                 isActive: payload.isActive ?? true,
+                supportedCurrencies: payload.supportedCurrencies ?? ['NGN'],
                 imageUrl: null,
                 imageAltText: payload.imageAltText ?? null,
             })
@@ -102,17 +101,41 @@ let StoresService = class StoresService {
                 },
             });
         }
-        await this.companySettingsService.markOnboardingStep(companyId, 'store_setup_complete', true);
         return created;
     }
     async getStoresByCompany(companyId) {
-        return this.cache.getOrSetVersioned(companyId, ['stores'], async () => {
-            return this.db
-                .select()
-                .from(schema_1.stores)
-                .where((0, drizzle_orm_1.eq)(schema_1.stores.companyId, companyId))
-                .execute();
-        });
+        const storeRows = await this.db
+            .select()
+            .from(schema_1.stores)
+            .where((0, drizzle_orm_1.eq)(schema_1.stores.companyId, companyId))
+            .execute();
+        if (storeRows.length === 0)
+            return [];
+        const storeIds = storeRows.map((s) => s.id);
+        const domainsRows = await this.db
+            .select({
+            storeId: schema_1.storeDomains.storeId,
+            domain: schema_1.storeDomains.domain,
+            isPrimary: schema_1.storeDomains.isPrimary,
+        })
+            .from(schema_1.storeDomains)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.inArray)(schema_1.storeDomains.storeId, storeIds), (0, drizzle_orm_1.isNull)(schema_1.storeDomains.deletedAt)))
+            .execute();
+        const domainsByStore = {};
+        for (const d of domainsRows) {
+            if (!domainsByStore[d.storeId]) {
+                domainsByStore[d.storeId] = { all: [] };
+            }
+            domainsByStore[d.storeId].all.push(d.domain);
+            if (d.isPrimary) {
+                domainsByStore[d.storeId].primary = d.domain;
+            }
+        }
+        return storeRows.map((s) => ({
+            ...s,
+            primaryDomain: domainsByStore[s.id]?.primary ?? null,
+            domains: domainsByStore[s.id]?.all ?? [],
+        }));
     }
     async getStoreById(companyId, storeId) {
         const cacheKey = ['stores', storeId];
@@ -157,6 +180,7 @@ let StoresService = class StoresService {
                 isActive: payload.isActive === undefined
                     ? existing.isActive
                     : payload.isActive,
+                supportedCurrencies: payload.supportedCurrencies ?? existing.supportedCurrencies,
                 imageUrl: nextImageUrl,
                 imageAltText: nextAlt,
                 updatedAt: new Date(),
@@ -244,26 +268,71 @@ let StoresService = class StoresService {
     }
     async updateStoreDomains(companyId, storeId, domains, user, ip) {
         await this.findStoreByIdOrThrow(companyId, storeId);
-        const primaryCount = domains.filter((d) => d.isPrimary).length;
+        const normalized = (domains ?? [])
+            .map((d) => ({
+            domain: this.normalizeHost(d.domain),
+            isPrimary: !!d.isPrimary,
+        }))
+            .filter((d) => !!d.domain);
+        const primaryCount = normalized.filter((d) => d.isPrimary).length;
         if (primaryCount > 1) {
             throw new common_1.BadRequestException('Only one primary domain is allowed per store.');
         }
-        await this.db
-            .delete(schema_1.storeDomains)
-            .where((0, drizzle_orm_1.eq)(schema_1.storeDomains.storeId, storeId))
+        const seen = new Set();
+        const deduped = [];
+        for (const d of normalized) {
+            if (!seen.has(d.domain)) {
+                seen.add(d.domain);
+                deduped.push(d);
+            }
+            else {
+                const idx = deduped.findIndex((x) => x.domain === d.domain);
+                if (idx >= 0 && d.isPrimary)
+                    deduped[idx].isPrimary = true;
+            }
+        }
+        if (deduped.length === 0) {
+            await this.db
+                .delete(schema_1.storeDomains)
+                .where((0, drizzle_orm_1.eq)(schema_1.storeDomains.storeId, storeId))
+                .execute();
+            await this.cache.bumpCompanyVersion(companyId);
+            return [];
+        }
+        if (!deduped.some((d) => d.isPrimary)) {
+            deduped[0].isPrimary = true;
+        }
+        const domainList = deduped.map((d) => d.domain);
+        const conflicts = await this.db
+            .select({
+            domain: schema_1.storeDomains.domain,
+            storeId: schema_1.storeDomains.storeId,
+        })
+            .from(schema_1.storeDomains)
+            .innerJoin(schema_1.stores, (0, drizzle_orm_1.eq)(schema_1.stores.id, schema_1.storeDomains.storeId))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.inArray)(schema_1.storeDomains.domain, domainList), (0, drizzle_orm_1.eq)(schema_1.stores.companyId, companyId), (0, drizzle_orm_1.ne)(schema_1.storeDomains.storeId, storeId), (0, drizzle_orm_1.isNull)(schema_1.storeDomains.deletedAt)))
             .execute();
-        let inserted = [];
-        if (domains.length > 0) {
-            inserted = await this.db
+        if (conflicts.length > 0) {
+            const conflictList = conflicts
+                .map((d) => `${d.domain} (store ID: ${d.storeId})`)
+                .join(', ');
+            throw new common_1.BadRequestException(`The following domains are already in use by other stores: ${conflictList}`);
+        }
+        const inserted = await this.db.transaction(async (tx) => {
+            await tx
+                .delete(schema_1.storeDomains)
+                .where((0, drizzle_orm_1.eq)(schema_1.storeDomains.storeId, storeId))
+                .execute();
+            return tx
                 .insert(schema_1.storeDomains)
-                .values(domains.map((d) => ({
+                .values(deduped.map((d) => ({
                 storeId,
                 domain: d.domain,
-                isPrimary: d.isPrimary ?? false,
+                isPrimary: d.isPrimary,
             })))
                 .returning()
                 .execute();
-        }
+        });
         await this.cache.bumpCompanyVersion(companyId);
         if (user && ip) {
             await this.auditService.logAction({
@@ -276,7 +345,7 @@ let StoresService = class StoresService {
                 changes: {
                     companyId,
                     storeId,
-                    domains,
+                    domains: deduped,
                 },
             });
         }
@@ -315,6 +384,51 @@ let StoresService = class StoresService {
             };
         });
     }
+    normalizeHost(hostRaw) {
+        const host = (hostRaw || '').toLowerCase().trim();
+        const noPort = host.split(':')[0];
+        const noDot = noPort.endsWith('.') ? noPort.slice(0, -1) : noPort;
+        return noDot.startsWith('www.') ? noDot.slice(4) : noDot;
+    }
+    async resolveStoreByHost(hostRaw) {
+        const host = this.normalizeHost(hostRaw);
+        if (!host)
+            return null;
+        const cacheKey = ['store-domain', host];
+        return this.cache.getOrSetVersioned('global', cacheKey, async () => {
+            if (process.env.NODE_ENV !== 'production' &&
+                (host === 'localhost' || host.endsWith('.localhost'))) {
+                const [row] = await this.db
+                    .select({
+                    storeId: schema_1.stores.id,
+                    companyId: schema_1.stores.companyId,
+                    domain: (0, drizzle_orm_1.sql) `'localhost'`,
+                    isPrimary: (0, drizzle_orm_1.sql) `true`,
+                })
+                    .from(schema_1.stores)
+                    .where((0, drizzle_orm_1.eq)(schema_1.stores.isActive, true))
+                    .limit(1)
+                    .execute();
+                return row ?? null;
+            }
+            const [row] = await this.db
+                .select({
+                storeId: schema_1.storeDomains.storeId,
+                domain: schema_1.storeDomains.domain,
+                isPrimary: schema_1.storeDomains.isPrimary,
+                companyId: schema_1.stores.companyId,
+            })
+                .from(schema_1.storeDomains)
+                .innerJoin(schema_1.stores, (0, drizzle_orm_1.eq)(schema_1.stores.id, schema_1.storeDomains.storeId))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storeDomains.domain, host), (0, drizzle_orm_1.isNull)(schema_1.storeDomains.deletedAt), (0, drizzle_orm_1.eq)(schema_1.stores.isActive, true)))
+                .execute();
+            if (process.env.NODE_ENV === 'production' &&
+                row.domain === 'localhost') {
+                throw new common_1.BadRequestException('localhost is not allowed in production');
+            }
+            return row ?? null;
+        }, { ttlSeconds: 60 });
+    }
 };
 exports.StoresService = StoresService;
 exports.StoresService = StoresService = __decorate([
@@ -322,7 +436,6 @@ exports.StoresService = StoresService = __decorate([
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, cache_service_1.CacheService,
         audit_service_1.AuditService,
-        company_settings_service_1.CompanySettingsService,
         aws_service_1.AwsService])
 ], StoresService);
 //# sourceMappingURL=stores.service.js.map

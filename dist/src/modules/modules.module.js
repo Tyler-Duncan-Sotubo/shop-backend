@@ -31,9 +31,11 @@ const billing_module_1 = require("./billing/billing.module");
 const blog_module_1 = require("./blog/blog.module");
 const media_module_1 = require("./media/media.module");
 const analytics_module_1 = require("./analytics/analytics.module");
-const storefront_config_module_1 = require("./commerce/storefront-config/storefront-config.module");
+const storefront_config_module_1 = require("./storefront-config/storefront-config.module");
 const quote_module_1 = require("./commerce/quote/quote.module");
 const mail_module_1 = require("./mail/mail.module");
+const integration_module_1 = require("./integration/integration.module");
+const setup_module_1 = require("./setup/setup.module");
 let ModulesModule = class ModulesModule {
 };
 exports.ModulesModule = ModulesModule;
@@ -67,6 +69,8 @@ exports.ModulesModule = ModulesModule = __decorate([
             storefront_config_module_1.StorefrontConfigModule,
             quote_module_1.QuoteModule,
             mail_module_1.MailModule,
+            integration_module_1.IntegrationModule,
+            setup_module_1.SetupModule,
         ],
         exports: [
             audit_module_1.AuditModule,
@@ -77,6 +81,7 @@ exports.ModulesModule = ModulesModule = __decorate([
             companies_module_1.CompaniesModule,
             iam_module_1.IamModule,
             notification_module_1.NotificationModule,
+            integration_module_1.IntegrationModule,
         ],
     })
 ], ModulesModule);

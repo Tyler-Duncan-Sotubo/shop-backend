@@ -13,6 +13,8 @@ const mail_controller_1 = require("./mail.controller");
 const api_keys_service_1 = require("../iam/api-keys/api-keys.service");
 const bullmq_1 = require("@nestjs/bullmq");
 const contact_notification_service_1 = require("../notification/services/contact-notification.service");
+const stores_service_1 = require("../commerce/stores/stores.service");
+const aws_service_1 = require("../../common/aws/aws.service");
 let MailModule = class MailModule {
 };
 exports.MailModule = MailModule;
@@ -24,7 +26,13 @@ exports.MailModule = MailModule = __decorate([
             }),
         ],
         controllers: [mail_controller_1.MailController],
-        providers: [mail_service_1.MailService, api_keys_service_1.ApiKeysService, contact_notification_service_1.ContactNotificationService],
+        providers: [
+            mail_service_1.MailService,
+            api_keys_service_1.ApiKeysService,
+            contact_notification_service_1.ContactNotificationService,
+            stores_service_1.StoresService,
+            aws_service_1.AwsService,
+        ],
     })
 ], MailModule);
 //# sourceMappingURL=mail.module.js.map

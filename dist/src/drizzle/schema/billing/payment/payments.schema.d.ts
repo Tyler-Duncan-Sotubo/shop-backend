@@ -36,6 +36,23 @@ export declare const payments: import("drizzle-orm/pg-core").PgTableWithColumns<
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        storeId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "store_id";
+            tableName: "payments";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         orderId: import("drizzle-orm/pg-core").PgColumn<{
             name: "order_id";
             tableName: "payments";
@@ -75,7 +92,7 @@ export declare const payments: import("drizzle-orm/pg-core").PgTableWithColumns<
             tableName: "payments";
             dataType: "string";
             columnType: "PgEnumColumn";
-            data: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+            data: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
             driverParam: string;
             notNull: true;
             hasDefault: false;

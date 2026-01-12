@@ -4,7 +4,7 @@ exports.analyticsTags = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 const id_1 = require("../../id");
 const companies_schema_1 = require("../companies/companies.schema");
-const stores_schema_1 = require("../stores/stores.schema");
+const stores_schema_1 = require("../commerce/stores/stores.schema");
 exports.analyticsTags = (0, pg_core_1.pgTable)('analytics_tags', {
     id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),
     companyId: (0, pg_core_1.uuid)('company_id')

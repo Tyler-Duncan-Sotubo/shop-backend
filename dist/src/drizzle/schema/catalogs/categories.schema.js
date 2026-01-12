@@ -5,7 +5,7 @@ const pg_core_1 = require("drizzle-orm/pg-core");
 const companies_schema_1 = require("../companies/companies.schema");
 const products_schema_1 = require("./products.schema");
 const id_1 = require("../../id");
-const stores_schema_1 = require("../stores/stores.schema");
+const stores_schema_1 = require("../commerce/stores/stores.schema");
 const drizzle_orm_1 = require("drizzle-orm");
 exports.categories = (0, pg_core_1.pgTable)('categories', {
     id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),
@@ -21,6 +21,10 @@ exports.categories = (0, pg_core_1.pgTable)('categories', {
     name: (0, pg_core_1.text)('name').notNull(),
     slug: (0, pg_core_1.text)('slug').notNull(),
     description: (0, pg_core_1.text)('description'),
+    afterContentHtml: (0, pg_core_1.text)('after_content_html'),
+    imageMediaId: (0, pg_core_1.uuid)('image_media_id'),
+    metaTitle: (0, pg_core_1.text)('meta_title'),
+    metaDescription: (0, pg_core_1.text)('meta_description'),
     position: (0, pg_core_1.integer)('position').notNull().default(1),
     isActive: (0, pg_core_1.boolean)('is_active').notNull().default(true),
     createdAt: (0, pg_core_1.timestamp)('created_at', { mode: 'date' }).notNull().defaultNow(),
@@ -43,6 +47,8 @@ exports.productCategories = (0, pg_core_1.pgTable)('product_categories', {
     companyId: (0, pg_core_1.uuid)('company_id')
         .notNull()
         .references(() => companies_schema_1.companies.id, { onDelete: 'cascade' }),
+    position: (0, pg_core_1.integer)('position').notNull().default(1),
+    pinned: (0, pg_core_1.boolean)('pinned').notNull().default(false),
     createdAt: (0, pg_core_1.timestamp)('created_at', { mode: 'date' }).notNull().defaultNow(),
 }, (table) => [
     (0, pg_core_1.uniqueIndex)('product_categories_pk').on(table.productId, table.categoryId),

@@ -13,15 +13,14 @@ import {
 } from '@nestjs/common';
 import { PickupService } from './pickup.service';
 import { CreatePickupLocationDto } from './dto/create-pickup.dto';
-import { CurrentCompanyId } from 'src/modules/iam/api-keys/decorators/current-company-id.decorator';
-import { ApiKeyGuard } from 'src/modules/iam/api-keys/guard/api-key.guard';
-import { ApiScopes } from 'src/modules/iam/api-keys/decorators/api-scopes.decorator';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/modules/auth/decorator/current-user.decorator';
 import { User } from 'src/common/types/user.type';
 import { UpdatePickupDto } from './dto/update-pickup.dto';
 import { BaseController } from 'src/common/interceptor/base.controller';
-import { CurrentStoreId } from 'src/modules/iam/api-keys/decorators/current-store.decorator';
+import { CurrentStoreId } from 'src/modules/storefront-config/decorators/current-store.decorator';
+import { CurrentCompanyId } from 'src/modules/storefront-config/decorators/current-company-id.decorator';
+import { StorefrontGuard } from 'src/modules/storefront-config/guard/storefront.guard';
 
 @Controller('pickup')
 export class PickupController extends BaseController {
@@ -29,8 +28,7 @@ export class PickupController extends BaseController {
     super();
   }
 
-  @UseGuards(ApiKeyGuard)
-  @ApiScopes('checkout.shipping.read')
+  @UseGuards(StorefrontGuard)
   @Get('storefront')
   listStoreFront(
     @CurrentCompanyId() companyId: string,

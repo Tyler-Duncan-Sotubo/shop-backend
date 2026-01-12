@@ -22,7 +22,6 @@ import {
   UpdateLocationDto,
   UpdateStoreLocationsDto,
 } from '../dto';
-import { CompanySettingsService } from 'src/modules/company-settings/company-settings.service';
 
 @Injectable()
 export class InventoryLocationsService {
@@ -30,7 +29,6 @@ export class InventoryLocationsService {
     @Inject(DRIZZLE) private readonly db: db,
     private readonly cache: CacheService,
     private readonly auditService: AuditService,
-    private readonly companySettingsService: CompanySettingsService,
   ) {}
 
   // ----------------- Helpers -----------------
@@ -169,12 +167,6 @@ export class InventoryLocationsService {
       });
     }
 
-    await this.companySettingsService.markOnboardingStep(
-      companyId,
-      'location_setup_complete',
-      true,
-    );
-
     return loc;
   }
 
@@ -291,12 +283,6 @@ export class InventoryLocationsService {
         },
       });
     }
-
-    await this.companySettingsService.markOnboardingStep(
-      companyId,
-      'location_setup_complete',
-      true,
-    );
 
     return updated;
   }

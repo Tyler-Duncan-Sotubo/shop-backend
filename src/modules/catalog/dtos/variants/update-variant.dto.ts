@@ -8,6 +8,11 @@ import {
 } from 'class-validator';
 
 export class UpdateVariantDto {
+  // ---------- Status ----------
+  @IsOptional()
+  @Type(() => Boolean)
+  removeSalePrice: boolean;
+
   // ---------- Identity ----------
   @IsOptional()
   @IsString()

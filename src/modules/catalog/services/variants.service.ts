@@ -29,6 +29,7 @@ import {
 import { ImagesService } from './images.service';
 import { InventoryStockService } from 'src/modules/commerce/inventory/services/inventory-stock.service';
 import { StoreVariantQueryDto } from '../dtos/variants/store-vairants.dto';
+import { CategoriesService } from './categories.service';
 
 @Injectable()
 export class VariantsService {
@@ -38,6 +39,7 @@ export class VariantsService {
     private readonly auditService: AuditService,
     private readonly imagesService: ImagesService,
     private readonly inventoryService: InventoryStockService,
+    private readonly categoriesService: CategoriesService,
   ) {}
 
   // ----------------- Helpers -----------------
@@ -126,7 +128,7 @@ export class VariantsService {
       .values({
         companyId,
         productId,
-
+        storeId: dto.storeId,
         title: dto.title ?? null,
         sku: dto.sku ?? null,
         barcode: dto.barcode ?? null,
@@ -152,6 +154,28 @@ export class VariantsService {
       })
       .returning()
       .execute();
+
+    const hasSale =
+      created.salePrice != null && String(created.salePrice).trim() !== '';
+
+    if (hasSale) {
+      // load product once to get storeId (or if created has storeId use that)
+      const product = await this.db.query.products.findFirst({
+        where: and(
+          eq(products.companyId, companyId),
+          eq(products.id, productId),
+        ),
+        columns: { storeId: true },
+      });
+
+      if (product?.storeId) {
+        await this.categoriesService.syncSalesCategoryForProduct({
+          companyId,
+          storeId: product.storeId,
+          productId,
+        });
+      }
+    }
 
     await this.cache.bumpCompanyVersion(companyId);
 
@@ -412,6 +436,12 @@ export class VariantsService {
     const shouldCreateImage = !!dto.base64Image?.trim();
     const shouldUpdateStock = dto.stockQuantity !== undefined;
 
+    const nextSalePrice = dto.removeSalePrice
+      ? null
+      : dto.salePrice === undefined
+        ? existing.salePrice
+        : dto.salePrice;
+
     const result = await this.db.transaction(async (tx) => {
       const [updated] = await tx
         .update(productVariants)
@@ -428,8 +458,7 @@ export class VariantsService {
             dto.regularPrice === undefined
               ? existing.regularPrice
               : dto.regularPrice,
-          salePrice:
-            dto.salePrice === undefined ? existing.salePrice : dto.salePrice,
+          salePrice: nextSalePrice,
 
           weight: dto.weight ?? existing.weight,
           length: dto.length ?? existing.length,
@@ -449,8 +478,6 @@ export class VariantsService {
         .execute();
 
       if (!updated) throw new NotFoundException('Variant not found');
-
-      console.log('filename', dto.imageFileName);
 
       // 2) image (use your ImagesService.createImage)
       let createdImage: any = null;
@@ -487,6 +514,28 @@ export class VariantsService {
 
       return { updated, createdImage, inventoryRow };
     });
+
+    const pricingTouched =
+      dto.salePrice !== undefined || dto.removeSalePrice === true;
+
+    if (pricingTouched) {
+      // load product once to get storeId (or if created has storeId use that)
+      const product = await this.db.query.products.findFirst({
+        where: and(
+          eq(products.companyId, companyId),
+          eq(products.id, existing.productId),
+        ),
+        columns: { storeId: true },
+      });
+
+      if (product?.storeId) {
+        await this.categoriesService.syncSalesCategoryForProduct({
+          companyId,
+          storeId: product.storeId,
+          productId: existing.productId,
+        });
+      }
+    }
 
     // bump cache once
     await this.cache.bumpCompanyVersion(companyId);

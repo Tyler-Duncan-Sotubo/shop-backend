@@ -15,10 +15,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorator/current-user.decorator';
 import { User } from 'src/common/types/user.type';
 
-import { ApiKeyGuard } from '../iam/api-keys/guard/api-key.guard';
-import { CurrentStoreId } from '../iam/api-keys/decorators/current-store.decorator';
-import { ApiScopes } from 'src/modules/iam/api-keys/decorators/api-scopes.decorator';
-
 // DTOs (admin queries + updates)
 import { ListSubscribersQueryDto } from './dto/list-subscribers.query.dto';
 import { UpdateSubscriberStatusDto } from './dto/update-subscriber-status.dto';
@@ -30,9 +26,10 @@ import { CreateSubscriberDto } from './dto/create-subscriber.dto';
 import { CreateContactMessageDto } from './dto/create-contact-message.dto';
 
 import { IsUUID } from 'class-validator';
-import { CurrentCompanyId } from '../iam/api-keys/decorators/current-company-id.decorator';
-
 import { Throttle } from '@nestjs/throttler';
+import { CurrentCompanyId } from '../storefront-config/decorators/current-company-id.decorator';
+import { CurrentStoreId } from '../storefront-config/decorators/current-store.decorator';
+import { StorefrontGuard } from '../storefront-config/guard/storefront.guard';
 
 class IdParamDto {
   @IsUUID()
@@ -121,8 +118,7 @@ export class MailController {
   // --------------------------------------------------------------------------
 
   @Post('public/subscribe')
-  @UseGuards(ApiKeyGuard)
-  @ApiScopes('mail.subscribe')
+  @UseGuards(StorefrontGuard)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   createSubscriberPublic(
     @CurrentCompanyId() companyId: string,
@@ -141,8 +137,7 @@ export class MailController {
   }
 
   @Post('public/contact')
-  @UseGuards(ApiKeyGuard)
-  @ApiScopes('mail.contact')
+  @UseGuards(StorefrontGuard)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   createContactMessagePublic(
     @CurrentCompanyId() companyId: string,

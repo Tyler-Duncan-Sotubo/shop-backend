@@ -232,7 +232,7 @@ let ProductsService = class ProductsService {
         return created;
     }
     async listProductsAdmin(companyId, query) {
-        const { search, status, categoryId, storeId, limit = 50, offset = 0, } = query;
+        const { search, status, storeId, limit = 50, offset = 0 } = query;
         return this.cache.getOrSetVersioned(companyId, [
             'catalog',
             'products',
@@ -241,7 +241,6 @@ let ProductsService = class ProductsService {
                 storeId: storeId ?? null,
                 search: search ?? null,
                 status: status ?? null,
-                categoryId: categoryId ?? null,
                 limit,
                 offset,
             }),
@@ -259,30 +258,35 @@ let ProductsService = class ProductsService {
                 whereClauses.push((0, drizzle_orm_1.sql) `${schema_1.products.deletedAt} IS NULL`);
             if (search)
                 whereClauses.push((0, drizzle_orm_1.ilike)(schema_1.products.name, `%${search}%`));
-            let count;
-            if (categoryId) {
-                const countWithCategoryQuery = this.db
-                    .select({ count: (0, drizzle_orm_1.sql) `count(distinct ${schema_1.products.id})` })
-                    .from(schema_1.products)
-                    .innerJoin(schema_1.productCategories, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productCategories.companyId, schema_1.products.companyId), (0, drizzle_orm_1.eq)(schema_1.productCategories.productId, schema_1.products.id), (0, drizzle_orm_1.eq)(schema_1.productCategories.categoryId, categoryId)))
-                    .innerJoin(schema_1.categories, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, schema_1.products.companyId), (0, drizzle_orm_1.eq)(schema_1.categories.id, schema_1.productCategories.categoryId)));
-                const [{ count: categoryCount }] = await countWithCategoryQuery
-                    .where((0, drizzle_orm_1.and)(...whereClauses))
-                    .execute();
-                count = Number(categoryCount) || 0;
-            }
-            else {
-                const countWithoutCategoryQuery = this.db
-                    .select({ count: (0, drizzle_orm_1.sql) `count(distinct ${schema_1.products.id})` })
-                    .from(schema_1.products);
-                const [{ count: basicCount }] = await countWithoutCategoryQuery
-                    .where((0, drizzle_orm_1.and)(...whereClauses))
-                    .execute();
-                count = Number(basicCount) || 0;
-            }
-            const total = Number(count) || 0;
+            const [{ count: basicCount }] = await this.db
+                .select({ count: (0, drizzle_orm_1.sql) `count(distinct ${schema_1.products.id})` })
+                .from(schema_1.products)
+                .where((0, drizzle_orm_1.and)(...whereClauses))
+                .execute();
+            const total = Number(basicCount) || 0;
             const items = await this.listProducts(companyId, storeId, query);
-            return { items, total, limit, offset };
+            const productIds = items.map((p) => p.id).filter(Boolean);
+            if (productIds.length === 0) {
+                return { items, total, limit, offset };
+            }
+            const variantRows = await this.db
+                .select({
+                productId: schema_1.productVariants.productId,
+                variantCount: (0, drizzle_orm_1.sql) `COUNT(*)`,
+            })
+                .from(schema_1.productVariants)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.productVariants.productId, productIds), (0, drizzle_orm_1.sql) `${schema_1.productVariants.deletedAt} IS NULL`))
+                .groupBy(schema_1.productVariants.productId)
+                .execute();
+            const variantCountByProductId = new Map();
+            for (const r of variantRows) {
+                variantCountByProductId.set(r.productId, Number(r.variantCount ?? 0));
+            }
+            const itemsWithVariantCount = items.map((p) => ({
+                ...p,
+                variantCount: variantCountByProductId.get(p.id) ?? 0,
+            }));
+            return { items: itemsWithVariantCount, total, limit, offset };
         });
     }
     async listProducts(companyId, storeId, query) {
@@ -961,17 +965,35 @@ let ProductsService = class ProductsService {
             }),
         ];
         return this.cache.getOrSetVersioned(companyId, cacheKey, async () => {
-            const category = await this.db.query.categories.findFirst({
-                where: (c, { and, eq, isNull }) => and(eq(c.companyId, companyId), eq(c.storeId, storeId), eq(c.slug, categorySlug), isNull(c.deletedAt)),
-                columns: { id: true, name: true, slug: true },
-            });
-            if (!category) {
+            const [category] = await this.db
+                .select({
+                id: schema_1.categories.id,
+                name: schema_1.categories.name,
+                slug: schema_1.categories.slug,
+                description: schema_1.categories.description,
+                afterContentHtml: schema_1.categories.afterContentHtml,
+                metaTitle: schema_1.categories.metaTitle,
+                metaDescription: schema_1.categories.metaDescription,
+                imageUrl: schema_1.media.url,
+                imageAltText: schema_1.media.altText,
+            })
+                .from(schema_1.categories)
+                .leftJoin(schema_1.media, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.media.companyId, schema_1.categories.companyId), (0, drizzle_orm_1.eq)(schema_1.media.storeId, schema_1.categories.storeId), (0, drizzle_orm_1.eq)(schema_1.media.id, schema_1.categories.imageMediaId), (0, drizzle_orm_1.isNull)(schema_1.media.deletedAt)))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.categories.slug, categorySlug), (0, drizzle_orm_1.isNull)(schema_1.categories.deletedAt)))
+                .limit(1)
+                .execute();
+            if (!category)
                 return { category: null, products: [] };
-            }
             const categoryForResponse = {
                 id: category.id,
                 name: category.name,
                 slug: category.slug,
+                description: category.description ?? null,
+                afterContentHtml: category.afterContentHtml ?? null,
+                metaTitle: category.metaTitle ?? null,
+                metaDescription: category.metaDescription ?? null,
+                imageUrl: category.imageUrl ?? null,
+                imageAltText: category.imageAltText ?? null,
             };
             const hasChild = await this.db.query.categories.findFirst({
                 where: (c, { and, eq, isNull }) => and(eq(c.companyId, companyId), eq(c.storeId, storeId), eq(c.parentId, category.id), isNull(c.deletedAt)),
@@ -1019,9 +1041,8 @@ let ProductsService = class ProductsService {
                 .offset(offset)
                 .execute();
             const productIds = idRows.map((r) => r.id);
-            if (productIds.length === 0) {
+            if (!productIds.length)
                 return { category: categoryForResponse, products: [] };
-            }
             const fullProducts = await this.db.query.products.findMany({
                 where: (p, { and, eq, inArray, isNull }) => and(eq(p.companyId, companyId), eq(p.storeId, storeId), inArray(p.id, productIds), isNull(p.deletedAt)),
                 with: {
@@ -1057,31 +1078,59 @@ let ProductsService = class ProductsService {
             const priceRows = await this.db
                 .select({
                 productId: schema_1.productVariants.productId,
-                minPrice: (0, drizzle_orm_1.sql) `MIN(NULLIF(${schema_1.productVariants.regularPrice}, 0))`,
-                maxPrice: (0, drizzle_orm_1.sql) `MAX(NULLIF(${schema_1.productVariants.regularPrice}, 0))`,
+                minRegular: (0, drizzle_orm_1.sql) `MIN(NULLIF(${schema_1.productVariants.regularPrice}, 0))`,
+                maxRegular: (0, drizzle_orm_1.sql) `MAX(NULLIF(${schema_1.productVariants.regularPrice}, 0))`,
+                minSale: (0, drizzle_orm_1.sql) `
+          MIN(
+            CASE
+              WHEN ${schema_1.productVariants.salePrice} > 0
+               AND ${schema_1.productVariants.salePrice} < ${schema_1.productVariants.regularPrice}
+              THEN ${schema_1.productVariants.salePrice}
+              ELSE NULL
+            END
+          )
+        `,
+                onSale: (0, drizzle_orm_1.sql) `
+          CASE
+            WHEN SUM(
+              CASE
+                WHEN ${schema_1.productVariants.salePrice} > 0
+                 AND ${schema_1.productVariants.salePrice} < ${schema_1.productVariants.regularPrice}
+                THEN 1 ELSE 0
+              END
+            ) > 0 THEN 1 ELSE 0
+          END
+        `,
             })
                 .from(schema_1.productVariants)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.productVariants.productId, productIds)))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.productVariants.productId, productIds), (0, drizzle_orm_1.sql) `${schema_1.productVariants.deletedAt} IS NULL`, (0, drizzle_orm_1.eq)(schema_1.productVariants.isActive, true)))
                 .groupBy(schema_1.productVariants.productId)
                 .execute();
             const priceByProduct = new Map();
             for (const r of priceRows) {
-                const min = r.minPrice == null ? 0 : Number(r.minPrice);
-                const max = r.maxPrice == null ? min : Number(r.maxPrice);
-                priceByProduct.set(r.productId, { minPrice: min, maxPrice: max });
+                priceByProduct.set(r.productId, {
+                    minRegular: Number(r.minRegular ?? 0),
+                    maxRegular: Number(r.maxRegular ?? r.minRegular ?? 0),
+                    minSale: Number(r.minSale ?? 0),
+                    onSale: Number(r.onSale) === 1,
+                });
             }
             const productsList = ordered.map((p) => {
                 const ratings = ratingsByProduct.get(p.id) ?? {
                     rating_count: 0,
                     average_rating: 0,
                 };
-                const price = priceByProduct.get(p.id) ?? { minPrice: 0, maxPrice: 0 };
+                const price = priceByProduct.get(p.id) ?? {
+                    minRegular: 0,
+                    maxRegular: 0,
+                    minSale: 0,
+                    onSale: false,
+                };
                 return (0, product_mapper_1.mapProductToCollectionListResponse)({
                     ...p,
                     rating_count: ratings.rating_count,
                     average_rating: ratings.average_rating,
-                    minPrice: price.minPrice,
-                    maxPrice: price.maxPrice,
+                    ...price,
                 });
             });
             return {
@@ -1093,20 +1142,60 @@ let ProductsService = class ProductsService {
     async listProductsGroupedUnderParentCategory(companyId, storeId, parentCategoryId, query) {
         const { status, search, limit = 8, offset = 0 } = query;
         const effectiveStatus = status ?? 'active';
+        const parent = await this.db
+            .select({
+            id: schema_1.categories.id,
+            name: schema_1.categories.name,
+            slug: schema_1.categories.slug,
+            description: schema_1.categories.description,
+            imageUrl: schema_1.media.url,
+            imageAltText: schema_1.media.altText,
+            afterContentHtml: schema_1.categories.afterContentHtml,
+            metaTitle: schema_1.categories.metaTitle,
+            metaDescription: schema_1.categories.metaDescription,
+        })
+            .from(schema_1.categories)
+            .leftJoin(schema_1.media, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.media.companyId, schema_1.categories.companyId), (0, drizzle_orm_1.eq)(schema_1.media.storeId, schema_1.categories.storeId), (0, drizzle_orm_1.eq)(schema_1.media.id, schema_1.categories.imageMediaId), (0, drizzle_orm_1.isNull)(schema_1.media.deletedAt)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.categories.id, parentCategoryId), (0, drizzle_orm_1.sql) `${schema_1.categories.deletedAt} IS NULL`))
+            .limit(1)
+            .execute()
+            .then((r) => r[0]);
+        if (!parent?.id)
+            return { parent: null, groups: [], exploreMore: [] };
         const childCats = await this.db
             .select({
             id: schema_1.categories.id,
             name: schema_1.categories.name,
             slug: schema_1.categories.slug,
+            description: schema_1.categories.description,
+            imageUrl: schema_1.media.url,
+            imageAltText: schema_1.media.altText,
+            afterContentHtml: schema_1.categories.afterContentHtml,
         })
             .from(schema_1.categories)
+            .leftJoin(schema_1.media, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.media.companyId, schema_1.categories.companyId), (0, drizzle_orm_1.eq)(schema_1.media.storeId, schema_1.categories.storeId), (0, drizzle_orm_1.eq)(schema_1.media.id, schema_1.categories.imageMediaId), (0, drizzle_orm_1.isNull)(schema_1.media.deletedAt)))
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.categories.parentId, parentCategoryId), (0, drizzle_orm_1.sql) `${schema_1.categories.deletedAt} IS NULL`))
             .orderBy(schema_1.categories.name)
             .execute();
-        if (childCats.length === 0) {
-            return [];
-        }
         const childCatIds = childCats.map((c) => c.id);
+        const exploreMore = await this.db
+            .select({
+            id: schema_1.categories.id,
+            name: schema_1.categories.name,
+            slug: schema_1.categories.slug,
+            imageUrl: schema_1.media.url,
+        })
+            .from(schema_1.categories)
+            .leftJoin(schema_1.media, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.media.companyId, schema_1.categories.companyId), (0, drizzle_orm_1.eq)(schema_1.media.storeId, schema_1.categories.storeId), (0, drizzle_orm_1.eq)(schema_1.media.id, schema_1.categories.imageMediaId), (0, drizzle_orm_1.isNull)(schema_1.media.deletedAt)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.storeId, storeId), (0, drizzle_orm_1.sql) `${schema_1.categories.deletedAt} IS NULL`, (0, drizzle_orm_1.isNotNull)(schema_1.media.url), (0, drizzle_orm_1.sql) `${schema_1.categories.id} <> ${parentCategoryId}`, childCatIds.length
+            ? (0, drizzle_orm_1.sql) `${schema_1.categories.id} NOT IN (${drizzle_orm_1.sql.join(childCatIds.map((id) => (0, drizzle_orm_1.sql) `${id}`), (0, drizzle_orm_1.sql) `, `)})`
+            : (0, drizzle_orm_1.sql) `TRUE`, (0, drizzle_orm_1.sql) `${schema_1.categories.parentId} <> ${parentCategoryId}`))
+            .orderBy((0, drizzle_orm_1.sql) `RANDOM()`)
+            .limit(3)
+            .execute();
+        if (childCats.length === 0) {
+            return { parent, groups: [], exploreMore };
+        }
         const productRows = await this.db.execute((0, drizzle_orm_1.sql) `
     WITH ranked AS (
       SELECT
@@ -1133,7 +1222,11 @@ let ProductsService = class ProductsService {
   `);
         const pairs = (productRows.rows ?? []);
         if (pairs.length === 0) {
-            return childCats.map((c) => ({ category: c, products: [] }));
+            return {
+                parent,
+                groups: childCats.map((c) => ({ category: c, products: [] })),
+                exploreMore,
+            };
         }
         const productIds = [...new Set(pairs.map((x) => x.product_id))];
         const base = await this.db
@@ -1156,6 +1249,27 @@ let ProductsService = class ProductsService {
             stock: (0, drizzle_orm_1.sql) `COALESCE(SUM(${schema_1.inventoryItems.available}), 0)`,
             minPrice: (0, drizzle_orm_1.sql) `MIN(NULLIF(${schema_1.productVariants.regularPrice}, 0))`,
             maxPrice: (0, drizzle_orm_1.sql) `MAX(NULLIF(${schema_1.productVariants.regularPrice}, 0))`,
+            minSale: (0, drizzle_orm_1.sql) `
+      MIN(
+        CASE
+          WHEN ${schema_1.productVariants.salePrice} > 0
+           AND ${schema_1.productVariants.salePrice} < ${schema_1.productVariants.regularPrice}
+          THEN ${schema_1.productVariants.salePrice}
+          ELSE NULL
+        END
+      )
+    `,
+            onSale: (0, drizzle_orm_1.sql) `
+      CASE
+        WHEN SUM(
+          CASE
+            WHEN ${schema_1.productVariants.salePrice} > 0
+             AND ${schema_1.productVariants.salePrice} < ${schema_1.productVariants.regularPrice}
+            THEN 1 ELSE 0
+          END
+        ) > 0 THEN 1 ELSE 0
+      END
+    `,
         })
             .from(schema_1.productVariants)
             .leftJoin(schema_1.inventoryItems, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, schema_1.productVariants.id)))
@@ -1168,15 +1282,15 @@ let ProductsService = class ProductsService {
                 stock: Number(r.stock ?? 0),
                 minPrice: r.minPrice == null ? null : Number(r.minPrice),
                 maxPrice: r.maxPrice == null ? null : Number(r.maxPrice),
+                minSale: r.minSale == null ? null : Number(r.minSale),
+                onSale: Number(r.onSale ?? 0) === 1,
             });
         }
         const ratingRows = await this.db
             .select({
             productId: schema_1.productReviews.productId,
             ratingCount: (0, drizzle_orm_1.sql) `COUNT(*)`,
-            averageRating: (0, drizzle_orm_1.sql) `
-        COALESCE(ROUND(AVG(${schema_1.productReviews.rating})::numeric, 2), 0)
-      `,
+            averageRating: (0, drizzle_orm_1.sql) `COALESCE(ROUND(AVG(${schema_1.productReviews.rating})::numeric, 2), 0)`,
         })
             .from(schema_1.productReviews)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productReviews.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.productReviews.productId, productIds), (0, drizzle_orm_1.eq)(schema_1.productReviews.isApproved, true), (0, drizzle_orm_1.sql) `${schema_1.productReviews.deletedAt} IS NULL`))
@@ -1198,19 +1312,35 @@ let ProductsService = class ProductsService {
                 stock: 0,
                 minPrice: null,
                 maxPrice: null,
+                minSale: null,
+                onSale: false,
             };
             const rt = ratingsByProduct.get(product_id) ?? {
                 ratingCount: 0,
                 averageRating: 0,
             };
+            const minRegular = Number(sp.minPrice ?? 0);
+            const maxRegular = Number(sp.maxPrice ?? sp.minPrice ?? 0);
+            const onSale = Boolean(sp.onSale);
+            const minSale = sp.minSale == null ? null : Number(sp.minSale);
+            const images = b.imageUrl
+                ? {
+                    id: 'default',
+                    src: b.imageUrl,
+                    alt: null,
+                }
+                : null;
             const productDto = {
                 id: b.id,
                 name: b.name,
                 slug: b.slug,
-                imageUrl: b.imageUrl ?? null,
+                images: images ? [images] : [],
                 stock: sp.stock,
-                minPrice: sp.minPrice,
-                maxPrice: sp.maxPrice,
+                price: String(minRegular),
+                regular_price: String(minRegular),
+                sale_price: onSale && minSale ? String(minSale) : null,
+                on_sale: onSale,
+                price_html: (0, product_mapper_1.buildDiscountAwarePriceHtml)(minRegular, maxRegular, minSale, onSale),
                 averageRating: rt.averageRating,
                 ratingCount: rt.ratingCount,
             };
@@ -1218,24 +1348,25 @@ let ProductsService = class ProductsService {
             list.push(productDto);
             productsByCategory.set(category_id, list);
         }
-        return childCats.map((c) => ({
-            category: c,
-            products: productsByCategory.get(c.id) ?? [],
-        }));
+        return {
+            parent,
+            groups: childCats.map((c) => ({
+                category: c,
+                products: productsByCategory.get(c.id) ?? [],
+            })),
+            exploreMore,
+        };
     }
     async listProductsGroupedUnderParentCategorySlug(companyId, storeId, parentSlug, query) {
-        console.log('listProductsGroupedUnderParentCategorySlug called with parentSlug:', parentSlug);
         const parent = await this.db
-            .select({
-            id: schema_1.categories.id,
-        })
+            .select({ id: schema_1.categories.id })
             .from(schema_1.categories)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.categories.slug, parentSlug), (0, drizzle_orm_1.sql) `${schema_1.categories.deletedAt} IS NULL`))
             .limit(1)
             .execute()
             .then((r) => r[0]);
         if (!parent?.id)
-            return [];
+            return { parent: null, groups: [], exploreMore: [] };
         return this.listProductsGroupedUnderParentCategory(companyId, storeId, parent.id, query);
     }
 };

@@ -1,19 +1,17 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
-import { ApiKeyGuard } from '../../iam/api-keys/guard/api-key.guard';
-import { ApiScopes } from '../../iam/api-keys/decorators/api-scopes.decorator';
-import { CurrentCompanyId } from '../../iam/api-keys/decorators/current-company-id.decorator';
-import { CurrentStoreId } from 'src/modules/iam/api-keys/decorators/current-store.decorator';
 import { OrdersService } from '../orders/orders.service';
+import { StorefrontGuard } from 'src/modules/storefront-config/guard/storefront.guard';
+import { CurrentCompanyId } from 'src/modules/storefront-config/decorators/current-company-id.decorator';
+import { CurrentStoreId } from 'src/modules/storefront-config/decorators/current-store.decorator';
 
 @Controller('/storefront/orders')
-@UseGuards(ApiKeyGuard)
+@UseGuards(StorefrontGuard)
 export class StorefrontOrdersController {
   constructor(private readonly orders: OrdersService) {}
 
   // -----------------------------
   // Get order by id
   // -----------------------------
-  @ApiScopes('orders.read')
   @Get(':orderId')
   getById(
     @CurrentCompanyId() companyId: string,

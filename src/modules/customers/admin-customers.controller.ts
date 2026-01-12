@@ -99,6 +99,12 @@ export class AdminCustomersController extends BaseController {
     return this.adminCustomers.listPeople(user.companyId, dto);
   }
 
+  @Get('only')
+  @SetMetadata('permissions', ['customers.read'])
+  listCustomersOnly(@CurrentUser() user: User, @Query() dto: ListCustomersDto) {
+    return this.adminCustomers.listCustomers(user.companyId, dto);
+  }
+
   @Get(':customerId')
   @SetMetadata('permissions', ['customers.read'])
   get(@CurrentUser() user: User, @Param('customerId') customerId: string) {

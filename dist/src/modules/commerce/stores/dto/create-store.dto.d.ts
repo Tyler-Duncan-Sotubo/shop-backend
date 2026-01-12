@@ -7,4 +7,5 @@ export declare class CreateStoreDto {
     base64Image?: string;
     imageAltText?: string;
     removeImage?: boolean;
+    supportedCurrencies?: string[];
 }

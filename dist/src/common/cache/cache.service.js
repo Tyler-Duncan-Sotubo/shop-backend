@@ -162,6 +162,95 @@ let CacheService = CacheService_1 = class CacheService {
             this.logger.debug(`invalidateTags: Redis not available; skipping tag invalidation`);
         });
     }
+    globalVersionKey() {
+        return `global:ver`;
+    }
+    buildGlobalVersionedKey(ver, ...parts) {
+        return ['global', `v${ver}`, ...parts].join(':');
+    }
+    async getGlobalVersion() {
+        const versionKey = this.globalVersionKey();
+        return (await this.safeRedisCall(async (client) => {
+            const raw = await client.get(versionKey);
+            if (raw)
+                return Number(raw);
+            if (client.set)
+                await client.set(versionKey, '1');
+            return 1;
+        }, async () => {
+            const raw = await this.cacheManager.get(versionKey);
+            if (raw)
+                return Number(raw);
+            await this.cacheManager.set(versionKey, '1');
+            return 1;
+        }));
+    }
+    async bumpGlobalVersion() {
+        const versionKey = this.globalVersionKey();
+        return (await this.safeRedisCall(async (client) => {
+            if (!client.incr)
+                throw new Error('INCR not available');
+            const v = await client.incr(versionKey);
+            return Number(v);
+        }, async () => {
+            this.logger.warn(`bumpGlobalVersion: falling back to non-atomic increment`);
+            const current = await this.getGlobalVersion();
+            const next = current + 1;
+            await this.cacheManager.set(versionKey, String(next));
+            return next;
+        }));
+    }
+    async resetGlobalVersion() {
+        const versionKey = this.globalVersionKey();
+        return (await this.safeRedisCall(async (client) => {
+            await client.set(versionKey, '1');
+            return 1;
+        }, async () => {
+            await this.cacheManager.set(versionKey, '1');
+            return 1;
+        }));
+    }
+    async getOrSetGlobalVersioned(keyParts, compute, opts) {
+        const ver = await this.getGlobalVersion();
+        const key = this.buildGlobalVersionedKey(ver, ...keyParts);
+        const hit = await this.cacheManager.get(key);
+        if (hit !== undefined && hit !== null)
+            return hit;
+        const val = await compute();
+        const ttl = opts?.ttlSeconds ? opts.ttlSeconds * 1000 : this.ttlMs;
+        await this.cacheManager.set(key, val, ttl);
+        if (opts?.tags?.length) {
+            await this.attachTags(key, opts.tags);
+        }
+        return val;
+    }
+    buildCompanyAndGlobalVersionedKey(companyId, companyVer, globalVer, ...parts) {
+        return [
+            'company',
+            companyId,
+            `v${companyVer}`,
+            'global',
+            `v${globalVer}`,
+            ...parts,
+        ].join(':');
+    }
+    async getOrSetCompanyAndGlobalVersioned(companyId, keyParts, compute, opts) {
+        const [companyVer, globalVer] = await Promise.all([
+            this.getCompanyVersion(companyId),
+            this.getGlobalVersion(),
+        ]);
+        const key = this.buildCompanyAndGlobalVersionedKey(companyId, companyVer, globalVer, ...keyParts);
+        const hit = await this.cacheManager.get(key);
+        if (hit !== undefined && hit !== null)
+            return hit;
+        const val = await compute();
+        const ttl = opts?.ttlSeconds ? opts.ttlSeconds * 1000 : this.ttlMs;
+        await this.cacheManager.set(key, val, ttl);
+        if (opts?.tags?.length) {
+            await this.attachTags(key, opts.tags);
+        }
+        return val;
+    }
 };
 exports.CacheService = CacheService;
 exports.CacheService = CacheService = CacheService_1 = __decorate([

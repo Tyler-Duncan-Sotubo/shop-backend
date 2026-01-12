@@ -16,7 +16,8 @@ const customer_primary_guard_1 = require("./guards/customer-primary.guard");
 const jwt_1 = require("@nestjs/jwt");
 const admin_customers_controller_1 = require("./admin-customers.controller");
 const admin_customers_service_1 = require("./admin-customers.service");
-const api_keys_service_1 = require("../iam/api-keys/api-keys.service");
+const stores_service_1 = require("../commerce/stores/stores.service");
+const aws_service_1 = require("../../common/aws/aws.service");
 let CustomersModule = class CustomersModule {
 };
 exports.CustomersModule = CustomersModule;
@@ -30,7 +31,8 @@ exports.CustomersModule = CustomersModule = __decorate([
             customer_primary_guard_1.CustomerPrimaryGuard,
             jwt_1.JwtService,
             admin_customers_service_1.AdminCustomersService,
-            api_keys_service_1.ApiKeysService,
+            stores_service_1.StoresService,
+            aws_service_1.AwsService,
         ],
     })
 ], CustomersModule);

@@ -23,8 +23,8 @@ export declare class AdminCustomersController extends BaseController {
     }>;
     createAddress(user: User, customerId: string, dto: CreateCustomerAddressAdminDto): Promise<{
         id: string;
-        country: string;
         createdAt: Date;
+        country: string;
         updatedAt: Date;
         companyId: string;
         firstName: string | null;
@@ -60,6 +60,20 @@ export declare class AdminCustomersController extends BaseController {
         updatedAt: Date;
     }>;
     list(user: User, dto: ListCustomersDto): Promise<QueryResult<import("drizzle-orm").Assume<this["row"], QueryResultRow>>>;
+    listCustomersOnly(user: User, dto: ListCustomersDto): Promise<{
+        id: string;
+        displayName: string | null;
+        firstName: string | null;
+        lastName: string | null;
+        billingEmail: string | null;
+        phone: string | null;
+        marketingOptIn: boolean;
+        createdAt: Date;
+        isActive: boolean;
+        loginEmail: string | null;
+        isVerified: boolean | null;
+        lastLoginAt: Date | null;
+    }[]>;
     get(user: User, customerId: string): Promise<{
         addresses: {
             id: string;

@@ -14,7 +14,7 @@ const invoice_templates_module_1 = require("./invoice-templates/invoice-template
 const invoice_pdf_service_1 = require("./invoice-templates/invoice-pdf.service");
 const aws_service_1 = require("../../../common/aws/aws.service");
 const invoice_totals_service_1 = require("./invoice-totals.service");
-const payment_service_1 = require("../payment/payment.service");
+const payment_service_1 = require("../payment/services/payment.service");
 let InvoiceModule = class InvoiceModule {
 };
 exports.InvoiceModule = InvoiceModule;

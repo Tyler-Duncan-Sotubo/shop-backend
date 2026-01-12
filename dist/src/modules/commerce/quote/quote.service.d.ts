@@ -23,12 +23,12 @@ export declare class QuoteService {
         storeId: string;
         status: string;
         expiresAt: Date | null;
-        meta: Record<string, unknown> | null;
+        convertedOrderId: string | null;
         customerEmail: string;
         customerNote: string | null;
+        meta: Record<string, unknown> | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
-        convertedOrderId: string | null;
     }>;
     createFromStorefront(storeId: string, dto: CreateQuoteDto, ip?: string): Promise<{
         id: string;
@@ -39,12 +39,12 @@ export declare class QuoteService {
         storeId: string;
         status: string;
         expiresAt: Date | null;
-        meta: Record<string, unknown> | null;
+        convertedOrderId: string | null;
         customerEmail: string;
         customerNote: string | null;
+        meta: Record<string, unknown> | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
-        convertedOrderId: string | null;
     }>;
     findAll(companyId: string, query: GetQuotesQueryDto): Promise<{
         rows: {
@@ -90,12 +90,12 @@ export declare class QuoteService {
         storeId: string;
         status: string;
         expiresAt: Date | null;
-        meta: Record<string, unknown> | null;
+        convertedOrderId: string | null;
         customerEmail: string;
         customerNote: string | null;
+        meta: Record<string, unknown> | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
-        convertedOrderId: string | null;
     }>;
     update(companyId: string, quoteId: string, dto: UpdateQuoteDto, user?: User, ip?: string): Promise<{
         id: string;

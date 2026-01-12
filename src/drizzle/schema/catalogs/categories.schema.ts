@@ -11,7 +11,7 @@ import {
 import { companies } from '../companies/companies.schema';
 import { products } from './products.schema';
 import { defaultId } from 'src/drizzle/id';
-import { stores } from '../stores/stores.schema';
+import { stores } from '../commerce/stores/stores.schema';
 import { sql } from 'drizzle-orm';
 
 export const categories = pgTable(
@@ -34,6 +34,12 @@ export const categories = pgTable(
     name: text('name').notNull(),
     slug: text('slug').notNull(),
     description: text('description'),
+    afterContentHtml: text('after_content_html'),
+
+    imageMediaId: uuid('image_media_id'),
+
+    metaTitle: text('meta_title'),
+    metaDescription: text('meta_description'),
 
     position: integer('position').notNull().default(1),
     isActive: boolean('is_active').notNull().default(true),
@@ -73,6 +79,10 @@ export const productCategories = pgTable(
     companyId: uuid('company_id')
       .notNull()
       .references(() => companies.id, { onDelete: 'cascade' }),
+
+    // ✅ add these
+    position: integer('position').notNull().default(1),
+    pinned: boolean('pinned').notNull().default(false),
 
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
   },

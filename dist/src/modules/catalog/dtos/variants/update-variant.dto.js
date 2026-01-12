@@ -17,6 +17,11 @@ class UpdateVariantDto {
 exports.UpdateVariantDto = UpdateVariantDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Boolean),
+    __metadata("design:type", Boolean)
+], UpdateVariantDto.prototype, "removeSalePrice", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateVariantDto.prototype, "title", void 0);

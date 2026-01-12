@@ -13,10 +13,13 @@ exports.MarkOnboardingStepDto = exports.OnboardingStep = void 0;
 const class_validator_1 = require("class-validator");
 var OnboardingStep;
 (function (OnboardingStep) {
-    OnboardingStep["STORE_SETUP"] = "store_setup_complete";
-    OnboardingStep["LOCATION_SETUP"] = "location_setup_complete";
     OnboardingStep["PAYMENT_SETUP"] = "payment_setup_complete";
-    OnboardingStep["BRANDING"] = "branding_complete";
+    OnboardingStep["ONLINE_STORE_CUSTOMIZATION"] = "online_store_customization_complete";
+    OnboardingStep["SHIPPING_SETUP"] = "shipping_setup_complete";
+    OnboardingStep["PRODUCTS_ADDED"] = "products_added_complete";
+    OnboardingStep["CHECKOUT_REVIEW"] = "checkout_review_complete";
+    OnboardingStep["TAX_REVIEW"] = "tax_review_complete";
+    OnboardingStep["TEAM_INVITE"] = "team_invite_complete";
 })(OnboardingStep || (exports.OnboardingStep = OnboardingStep = {}));
 class MarkOnboardingStepDto {
     constructor() {

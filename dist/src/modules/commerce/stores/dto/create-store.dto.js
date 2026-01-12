@@ -57,4 +57,10 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], CreateStoreDto.prototype, "removeImage", void 0);
+__decorate([
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], CreateStoreDto.prototype, "supportedCurrencies", void 0);
 //# sourceMappingURL=create-store.dto.js.map

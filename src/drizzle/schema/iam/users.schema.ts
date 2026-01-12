@@ -49,6 +49,10 @@ export const users = pgTable(
     allowMarketingEmails: boolean('allow_marketing_emails')
       .notNull()
       .default(false),
+
+    onboardingCompleted: boolean('onboarding_completed')
+      .notNull()
+      .default(false),
   },
   (table) => [
     uniqueIndex('uq_users_email').on(table.email),

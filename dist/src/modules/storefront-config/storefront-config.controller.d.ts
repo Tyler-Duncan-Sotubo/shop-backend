@@ -1,0 +1,203 @@
+import { BaseController } from 'src/common/interceptor/base.controller';
+import { User } from 'src/common/types/user.type';
+import { StorefrontConfigService } from './services/storefront-config.service';
+import { StorefrontOverrideService } from './services/storefront-override.service';
+import { BaseThemeAdminService } from './services/base-theme-admin.service';
+import { CreateBaseDto, UpdateBaseDto } from './dto/base-theme.dto';
+import { CreateThemeDto, UpdateThemeDto } from './dto/theme.dto';
+import { UpsertStorefrontOverrideDto } from './dto/upsert-storefront-override.dto';
+export declare class StorefrontConfigController extends BaseController {
+    private readonly runtime;
+    private readonly overrides;
+    private readonly admin;
+    constructor(runtime: StorefrontConfigService, overrides: StorefrontOverrideService, admin: BaseThemeAdminService);
+    getMyResolvedConfig(storeId: string): Promise<{
+        version: number;
+        store: {
+            id: string;
+            name: string;
+            locale: any;
+            currency: any;
+        };
+        theme: {};
+        ui: {};
+        seo: {};
+        header: {};
+        footer: {};
+        pages: {};
+    }>;
+    getResolvedConfigForStore(storeId: string): Promise<{
+        version: number;
+        store: {
+            id: string;
+            name: string;
+            locale: any;
+            currency: any;
+        };
+        theme: {};
+        ui: {};
+        seo: {};
+        header: {};
+        footer: {};
+        pages: {};
+    }>;
+    getStorePublishedOverride(user: User, storeId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        storeId: string;
+        status: "draft" | "published";
+        publishedAt: Date | null;
+        theme: unknown;
+        header: unknown;
+        pages: unknown;
+        ui: unknown;
+        seo: unknown;
+        footer: unknown;
+        baseId: string;
+        themeId: string | null;
+    } | undefined>;
+    upsertStoreOverride(user: User, storeId: string, dto: UpsertStorefrontOverrideDto): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        storeId: string;
+        status: "draft" | "published";
+        publishedAt: Date | null;
+        theme: unknown;
+        header: unknown;
+        pages: unknown;
+        ui: unknown;
+        seo: unknown;
+        footer: unknown;
+        baseId: string;
+        themeId: string | null;
+    }>;
+    publishStoreOverride(user: User, storeId: string): Promise<{
+        ok: boolean;
+    }>;
+    createBase(dto: CreateBaseDto): Promise<{
+        id: string;
+        key: string;
+        createdAt: Date;
+        isActive: boolean;
+        updatedAt: Date;
+        version: number;
+        theme: unknown;
+        header: unknown;
+        pages: unknown;
+        ui: unknown;
+        seo: unknown;
+        footer: unknown;
+    }>;
+    listBases(activeOnly?: string): Promise<{
+        id: string;
+        key: string;
+        version: number;
+        theme: unknown;
+        ui: unknown;
+        seo: unknown;
+        header: unknown;
+        footer: unknown;
+        pages: unknown;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
+    getBase(baseId: string): Promise<{
+        id: string;
+        key: string;
+        createdAt: Date;
+        isActive: boolean;
+        updatedAt: Date;
+        version: number;
+        theme: unknown;
+        header: unknown;
+        pages: unknown;
+        ui: unknown;
+        seo: unknown;
+        footer: unknown;
+    }>;
+    updateBase(user: User, baseId: string, dto: UpdateBaseDto): Promise<{
+        id: string;
+        key: string;
+        version: number;
+        theme: unknown;
+        ui: unknown;
+        seo: unknown;
+        header: unknown;
+        footer: unknown;
+        pages: unknown;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    deleteBase(baseId: string): Promise<{
+        ok: boolean;
+    }>;
+    createTheme(user: User, dto: CreateThemeDto): Promise<{
+        id: string;
+        key: string;
+        createdAt: Date;
+        isActive: boolean;
+        updatedAt: Date;
+        companyId: string | null;
+        version: number;
+        theme: unknown;
+        header: unknown;
+        pages: unknown;
+        ui: unknown;
+        seo: unknown;
+        footer: unknown;
+    }>;
+    listThemes(user: User, key?: string, storeId?: string, activeOnly?: string, scope?: 'global' | 'company'): Promise<{
+        id: string;
+        companyId: string | null;
+        key: string;
+        version: number;
+        theme: unknown;
+        ui: unknown;
+        seo: unknown;
+        header: unknown;
+        footer: unknown;
+        pages: unknown;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
+    getTheme(user: User, themeId: string): Promise<{
+        id: string;
+        key: string;
+        createdAt: Date;
+        isActive: boolean;
+        updatedAt: Date;
+        companyId: string | null;
+        version: number;
+        theme: unknown;
+        header: unknown;
+        pages: unknown;
+        ui: unknown;
+        seo: unknown;
+        footer: unknown;
+    }>;
+    updateTheme(user: User, themeId: string, dto: UpdateThemeDto): Promise<{
+        id: string;
+        companyId: string | null;
+        key: string;
+        version: number;
+        theme: unknown;
+        ui: unknown;
+        seo: unknown;
+        header: unknown;
+        footer: unknown;
+        pages: unknown;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    deleteTheme(user: User, themeId: string): Promise<{
+        ok: boolean;
+    }>;
+}

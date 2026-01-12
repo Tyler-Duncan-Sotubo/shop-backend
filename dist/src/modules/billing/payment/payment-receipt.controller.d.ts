@@ -1,4 +1,4 @@
-import { PaymentReceiptService } from './payment-receipt.service';
+import { PaymentReceiptService } from './services/payment-receipt.service';
 import { User } from 'src/common/types/user.type';
 export declare class PaymentReceiptController {
     private readonly receipts;
@@ -15,7 +15,7 @@ export declare class PaymentReceiptController {
                 amount: string;
                 amountMinor: number;
                 currency: string;
-                method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+                method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
                 methodLabel: string;
                 reference: string | null;
             };
@@ -53,7 +53,7 @@ export declare class PaymentReceiptController {
                 amount: string;
                 amountMinor: number;
                 currency: string;
-                method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+                method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
                 methodLabel: string;
                 reference: string | null;
             };

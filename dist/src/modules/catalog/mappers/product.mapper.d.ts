@@ -114,13 +114,17 @@ type ProductListRowStoreFront = {
     minSalePrice: number | null;
     maxSalePrice: number | null;
 };
+export declare function buildPriceHtmlRange(min: number, max: number): string;
+export declare function buildDiscountAwarePriceHtml(minRegular: number, maxRegular: number, minSale: number | null, onSale: boolean): string;
 export declare function mapProductToDetailResponse(product: ProductWithRelations): ProductDetailResponse;
 export declare function mapProductsListToStorefront(rows: ProductListRowStoreFront[]): StorefrontProductDto[];
 export declare function mapProductToCollectionListResponse(product: ProductWithRelations & {
     average_rating?: number;
     rating_count?: number;
-    minPrice?: number | null;
-    maxPrice?: number | null;
+    minRegular?: number | null;
+    maxRegular?: number | null;
+    minSale?: number | null;
+    onSale?: boolean | number;
 }): {
     id: any;
     name: any;

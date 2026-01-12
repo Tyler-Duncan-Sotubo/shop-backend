@@ -11,14 +11,14 @@ const common_1 = require("@nestjs/common");
 const blog_service_1 = require("./blog.service");
 const blog_controller_1 = require("./blog.controller");
 const aws_service_1 = require("../../common/aws/aws.service");
-const api_keys_service_1 = require("../iam/api-keys/api-keys.service");
+const stores_service_1 = require("../commerce/stores/stores.service");
 let BlogModule = class BlogModule {
 };
 exports.BlogModule = BlogModule;
 exports.BlogModule = BlogModule = __decorate([
     (0, common_1.Module)({
         controllers: [blog_controller_1.BlogController],
-        providers: [blog_service_1.BlogService, aws_service_1.AwsService, api_keys_service_1.ApiKeysService],
+        providers: [blog_service_1.BlogService, aws_service_1.AwsService, stores_service_1.StoresService],
     })
 ], BlogModule);
 //# sourceMappingURL=blog.module.js.map

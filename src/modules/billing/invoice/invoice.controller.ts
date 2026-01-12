@@ -24,7 +24,7 @@ import { UpdateInvoiceLineDto } from './dto/update-invoice-line.dto';
 import { ListInvoicesQueryDto } from './dto/list-invoices.query.dto';
 import { UpdateInvoiceDraftDto } from './dto/update-invoice-draft.dto';
 import { RecordInvoicePaymentDto } from '../payment/dto/record-invoice-payment.dto';
-import { PaymentService } from '../payment/payment.service';
+import { PaymentService } from '../payment/services/payment.service';
 
 @Controller('invoices')
 @UseGuards(JwtAuthGuard)

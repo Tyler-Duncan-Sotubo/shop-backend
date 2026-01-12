@@ -20,10 +20,9 @@ import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { GetQuotesQueryDto } from './dto/get-quotes-query.dto';
-import { ApiKeyGuard } from 'src/modules/iam/api-keys/guard/api-key.guard';
-import { ApiScopes } from 'src/modules/iam/api-keys/decorators/api-scopes.decorator';
-import { CurrentStoreId } from 'src/modules/iam/api-keys/decorators/current-store.decorator';
 import { ConvertQuoteToManualOrderDto } from './dto/convert-quote-to-manual-order.dto';
+import { CurrentStoreId } from 'src/modules/storefront-config/decorators/current-store.decorator';
+import { StorefrontGuard } from 'src/modules/storefront-config/guard/storefront.guard';
 
 @Controller('quotes')
 export class QuoteController extends BaseController {
@@ -109,8 +108,7 @@ export class QuoteController extends BaseController {
   // --------------------------------------------------------------------------
 
   @Post('storefront-quotes')
-  @UseGuards(ApiKeyGuard)
-  @ApiScopes('quotes.create')
+  @UseGuards(StorefrontGuard)
   async submitQuoteFromStorefront(
     @CurrentStoreId() storeId: string,
     @Body() dto: CreateQuoteDto,

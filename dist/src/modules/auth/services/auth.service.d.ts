@@ -39,6 +39,7 @@ export declare class AuthService {
             roleId: string;
             plan: string;
             trialEndsAt: Date | null;
+            onboardingCompleted: boolean;
         };
         backendTokens: {
             accessToken: string;
@@ -46,6 +47,7 @@ export declare class AuthService {
             expiresIn: number;
         };
         permissions: string[];
+        onboardingCompleted: boolean;
     } | {
         status: string;
         requiresVerification: boolean;
@@ -64,6 +66,7 @@ export declare class AuthService {
             roleId: string;
             plan: string;
             trialEndsAt: Date | null;
+            onboardingCompleted: boolean;
         };
         backendTokens: {
             accessToken: string;
@@ -71,6 +74,7 @@ export declare class AuthService {
             expiresIn: number;
         };
         permissions: string[];
+        onboardingCompleted: boolean;
     }>;
     refreshToken(user: JwtType, dto: TokenDto): Promise<{
         accessToken: string;

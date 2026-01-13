@@ -66,6 +66,14 @@ let StorefrontConfigService = StorefrontConfigService_1 = class StorefrontConfig
             where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storefrontOverrides.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.storefrontOverrides.status, 'published')),
         });
         const effectiveOverride = candidateOverride ?? publishedOverride;
+        const requireThemeMode = (process.env.STOREFRONT_REQUIRE_THEME_MODE ?? 'published').toLowerCase();
+        const requireTheme = requireThemeMode === 'always'
+            ? true
+            : requireThemeMode === 'override'
+                ? !!effectiveOverride
+                : requireThemeMode === 'published'
+                    ? !!publishedOverride
+                    : false;
         const base = effectiveOverride?.baseId
             ? await this.db.query.storefrontBases.findFirst({
                 where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storefrontBases.id, effectiveOverride.baseId), (0, drizzle_orm_1.eq)(schema_1.storefrontBases.isActive, true)),
@@ -75,11 +83,30 @@ let StorefrontConfigService = StorefrontConfigService_1 = class StorefrontConfig
             });
         if (!base)
             throw new common_1.NotFoundException('Storefront base not found');
+        if (requireTheme && !effectiveOverride?.themeId) {
+            throw new common_1.NotFoundException({
+                code: 'THEME_NOT_SET',
+                message: 'Theme is required but not set for this store',
+            });
+        }
         const themePreset = effectiveOverride?.themeId
             ? await this.db.query.storefrontThemes.findFirst({
                 where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storefrontThemes.id, effectiveOverride.themeId), (0, drizzle_orm_1.eq)(schema_1.storefrontThemes.isActive, true), (0, drizzle_orm_1.sql) `(${schema_1.storefrontThemes.companyId} IS NULL OR ${schema_1.storefrontThemes.companyId} = ${store.companyId})`),
             })
             : null;
+        console.log('[storefront-config] resolving config for store:', storeId, {
+            requireTheme,
+            requireThemeMode,
+            baseId: base.id,
+            themeId: effectiveOverride?.themeId,
+            foundThemePresetId: themePreset?.id ?? null,
+        });
+        if ((requireTheme || effectiveOverride?.themeId) && !themePreset) {
+            throw new common_1.ConflictException({
+                code: 'THEME_NOT_READY',
+                message: 'Theme preset not found or not accessible for this store',
+            });
+        }
         let resolvedTheme = base.theme ?? {};
         if (themePreset?.theme)
             resolvedTheme = deepMerge(resolvedTheme, themePreset.theme);
@@ -110,7 +137,7 @@ let StorefrontConfigService = StorefrontConfigService_1 = class StorefrontConfig
             resolvedPages = deepMerge(resolvedPages, themePreset.pages);
         if (effectiveOverride?.pages)
             resolvedPages = deepMerge(resolvedPages, effectiveOverride.pages);
-        return {
+        const resolved = {
             version: 1,
             store: {
                 id: store.id,
@@ -125,6 +152,7 @@ let StorefrontConfigService = StorefrontConfigService_1 = class StorefrontConfig
             footer: resolvedFooter,
             pages: resolvedPages,
         };
+        return resolved;
     }
 };
 exports.StorefrontConfigService = StorefrontConfigService;

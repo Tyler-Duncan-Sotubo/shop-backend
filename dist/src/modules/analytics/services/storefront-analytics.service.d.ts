@@ -10,12 +10,12 @@ export declare class StorefrontAnalyticsService {
         id: string;
         companyId: string;
         storeId: string | null;
+        title: string | null;
+        meta: unknown;
         cartId: string | null;
         checkoutId: string | null;
-        meta: unknown;
         orderId: string | null;
         paymentId: string | null;
-        title: string | null;
         sessionId: string;
         event: string;
         path: string | null;

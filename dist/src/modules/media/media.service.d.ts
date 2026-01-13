@@ -12,13 +12,13 @@ export declare class MediaService {
     private extractStorageKeyFromUrl;
     private buildMediaPayload;
     uploadEditorImage(companyId: string, dto: UploadEditorImageDto): Promise<{
+        url: string;
         id: string;
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
         size: number | null;
         storeId: string;
-        url: string;
         fileName: string;
         mimeType: string;
         storageKey: string | null;
@@ -29,13 +29,13 @@ export declare class MediaService {
         tag: string | null;
     }>;
     uploadMediaFile(companyId: string, dto: CreateMediaDto): Promise<{
+        url: string;
         id: string;
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
         size: number | null;
         storeId: string;
-        url: string;
         fileName: string;
         mimeType: string;
         storageKey: string | null;

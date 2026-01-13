@@ -9,8 +9,8 @@ export declare class BlogController extends BaseController {
     constructor(blogService: BlogService);
     create(user: User, dto: CreateBlogPostDto, ip: string): Promise<{
         id: string;
-        createdAt: Date;
         slug: string;
+        createdAt: Date;
         updatedAt: Date;
         storeId: string;
         status: string;
@@ -46,8 +46,8 @@ export declare class BlogController extends BaseController {
     }>;
     getByIdAdmin(user: User, params: BlogPostIdParamDto): Promise<{
         id: string;
-        createdAt: Date;
         slug: string;
+        createdAt: Date;
         updatedAt: Date;
         storeId: string;
         status: string;
@@ -143,8 +143,8 @@ export declare class BlogController extends BaseController {
     }>;
     getBySlugPublic(storeId: string, slug: string): Promise<{
         id: string;
-        createdAt: Date;
         slug: string;
+        createdAt: Date;
         updatedAt: Date;
         storeId: string;
         status: string;

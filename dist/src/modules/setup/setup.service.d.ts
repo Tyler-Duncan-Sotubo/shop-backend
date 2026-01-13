@@ -51,12 +51,12 @@ export declare class SetupService {
             isPrimary: boolean;
         }[];
         draftOverride: {
+            status: "draft" | "published";
             id: string;
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
             storeId: string;
-            status: "draft" | "published";
             publishedAt: Date | null;
             theme: unknown;
             header: unknown;

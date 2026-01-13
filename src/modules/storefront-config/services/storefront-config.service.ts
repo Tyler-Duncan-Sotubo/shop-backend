@@ -1,5 +1,11 @@
 // src/modules/storefront-config/services/storefront-config.service.ts
-import { Inject, Injectable, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  Logger,
+  ConflictException,
+} from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import { db } from 'src/drizzle/types/drizzle';
@@ -76,12 +82,11 @@ export class StorefrontConfigService {
           this.logger.warn(
             `Resolved storefront config failed zod validation for store=${storeId}: ${parsed.error.message}`,
           );
-          // Still return resolved so you can inspect; or throw if you prefer strict.
         }
 
         return resolved;
       },
-      { ttlSeconds: 300 }, // e.g. 5 min; tune as you like
+      { ttlSeconds: 300 },
     );
   }
 
@@ -109,6 +114,30 @@ export class StorefrontConfigService {
     const effectiveOverride: OverrideCandidate | undefined =
       candidateOverride ?? (publishedOverride as any);
 
+    // ------------------------------------------------------------------
+    // ✅ Require-theme flag (env-controlled)
+    //
+    // Modes:
+    // - "never": never require a theme (current old behavior)
+    // - "published": require theme only if there is a published override
+    // - "override": require theme if ANY override candidate exists (published or preview)
+    // - "always": always require theme for every store
+    //
+    // Default = "published" (safe for rollout)
+    // ------------------------------------------------------------------
+    const requireThemeMode = (
+      process.env.STOREFRONT_REQUIRE_THEME_MODE ?? 'published'
+    ).toLowerCase();
+
+    const requireTheme =
+      requireThemeMode === 'always'
+        ? true
+        : requireThemeMode === 'override'
+          ? !!effectiveOverride
+          : requireThemeMode === 'published'
+            ? !!publishedOverride
+            : false; // "never"
+
     // 1) base
     const base = effectiveOverride?.baseId
       ? await this.db.query.storefrontBases.findFirst({
@@ -126,21 +155,47 @@ export class StorefrontConfigService {
 
     if (!base) throw new NotFoundException('Storefront base not found');
 
+    // ✅ If theme is required, and themeId is missing/undefined/null: DO NOT RESOLVE
+    if (requireTheme && !effectiveOverride?.themeId) {
+      throw new NotFoundException({
+        code: 'THEME_NOT_SET',
+        message: 'Theme is required but not set for this store',
+      });
+    }
+
     // 2) theme preset (full preset)
+    // Requirement: "company and theme should return the same error"
+    // => If themeId is provided but not found OR not allowed for company, throw the SAME error shape.
     const themePreset = effectiveOverride?.themeId
       ? await this.db.query.storefrontThemes.findFirst({
           where: and(
             eq(storefrontThemes.id, effectiveOverride.themeId as any),
             eq(storefrontThemes.isActive, true),
-
-            // ✅ guard: allow global OR company-scoped presets
+            // allow global OR company-scoped presets
             sql`(${storefrontThemes.companyId} IS NULL OR ${storefrontThemes.companyId} = ${store.companyId})`,
-
-            // ✅ optional: if you truly want “platform presets only”, enforce:
-            // sql`${storefrontThemes.companyId} IS NULL`,
           ),
         })
       : null;
+
+    console.log('[storefront-config] resolving config for store:', storeId, {
+      requireTheme,
+      requireThemeMode,
+      baseId: base.id,
+      themeId: effectiveOverride?.themeId,
+      foundThemePresetId: themePreset?.id ?? null,
+    });
+
+    // ✅ If themeId was specified (or required), do NOT fall back to base if invalid
+    if ((requireTheme || effectiveOverride?.themeId) && !themePreset) {
+      // same error whether: theme doesn't exist, inactive, or belongs to another company
+      throw new ConflictException({
+        code: 'THEME_NOT_READY',
+        message: 'Theme preset not found or not accessible for this store',
+      });
+
+      // If you truly want 404 instead, swap to:
+      // throw new NotFoundException('Storefront theme preset not found');
+    }
 
     // theme
     let resolvedTheme = base.theme ?? {};
@@ -182,7 +237,7 @@ export class StorefrontConfigService {
     if (effectiveOverride?.pages)
       resolvedPages = deepMerge(resolvedPages, effectiveOverride.pages);
 
-    return {
+    const resolved = {
       version: 1,
       store: {
         id: store.id,
@@ -197,5 +252,7 @@ export class StorefrontConfigService {
       footer: resolvedFooter,
       pages: resolvedPages,
     };
+
+    return resolved;
   }
 }

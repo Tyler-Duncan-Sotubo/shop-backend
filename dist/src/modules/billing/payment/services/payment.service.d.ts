@@ -14,7 +14,7 @@ export declare class PaymentService {
         companyId: string;
         orderId: string | null;
         invoiceId: string | null;
-        method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
+        method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
         status: "pending" | "succeeded" | "reversed";
         currency: string;
         amountMinor: number;
@@ -149,7 +149,7 @@ export declare class PaymentService {
             amountMinor: number;
             pdfUrl: string | null;
             pdfStorageKey: string | null;
-            method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
+            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
             reference: string | null;
             customerSnapshot: unknown;
             storeSnapshot: unknown;

@@ -80,10 +80,10 @@ export declare class StorefrontConfigController extends BaseController {
     }>;
     createBase(dto: CreateBaseDto): Promise<{
         id: string;
-        key: string;
-        createdAt: Date;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
+        key: string;
         version: number;
         theme: unknown;
         header: unknown;
@@ -108,10 +108,10 @@ export declare class StorefrontConfigController extends BaseController {
     }[]>;
     getBase(baseId: string): Promise<{
         id: string;
-        key: string;
-        createdAt: Date;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
+        key: string;
         version: number;
         theme: unknown;
         header: unknown;
@@ -139,11 +139,11 @@ export declare class StorefrontConfigController extends BaseController {
     }>;
     createTheme(user: User, dto: CreateThemeDto): Promise<{
         id: string;
-        key: string;
-        createdAt: Date;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
         companyId: string | null;
+        key: string;
         version: number;
         theme: unknown;
         header: unknown;
@@ -169,11 +169,11 @@ export declare class StorefrontConfigController extends BaseController {
     }[]>;
     getTheme(user: User, themeId: string): Promise<{
         id: string;
-        key: string;
-        createdAt: Date;
         isActive: boolean;
+        createdAt: Date;
         updatedAt: Date;
         companyId: string | null;
+        key: string;
         version: number;
         theme: unknown;
         header: unknown;

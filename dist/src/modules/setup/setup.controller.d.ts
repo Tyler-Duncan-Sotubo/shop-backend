@@ -20,11 +20,11 @@ export declare class SetupController {
         store: {
             id: string;
             name: string;
-            createdAt: Date;
             slug: string;
             defaultCurrency: string;
             defaultLocale: string;
             isActive: boolean;
+            createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             companyId: string;
@@ -42,12 +42,12 @@ export declare class SetupController {
             isPrimary: boolean;
         }[];
         draftOverride: {
+            status: "draft" | "published";
             id: string;
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
             storeId: string;
-            status: "draft" | "published";
             publishedAt: Date | null;
             theme: unknown;
             header: unknown;

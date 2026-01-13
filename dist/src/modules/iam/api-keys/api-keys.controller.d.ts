@@ -8,8 +8,8 @@ export declare class ApiKeysController extends BaseController {
     listCompanyKeys(user: User, storeId?: string): Promise<{
         id: string;
         name: string;
-        createdAt: Date;
         isActive: boolean;
+        createdAt: Date;
         companyId: string;
         expiresAt: Date | null;
         lastUsedAt: Date | null;

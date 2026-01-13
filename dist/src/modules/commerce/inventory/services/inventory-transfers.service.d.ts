@@ -23,15 +23,15 @@ export declare class InventoryTransfersService {
             productVariantId: string;
             quantity: number;
         }[];
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         notes: string | null;
-        status: string;
-        reference: string | null;
         fromLocationId: string;
         toLocationId: string;
+        reference: string | null;
         completedAt: Date | null;
     }>;
     listTransfers(companyId: string, storeId?: string): Promise<{
@@ -66,15 +66,15 @@ export declare class InventoryTransfersService {
             productVariantId: string;
             quantity: number;
         }[];
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         notes: string | null;
-        status: string;
-        reference: string | null;
         fromLocationId: string;
         toLocationId: string;
+        reference: string | null;
         completedAt: Date | null;
     }>;
     updateTransferStatus(companyId: string, transferId: string, dto: UpdateTransferStatusDto, user?: User, ip?: string): Promise<{

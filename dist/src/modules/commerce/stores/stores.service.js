@@ -394,10 +394,13 @@ let StoresService = class StoresService {
         const host = this.normalizeHost(hostRaw);
         if (!host)
             return null;
+        const isLocalhost = host === 'localhost' || host.endsWith('.localhost');
+        if (process.env.NODE_ENV === 'production' && isLocalhost) {
+            throw new common_1.BadRequestException('localhost is not allowed in production');
+        }
         const cacheKey = ['store-domain', host];
         return this.cache.getOrSetVersioned('global', cacheKey, async () => {
-            if (process.env.NODE_ENV !== 'production' &&
-                (host === 'localhost' || host.endsWith('.localhost'))) {
+            if (process.env.NODE_ENV !== 'production' && isLocalhost) {
                 const [row] = await this.db
                     .select({
                     storeId: schema_1.stores.id,
@@ -422,10 +425,6 @@ let StoresService = class StoresService {
                 .innerJoin(schema_1.stores, (0, drizzle_orm_1.eq)(schema_1.stores.id, schema_1.storeDomains.storeId))
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storeDomains.domain, host), (0, drizzle_orm_1.isNull)(schema_1.storeDomains.deletedAt), (0, drizzle_orm_1.eq)(schema_1.stores.isActive, true)))
                 .execute();
-            if (process.env.NODE_ENV === 'production' &&
-                row.domain === 'localhost') {
-                throw new common_1.BadRequestException('localhost is not allowed in production');
-            }
             return row ?? null;
         }, { ttlSeconds: 60 });
     }

@@ -574,18 +574,21 @@ export class StoresService {
     const host = this.normalizeHost(hostRaw);
     if (!host) return null;
 
-    // ✅ cache per-domain
+    const isLocalhost = host === 'localhost' || host.endsWith('.localhost');
+
+    // 🚫 Never allow localhost in production
+    if (process.env.NODE_ENV === 'production' && isLocalhost) {
+      throw new BadRequestException('localhost is not allowed in production');
+    }
+
     const cacheKey = ['store-domain', host];
 
     return this.cache.getOrSetVersioned(
       'global',
       cacheKey,
       async () => {
-        if (
-          process.env.NODE_ENV !== 'production' &&
-          (host === 'localhost' || host.endsWith('.localhost'))
-        ) {
-          // pick a deterministic dev store
+        // ✅ dev-only shortcut
+        if (process.env.NODE_ENV !== 'production' && isLocalhost) {
           const [row] = await this.db
             .select({
               storeId: stores.id,
@@ -620,16 +623,7 @@ export class StoresService {
           )
           .execute();
 
-        if (
-          process.env.NODE_ENV === 'production' &&
-          row.domain === 'localhost'
-        ) {
-          throw new BadRequestException(
-            'localhost is not allowed in production',
-          );
-        }
-
-        return row ?? null;
+        return row ?? null; // ✅ domain not found => null (no crash)
       },
       { ttlSeconds: 60 },
     );

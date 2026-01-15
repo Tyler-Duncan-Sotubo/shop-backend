@@ -20,12 +20,14 @@ const cache_service_1 = require("../../../../common/cache/cache.service");
 const audit_service_1 = require("../../../audit/audit.service");
 const schema_1 = require("../../../../drizzle/schema");
 const shipping_zones_service_1 = require("./shipping-zones.service");
+const company_settings_service_1 = require("../../../company-settings/company-settings.service");
 let ShippingRatesService = class ShippingRatesService {
-    constructor(db, cache, auditService, zonesService) {
+    constructor(db, cache, auditService, zonesService, companySettings) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
         this.zonesService = zonesService;
+        this.companySettings = companySettings;
     }
     toNumber(v) {
         if (v == null)
@@ -131,6 +133,7 @@ let ShippingRatesService = class ShippingRatesService {
                 changes: { companyId, rateId: rate.id, ...dto },
             });
         }
+        await this.companySettings.markOnboardingStep(companyId, 'shipping_setup_complete', true);
         return rate;
     }
     async updateRate(companyId, rateId, dto, user, ip) {
@@ -422,6 +425,7 @@ exports.ShippingRatesService = ShippingRatesService = __decorate([
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, cache_service_1.CacheService,
         audit_service_1.AuditService,
-        shipping_zones_service_1.ShippingZonesService])
+        shipping_zones_service_1.ShippingZonesService,
+        company_settings_service_1.CompanySettingsService])
 ], ShippingRatesService);
 //# sourceMappingURL=shipping-rates.service.js.map

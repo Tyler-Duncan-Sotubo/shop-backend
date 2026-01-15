@@ -145,12 +145,16 @@ export declare class ProductsController extends BaseController {
         description: any;
         status: any;
         productType: any;
-        imageUrl: any;
+        images: {
+            id: any;
+            url: any;
+        }[];
+        defaultImageIndex: number;
         seoTitle: any;
         seoDescription: any;
         metadata: Record<string, any>;
         categoryIds: string[];
-        links: any;
+        links: Partial<Record<"related" | "upsell" | "cross_sell" | "accessory", string[]>>;
         createdAt: any;
         updatedAt: any;
     }>;

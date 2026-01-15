@@ -1,6 +1,14 @@
-import { ProductLinkType, productStatusEnum, productTypeEnum } from 'src/drizzle/schema';
+import { productStatusEnum, productTypeEnum, ProductLinkType } from 'src/drizzle/schema';
+export declare class UpdateProductImageDto {
+    base64: string;
+    altText?: string;
+    fileName?: string;
+    mimeType?: string;
+    position?: number;
+}
 export declare class UpdateProductDto {
-    name?: string;
+    storeId: string;
+    name: string;
     description?: string;
     slug?: string;
     status?: (typeof productStatusEnum.enumValues)[number];
@@ -11,8 +19,6 @@ export declare class UpdateProductDto {
     metadata?: Record<string, any>;
     categoryIds?: string[];
     links?: Partial<Record<ProductLinkType, string[]>>;
-    base64Image?: string;
-    imageAltText?: string;
-    imageFileName?: string;
-    imageMimeType?: string;
+    images?: UpdateProductImageDto[];
+    defaultImageIndex?: number;
 }

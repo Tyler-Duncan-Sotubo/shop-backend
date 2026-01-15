@@ -398,22 +398,7 @@ let StoresService = class StoresService {
         if (process.env.NODE_ENV === 'production' && isLocalhost) {
             throw new common_1.BadRequestException('localhost is not allowed in production');
         }
-        const cacheKey = ['store-domain', host];
-        return this.cache.getOrSetVersioned('global', cacheKey, async () => {
-            if (process.env.NODE_ENV !== 'production' && isLocalhost) {
-                const [row] = await this.db
-                    .select({
-                    storeId: schema_1.stores.id,
-                    companyId: schema_1.stores.companyId,
-                    domain: (0, drizzle_orm_1.sql) `'localhost'`,
-                    isPrimary: (0, drizzle_orm_1.sql) `true`,
-                })
-                    .from(schema_1.stores)
-                    .where((0, drizzle_orm_1.eq)(schema_1.stores.isActive, true))
-                    .limit(1)
-                    .execute();
-                return row ?? null;
-            }
+        if (process.env.NODE_ENV !== 'production' && isLocalhost) {
             const [row] = await this.db
                 .select({
                 storeId: schema_1.storeDomains.storeId,
@@ -424,6 +409,23 @@ let StoresService = class StoresService {
                 .from(schema_1.storeDomains)
                 .innerJoin(schema_1.stores, (0, drizzle_orm_1.eq)(schema_1.stores.id, schema_1.storeDomains.storeId))
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storeDomains.domain, host), (0, drizzle_orm_1.isNull)(schema_1.storeDomains.deletedAt), (0, drizzle_orm_1.eq)(schema_1.stores.isActive, true)))
+                .limit(1)
+                .execute();
+            return row ?? null;
+        }
+        const cacheKey = ['store-domain', host];
+        return this.cache.getOrSetVersioned('global', cacheKey, async () => {
+            const [row] = await this.db
+                .select({
+                storeId: schema_1.storeDomains.storeId,
+                domain: schema_1.storeDomains.domain,
+                isPrimary: schema_1.storeDomains.isPrimary,
+                companyId: schema_1.stores.companyId,
+            })
+                .from(schema_1.storeDomains)
+                .innerJoin(schema_1.stores, (0, drizzle_orm_1.eq)(schema_1.stores.id, schema_1.storeDomains.storeId))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storeDomains.domain, host), (0, drizzle_orm_1.isNull)(schema_1.storeDomains.deletedAt), (0, drizzle_orm_1.eq)(schema_1.stores.isActive, true)))
+                .limit(1)
                 .execute();
             return row ?? null;
         }, { ttlSeconds: 60 });

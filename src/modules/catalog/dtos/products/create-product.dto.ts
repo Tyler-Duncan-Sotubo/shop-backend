@@ -6,13 +6,46 @@ import {
   IsObject,
   IsArray,
   IsUUID,
+  ValidateNested,
+  ArrayMaxSize,
+  IsInt,
+  Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import {
   productStatusEnum,
   productTypeEnum,
   ProductLinkType,
 } from 'src/drizzle/schema';
 
+/* -----------------------------------
+ * Image DTO
+ * ----------------------------------- */
+export class CreateProductImageDto {
+  @IsString()
+  base64: string;
+
+  @IsOptional()
+  @IsString()
+  altText?: string;
+
+  @IsOptional()
+  @IsString()
+  fileName?: string;
+
+  @IsOptional()
+  @IsString()
+  mimeType?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  position?: number;
+}
+
+/* -----------------------------------
+ * Product DTO
+ * ----------------------------------- */
 export class CreateProductDto {
   @IsUUID('7')
   storeId: string;
@@ -53,35 +86,33 @@ export class CreateProductDto {
   metadata?: Record<string, any>;
 
   // -----------------------------
-  // ✅ Categories
+  // Categories
   // -----------------------------
-
   @IsOptional()
   @IsArray()
   @IsUUID('7', { each: true })
   categoryIds?: string[];
 
   // -----------------------------
-  // ✅ Linked products
+  // Linked products
   // -----------------------------
-
   @IsOptional()
   @IsObject()
   links?: Partial<Record<ProductLinkType, string[]>>;
 
+  // -----------------------------
+  // ✅ Images (max 3)
+  // -----------------------------
   @IsOptional()
-  @IsString()
-  base64Image?: string;
+  @IsArray()
+  @ArrayMaxSize(9)
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductImageDto)
+  images?: CreateProductImageDto[];
 
+  // optional: which image is default
   @IsOptional()
-  @IsString()
-  imageAltText?: string;
-
-  @IsOptional()
-  @IsString()
-  imageFileName?: string;
-
-  @IsOptional()
-  @IsString()
-  imageMimeType?: string;
+  @IsInt()
+  @Min(0)
+  defaultImageIndex?: number;
 }

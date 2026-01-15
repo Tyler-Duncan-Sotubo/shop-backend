@@ -7,6 +7,7 @@ import { ImagesService } from './images.service';
 import { InventoryStockService } from 'src/modules/commerce/inventory/services/inventory-stock.service';
 import { StoreVariantQueryDto } from '../dtos/variants/store-vairants.dto';
 import { CategoriesService } from './categories.service';
+import { CompanySettingsService } from 'src/modules/company-settings/company-settings.service';
 export declare class VariantsService {
     private readonly db;
     private readonly cache;
@@ -14,7 +15,8 @@ export declare class VariantsService {
     private readonly imagesService;
     private readonly inventoryService;
     private readonly categoriesService;
-    constructor(db: db, cache: CacheService, auditService: AuditService, imagesService: ImagesService, inventoryService: InventoryStockService, categoriesService: CategoriesService);
+    private readonly companySettings;
+    constructor(db: db, cache: CacheService, auditService: AuditService, imagesService: ImagesService, inventoryService: InventoryStockService, categoriesService: CategoriesService, companySettings: CompanySettingsService);
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;

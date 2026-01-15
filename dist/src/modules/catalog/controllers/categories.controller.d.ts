@@ -11,12 +11,16 @@ export declare class CategoriesController extends BaseController {
         slug: any;
         imageUrl: string | null;
         imageAltText: string | null;
+        parentId: any;
+        hasChildren: boolean;
     } | {
         id: any;
         name: any;
         slug: any;
         imageUrl: string | null;
         imageAltText: string | null;
+        parentId: any;
+        hasChildren: boolean;
     })[]>;
     getCategories(user: User, storeId?: string): Promise<({
         id: any;

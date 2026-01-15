@@ -99,7 +99,10 @@ let MediaService = class MediaService {
         });
         const [created] = await this.db.insert(schema_1.media).values(payload).returning();
         await this.cache.bumpCompanyVersion(companyId);
-        return created;
+        return {
+            url: created.url,
+            altText: created.altText,
+        };
     }
     async getMedia(companyId, query) {
         const { storeId, search, limit = 20 } = query;

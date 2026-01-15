@@ -3,12 +3,14 @@ import { CacheService } from 'src/common/cache/cache.service';
 import { UpsertStorefrontOverrideDto } from '../dto/upsert-storefront-override.dto';
 import { StorefrontConfigService } from './storefront-config.service';
 import { StorefrontRevalidateService } from './storefront-revalidate.service';
+import { CompanySettingsService } from 'src/modules/company-settings/company-settings.service';
 export declare class StorefrontOverrideService {
     private readonly db;
     private readonly cache;
     private readonly storefrontConfigService;
     private readonly storefrontRevalidateService;
-    constructor(db: db, cache: CacheService, storefrontConfigService: StorefrontConfigService, storefrontRevalidateService: StorefrontRevalidateService);
+    private readonly companySettings;
+    constructor(db: db, cache: CacheService, storefrontConfigService: StorefrontConfigService, storefrontRevalidateService: StorefrontRevalidateService, companySettings: CompanySettingsService);
     private assertStore;
     getPublishedOverride(companyId: string, storeId: string): Promise<{
         id: string;

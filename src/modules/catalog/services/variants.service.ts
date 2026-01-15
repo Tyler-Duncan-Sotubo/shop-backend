@@ -30,6 +30,7 @@ import { ImagesService } from './images.service';
 import { InventoryStockService } from 'src/modules/commerce/inventory/services/inventory-stock.service';
 import { StoreVariantQueryDto } from '../dtos/variants/store-vairants.dto';
 import { CategoriesService } from './categories.service';
+import { CompanySettingsService } from 'src/modules/company-settings/company-settings.service';
 
 @Injectable()
 export class VariantsService {
@@ -40,6 +41,7 @@ export class VariantsService {
     private readonly imagesService: ImagesService,
     private readonly inventoryService: InventoryStockService,
     private readonly categoriesService: CategoriesService,
+    private readonly companySettings: CompanySettingsService,
   ) {}
 
   // ----------------- Helpers -----------------
@@ -558,6 +560,12 @@ export class VariantsService {
         },
       });
     }
+
+    await this.companySettings.markOnboardingStep(
+      companyId,
+      'products_added_complete',
+      true,
+    );
 
     return result.updated;
   }

@@ -40,7 +40,7 @@ let StorefrontConfigService = StorefrontConfigService_1 = class StorefrontConfig
         this.cache = cache;
         this.logger = new common_1.Logger(StorefrontConfigService_1.name);
     }
-    async getResolvedByStoreId(storeId) {
+    async getResolvedByStoreId(storeId, options) {
         const store = await this.db.query.stores.findFirst({
             where: (0, drizzle_orm_1.eq)(schema_1.stores.id, storeId),
         });
@@ -48,7 +48,7 @@ let StorefrontConfigService = StorefrontConfigService_1 = class StorefrontConfig
             throw new common_1.NotFoundException('Store not found');
         const cacheKey = ['storefront', 'config', 'resolved', 'store', storeId];
         return this.cache.getOrSetCompanyAndGlobalVersioned(store.companyId, cacheKey, async () => {
-            const resolved = await this.resolveForStore(storeId);
+            const resolved = await this.resolveForStore(storeId, undefined, options);
             const parsed = schema_2.StorefrontConfigV1Schema.safeParse(resolved);
             if (!parsed.success) {
                 this.logger.warn(`Resolved storefront config failed zod validation for store=${storeId}: ${parsed.error.message}`);
@@ -56,16 +56,28 @@ let StorefrontConfigService = StorefrontConfigService_1 = class StorefrontConfig
             return resolved;
         }, { ttlSeconds: 300 });
     }
-    async resolveForStore(storeId, candidateOverride) {
+    async resolveForStore(storeId, candidateOverride, options) {
         const store = await this.db.query.stores.findFirst({
             where: (0, drizzle_orm_1.eq)(schema_1.stores.id, storeId),
         });
         if (!store)
             throw new common_1.NotFoundException('Store not found');
+        const overrideStatus = options?.overrideStatus ?? 'published';
         const publishedOverride = await this.db.query.storefrontOverrides.findFirst({
             where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storefrontOverrides.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.storefrontOverrides.status, 'published')),
         });
-        const effectiveOverride = candidateOverride ?? publishedOverride;
+        const draftOverride = overrideStatus === 'published'
+            ? undefined
+            : await this.db
+                .select()
+                .from(schema_1.storefrontOverrides)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storefrontOverrides.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.storefrontOverrides.status, 'draft')))
+                .limit(1)
+                .then((rows) => rows[0]);
+        const storedOverride = overrideStatus === 'published'
+            ? publishedOverride
+            : (draftOverride ?? publishedOverride);
+        const effectiveOverride = candidateOverride ?? storedOverride ?? undefined;
         const requireThemeMode = (process.env.STOREFRONT_REQUIRE_THEME_MODE ?? 'published').toLowerCase();
         const requireTheme = requireThemeMode === 'always'
             ? true
@@ -94,13 +106,6 @@ let StorefrontConfigService = StorefrontConfigService_1 = class StorefrontConfig
                 where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storefrontThemes.id, effectiveOverride.themeId), (0, drizzle_orm_1.eq)(schema_1.storefrontThemes.isActive, true), (0, drizzle_orm_1.sql) `(${schema_1.storefrontThemes.companyId} IS NULL OR ${schema_1.storefrontThemes.companyId} = ${store.companyId})`),
             })
             : null;
-        console.log('[storefront-config] resolving config for store:', storeId, {
-            requireTheme,
-            requireThemeMode,
-            baseId: base.id,
-            themeId: effectiveOverride?.themeId,
-            foundThemePresetId: themePreset?.id ?? null,
-        });
         if ((requireTheme || effectiveOverride?.themeId) && !themePreset) {
             throw new common_1.ConflictException({
                 code: 'THEME_NOT_READY',

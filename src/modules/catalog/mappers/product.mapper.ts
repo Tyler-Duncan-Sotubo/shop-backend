@@ -58,7 +58,13 @@ export type ProductDetailResponse = {
   images: { id: string; src: string; alt: string | null }[];
   tags: { id: string; name: string; slug: string }[];
 
-  categories: { id: string; name: string; slug: string }[];
+  categories: {
+    id: string;
+    name: string;
+    slug: string;
+    parentId: string | null;
+    isHub: boolean;
+  }[];
 
   attributes: {
     id: number;
@@ -343,9 +349,28 @@ export function mapProductToDetailResponse(
     product.defaultImage ??
     (product.images && product.images.length ? product.images[0] : null);
 
-  const images = hero
-    ? [{ id: hero.id, src: hero.url, alt: hero.altText ?? null }]
-    : [];
+  // ✅ build images: hero first, then the rest (dedup + ordered by position)
+  const all = (product.images ?? []).slice().sort((a, b) => {
+    const ap = a.position ?? 0;
+    const bp = b.position ?? 0;
+    return ap - bp;
+  });
+
+  const ordered = hero
+    ? [hero, ...all.filter((img) => img.id !== hero.id)]
+    : all;
+
+  // ✅ FIX: avoid Map() -> unknown typing by typing entries
+  const uniqueById = new Map<string, ProductImageRow>();
+  for (const img of ordered) uniqueById.set(img.id, img);
+
+  const images: ProductDetailResponse['images'] = Array.from(
+    uniqueById.values(),
+  ).map((img) => ({
+    id: img.id,
+    src: img.url,
+    alt: img.altText ?? null,
+  }));
 
   const rawCats = (product.productCategories ?? [])
     .map((pc) => pc.category)
@@ -354,17 +379,34 @@ export function mapProductToDetailResponse(
     name: string;
     slug: string;
     parentId: string | null;
+    isHub?: boolean | null;
   }>;
 
-  const byId = new Map(rawCats.map((c) => [c.id, c]));
-  const uniqueCats = Array.from(byId.values());
+  // de-dupe categories
+  const catById = new Map<string, (typeof rawCats)[number]>();
+  for (const c of rawCats) catById.set(c.id, c);
+  const uniqueCats = Array.from(catById.values());
 
+  // ✅ build isHub as boolean (no undefined/null)
+  const parentIds = new Set<string>();
+  for (const c of uniqueCats) {
+    if (c.parentId) parentIds.add(c.parentId);
+  }
+
+  const isHubById = new Map<string, boolean>();
+  for (const c of uniqueCats) {
+    const explicit = typeof c.isHub === 'boolean' ? c.isHub : undefined;
+    isHubById.set(c.id, explicit ?? parentIds.has(c.id));
+  }
+
+  // order parent -> child when possible
   let orderedCats = uniqueCats;
   const childWithParent = uniqueCats.find(
-    (c) => c.parentId && byId.has(c.parentId),
+    (c) => c.parentId && catById.has(c.parentId),
   );
+
   if (childWithParent?.parentId) {
-    const parent = byId.get(childWithParent.parentId)!;
+    const parent = catById.get(childWithParent.parentId)!;
     const child = childWithParent;
 
     orderedCats = [
@@ -374,11 +416,15 @@ export function mapProductToDetailResponse(
     ];
   }
 
-  const categories = orderedCats.map((c) => ({
-    id: c.id,
-    name: c.name,
-    slug: c.slug,
-  }));
+  const categories: ProductDetailResponse['categories'] = orderedCats.map(
+    (c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      parentId: c.parentId ?? null,
+      isHub: isHubById.get(c.id) ?? false,
+    }),
+  );
 
   const attributes = mapProductAttributes(product);
   const activeVariants = (product.variants ?? []).filter((v) => v.isActive);
@@ -386,14 +432,7 @@ export function mapProductToDetailResponse(
   const isVariable =
     attributes.some((a) => a.variation) && activeVariants.length > 0;
 
-  /**
-   * Helpers: adjust field names here if your variant model differs.
-   * Assumed:
-   * - v.regularPrice (or v.price) is the "regular"
-   * - v.salePrice is the sale (0/null if not on sale)
-   */
   const getVariantRegular = (v: any) => Number(v.regularPrice ?? v.price ?? 0);
-
   const getVariantSale = (v: any) => Number(v.salePrice ?? 0);
 
   const isVariantOnSale = (v: any) => {
@@ -403,14 +442,11 @@ export function mapProductToDetailResponse(
   };
 
   const getVariantEffective = (v: any) => {
-    // you already have this helper, but keep it consistent:
-    // return getVariantEffectivePrice(v);
     const r = getVariantRegular(v);
     const s = getVariantSale(v);
     return isVariantOnSale(v) ? s : r;
   };
 
-  // Price calculations
   const pricingBase = activeVariants.length ? activeVariants : [];
 
   const effectivePrices = pricingBase
@@ -434,7 +470,6 @@ export function mapProductToDetailResponse(
 
   const onSale = pricingBase.some(isVariantOnSale);
 
-  // For simple products, prefer the "main" variant’s values (if you have variants)
   const primaryVariant = activeVariants[0] ?? null;
 
   const simpleRegular = primaryVariant
@@ -460,7 +495,6 @@ export function mapProductToDetailResponse(
 
     type: isVariable ? 'variable' : 'simple',
 
-    // ✅ set these properly
     price: String(
       isVariable ? minEffective : simpleOnSale ? simpleSale : simpleRegular,
     ),
@@ -493,7 +527,6 @@ export function mapProductToDetailResponse(
     weight: '',
     stock_status: 'instock',
 
-    // ✅ Use your existing builder; pass effective min/max
     price_html: buildPriceHtmlRange(minEffective, maxEffective),
 
     meta_data: buildProductMetaData(product),

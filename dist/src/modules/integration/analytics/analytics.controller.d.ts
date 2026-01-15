@@ -37,10 +37,10 @@ export declare class AnalyticsController extends BaseController {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        enabled: boolean;
         provider: string;
         publicConfig: unknown;
         privateConfig: unknown;
+        enabled: boolean;
         requiresConsent: boolean;
     }>;
     updateAdmin(user: User, storeId: string, provider: string, dto: UpdateAnalyticsDto, ip: string): Promise<{
@@ -73,10 +73,10 @@ export declare class AnalyticsController extends BaseController {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        enabled: boolean;
         provider: string;
         publicConfig: unknown;
         privateConfig: unknown;
+        enabled: boolean;
         requiresConsent: boolean;
     }>;
     getStorefront(companyId: string, storeId: string): Promise<{

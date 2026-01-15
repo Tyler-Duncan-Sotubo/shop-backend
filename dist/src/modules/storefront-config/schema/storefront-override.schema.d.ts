@@ -2,38 +2,32 @@ import { z } from 'zod';
 export declare const PaymentMethods: readonly ["visa", "mastercard", "verve", "amex", "discover", "paypal", "apple_pay", "google_pay", "bank_transfer"];
 export type PaymentMethod = (typeof PaymentMethods)[number];
 export declare const StorefrontOverridesV1Schema: z.ZodObject<{
-    store: z.ZodOptional<z.ZodObject<{
-        name: z.ZodOptional<z.ZodString>;
-        locale: z.ZodOptional<z.ZodString>;
-        currency: z.ZodOptional<z.ZodObject<{
-            code: z.ZodOptional<z.ZodString>;
-            locale: z.ZodOptional<z.ZodString>;
-            fractionDigits: z.ZodOptional<z.ZodNumber>;
+    ui: z.ZodOptional<z.ZodObject<{
+        headerMenu: z.ZodOptional<z.ZodObject<{
+            about: z.ZodOptional<z.ZodBoolean>;
+            contact: z.ZodOptional<z.ZodBoolean>;
+            blog: z.ZodOptional<z.ZodBoolean>;
         }, "strict", z.ZodTypeAny, {
-            code?: string | undefined;
-            locale?: string | undefined;
-            fractionDigits?: number | undefined;
+            blog?: boolean | undefined;
+            about?: boolean | undefined;
+            contact?: boolean | undefined;
         }, {
-            code?: string | undefined;
-            locale?: string | undefined;
-            fractionDigits?: number | undefined;
+            blog?: boolean | undefined;
+            about?: boolean | undefined;
+            contact?: boolean | undefined;
         }>>;
     }, "strict", z.ZodTypeAny, {
-        name?: string | undefined;
-        currency?: {
-            code?: string | undefined;
-            locale?: string | undefined;
-            fractionDigits?: number | undefined;
+        headerMenu?: {
+            blog?: boolean | undefined;
+            about?: boolean | undefined;
+            contact?: boolean | undefined;
         } | undefined;
-        locale?: string | undefined;
     }, {
-        name?: string | undefined;
-        currency?: {
-            code?: string | undefined;
-            locale?: string | undefined;
-            fractionDigits?: number | undefined;
+        headerMenu?: {
+            blog?: boolean | undefined;
+            about?: boolean | undefined;
+            contact?: boolean | undefined;
         } | undefined;
-        locale?: string | undefined;
     }>>;
     theme: z.ZodOptional<z.ZodObject<{
         assets: z.ZodOptional<z.ZodObject<{
@@ -134,6 +128,7 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }[] | undefined;
         }>>;
         nav: z.ZodOptional<z.ZodObject<{
+            enabled: z.ZodOptional<z.ZodBoolean>;
             items: z.ZodOptional<z.ZodArray<z.ZodObject<{
                 label: z.ZodString;
                 href: z.ZodString;
@@ -164,6 +159,7 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 wishlist?: boolean | undefined;
             }>>;
         }, "strict", z.ZodTypeAny, {
+            enabled?: boolean | undefined;
             items?: {
                 label: string;
                 href: string;
@@ -176,6 +172,7 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 wishlist?: boolean | undefined;
             } | undefined;
         }, {
+            enabled?: boolean | undefined;
             items?: {
                 label: string;
                 href: string;
@@ -200,6 +197,7 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }[] | undefined;
         } | undefined;
         nav?: {
+            enabled?: boolean | undefined;
             items?: {
                 label: string;
                 href: string;
@@ -224,6 +222,7 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }[] | undefined;
         } | undefined;
         nav?: {
+            enabled?: boolean | undefined;
             items?: {
                 label: string;
                 href: string;
@@ -335,6 +334,16 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         home: z.ZodOptional<z.ZodObject<{
             hero: z.ZodOptional<z.ZodObject<{
                 enabled: z.ZodOptional<z.ZodBoolean>;
+                image: z.ZodOptional<z.ZodObject<{
+                    src: z.ZodOptional<z.ZodString>;
+                    alt: z.ZodOptional<z.ZodString>;
+                }, "strict", z.ZodTypeAny, {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                }, {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                }>>;
                 content: z.ZodOptional<z.ZodObject<{
                     eyebrow: z.ZodOptional<z.ZodString>;
                     heading: z.ZodOptional<z.ZodString>;
@@ -367,6 +376,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 }>>;
             }, "strict", z.ZodTypeAny, {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -378,6 +391,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 } | undefined;
                 enabled?: boolean | undefined;
             }, {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -391,6 +408,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }>>;
         }, "strict", z.ZodTypeAny, {
             hero?: {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -404,6 +425,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             } | undefined;
         }, {
             hero?: {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -420,6 +445,16 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         home: z.ZodOptional<z.ZodObject<{
             hero: z.ZodOptional<z.ZodObject<{
                 enabled: z.ZodOptional<z.ZodBoolean>;
+                image: z.ZodOptional<z.ZodObject<{
+                    src: z.ZodOptional<z.ZodString>;
+                    alt: z.ZodOptional<z.ZodString>;
+                }, "strict", z.ZodTypeAny, {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                }, {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                }>>;
                 content: z.ZodOptional<z.ZodObject<{
                     eyebrow: z.ZodOptional<z.ZodString>;
                     heading: z.ZodOptional<z.ZodString>;
@@ -452,6 +487,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 }>>;
             }, "strict", z.ZodTypeAny, {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -463,6 +502,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 } | undefined;
                 enabled?: boolean | undefined;
             }, {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -476,6 +519,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }>>;
         }, "strict", z.ZodTypeAny, {
             hero?: {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -489,6 +536,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             } | undefined;
         }, {
             hero?: {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -505,6 +556,16 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         home: z.ZodOptional<z.ZodObject<{
             hero: z.ZodOptional<z.ZodObject<{
                 enabled: z.ZodOptional<z.ZodBoolean>;
+                image: z.ZodOptional<z.ZodObject<{
+                    src: z.ZodOptional<z.ZodString>;
+                    alt: z.ZodOptional<z.ZodString>;
+                }, "strict", z.ZodTypeAny, {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                }, {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                }>>;
                 content: z.ZodOptional<z.ZodObject<{
                     eyebrow: z.ZodOptional<z.ZodString>;
                     heading: z.ZodOptional<z.ZodString>;
@@ -537,6 +598,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 }>>;
             }, "strict", z.ZodTypeAny, {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -548,6 +613,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 } | undefined;
                 enabled?: boolean | undefined;
             }, {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -561,6 +630,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }>>;
         }, "strict", z.ZodTypeAny, {
             hero?: {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -574,6 +647,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             } | undefined;
         }, {
             hero?: {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -609,6 +686,7 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }[] | undefined;
         } | undefined;
         nav?: {
+            enabled?: boolean | undefined;
             items?: {
                 label: string;
                 href: string;
@@ -626,6 +704,16 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         home: z.ZodOptional<z.ZodObject<{
             hero: z.ZodOptional<z.ZodObject<{
                 enabled: z.ZodOptional<z.ZodBoolean>;
+                image: z.ZodOptional<z.ZodObject<{
+                    src: z.ZodOptional<z.ZodString>;
+                    alt: z.ZodOptional<z.ZodString>;
+                }, "strict", z.ZodTypeAny, {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                }, {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                }>>;
                 content: z.ZodOptional<z.ZodObject<{
                     eyebrow: z.ZodOptional<z.ZodString>;
                     heading: z.ZodOptional<z.ZodString>;
@@ -658,6 +746,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 }>>;
             }, "strict", z.ZodTypeAny, {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -669,6 +761,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 } | undefined;
                 enabled?: boolean | undefined;
             }, {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -682,6 +778,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }>>;
         }, "strict", z.ZodTypeAny, {
             hero?: {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -695,6 +795,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             } | undefined;
         }, {
             hero?: {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -708,6 +812,13 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             } | undefined;
         }>>;
     }, z.ZodTypeAny, "passthrough"> | undefined;
+    ui?: {
+        headerMenu?: {
+            blog?: boolean | undefined;
+            about?: boolean | undefined;
+            contact?: boolean | undefined;
+        } | undefined;
+    } | undefined;
     seo?: {
         description?: string | undefined;
         title?: string | undefined;
@@ -737,15 +848,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             } | undefined;
             leftText?: string | undefined;
         } | undefined;
-    } | undefined;
-    store?: {
-        name?: string | undefined;
-        currency?: {
-            code?: string | undefined;
-            locale?: string | undefined;
-            fractionDigits?: number | undefined;
-        } | undefined;
-        locale?: string | undefined;
     } | undefined;
 }, {
     theme?: z.objectInputType<{
@@ -769,6 +871,7 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }[] | undefined;
         } | undefined;
         nav?: {
+            enabled?: boolean | undefined;
             items?: {
                 label: string;
                 href: string;
@@ -786,6 +889,16 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         home: z.ZodOptional<z.ZodObject<{
             hero: z.ZodOptional<z.ZodObject<{
                 enabled: z.ZodOptional<z.ZodBoolean>;
+                image: z.ZodOptional<z.ZodObject<{
+                    src: z.ZodOptional<z.ZodString>;
+                    alt: z.ZodOptional<z.ZodString>;
+                }, "strict", z.ZodTypeAny, {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                }, {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                }>>;
                 content: z.ZodOptional<z.ZodObject<{
                     eyebrow: z.ZodOptional<z.ZodString>;
                     heading: z.ZodOptional<z.ZodString>;
@@ -818,6 +931,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 }>>;
             }, "strict", z.ZodTypeAny, {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -829,6 +946,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 } | undefined;
                 enabled?: boolean | undefined;
             }, {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -842,6 +963,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }>>;
         }, "strict", z.ZodTypeAny, {
             hero?: {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -855,6 +980,10 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             } | undefined;
         }, {
             hero?: {
+                image?: {
+                    src?: string | undefined;
+                    alt?: string | undefined;
+                } | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -868,6 +997,13 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             } | undefined;
         }>>;
     }, z.ZodTypeAny, "passthrough"> | undefined;
+    ui?: {
+        headerMenu?: {
+            blog?: boolean | undefined;
+            about?: boolean | undefined;
+            contact?: boolean | undefined;
+        } | undefined;
+    } | undefined;
     seo?: {
         description?: string | undefined;
         title?: string | undefined;
@@ -897,14 +1033,5 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             } | undefined;
             leftText?: string | undefined;
         } | undefined;
-    } | undefined;
-    store?: {
-        name?: string | undefined;
-        currency?: {
-            code?: string | undefined;
-            locale?: string | undefined;
-            fractionDigits?: number | undefined;
-        } | undefined;
-        locale?: string | undefined;
     } | undefined;
 }>;

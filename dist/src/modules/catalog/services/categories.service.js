@@ -344,24 +344,35 @@ let CategoriesService = class CategoriesService {
         await this.assertCompanyExists(companyId);
         if (!storeId)
             return [];
-        return this.cache.getOrSetVersioned(companyId, ['catalog', 'categories', storeId, 'limit', (limit ?? 'all').toString()], async () => {
-            const baseQuery = this.db
-                .select({
-                id: schema_1.categories.id,
-                name: schema_1.categories.name,
-                slug: schema_1.categories.slug,
-                imageUrl: schema_1.media.url,
-                imageAltText: schema_1.media.altText,
-            })
-                .from(schema_1.categories)
-                .leftJoin(schema_1.media, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.media.companyId, schema_1.categories.companyId), (0, drizzle_orm_1.eq)(schema_1.media.storeId, schema_1.categories.storeId), (0, drizzle_orm_1.eq)(schema_1.media.id, schema_1.categories.imageMediaId), (0, drizzle_orm_1.isNull)(schema_1.media.deletedAt)))
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.storeId, storeId), (0, drizzle_orm_1.isNull)(schema_1.categories.deletedAt)))
-                .orderBy(schema_1.categories.position);
-            if (typeof limit === 'number') {
-                return baseQuery.limit(limit).execute();
-            }
-            return baseQuery.execute();
-        });
+        const baseQuery = this.db
+            .select({
+            id: schema_1.categories.id,
+            name: schema_1.categories.name,
+            slug: schema_1.categories.slug,
+            imageUrl: schema_1.media.url,
+            imageAltText: schema_1.media.altText,
+            parentId: schema_1.categories.parentId,
+            hasChildren: (0, drizzle_orm_1.sql) `
+            exists (
+              select 1
+              from ${schema_1.categories} as child
+              where
+                child.company_id = ${companyId}
+                and child.store_id = ${storeId}
+                and child.parent_id = ${schema_1.categories.id}
+                and child.deleted_at is null
+            )
+          `.as('hasChildren'),
+        })
+            .from(schema_1.categories)
+            .leftJoin(schema_1.media, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.media.companyId, schema_1.categories.companyId), (0, drizzle_orm_1.eq)(schema_1.media.storeId, schema_1.categories.storeId), (0, drizzle_orm_1.eq)(schema_1.media.id, schema_1.categories.imageMediaId), (0, drizzle_orm_1.isNull)(schema_1.media.deletedAt)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.categories.storeId, storeId), (0, drizzle_orm_1.isNull)(schema_1.categories.deletedAt)))
+            .orderBy(schema_1.categories.position);
+        if (typeof limit === 'number') {
+            return baseQuery.limit(limit).execute();
+        }
+        console.log(baseQuery.toSQL().sql);
+        return baseQuery.execute();
     }
     async createCategory(companyId, dto, user, ip) {
         await this.assertCompanyExists(companyId);

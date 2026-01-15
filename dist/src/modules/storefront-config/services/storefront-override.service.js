@@ -22,12 +22,14 @@ const schema_2 = require("../schema");
 const storefront_config_service_1 = require("./storefront-config.service");
 const validate_or_throw_zod_1 = require("../validators/validate-or-throw-zod");
 const storefront_revalidate_service_1 = require("./storefront-revalidate.service");
+const company_settings_service_1 = require("../../company-settings/company-settings.service");
 let StorefrontOverrideService = class StorefrontOverrideService {
-    constructor(db, cache, storefrontConfigService, storefrontRevalidateService) {
+    constructor(db, cache, storefrontConfigService, storefrontRevalidateService, companySettings) {
         this.db = db;
         this.cache = cache;
         this.storefrontConfigService = storefrontConfigService;
         this.storefrontRevalidateService = storefrontRevalidateService;
+        this.companySettings = companySettings;
     }
     async assertStore(storeId) {
         const store = await this.db.query.stores.findFirst({
@@ -165,6 +167,7 @@ let StorefrontOverrideService = class StorefrontOverrideService {
             pages: candidateOverride.pages,
         });
         await this.cache.bumpCompanyVersion(store.companyId);
+        await this.companySettings.markOnboardingStep(companyId, 'online_store_customization_complete', true);
         return { ok: true };
     }
 };
@@ -174,6 +177,7 @@ exports.StorefrontOverrideService = StorefrontOverrideService = __decorate([
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, cache_service_1.CacheService,
         storefront_config_service_1.StorefrontConfigService,
-        storefront_revalidate_service_1.StorefrontRevalidateService])
+        storefront_revalidate_service_1.StorefrontRevalidateService,
+        company_settings_service_1.CompanySettingsService])
 ], StorefrontOverrideService);
 //# sourceMappingURL=storefront-override.service.js.map

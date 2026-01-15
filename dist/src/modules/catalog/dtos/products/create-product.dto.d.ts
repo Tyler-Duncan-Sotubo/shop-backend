@@ -1,4 +1,11 @@
 import { productStatusEnum, productTypeEnum, ProductLinkType } from 'src/drizzle/schema';
+export declare class CreateProductImageDto {
+    base64: string;
+    altText?: string;
+    fileName?: string;
+    mimeType?: string;
+    position?: number;
+}
 export declare class CreateProductDto {
     storeId: string;
     name: string;
@@ -12,8 +19,6 @@ export declare class CreateProductDto {
     metadata?: Record<string, any>;
     categoryIds?: string[];
     links?: Partial<Record<ProductLinkType, string[]>>;
-    base64Image?: string;
-    imageAltText?: string;
-    imageFileName?: string;
-    imageMimeType?: string;
+    images?: CreateProductImageDto[];
+    defaultImageIndex?: number;
 }

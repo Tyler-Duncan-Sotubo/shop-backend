@@ -9,14 +9,46 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateProductDto = void 0;
+exports.UpdateProductDto = exports.UpdateProductImageDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 const schema_1 = require("../../../../drizzle/schema");
+class UpdateProductImageDto {
+}
+exports.UpdateProductImageDto = UpdateProductImageDto;
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateProductImageDto.prototype, "base64", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateProductImageDto.prototype, "altText", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateProductImageDto.prototype, "fileName", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateProductImageDto.prototype, "mimeType", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateProductImageDto.prototype, "position", void 0);
 class UpdateProductDto {
 }
 exports.UpdateProductDto = UpdateProductDto;
 __decorate([
-    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUUID)('7'),
+    __metadata("design:type", String)
+], UpdateProductDto.prototype, "storeId", void 0);
+__decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateProductDto.prototype, "name", void 0);
@@ -73,22 +105,16 @@ __decorate([
 ], UpdateProductDto.prototype, "links", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], UpdateProductDto.prototype, "base64Image", void 0);
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayMaxSize)(9),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => UpdateProductImageDto),
+    __metadata("design:type", Array)
+], UpdateProductDto.prototype, "images", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], UpdateProductDto.prototype, "imageAltText", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], UpdateProductDto.prototype, "imageFileName", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], UpdateProductDto.prototype, "imageMimeType", void 0);
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateProductDto.prototype, "defaultImageIndex", void 0);
 //# sourceMappingURL=update-product.dto.js.map

@@ -60,7 +60,10 @@ export class StorefrontConfigService {
   /* ------------------------------------------------------------------ */
   /* Public runtime: resolved config (cached)                             */
   /* ------------------------------------------------------------------ */
-  async getResolvedByStoreId(storeId: string) {
+  async getResolvedByStoreId(
+    storeId: string,
+    options?: { overrideStatus?: 'published' | 'draft' },
+  ) {
     const store = await this.db.query.stores.findFirst({
       where: eq(stores.id, storeId),
     });
@@ -74,7 +77,11 @@ export class StorefrontConfigService {
       store.companyId,
       cacheKey,
       async () => {
-        const resolved = await this.resolveForStore(storeId);
+        const resolved = await this.resolveForStore(
+          storeId,
+          undefined,
+          options,
+        );
 
         // Optional runtime safety: don't break storefront if invalid, just log.
         const parsed = StorefrontConfigV1Schema.safeParse(resolved);
@@ -96,12 +103,16 @@ export class StorefrontConfigService {
   async resolveForStore(
     storeId: string,
     candidateOverride?: OverrideCandidate,
+    options?: { overrideStatus?: 'published' | 'draft' },
   ) {
     const store = await this.db.query.stores.findFirst({
       where: eq(stores.id, storeId),
     });
     if (!store) throw new NotFoundException('Store not found');
 
+    const overrideStatus = options?.overrideStatus ?? 'published';
+
+    // Always load published override (used by requireThemeMode === "published")
     const publishedOverride = await this.db.query.storefrontOverrides.findFirst(
       {
         where: and(
@@ -111,8 +122,31 @@ export class StorefrontConfigService {
       },
     );
 
+    // Load stored override based on requested status (draft/published)
+    // If overrideStatus is "published", this will be same as publishedOverride
+    const draftOverride =
+      overrideStatus === 'published'
+        ? undefined
+        : await this.db
+            .select()
+            .from(storefrontOverrides)
+            .where(
+              and(
+                eq(storefrontOverrides.storeId, storeId),
+                eq(storefrontOverrides.status, 'draft' as any),
+              ),
+            )
+            .limit(1)
+            .then((rows) => rows[0]);
+
+    const storedOverride =
+      overrideStatus === 'published'
+        ? publishedOverride
+        : (draftOverride ?? publishedOverride);
+
+    // Candidate override takes precedence (admin preview), otherwise use stored row
     const effectiveOverride: OverrideCandidate | undefined =
-      candidateOverride ?? (publishedOverride as any);
+      candidateOverride ?? (storedOverride as any) ?? undefined;
 
     // ------------------------------------------------------------------
     // ✅ Require-theme flag (env-controlled)
@@ -176,14 +210,6 @@ export class StorefrontConfigService {
           ),
         })
       : null;
-
-    console.log('[storefront-config] resolving config for store:', storeId, {
-      requireTheme,
-      requireThemeMode,
-      baseId: base.id,
-      themeId: effectiveOverride?.themeId,
-      foundThemePresetId: themePreset?.id ?? null,
-    });
 
     // ✅ If themeId was specified (or required), do NOT fall back to base if invalid
     if ((requireTheme || effectiveOverride?.themeId) && !themePreset) {

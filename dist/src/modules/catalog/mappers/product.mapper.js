@@ -145,18 +145,43 @@ function mapVariantToWooLike(variant, product) {
 function mapProductToDetailResponse(product) {
     const hero = product.defaultImage ??
         (product.images && product.images.length ? product.images[0] : null);
-    const images = hero
-        ? [{ id: hero.id, src: hero.url, alt: hero.altText ?? null }]
-        : [];
+    const all = (product.images ?? []).slice().sort((a, b) => {
+        const ap = a.position ?? 0;
+        const bp = b.position ?? 0;
+        return ap - bp;
+    });
+    const ordered = hero
+        ? [hero, ...all.filter((img) => img.id !== hero.id)]
+        : all;
+    const uniqueById = new Map();
+    for (const img of ordered)
+        uniqueById.set(img.id, img);
+    const images = Array.from(uniqueById.values()).map((img) => ({
+        id: img.id,
+        src: img.url,
+        alt: img.altText ?? null,
+    }));
     const rawCats = (product.productCategories ?? [])
         .map((pc) => pc.category)
         .filter(Boolean);
-    const byId = new Map(rawCats.map((c) => [c.id, c]));
-    const uniqueCats = Array.from(byId.values());
+    const catById = new Map();
+    for (const c of rawCats)
+        catById.set(c.id, c);
+    const uniqueCats = Array.from(catById.values());
+    const parentIds = new Set();
+    for (const c of uniqueCats) {
+        if (c.parentId)
+            parentIds.add(c.parentId);
+    }
+    const isHubById = new Map();
+    for (const c of uniqueCats) {
+        const explicit = typeof c.isHub === 'boolean' ? c.isHub : undefined;
+        isHubById.set(c.id, explicit ?? parentIds.has(c.id));
+    }
     let orderedCats = uniqueCats;
-    const childWithParent = uniqueCats.find((c) => c.parentId && byId.has(c.parentId));
+    const childWithParent = uniqueCats.find((c) => c.parentId && catById.has(c.parentId));
     if (childWithParent?.parentId) {
-        const parent = byId.get(childWithParent.parentId);
+        const parent = catById.get(childWithParent.parentId);
         const child = childWithParent;
         orderedCats = [
             parent,
@@ -168,6 +193,8 @@ function mapProductToDetailResponse(product) {
         id: c.id,
         name: c.name,
         slug: c.slug,
+        parentId: c.parentId ?? null,
+        isHub: isHubById.get(c.id) ?? false,
     }));
     const attributes = mapProductAttributes(product);
     const activeVariants = (product.variants ?? []).filter((v) => v.isActive);

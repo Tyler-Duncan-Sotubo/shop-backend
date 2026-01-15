@@ -1,8 +1,10 @@
 import { db as DbType } from 'src/drizzle/types/drizzle';
 import { ToggleStorePaymentMethodDto, UpsertBankTransferConfigDto, UpsertGatewayConfigDto } from '../dto/payment-methods.dto';
+import { CompanySettingsService } from 'src/modules/company-settings/company-settings.service';
 export declare class PaymentMethodsService {
     private readonly db;
-    constructor(db: DbType);
+    private readonly companySettings;
+    constructor(db: DbType, companySettings: CompanySettingsService);
     private assertGatewayProvider;
     listStoreMethods(companyId: string, storeId: string): Promise<{
         id: string;
@@ -39,13 +41,13 @@ export declare class PaymentMethodsService {
     }>;
     private pickPublicGatewayConfig;
     toggle(companyId: string, dto: ToggleStorePaymentMethodDto): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
+        status: string;
         method: string;
         provider: string | null;
         isEnabled: boolean;
@@ -53,13 +55,13 @@ export declare class PaymentMethodsService {
         lastError: string | null;
     }>;
     upsertGateway(companyId: string, dto: UpsertGatewayConfigDto): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
+        status: string;
         method: string;
         provider: string | null;
         isEnabled: boolean;
@@ -67,13 +69,13 @@ export declare class PaymentMethodsService {
         lastError: string | null;
     }>;
     upsertBankTransfer(companyId: string, dto: UpsertBankTransferConfigDto): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
+        status: string;
         method: string;
         provider: string | null;
         isEnabled: boolean;

@@ -35,8 +35,10 @@ let StorefrontConfigController = class StorefrontConfigController extends base_c
     async getMyResolvedConfig(storeId) {
         return this.runtime.getResolvedByStoreId(storeId);
     }
-    async getResolvedConfigForStore(storeId) {
-        return this.runtime.getResolvedByStoreId(storeId);
+    async getAdminResolvedConfig(user, storeId, mode) {
+        return this.runtime.getResolvedByStoreId(storeId, {
+            overrideStatus: mode === 'draft' ? 'draft' : 'published',
+        });
     }
     async getStorePublishedOverride(user, storeId) {
         return this.overrides.getPublishedOverride(user.companyId, storeId);
@@ -94,13 +96,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StorefrontConfigController.prototype, "getMyResolvedConfig", null);
 __decorate([
-    (0, common_1.Get)('config/:storeId'),
-    (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
-    __param(0, (0, common_1.Param)('storeId')),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Get)('admin/stores/:storeId/config'),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('storeId')),
+    __param(2, (0, common_1.Query)('mode')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
-], StorefrontConfigController.prototype, "getResolvedConfigForStore", null);
+], StorefrontConfigController.prototype, "getAdminResolvedConfig", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Get)('admin/stores/:storeId/override'),

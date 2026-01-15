@@ -30,20 +30,7 @@ export declare class MediaService {
     }>;
     uploadMediaFile(companyId: string, dto: CreateMediaDto): Promise<{
         url: string;
-        id: string;
-        createdAt: Date;
-        deletedAt: Date | null;
-        companyId: string;
-        size: number | null;
-        storeId: string;
-        fileName: string;
-        mimeType: string;
-        storageKey: string | null;
-        width: number | null;
-        height: number | null;
         altText: string | null;
-        folder: string | null;
-        tag: string | null;
     }>;
     getMedia(companyId: string, query: GetMediaQueryDto): Promise<{
         id: any;

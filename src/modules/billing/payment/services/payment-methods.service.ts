@@ -14,10 +14,14 @@ import {
   UpsertBankTransferConfigDto,
   UpsertGatewayConfigDto,
 } from '../dto/payment-methods.dto';
+import { CompanySettingsService } from 'src/modules/company-settings/company-settings.service';
 
 @Injectable()
 export class PaymentMethodsService {
-  constructor(@Inject(DRIZZLE) private readonly db: DbType) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DbType,
+    private readonly companySettings: CompanySettingsService,
+  ) {}
 
   private assertGatewayProvider(dto: {
     method: PaymentMethodType;
@@ -212,6 +216,12 @@ export class PaymentMethodsService {
       .returning()
       .execute();
 
+    await this.companySettings.markOnboardingStep(
+      companyId,
+      'payment_setup_complete',
+      true,
+    );
+
     return created;
   }
 
@@ -270,6 +280,12 @@ export class PaymentMethodsService {
       } as any)
       .returning()
       .execute();
+
+    await this.companySettings.markOnboardingStep(
+      companyId,
+      'payment_setup_complete',
+      true,
+    );
 
     return created;
   }

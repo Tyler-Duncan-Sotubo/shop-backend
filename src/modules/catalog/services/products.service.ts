@@ -137,6 +137,97 @@ export class ProductsService {
   }
 
   // ----------------- Create -----------------
+
+  // 1) Add this helper inside your service class
+  private async createProductImageFromBase64(args: {
+    tx: db; // type this to your drizzle tx type if you have it
+    companyId: string;
+    product: { id: string; name: string };
+    image: {
+      base64: string;
+      mimeType?: string;
+      fileName?: string;
+      altText?: string;
+      position: number;
+    };
+  }) {
+    const { tx, companyId, product, image } = args;
+
+    const mimeType = (image.mimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+
+    const safeProvidedName = this.sanitizeFileName(image.fileName);
+    const extFromMime = mimeType.startsWith('image/')
+      ? `.${mimeType.split('/')[1] || 'jpg'}`
+      : '.bin';
+
+    const fallbackName = `${product.id}-${image.position}-${Date.now()}${extFromMime}`;
+
+    const fileName =
+      safeProvidedName && safeProvidedName.includes('.')
+        ? safeProvidedName
+        : safeProvidedName
+          ? `${safeProvidedName}${extFromMime}`
+          : fallbackName;
+
+    // decode base64 -> buffer (size + dimensions)
+    const normalized = image.base64.includes(',')
+      ? image.base64.split(',')[1]
+      : image.base64;
+
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(normalized, 'base64');
+    } catch {
+      throw new BadRequestException('Invalid image base64');
+    }
+
+    const size = buffer.byteLength;
+
+    let width: number | null = null;
+    let height: number | null = null;
+
+    if (mimeType.startsWith('image/')) {
+      try {
+        const sharpMod = await import('sharp');
+        const sharpFn: any = (sharpMod as any).default ?? sharpMod;
+        const meta = await sharpFn(buffer).metadata();
+        width = meta.width ?? null;
+        height = meta.height ?? null;
+      } catch {
+        // non-fatal
+      }
+    }
+
+    // upload
+    const url = await this.aws.uploadImageToS3(
+      companyId,
+      fileName,
+      image.base64,
+    );
+
+    // insert product_images row
+    const [img] = await tx
+      .insert(productImages)
+      .values({
+        companyId,
+        productId: product.id,
+        variantId: null,
+        url,
+        altText: image.altText ?? `${product.name} product image`,
+        fileName,
+        mimeType,
+        size,
+        width,
+        height,
+        position: image.position,
+      })
+      .returning()
+      .execute();
+
+    return img; // includes img.id
+  }
+
+  // 2) Update createProduct() to use the helper
   async createProduct(
     companyId: string,
     dto: CreateProductDto,
@@ -152,7 +243,6 @@ export class ProductsService {
     const linksByType = dto.links ?? {};
 
     const created = await this.db.transaction(async (tx) => {
-      // 1) Create product
       const [product] = await tx
         .insert(products)
         .values({
@@ -171,87 +261,45 @@ export class ProductsService {
         .returning()
         .execute();
 
-      // 1b) Optional default image upload (same logic as createImage/media)
-      if (dto.base64Image) {
-        const mimeType =
-          (dto.imageMimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+      // ✅ Images (max 3 via DTO)
+      if (dto.images?.length) {
+        const inserted: Array<{ id: string }> = [];
 
-        const safeProvidedName = this.sanitizeFileName(dto.imageFileName);
-        const extFromMime = mimeType.startsWith('image/')
-          ? `.${mimeType.split('/')[1] || 'jpg'}`
-          : '.bin';
+        for (let i = 0; i < dto.images.length; i++) {
+          const image = dto.images[i];
 
-        const fallbackName = `${product.id}-default-${Date.now()}${extFromMime}`;
+          const position = image.position ?? i;
 
-        const fileName =
-          safeProvidedName && safeProvidedName.includes('.')
-            ? safeProvidedName
-            : safeProvidedName
-              ? `${safeProvidedName}${extFromMime}`
-              : fallbackName;
-
-        // decode base64 -> buffer (size + dimensions)
-        const normalized = dto.base64Image.includes(',')
-          ? dto.base64Image.split(',')[1]
-          : dto.base64Image;
-
-        let buffer: Buffer;
-        try {
-          buffer = Buffer.from(normalized, 'base64');
-        } catch {
-          throw new BadRequestException('Invalid base64Image');
-        }
-
-        const size = buffer.byteLength;
-
-        let width: number | null = null;
-        let height: number | null = null;
-
-        if (mimeType.startsWith('image/')) {
-          try {
-            const sharpMod = await import('sharp');
-            const sharpFn: any = (sharpMod as any).default ?? sharpMod;
-            const meta = await sharpFn(buffer).metadata();
-            width = meta.width ?? null;
-            height = meta.height ?? null;
-          } catch {
-            // non-fatal
-          }
-        }
-
-        // upload
-        const url = await this.aws.uploadImageToS3(
-          companyId,
-          fileName,
-          dto.base64Image,
-        );
-
-        // insert product_images row (your schema has these cols now)
-        const [img] = await tx
-          .insert(productImages)
-          .values({
+          const img = await this.createProductImageFromBase64({
+            tx,
             companyId,
-            productId: product.id,
-            variantId: null,
-            url,
-            altText: dto.imageAltText ?? `${product.name} product image`,
-            fileName,
-            mimeType,
-            size,
-            width,
-            height,
-            position: 0,
-          })
-          .returning()
-          .execute();
+            product,
+            image: {
+              base64: image.base64,
+              mimeType: image.mimeType,
+              fileName: image.fileName,
+              altText: image.altText,
+              position,
+            },
+          });
 
-        // set as default image
-        await tx
-          .update(products)
-          .set({ defaultImageId: img.id, updatedAt: new Date() })
-          .where(
-            and(eq(products.companyId, companyId), eq(products.id, product.id)),
-          );
+          inserted.push(img);
+        }
+
+        const defaultIndex = dto.defaultImageIndex ?? 0;
+        const chosen = inserted[defaultIndex] ?? inserted[0];
+
+        if (chosen) {
+          await tx
+            .update(products)
+            .set({ defaultImageId: chosen.id, updatedAt: new Date() })
+            .where(
+              and(
+                eq(products.companyId, companyId),
+                eq(products.id, product.id),
+              ),
+            );
+        }
       }
 
       // 2) Assign categories
@@ -273,7 +321,7 @@ export class ProductsService {
           .execute();
       }
 
-      // 3) Insert linked products (if provided)
+      // 3) Linked products
       const allLinkedIds: string[] = [];
       for (const ids of Object.values(linksByType)) {
         if (Array.isArray(ids)) allLinkedIds.push(...ids);
@@ -336,6 +384,8 @@ export class ProductsService {
           status: created.status,
           categoryIds: uniqueCategoryIds,
           links: dto.links ?? {},
+          imagesCount: dto.images?.length ?? 0,
+          defaultImageIndex: dto.defaultImageIndex ?? 0,
         },
       });
     }
@@ -880,8 +930,7 @@ export class ProductsService {
       companyId,
       ['catalog', 'product', productId, 'edit'],
       async () => {
-        // 1) product fields (lean)
-        // 1) product fields (lean) + default image url
+        // 1) product base fields (+ defaultImageId so we can compute defaultImageIndex)
         const product = await this.db
           .select({
             id: products.id,
@@ -895,17 +944,9 @@ export class ProductsService {
             createdAt: products.createdAt,
             updatedAt: products.updatedAt,
 
-            // ✅ featured image url
-            imageUrl: productImages.url,
+            defaultImageId: products.defaultImageId,
           })
           .from(products)
-          .leftJoin(
-            productImages,
-            and(
-              eq(productImages.companyId, products.companyId),
-              eq(productImages.id, products.defaultImageId),
-            ),
-          )
           .where(
             and(eq(products.companyId, companyId), eq(products.id, productId)),
           )
@@ -917,6 +958,36 @@ export class ProductsService {
             `Product not found for company ${companyId}`,
           );
         }
+
+        // 1b) all product images (ordered)
+        const images = await this.db
+          .select({
+            id: productImages.id,
+            url: productImages.url,
+            altText: productImages.altText,
+            position: productImages.position,
+            fileName: productImages.fileName,
+            mimeType: productImages.mimeType,
+            size: productImages.size,
+            width: productImages.width,
+            height: productImages.height,
+          })
+          .from(productImages)
+          .where(
+            and(
+              eq(productImages.companyId, companyId),
+              eq(productImages.productId, productId),
+            ),
+          )
+          .orderBy(productImages.position)
+          .execute();
+
+        // compute default image index (fallback -> 0)
+        const foundDefaultIndex = images.findIndex(
+          (img) => img.id === product.defaultImageId,
+        );
+        const defaultImageIndex =
+          foundDefaultIndex >= 0 ? foundDefaultIndex : 0;
 
         // 2) categories -> categoryIds
         const cats = await this.db
@@ -948,10 +1019,10 @@ export class ProductsService {
           )
           .execute();
 
-        // order stable (optional)
+        // stable order
         linksRows.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-        const links: any = {
+        const links: Partial<Record<ProductLinkType, string[]>> = {
           related: [],
           upsell: [],
           cross_sell: [],
@@ -959,9 +1030,10 @@ export class ProductsService {
 
         for (const r of linksRows) {
           const t = r.linkType as ProductLinkType;
-          if (t === 'related') links.related.push(r.linkedProductId);
-          else if (t === 'upsell') links.upsell.push(r.linkedProductId);
-          else if (t === 'cross_sell') links.cross_sell.push(r.linkedProductId);
+          if (t === 'related') links.related!.push(r.linkedProductId);
+          else if (t === 'upsell') links.upsell!.push(r.linkedProductId);
+          else if (t === 'cross_sell')
+            links.cross_sell!.push(r.linkedProductId);
         }
 
         return {
@@ -970,15 +1042,17 @@ export class ProductsService {
           description: product.description ?? null,
           status: product.status,
           productType: product.productType,
-          imageUrl: product.imageUrl ?? null,
+
+          images: images.map((img) => ({
+            id: img.id,
+            url: img.url,
+          })),
+          defaultImageIndex,
           seoTitle: product.seoTitle ?? null,
           seoDescription: product.seoDescription ?? null,
-
           metadata: (product.metadata ?? {}) as Record<string, any>,
-
           categoryIds,
           links,
-
           createdAt: product.createdAt,
           updatedAt: product.updatedAt,
         };
@@ -1007,7 +1081,7 @@ export class ProductsService {
     }
 
     const updated = await this.db.transaction(async (tx) => {
-      // 1) update product
+      // 1) update product fields
       const [p] = await tx
         .update(products)
         .set({
@@ -1030,120 +1104,161 @@ export class ProductsService {
 
       if (!p) throw new NotFoundException('Product not found');
 
-      // 1b) Optional default image update
-      if (dto.base64Image) {
-        const mimeType =
-          (dto.imageMimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+      // ---------------------------------------------------------------------
+      // 1b) Images replace (max 9) — ONLY if dto.images is provided
+      // ---------------------------------------------------------------------
+      if (dto.images) {
+        const incoming = Array.isArray(dto.images)
+          ? dto.images.slice(0, 9)
+          : [];
 
-        const safeProvidedName = this.sanitizeFileName(dto.imageFileName);
-        const extFromMime = mimeType.startsWith('image/')
-          ? `.${mimeType.split('/')[1] || 'jpg'}`
-          : '.bin';
-
-        const fallbackName = `${productId}-default-${Date.now()}${extFromMime}`;
-
-        const fileName =
-          safeProvidedName && safeProvidedName.includes('.')
-            ? safeProvidedName
-            : safeProvidedName
-              ? `${safeProvidedName}${extFromMime}`
-              : fallbackName;
-
-        // decode base64 -> buffer (size + dimensions)
-        const normalized = dto.base64Image.includes(',')
-          ? dto.base64Image.split(',')[1]
-          : dto.base64Image;
-
-        let buffer: Buffer;
-        try {
-          buffer = Buffer.from(normalized, 'base64');
-        } catch {
-          throw new BadRequestException('Invalid base64Image');
-        }
-
-        const size = buffer.byteLength;
-
-        let width: number | null = null;
-        let height: number | null = null;
-
-        if (mimeType.startsWith('image/')) {
-          try {
-            const sharpMod = await import('sharp');
-            const sharpFn: any = (sharpMod as any).default ?? sharpMod;
-            const meta = await sharpFn(buffer).metadata();
-            width = meta.width ?? null;
-            height = meta.height ?? null;
-          } catch {
-            // non-fatal
-          }
-        }
-
-        // ✅ load current default image row (for cleanup)
-        const currentDefaultImageId = existing.defaultImageId ?? null;
-        const currentDefaultImage = currentDefaultImageId
-          ? await tx.query.productImages.findFirst({
-              where: and(
-                eq(productImages.companyId, companyId),
-                eq(productImages.id, currentDefaultImageId),
-                isNull(productImages.deletedAt),
-              ),
-            })
-          : null;
-
-        // upload new
-        const url = await this.aws.uploadImageToS3(
-          companyId,
-          fileName,
-          dto.base64Image,
-          // if supported:
-          // mimeType,
-        );
-
-        // insert a new product image row (keeps history)
-        const [img] = await tx
-          .insert(productImages)
-          .values({
-            companyId,
-            productId,
-            variantId: null,
-            url,
-            altText: dto.imageAltText ?? `${existing.name} product image`,
-            fileName,
-            mimeType,
-            size,
-            width,
-            height,
-            position: 0,
+        // Load current (non-deleted) images for this product
+        const currentImages = await tx
+          .select({
+            id: productImages.id,
+            url: productImages.url,
+            position: productImages.position,
           })
-          .returning()
-          .execute();
-
-        // point product to new image
-        await tx
-          .update(products)
-          .set({ defaultImageId: img.id, updatedAt: new Date() })
+          .from(productImages)
           .where(
             and(
-              eq(products.companyId, companyId),
-              eq(products.id, existing.id),
+              eq(productImages.companyId, companyId),
+              eq(productImages.productId, productId),
+              isNull(productImages.deletedAt),
             ),
+          )
+          .orderBy(productImages.position)
+          .execute();
+
+        // Upload + insert new images (if any)
+        const inserted: Array<{ id: string; url: string; position: number }> =
+          [];
+
+        for (let i = 0; i < incoming.length; i++) {
+          const img = incoming[i];
+
+          const mimeType =
+            (img.mimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+
+          const safeProvidedName = this.sanitizeFileName(img.fileName);
+          const extFromMime = mimeType.startsWith('image/')
+            ? `.${mimeType.split('/')[1] || 'jpg'}`
+            : '.bin';
+
+          const position = typeof img.position === 'number' ? img.position : i;
+
+          const fallbackName = `${productId}-${position}-${Date.now()}${extFromMime}`;
+
+          const fileName =
+            safeProvidedName && safeProvidedName.includes('.')
+              ? safeProvidedName
+              : safeProvidedName
+                ? `${safeProvidedName}${extFromMime}`
+                : fallbackName;
+
+          const normalized = img.base64.includes(',')
+            ? img.base64.split(',')[1]
+            : img.base64;
+
+          let buffer: Buffer;
+          try {
+            buffer = Buffer.from(normalized, 'base64');
+          } catch {
+            throw new BadRequestException('Invalid image base64');
+          }
+
+          const size = buffer.byteLength;
+
+          let width: number | null = null;
+          let height: number | null = null;
+
+          if (mimeType.startsWith('image/')) {
+            try {
+              const sharpMod = await import('sharp');
+              const sharpFn: any = (sharpMod as any).default ?? sharpMod;
+              const meta = await sharpFn(buffer).metadata();
+              width = meta.width ?? null;
+              height = meta.height ?? null;
+            } catch {
+              // non-fatal
+            }
+          }
+
+          // upload
+          const url = await this.aws.uploadImageToS3(
+            companyId,
+            fileName,
+            img.base64,
           );
 
-        // ✅ best-effort cleanup: delete old S3 object (don’t block the request)
-        // (Optional: you might want to skip deleting if that old image is used elsewhere.)
-        if (currentDefaultImage?.url && currentDefaultImage.url !== url) {
-          const oldKey = this.extractStorageKeyFromUrl(currentDefaultImage.url);
-          if (oldKey) {
+          // insert row
+          const [row] = await tx
+            .insert(productImages)
+            .values({
+              companyId,
+              productId,
+              variantId: null,
+              url,
+              altText: img.altText ?? `${p.name} product image`,
+              fileName,
+              mimeType,
+              size,
+              width,
+              height,
+              position,
+            })
+            .returning()
+            .execute();
+
+          inserted.push({ id: row.id, url: row.url, position });
+        }
+
+        // Set default image id based on dto.defaultImageIndex
+        const defaultIndex = dto.defaultImageIndex ?? 0;
+        const chosen = inserted[defaultIndex] ?? inserted[0] ?? null;
+
+        await tx
+          .update(products)
+          .set({
+            defaultImageId: chosen ? chosen.id : null,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(eq(products.companyId, companyId), eq(products.id, productId)),
+          )
+          .execute();
+
+        // Soft-delete old images rows
+        if (currentImages.length) {
+          await tx
+            .update(productImages)
+            .set({ deletedAt: new Date() })
+            .where(
+              and(
+                eq(productImages.companyId, companyId),
+                eq(productImages.productId, productId),
+                isNull(productImages.deletedAt),
+              ),
+            )
+            .execute();
+
+          // Best-effort S3 cleanup for old images
+          for (const old of currentImages) {
+            // If you want to keep history instead, skip deletion from S3 and just soft delete.
+            const oldKey = this.extractStorageKeyFromUrl(old.url);
+            if (!oldKey) continue;
             try {
               await this.aws.deleteFromS3(oldKey);
             } catch {
-              // optionally log
+              // don't block update
             }
           }
         }
       }
 
+      // ---------------------------------------------------------------------
       // 2) replace categories if provided
+      // ---------------------------------------------------------------------
       if (dto.categoryIds) {
         const uniqueCategoryIds = Array.from(new Set(dto.categoryIds ?? []));
 
@@ -1176,7 +1291,9 @@ export class ProductsService {
         }
       }
 
+      // ---------------------------------------------------------------------
       // 3) replace links if provided
+      // ---------------------------------------------------------------------
       if (dto.links) {
         const linksByType = dto.links ?? {};
 
@@ -1259,6 +1376,7 @@ export class ProductsService {
             seoTitle: existing.seoTitle,
             seoDescription: existing.seoDescription,
             metadata: existing.metadata,
+            defaultImageId: existing.defaultImageId,
           },
           after: {
             name: updated.name,
@@ -1270,9 +1388,12 @@ export class ProductsService {
             seoTitle: updated.seoTitle,
             seoDescription: updated.seoDescription,
             metadata: updated.metadata,
+            // note: updated.defaultImageId might not be in `updated` row select
           },
           categoryIds: dto.categoryIds,
           links: dto.links,
+          imagesCount: dto.images?.length,
+          defaultImageIndex: dto.defaultImageIndex,
         },
       });
     }

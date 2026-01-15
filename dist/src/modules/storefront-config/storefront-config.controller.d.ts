@@ -26,7 +26,7 @@ export declare class StorefrontConfigController extends BaseController {
         footer: {};
         pages: {};
     }>;
-    getResolvedConfigForStore(storeId: string): Promise<{
+    getAdminResolvedConfig(user: User, storeId: string, mode?: 'draft' | 'published'): Promise<{
         version: number;
         store: {
             id: string;

@@ -1,23 +1,57 @@
-// src/modules/catalog/dtos/products/update-product.dto.ts
 import {
   IsString,
   IsOptional,
   IsBoolean,
   IsEnum,
   IsObject,
-  IsUUID,
   IsArray,
+  IsUUID,
+  ValidateNested,
+  ArrayMaxSize,
+  IsInt,
+  Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import {
-  ProductLinkType,
   productStatusEnum,
   productTypeEnum,
+  ProductLinkType,
 } from 'src/drizzle/schema';
 
-export class UpdateProductDto {
+/* -----------------------------------
+ * Image DTO
+ * ----------------------------------- */
+export class UpdateProductImageDto {
+  @IsString()
+  base64: string;
+
   @IsOptional()
   @IsString()
-  name?: string;
+  altText?: string;
+
+  @IsOptional()
+  @IsString()
+  fileName?: string;
+
+  @IsOptional()
+  @IsString()
+  mimeType?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  position?: number;
+}
+
+/* -----------------------------------
+ * Product DTO
+ * ----------------------------------- */
+export class UpdateProductDto {
+  @IsUUID('7')
+  storeId: string;
+
+  @IsString()
+  name: string;
 
   @IsOptional()
   @IsString()
@@ -52,35 +86,33 @@ export class UpdateProductDto {
   metadata?: Record<string, any>;
 
   // -----------------------------
-  // ✅ Categories
+  // Categories
   // -----------------------------
-
   @IsOptional()
   @IsArray()
   @IsUUID('7', { each: true })
   categoryIds?: string[];
 
   // -----------------------------
-  // ✅ Linked products
+  // Linked products
   // -----------------------------
-
   @IsOptional()
   @IsObject()
   links?: Partial<Record<ProductLinkType, string[]>>;
 
+  // -----------------------------
+  // ✅ Images (max 3)
+  // -----------------------------
   @IsOptional()
-  @IsString()
-  base64Image?: string;
+  @IsArray()
+  @ArrayMaxSize(9)
+  @ValidateNested({ each: true })
+  @Type(() => UpdateProductImageDto)
+  images?: UpdateProductImageDto[];
 
+  // optional: which image is default
   @IsOptional()
-  @IsString()
-  imageAltText?: string;
-
-  @IsOptional()
-  @IsString()
-  imageFileName?: string;
-
-  @IsOptional()
-  @IsString()
-  imageMimeType?: string;
+  @IsInt()
+  @Min(0)
+  defaultImageIndex?: number;
 }

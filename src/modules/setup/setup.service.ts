@@ -281,9 +281,7 @@ export class SetupService {
 
       // 5) create draft override
       const baseId = await this.getDefaultBaseId(tx);
-
-      // If you truly want theme selection later, set themeId to null and remove getDefaultThemeId().
-      // const themeId = await this.getDefaultThemeId(tx);
+      const themeId = await this.getDefaultThemeId(tx);
 
       const [draftOverride] = await tx
         .insert(storefrontOverrides)
@@ -292,7 +290,7 @@ export class SetupService {
           storeId: store.id,
           status: 'draft' as any,
           baseId,
-          themeId: null, // <-- theme comes later
+          themeId,
           publishedAt: null,
         } as any)
         .returning()

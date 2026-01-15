@@ -18,9 +18,11 @@ const drizzle_orm_1 = require("drizzle-orm");
 const drizzle_module_1 = require("../../../../drizzle/drizzle.module");
 const schema_1 = require("../../../../drizzle/schema");
 const payment_methods_dto_1 = require("../dto/payment-methods.dto");
+const company_settings_service_1 = require("../../../company-settings/company-settings.service");
 let PaymentMethodsService = class PaymentMethodsService {
-    constructor(db) {
+    constructor(db, companySettings) {
         this.db = db;
+        this.companySettings = companySettings;
     }
     assertGatewayProvider(dto) {
         if (dto.method === payment_methods_dto_1.PaymentMethodType.gateway && !dto.provider) {
@@ -162,6 +164,7 @@ let PaymentMethodsService = class PaymentMethodsService {
         })
             .returning()
             .execute();
+        await this.companySettings.markOnboardingStep(companyId, 'payment_setup_complete', true);
         return created;
     }
     async upsertBankTransfer(companyId, dto) {
@@ -203,6 +206,7 @@ let PaymentMethodsService = class PaymentMethodsService {
         })
             .returning()
             .execute();
+        await this.companySettings.markOnboardingStep(companyId, 'payment_setup_complete', true);
         return created;
     }
 };
@@ -210,6 +214,6 @@ exports.PaymentMethodsService = PaymentMethodsService;
 exports.PaymentMethodsService = PaymentMethodsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
-    __metadata("design:paramtypes", [Object])
+    __metadata("design:paramtypes", [Object, company_settings_service_1.CompanySettingsService])
 ], PaymentMethodsService);
 //# sourceMappingURL=payment-methods.service.js.map

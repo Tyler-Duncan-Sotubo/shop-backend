@@ -251,12 +251,16 @@ export declare class CategoriesService {
         slug: any;
         imageUrl: string | null;
         imageAltText: string | null;
+        parentId: any;
+        hasChildren: boolean;
     } | {
         id: any;
         name: any;
         slug: any;
         imageUrl: string | null;
         imageAltText: string | null;
+        parentId: any;
+        hasChildren: boolean;
     })[]>;
     createCategory(companyId: string, dto: CreateCategoryDto, user?: User, ip?: string): Promise<any>;
     updateCategory(companyId: string, categoryId: string, dto: UpdateCategoryDto, user?: User, ip?: string): Promise<{

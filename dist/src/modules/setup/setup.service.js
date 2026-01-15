@@ -194,6 +194,7 @@ let SetupService = class SetupService {
                 .returning()
                 .execute();
             const baseId = await this.getDefaultBaseId(tx);
+            const themeId = await this.getDefaultThemeId(tx);
             const [draftOverride] = await tx
                 .insert(schema_1.storefrontOverrides)
                 .values({
@@ -201,7 +202,7 @@ let SetupService = class SetupService {
                 storeId: store.id,
                 status: 'draft',
                 baseId,
-                themeId: null,
+                themeId,
                 publishedAt: null,
             })
                 .returning()

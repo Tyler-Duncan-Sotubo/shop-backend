@@ -47,11 +47,17 @@ export class StorefrontConfigController extends BaseController {
     return this.runtime.getResolvedByStoreId(storeId);
   }
 
-  /** Storefront runtime: resolved config for a specific store (optional) */
-  @Get('config/:storeId')
-  @UseGuards(StorefrontGuard)
-  async getResolvedConfigForStore(@Param('storeId') storeId: string) {
-    return this.runtime.getResolvedByStoreId(storeId);
+  /* ADMIN: STORE OVERRIDES  */
+  @UseGuards(JwtAuthGuard)
+  @Get('admin/stores/:storeId/config')
+  async getAdminResolvedConfig(
+    @CurrentUser() user: User,
+    @Param('storeId') storeId: string,
+    @Query('mode') mode?: 'draft' | 'published',
+  ) {
+    return this.runtime.getResolvedByStoreId(storeId, {
+      overrideStatus: mode === 'draft' ? 'draft' : 'published',
+    });
   }
 
   /* ===================================================================== */

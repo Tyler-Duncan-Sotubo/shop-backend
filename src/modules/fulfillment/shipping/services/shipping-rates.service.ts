@@ -25,6 +25,7 @@ import {
   QuoteShippingDto,
 } from '../dto';
 import { ShippingZonesService } from './shipping-zones.service';
+import { CompanySettingsService } from 'src/modules/company-settings/company-settings.service';
 
 type Money = string;
 
@@ -35,6 +36,7 @@ export class ShippingRatesService {
     private readonly cache: CacheService,
     private readonly auditService: AuditService,
     private readonly zonesService: ShippingZonesService,
+    private readonly companySettings: CompanySettingsService,
   ) {}
 
   private toNumber(v: unknown): number | null {
@@ -198,6 +200,12 @@ export class ShippingRatesService {
         changes: { companyId, rateId: rate.id, ...dto },
       });
     }
+
+    await this.companySettings.markOnboardingStep(
+      companyId,
+      'shipping_setup_complete',
+      true,
+    );
 
     return rate;
   }

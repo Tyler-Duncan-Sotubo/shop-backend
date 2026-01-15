@@ -15,7 +15,9 @@ export declare class StorefrontConfigService {
     private readonly cache;
     private readonly logger;
     constructor(db: db, cache: CacheService);
-    getResolvedByStoreId(storeId: string): Promise<{
+    getResolvedByStoreId(storeId: string, options?: {
+        overrideStatus?: 'published' | 'draft';
+    }): Promise<{
         version: number;
         store: {
             id: string;
@@ -30,7 +32,9 @@ export declare class StorefrontConfigService {
         footer: {};
         pages: {};
     }>;
-    resolveForStore(storeId: string, candidateOverride?: OverrideCandidate): Promise<{
+    resolveForStore(storeId: string, candidateOverride?: OverrideCandidate, options?: {
+        overrideStatus?: 'published' | 'draft';
+    }): Promise<{
         version: number;
         store: {
             id: string;

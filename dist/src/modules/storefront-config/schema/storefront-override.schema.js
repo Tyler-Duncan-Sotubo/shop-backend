@@ -22,15 +22,13 @@ const PaymentsOverrideSchema = zod_1.z
     .strict();
 exports.StorefrontOverridesV1Schema = zod_1.z
     .object({
-    store: zod_1.z
+    ui: zod_1.z
         .object({
-        name: zod_1.z.string().min(1).optional(),
-        locale: zod_1.z.string().optional(),
-        currency: zod_1.z
+        headerMenu: zod_1.z
             .object({
-            code: zod_1.z.string().min(1).optional(),
-            locale: zod_1.z.string().min(1).optional(),
-            fractionDigits: zod_1.z.number().int().min(0).max(3).optional(),
+            about: zod_1.z.boolean().optional(),
+            contact: zod_1.z.boolean().optional(),
+            blog: zod_1.z.boolean().optional(),
         })
             .strict()
             .optional(),
@@ -82,6 +80,7 @@ exports.StorefrontOverridesV1Schema = zod_1.z
             .optional(),
         nav: zod_1.z
             .object({
+            enabled: zod_1.z.boolean().optional(),
             items: zod_1.z
                 .array(zod_1.z
                 .object({
@@ -142,6 +141,13 @@ exports.StorefrontOverridesV1Schema = zod_1.z
             hero: zod_1.z
                 .object({
                 enabled: zod_1.z.boolean().optional(),
+                image: zod_1.z
+                    .object({
+                    src: zod_1.z.string().min(1).optional(),
+                    alt: zod_1.z.string().optional(),
+                })
+                    .strict()
+                    .optional(),
                 content: zod_1.z
                     .object({
                     eyebrow: zod_1.z.string().optional(),

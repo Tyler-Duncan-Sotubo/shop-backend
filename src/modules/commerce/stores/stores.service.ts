@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { db } from 'src/drizzle/types/drizzle';
 import { DRIZZLE } from 'src/drizzle/drizzle.module';
 import { companies, stores, storeDomains } from 'src/drizzle/schema';
@@ -581,30 +581,37 @@ export class StoresService {
       throw new BadRequestException('localhost is not allowed in production');
     }
 
+    // ✅ Dev localhost: DO NOT CACHE (prevents wrong storeId leaking via cache)
+    if (process.env.NODE_ENV !== 'production' && isLocalhost) {
+      const [row] = await this.db
+        .select({
+          storeId: storeDomains.storeId,
+          domain: storeDomains.domain,
+          isPrimary: storeDomains.isPrimary,
+          companyId: stores.companyId,
+        })
+        .from(storeDomains)
+        .innerJoin(stores, eq(stores.id, storeDomains.storeId))
+        .where(
+          and(
+            eq(storeDomains.domain, host),
+            isNull(storeDomains.deletedAt),
+            eq(stores.isActive, true),
+          ),
+        )
+        .limit(1)
+        .execute();
+
+      return row ?? null;
+    }
+
+    // ✅ Production + normal domains: cached
     const cacheKey = ['store-domain', host];
 
     return this.cache.getOrSetVersioned(
       'global',
       cacheKey,
       async () => {
-        // ✅ dev-only shortcut
-        if (process.env.NODE_ENV !== 'production' && isLocalhost) {
-          const [row] = await this.db
-            .select({
-              storeId: stores.id,
-              companyId: stores.companyId,
-              domain: sql<string>`'localhost'`,
-              isPrimary: sql<boolean>`true`,
-            })
-            .from(stores)
-            .where(eq(stores.isActive, true))
-            .limit(1)
-            .execute();
-
-          return row ?? null;
-        }
-
-        // normal domain lookup
         const [row] = await this.db
           .select({
             storeId: storeDomains.storeId,
@@ -621,9 +628,10 @@ export class StoresService {
               eq(stores.isActive, true),
             ),
           )
+          .limit(1)
           .execute();
 
-        return row ?? null; // ✅ domain not found => null (no crash)
+        return row ?? null;
       },
       { ttlSeconds: 60 },
     );

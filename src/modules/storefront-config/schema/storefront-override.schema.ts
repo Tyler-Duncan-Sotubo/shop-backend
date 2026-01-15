@@ -25,22 +25,19 @@ const PaymentsOverrideSchema = z
 
 export const StorefrontOverridesV1Schema = z
   .object({
-    store: z
+    ui: z
       .object({
-        name: z.string().min(1).optional(),
-        locale: z.string().optional(),
-        currency: z
+        headerMenu: z
           .object({
-            code: z.string().min(1).optional(),
-            locale: z.string().min(1).optional(),
-            fractionDigits: z.number().int().min(0).max(3).optional(),
+            about: z.boolean().optional(),
+            contact: z.boolean().optional(),
+            blog: z.boolean().optional(),
           })
-          .strict() // typo-safe currency
+          .strict()
           .optional(),
       })
-      .strict() // typo-safe store
+      .strict()
       .optional(),
-
     theme: z
       .object({
         assets: z
@@ -89,6 +86,7 @@ export const StorefrontOverridesV1Schema = z
 
         nav: z
           .object({
+            enabled: z.boolean().optional(),
             items: z
               .array(
                 z
@@ -153,6 +151,13 @@ export const StorefrontOverridesV1Schema = z
             hero: z
               .object({
                 enabled: z.boolean().optional(),
+                image: z
+                  .object({
+                    src: z.string().min(1).optional(),
+                    alt: z.string().optional(),
+                  })
+                  .strict()
+                  .optional(),
                 content: z
                   .object({
                     eyebrow: z.string().optional(),

@@ -133,8 +133,8 @@ export declare class StoresService {
     normalizeHost(hostRaw: string): string;
     resolveStoreByHost(hostRaw: string): Promise<{
         storeId: string;
-        companyId: string;
         domain: string;
         isPrimary: boolean;
+        companyId: string;
     } | null>;
 }

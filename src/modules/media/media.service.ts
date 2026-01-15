@@ -129,7 +129,10 @@ export class MediaService {
 
     await this.cache.bumpCompanyVersion(companyId);
 
-    return created;
+    return {
+      url: created.url,
+      altText: created.altText,
+    };
   }
 
   // --------------------------------------------------------------------------

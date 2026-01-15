@@ -12,6 +12,7 @@ import {
 import { StorefrontConfigService } from './storefront-config.service';
 import { validateOrThrowZod } from '../validators/validate-or-throw-zod';
 import { StorefrontRevalidateService } from './storefront-revalidate.service';
+import { CompanySettingsService } from 'src/modules/company-settings/company-settings.service';
 
 @Injectable()
 export class StorefrontOverrideService {
@@ -20,6 +21,7 @@ export class StorefrontOverrideService {
     private readonly cache: CacheService,
     private readonly storefrontConfigService: StorefrontConfigService,
     private readonly storefrontRevalidateService: StorefrontRevalidateService,
+    private readonly companySettings: CompanySettingsService,
   ) {}
 
   private async assertStore(storeId: string) {
@@ -225,6 +227,12 @@ export class StorefrontOverrideService {
     });
 
     await this.cache.bumpCompanyVersion(store.companyId);
+
+    await this.companySettings.markOnboardingStep(
+      companyId,
+      'online_store_customization_complete',
+      true,
+    );
 
     return { ok: true };
   }

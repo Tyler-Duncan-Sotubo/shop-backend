@@ -4,13 +4,15 @@ import { AuditService } from 'src/modules/audit/audit.service';
 import { User } from 'src/common/types/user.type';
 import { CreateRateDto, UpdateRateDto, UpsertRateTierDto, QuoteShippingDto } from '../dto';
 import { ShippingZonesService } from './shipping-zones.service';
+import { CompanySettingsService } from 'src/modules/company-settings/company-settings.service';
 type Money = string;
 export declare class ShippingRatesService {
     private readonly db;
     private readonly cache;
     private readonly auditService;
     private readonly zonesService;
-    constructor(db: db, cache: CacheService, auditService: AuditService, zonesService: ShippingZonesService);
+    private readonly companySettings;
+    constructor(db: db, cache: CacheService, auditService: AuditService, zonesService: ShippingZonesService, companySettings: CompanySettingsService);
     private toNumber;
     private kgToGrams;
     listRates(companyId: string, opts?: {

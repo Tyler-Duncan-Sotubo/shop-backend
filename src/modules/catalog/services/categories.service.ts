@@ -589,44 +589,62 @@ export class CategoriesService {
     // keep existing behavior
     if (!storeId) return [];
 
-    return this.cache.getOrSetVersioned(
-      companyId,
-      ['catalog', 'categories', storeId, 'limit', (limit ?? 'all').toString()],
-      async () => {
-        const baseQuery = this.db
-          .select({
-            id: categories.id,
-            name: categories.name,
-            slug: categories.slug,
-            imageUrl: media.url,
-            imageAltText: media.altText,
-          })
-          .from(categories)
-          .leftJoin(
-            media,
-            and(
-              eq(media.companyId, categories.companyId),
-              eq(media.storeId, categories.storeId),
-              eq(media.id, (categories as any).imageMediaId),
-              isNull(media.deletedAt),
-            ),
-          )
-          .where(
-            and(
-              eq(categories.companyId, companyId),
-              eq(categories.storeId, storeId),
-              isNull(categories.deletedAt),
-            ),
-          )
-          .orderBy(categories.position);
+    // return this.cache.getOrSetVersioned(
+    //   companyId,
+    //   ['catalog', 'categories', storeId, 'limit', (limit ?? 'all').toString()],
+    //   async () => {
+    const baseQuery = this.db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        slug: categories.slug,
+        imageUrl: media.url,
+        imageAltText: media.altText,
 
-        if (typeof limit === 'number') {
-          return baseQuery.limit(limit).execute();
-        }
+        // ✅ include parentId
+        parentId: categories.parentId,
 
-        return baseQuery.execute();
-      },
-    );
+        // ✅ include hasChildren (store + company scoped, ignores deleted)
+        hasChildren: sql<boolean>`
+            exists (
+              select 1
+              from ${categories} as child
+              where
+                child.company_id = ${companyId}
+                and child.store_id = ${storeId}
+                and child.parent_id = ${categories.id}
+                and child.deleted_at is null
+            )
+          `.as('hasChildren'),
+      })
+      .from(categories)
+      .leftJoin(
+        media,
+        and(
+          eq(media.companyId, categories.companyId),
+          eq(media.storeId, categories.storeId),
+          eq(media.id, (categories as any).imageMediaId),
+          isNull(media.deletedAt),
+        ),
+      )
+      .where(
+        and(
+          eq(categories.companyId, companyId),
+          eq(categories.storeId, storeId),
+          isNull(categories.deletedAt),
+        ),
+      )
+      .orderBy(categories.position);
+
+    if (typeof limit === 'number') {
+      return baseQuery.limit(limit).execute();
+    }
+
+    console.log(baseQuery.toSQL().sql); // debug
+
+    return baseQuery.execute();
+    //   },
+    // );
   }
 
   // ----------------- Create -----------------

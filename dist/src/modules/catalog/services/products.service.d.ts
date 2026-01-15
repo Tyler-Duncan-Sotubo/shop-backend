@@ -59,6 +59,7 @@ export declare class ProductsService {
     ensureSlugUnique(companyId: string, slug: string, excludeId?: string): Promise<void>;
     private sanitizeFileName;
     private extractStorageKeyFromUrl;
+    private createProductImageFromBase64;
     createProduct(companyId: string, dto: CreateProductDto, user?: User, ip?: string): Promise<any>;
     listProductsAdmin(companyId: string, query: ProductQueryDto): Promise<{
         items: any[];
@@ -112,12 +113,16 @@ export declare class ProductsService {
         description: any;
         status: any;
         productType: any;
-        imageUrl: any;
+        images: {
+            id: any;
+            url: any;
+        }[];
+        defaultImageIndex: number;
         seoTitle: any;
         seoDescription: any;
         metadata: Record<string, any>;
         categoryIds: string[];
-        links: any;
+        links: Partial<Record<"related" | "upsell" | "cross_sell" | "accessory", string[]>>;
         createdAt: any;
         updatedAt: any;
     }>;

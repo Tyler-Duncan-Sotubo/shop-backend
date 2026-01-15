@@ -47,6 +47,8 @@ export type ProductDetailResponse = {
         id: string;
         name: string;
         slug: string;
+        parentId: string | null;
+        isHub: boolean;
     }[];
     attributes: {
         id: number;
@@ -126,9 +128,9 @@ export declare function mapProductToCollectionListResponse(product: ProductWithR
     minSale?: number | null;
     onSale?: boolean | number;
 }): {
-    id: any;
-    name: any;
-    slug: any;
+    id: string;
+    name: string;
+    slug: string;
     permalink: string;
     type: string;
     price: string;
@@ -143,8 +145,20 @@ export declare function mapProductToCollectionListResponse(product: ProductWithR
         alt: any;
     }[];
     tags: never[];
-    categories: any;
-    attributes: any;
+    categories: {
+        id: any;
+        name: any;
+        slug: any;
+    }[];
+    attributes: {
+        id: number;
+        name: string;
+        slug: string;
+        position: number;
+        visible: boolean;
+        variation: boolean;
+        options: string[];
+    }[];
     price_html: string;
 };
 export {};

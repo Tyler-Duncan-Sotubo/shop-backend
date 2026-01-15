@@ -23,14 +23,16 @@ const option_combinations_1 = require("../utils/option-combinations");
 const images_service_1 = require("./images.service");
 const inventory_stock_service_1 = require("../../commerce/inventory/services/inventory-stock.service");
 const categories_service_1 = require("./categories.service");
+const company_settings_service_1 = require("../../company-settings/company-settings.service");
 let VariantsService = class VariantsService {
-    constructor(db, cache, auditService, imagesService, inventoryService, categoriesService) {
+    constructor(db, cache, auditService, imagesService, inventoryService, categoriesService, companySettings) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
         this.imagesService = imagesService;
         this.inventoryService = inventoryService;
         this.categoriesService = categoriesService;
+        this.companySettings = companySettings;
     }
     async assertCompanyExists(companyId) {
         const company = await this.db.query.companies.findFirst({
@@ -354,6 +356,7 @@ let VariantsService = class VariantsService {
                 },
             });
         }
+        await this.companySettings.markOnboardingStep(companyId, 'products_added_complete', true);
         return result.updated;
     }
     async deleteVariant(companyId, variantId, user, ip) {
@@ -476,6 +479,7 @@ exports.VariantsService = VariantsService = __decorate([
         audit_service_1.AuditService,
         images_service_1.ImagesService,
         inventory_stock_service_1.InventoryStockService,
-        categories_service_1.CategoriesService])
+        categories_service_1.CategoriesService,
+        company_settings_service_1.CompanySettingsService])
 ], VariantsService);
 //# sourceMappingURL=variants.service.js.map

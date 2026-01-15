@@ -87,6 +87,63 @@ let ProductsService = class ProductsService {
             return null;
         }
     }
+    async createProductImageFromBase64(args) {
+        const { tx, companyId, product, image } = args;
+        const mimeType = (image.mimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+        const safeProvidedName = this.sanitizeFileName(image.fileName);
+        const extFromMime = mimeType.startsWith('image/')
+            ? `.${mimeType.split('/')[1] || 'jpg'}`
+            : '.bin';
+        const fallbackName = `${product.id}-${image.position}-${Date.now()}${extFromMime}`;
+        const fileName = safeProvidedName && safeProvidedName.includes('.')
+            ? safeProvidedName
+            : safeProvidedName
+                ? `${safeProvidedName}${extFromMime}`
+                : fallbackName;
+        const normalized = image.base64.includes(',')
+            ? image.base64.split(',')[1]
+            : image.base64;
+        let buffer;
+        try {
+            buffer = Buffer.from(normalized, 'base64');
+        }
+        catch {
+            throw new common_1.BadRequestException('Invalid image base64');
+        }
+        const size = buffer.byteLength;
+        let width = null;
+        let height = null;
+        if (mimeType.startsWith('image/')) {
+            try {
+                const sharpMod = await Promise.resolve().then(() => require('sharp'));
+                const sharpFn = sharpMod.default ?? sharpMod;
+                const meta = await sharpFn(buffer).metadata();
+                width = meta.width ?? null;
+                height = meta.height ?? null;
+            }
+            catch {
+            }
+        }
+        const url = await this.aws.uploadImageToS3(companyId, fileName, image.base64);
+        const [img] = await tx
+            .insert(schema_1.productImages)
+            .values({
+            companyId,
+            productId: product.id,
+            variantId: null,
+            url,
+            altText: image.altText ?? `${product.name} product image`,
+            fileName,
+            mimeType,
+            size,
+            width,
+            height,
+            position: image.position,
+        })
+            .returning()
+            .execute();
+        return img;
+    }
     async createProduct(companyId, dto, user, ip) {
         await this.assertCompanyExists(companyId);
         const slug = (0, slugify_1.slugify)(dto.slug ?? dto.name);
@@ -111,64 +168,33 @@ let ProductsService = class ProductsService {
             })
                 .returning()
                 .execute();
-            if (dto.base64Image) {
-                const mimeType = (dto.imageMimeType ?? 'image/jpeg').trim() || 'image/jpeg';
-                const safeProvidedName = this.sanitizeFileName(dto.imageFileName);
-                const extFromMime = mimeType.startsWith('image/')
-                    ? `.${mimeType.split('/')[1] || 'jpg'}`
-                    : '.bin';
-                const fallbackName = `${product.id}-default-${Date.now()}${extFromMime}`;
-                const fileName = safeProvidedName && safeProvidedName.includes('.')
-                    ? safeProvidedName
-                    : safeProvidedName
-                        ? `${safeProvidedName}${extFromMime}`
-                        : fallbackName;
-                const normalized = dto.base64Image.includes(',')
-                    ? dto.base64Image.split(',')[1]
-                    : dto.base64Image;
-                let buffer;
-                try {
-                    buffer = Buffer.from(normalized, 'base64');
+            if (dto.images?.length) {
+                const inserted = [];
+                for (let i = 0; i < dto.images.length; i++) {
+                    const image = dto.images[i];
+                    const position = image.position ?? i;
+                    const img = await this.createProductImageFromBase64({
+                        tx,
+                        companyId,
+                        product,
+                        image: {
+                            base64: image.base64,
+                            mimeType: image.mimeType,
+                            fileName: image.fileName,
+                            altText: image.altText,
+                            position,
+                        },
+                    });
+                    inserted.push(img);
                 }
-                catch {
-                    throw new common_1.BadRequestException('Invalid base64Image');
+                const defaultIndex = dto.defaultImageIndex ?? 0;
+                const chosen = inserted[defaultIndex] ?? inserted[0];
+                if (chosen) {
+                    await tx
+                        .update(schema_1.products)
+                        .set({ defaultImageId: chosen.id, updatedAt: new Date() })
+                        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, product.id)));
                 }
-                const size = buffer.byteLength;
-                let width = null;
-                let height = null;
-                if (mimeType.startsWith('image/')) {
-                    try {
-                        const sharpMod = await Promise.resolve().then(() => require('sharp'));
-                        const sharpFn = sharpMod.default ?? sharpMod;
-                        const meta = await sharpFn(buffer).metadata();
-                        width = meta.width ?? null;
-                        height = meta.height ?? null;
-                    }
-                    catch {
-                    }
-                }
-                const url = await this.aws.uploadImageToS3(companyId, fileName, dto.base64Image);
-                const [img] = await tx
-                    .insert(schema_1.productImages)
-                    .values({
-                    companyId,
-                    productId: product.id,
-                    variantId: null,
-                    url,
-                    altText: dto.imageAltText ?? `${product.name} product image`,
-                    fileName,
-                    mimeType,
-                    size,
-                    width,
-                    height,
-                    position: 0,
-                })
-                    .returning()
-                    .execute();
-                await tx
-                    .update(schema_1.products)
-                    .set({ defaultImageId: img.id, updatedAt: new Date() })
-                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, product.id)));
             }
             if (uniqueCategoryIds.length) {
                 await this.categoryService.assertCategoriesBelongToCompany(companyId, uniqueCategoryIds);
@@ -226,6 +252,8 @@ let ProductsService = class ProductsService {
                     status: created.status,
                     categoryIds: uniqueCategoryIds,
                     links: dto.links ?? {},
+                    imagesCount: dto.images?.length ?? 0,
+                    defaultImageIndex: dto.defaultImageIndex ?? 0,
                 },
             });
         }
@@ -580,16 +608,33 @@ let ProductsService = class ProductsService {
                 metadata: schema_1.products.metadata,
                 createdAt: schema_1.products.createdAt,
                 updatedAt: schema_1.products.updatedAt,
-                imageUrl: schema_1.productImages.url,
+                defaultImageId: schema_1.products.defaultImageId,
             })
                 .from(schema_1.products)
-                .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, schema_1.products.companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, schema_1.products.defaultImageId)))
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, productId)))
                 .limit(1)
                 .then((rows) => rows[0]);
             if (!product) {
                 throw new common_1.NotFoundException(`Product not found for company ${companyId}`);
             }
+            const images = await this.db
+                .select({
+                id: schema_1.productImages.id,
+                url: schema_1.productImages.url,
+                altText: schema_1.productImages.altText,
+                position: schema_1.productImages.position,
+                fileName: schema_1.productImages.fileName,
+                mimeType: schema_1.productImages.mimeType,
+                size: schema_1.productImages.size,
+                width: schema_1.productImages.width,
+                height: schema_1.productImages.height,
+            })
+                .from(schema_1.productImages)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.productId, productId)))
+                .orderBy(schema_1.productImages.position)
+                .execute();
+            const foundDefaultIndex = images.findIndex((img) => img.id === product.defaultImageId);
+            const defaultImageIndex = foundDefaultIndex >= 0 ? foundDefaultIndex : 0;
             const cats = await this.db
                 .select({ categoryId: schema_1.productCategories.categoryId })
                 .from(schema_1.productCategories)
@@ -626,7 +671,11 @@ let ProductsService = class ProductsService {
                 description: product.description ?? null,
                 status: product.status,
                 productType: product.productType,
-                imageUrl: product.imageUrl ?? null,
+                images: images.map((img) => ({
+                    id: img.id,
+                    url: img.url,
+                })),
+                defaultImageIndex,
                 seoTitle: product.seoTitle ?? null,
                 seoDescription: product.seoDescription ?? null,
                 metadata: (product.metadata ?? {}),
@@ -666,73 +715,99 @@ let ProductsService = class ProductsService {
                 .execute();
             if (!p)
                 throw new common_1.NotFoundException('Product not found');
-            if (dto.base64Image) {
-                const mimeType = (dto.imageMimeType ?? 'image/jpeg').trim() || 'image/jpeg';
-                const safeProvidedName = this.sanitizeFileName(dto.imageFileName);
-                const extFromMime = mimeType.startsWith('image/')
-                    ? `.${mimeType.split('/')[1] || 'jpg'}`
-                    : '.bin';
-                const fallbackName = `${productId}-default-${Date.now()}${extFromMime}`;
-                const fileName = safeProvidedName && safeProvidedName.includes('.')
-                    ? safeProvidedName
-                    : safeProvidedName
-                        ? `${safeProvidedName}${extFromMime}`
-                        : fallbackName;
-                const normalized = dto.base64Image.includes(',')
-                    ? dto.base64Image.split(',')[1]
-                    : dto.base64Image;
-                let buffer;
-                try {
-                    buffer = Buffer.from(normalized, 'base64');
-                }
-                catch {
-                    throw new common_1.BadRequestException('Invalid base64Image');
-                }
-                const size = buffer.byteLength;
-                let width = null;
-                let height = null;
-                if (mimeType.startsWith('image/')) {
+            if (dto.images) {
+                const incoming = Array.isArray(dto.images)
+                    ? dto.images.slice(0, 9)
+                    : [];
+                const currentImages = await tx
+                    .select({
+                    id: schema_1.productImages.id,
+                    url: schema_1.productImages.url,
+                    position: schema_1.productImages.position,
+                })
+                    .from(schema_1.productImages)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.productId, productId), (0, drizzle_orm_1.isNull)(schema_1.productImages.deletedAt)))
+                    .orderBy(schema_1.productImages.position)
+                    .execute();
+                const inserted = [];
+                for (let i = 0; i < incoming.length; i++) {
+                    const img = incoming[i];
+                    const mimeType = (img.mimeType ?? 'image/jpeg').trim() || 'image/jpeg';
+                    const safeProvidedName = this.sanitizeFileName(img.fileName);
+                    const extFromMime = mimeType.startsWith('image/')
+                        ? `.${mimeType.split('/')[1] || 'jpg'}`
+                        : '.bin';
+                    const position = typeof img.position === 'number' ? img.position : i;
+                    const fallbackName = `${productId}-${position}-${Date.now()}${extFromMime}`;
+                    const fileName = safeProvidedName && safeProvidedName.includes('.')
+                        ? safeProvidedName
+                        : safeProvidedName
+                            ? `${safeProvidedName}${extFromMime}`
+                            : fallbackName;
+                    const normalized = img.base64.includes(',')
+                        ? img.base64.split(',')[1]
+                        : img.base64;
+                    let buffer;
                     try {
-                        const sharpMod = await Promise.resolve().then(() => require('sharp'));
-                        const sharpFn = sharpMod.default ?? sharpMod;
-                        const meta = await sharpFn(buffer).metadata();
-                        width = meta.width ?? null;
-                        height = meta.height ?? null;
+                        buffer = Buffer.from(normalized, 'base64');
                     }
                     catch {
+                        throw new common_1.BadRequestException('Invalid image base64');
                     }
-                }
-                const currentDefaultImageId = existing.defaultImageId ?? null;
-                const currentDefaultImage = currentDefaultImageId
-                    ? await tx.query.productImages.findFirst({
-                        where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, currentDefaultImageId), (0, drizzle_orm_1.isNull)(schema_1.productImages.deletedAt)),
+                    const size = buffer.byteLength;
+                    let width = null;
+                    let height = null;
+                    if (mimeType.startsWith('image/')) {
+                        try {
+                            const sharpMod = await Promise.resolve().then(() => require('sharp'));
+                            const sharpFn = sharpMod.default ?? sharpMod;
+                            const meta = await sharpFn(buffer).metadata();
+                            width = meta.width ?? null;
+                            height = meta.height ?? null;
+                        }
+                        catch {
+                        }
+                    }
+                    const url = await this.aws.uploadImageToS3(companyId, fileName, img.base64);
+                    const [row] = await tx
+                        .insert(schema_1.productImages)
+                        .values({
+                        companyId,
+                        productId,
+                        variantId: null,
+                        url,
+                        altText: img.altText ?? `${p.name} product image`,
+                        fileName,
+                        mimeType,
+                        size,
+                        width,
+                        height,
+                        position,
                     })
-                    : null;
-                const url = await this.aws.uploadImageToS3(companyId, fileName, dto.base64Image);
-                const [img] = await tx
-                    .insert(schema_1.productImages)
-                    .values({
-                    companyId,
-                    productId,
-                    variantId: null,
-                    url,
-                    altText: dto.imageAltText ?? `${existing.name} product image`,
-                    fileName,
-                    mimeType,
-                    size,
-                    width,
-                    height,
-                    position: 0,
-                })
-                    .returning()
-                    .execute();
+                        .returning()
+                        .execute();
+                    inserted.push({ id: row.id, url: row.url, position });
+                }
+                const defaultIndex = dto.defaultImageIndex ?? 0;
+                const chosen = inserted[defaultIndex] ?? inserted[0] ?? null;
                 await tx
                     .update(schema_1.products)
-                    .set({ defaultImageId: img.id, updatedAt: new Date() })
-                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, existing.id)));
-                if (currentDefaultImage?.url && currentDefaultImage.url !== url) {
-                    const oldKey = this.extractStorageKeyFromUrl(currentDefaultImage.url);
-                    if (oldKey) {
+                    .set({
+                    defaultImageId: chosen ? chosen.id : null,
+                    updatedAt: new Date(),
+                })
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, productId)))
+                    .execute();
+                if (currentImages.length) {
+                    await tx
+                        .update(schema_1.productImages)
+                        .set({ deletedAt: new Date() })
+                        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.productId, productId), (0, drizzle_orm_1.isNull)(schema_1.productImages.deletedAt)))
+                        .execute();
+                    for (const old of currentImages) {
+                        const oldKey = this.extractStorageKeyFromUrl(old.url);
+                        if (!oldKey)
+                            continue;
                         try {
                             await this.aws.deleteFromS3(oldKey);
                         }
@@ -817,6 +892,7 @@ let ProductsService = class ProductsService {
                         seoTitle: existing.seoTitle,
                         seoDescription: existing.seoDescription,
                         metadata: existing.metadata,
+                        defaultImageId: existing.defaultImageId,
                     },
                     after: {
                         name: updated.name,
@@ -831,6 +907,8 @@ let ProductsService = class ProductsService {
                     },
                     categoryIds: dto.categoryIds,
                     links: dto.links,
+                    imagesCount: dto.images?.length,
+                    defaultImageIndex: dto.defaultImageIndex,
                 },
             });
         }

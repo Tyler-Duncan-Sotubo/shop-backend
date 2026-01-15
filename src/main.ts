@@ -45,8 +45,10 @@ async function bootstrap() {
       process.env.CLIENT_DASHBOARD_URL,
       process.env.LANDING_PAGE_URL,
     ].filter((url): url is string => typeof url === 'string'),
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Store-Host'],
+    exposedHeaders: ['Content-Length', 'Content-Type'],
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 

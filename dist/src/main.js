@@ -24,11 +24,27 @@ async function bootstrap() {
         secret: process.env.COOKIE_SECRET,
     });
     app.enableCors({
-        origin: [
-            process.env.CLIENT_URL,
-            process.env.CLIENT_DASHBOARD_URL,
-            process.env.LANDING_PAGE_URL,
-        ].filter((url) => typeof url === 'string'),
+        origin: (origin, callback) => {
+            if (!origin)
+                return callback(null, true);
+            try {
+                const { hostname } = new URL(origin);
+                const primaryDomain = process.env.PRIMARY_DOMAIN;
+                const allowLocalhost = process.env.ALLOW_LOCALHOST === 'true';
+                const isPrimaryDomain = primaryDomain &&
+                    (hostname === primaryDomain ||
+                        hostname.endsWith(`.${primaryDomain}`));
+                const isLocalhost = allowLocalhost &&
+                    (hostname === 'localhost' || hostname === '127.0.0.1');
+                if (isPrimaryDomain || isLocalhost) {
+                    return callback(null, true);
+                }
+                return callback(new Error(`CORS blocked: ${origin}`), false);
+            }
+            catch {
+                return callback(new Error(`Invalid origin: ${origin}`), false);
+            }
+        },
         methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
         credentials: true,
         allowedHeaders: ['Content-Type', 'Authorization', 'X-Store-Host'],

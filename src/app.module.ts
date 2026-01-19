@@ -1,17 +1,19 @@
 import { Module } from '@nestjs/common';
-import { LoggerModule } from './common/logger';
+import { LoggerModule } from './infrastructure/logger';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { DrizzleModule } from './drizzle/drizzle.module';
+import { DrizzleModule } from './infrastructure/drizzle/drizzle.module';
 import * as Joi from 'joi';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ModulesModule } from './modules/modules.module';
-import { CacheModule } from './common/cache/cache.module';
+import { DomainsModule } from './domains/domains.module';
+import { CacheModule } from './infrastructure/cache/cache.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ChannelsModule } from './channels/channels.module';
 
 @Module({
   imports: [
-    ModulesModule,
+    ChannelsModule,
+    DomainsModule,
     ScheduleModule.forRoot(),
     DrizzleModule,
     LoggerModule,

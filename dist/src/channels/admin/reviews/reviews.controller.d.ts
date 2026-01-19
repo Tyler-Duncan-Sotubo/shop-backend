@@ -1,0 +1,70 @@
+import { User } from 'src/channels/admin/common/types/user.type';
+import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { UpdateReviewDto } from './dto';
+import { ReviewsService } from 'src/domains/reviews/reviews.service';
+export declare class ReviewsController extends BaseController {
+    private readonly reviewsService;
+    constructor(reviewsService: ReviewsService);
+    listReviews(user: User, query: any): Promise<{
+        items: {
+            id: string;
+            companyId: string;
+            productId: string;
+            storeId: string | null;
+            userId: string | null;
+            authorName: string;
+            authorEmail: string;
+            rating: number;
+            review: string;
+            isApproved: boolean;
+            approvedAt: Date | null;
+            moderatedByUserId: string | null;
+            moderatedAt: Date | null;
+            moderationNote: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
+        }[];
+        total: number;
+        limit: number;
+        offset: number;
+    }>;
+    listReviewsByProduct(user: User, productId: string, limit?: string, offset?: string): Promise<{
+        id: string;
+        companyId: string;
+        productId: string;
+        storeId: string | null;
+        userId: string | null;
+        authorName: string;
+        authorEmail: string;
+        rating: number;
+        review: string;
+        isApproved: boolean;
+        approvedAt: Date | null;
+        moderatedByUserId: string | null;
+        moderatedAt: Date | null;
+        moderationNote: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+    }[]>;
+    updateReview(user: User, reviewId: string, dto: UpdateReviewDto, ip: string): Promise<{
+        id: string;
+        companyId: string;
+        productId: string;
+        storeId: string | null;
+        userId: string | null;
+        authorName: string;
+        authorEmail: string;
+        rating: number;
+        review: string;
+        isApproved: boolean;
+        approvedAt: Date | null;
+        moderatedByUserId: string | null;
+        moderatedAt: Date | null;
+        moderationNote: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+    }>;
+}

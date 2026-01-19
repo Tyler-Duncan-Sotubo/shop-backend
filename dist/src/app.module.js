@@ -8,22 +8,24 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
-const logger_1 = require("./common/logger");
+const logger_1 = require("./infrastructure/logger");
 const config_1 = require("@nestjs/config");
-const drizzle_module_1 = require("./drizzle/drizzle.module");
+const drizzle_module_1 = require("./infrastructure/drizzle/drizzle.module");
 const Joi = require("joi");
 const bullmq_1 = require("@nestjs/bullmq");
 const schedule_1 = require("@nestjs/schedule");
-const modules_module_1 = require("./modules/modules.module");
-const cache_module_1 = require("./common/cache/cache.module");
+const domains_module_1 = require("./domains/domains.module");
+const cache_module_1 = require("./infrastructure/cache/cache.module");
 const throttler_1 = require("@nestjs/throttler");
+const channels_module_1 = require("./channels/channels.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            modules_module_1.ModulesModule,
+            channels_module_1.ChannelsModule,
+            domains_module_1.DomainsModule,
             schedule_1.ScheduleModule.forRoot(),
             drizzle_module_1.DrizzleModule,
             logger_1.LoggerModule,

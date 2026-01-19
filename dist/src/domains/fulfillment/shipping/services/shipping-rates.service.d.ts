@@ -1,0 +1,183 @@
+import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { CacheService } from 'src/infrastructure/cache/cache.service';
+import { AuditService } from 'src/domains/audit/audit.service';
+import { User } from 'src/channels/admin/common/types/user.type';
+import { CreateRateDto, UpdateRateDto, UpsertRateTierDto, QuoteShippingDto } from '../dto';
+import { ShippingZonesService } from './shipping-zones.service';
+import { CompanySettingsService } from 'src/domains/company-settings/company-settings.service';
+type Money = string;
+export declare class ShippingRatesService {
+    private readonly db;
+    private readonly cache;
+    private readonly auditService;
+    private readonly zonesService;
+    private readonly companySettings;
+    constructor(db: db, cache: CacheService, auditService: AuditService, zonesService: ShippingZonesService, companySettings: CompanySettingsService);
+    private toNumber;
+    private kgToGrams;
+    listRates(companyId: string, opts?: {
+        zoneId?: string;
+        storeId?: string;
+    }): Promise<{
+        id: string;
+        zoneId: string;
+        name: string;
+        flatAmount: string | null;
+        calc: "flat" | "weight";
+        isDefault: boolean;
+        isActive: boolean;
+        priority: number;
+        type: "flat" | "weight" | "price";
+    }[]>;
+    createRate(companyId: string, dto: CreateRateDto, user?: User, ip?: string): Promise<{
+        id: string;
+        name: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        type: "flat" | "weight" | "price";
+        isDefault: boolean;
+        metadata: Record<string, any> | null;
+        priority: number;
+        zoneId: string;
+        flatAmount: string | null;
+        minOrderSubtotal: string | null;
+        maxOrderSubtotal: string | null;
+        minWeightGrams: number | null;
+        maxWeightGrams: number | null;
+        carrierId: string | null;
+        carrierServiceCode: string | null;
+        carrierServiceName: string | null;
+        minDeliveryDays: number | null;
+        maxDeliveryDays: number | null;
+        calc: "flat" | "weight";
+    }>;
+    updateRate(companyId: string, rateId: string, dto: UpdateRateDto, user?: User, ip?: string): Promise<{
+        id: string;
+        isDefault: boolean;
+        companyId: string;
+        zoneId: string;
+        name: string;
+        isActive: boolean;
+        type: "flat" | "weight" | "price";
+        flatAmount: string | null;
+        minOrderSubtotal: string | null;
+        maxOrderSubtotal: string | null;
+        minWeightGrams: number | null;
+        maxWeightGrams: number | null;
+        carrierId: string | null;
+        carrierServiceCode: string | null;
+        carrierServiceName: string | null;
+        minDeliveryDays: number | null;
+        maxDeliveryDays: number | null;
+        priority: number;
+        calc: "flat" | "weight";
+        metadata: Record<string, any> | null;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    deleteRate(companyId: string, rateId: string, user?: User, ip?: string): Promise<{
+        ok: boolean;
+    }>;
+    listRateTiers(companyId: string, rateId: string): Promise<{
+        id: string;
+        companyId: string;
+        rateId: string;
+        minWeightGrams: number | null;
+        maxWeightGrams: number | null;
+        minSubtotal: string | null;
+        maxSubtotal: string | null;
+        amount: string;
+        priority: number;
+        createdAt: Date;
+    }[]>;
+    upsertRateTier(companyId: string, dto: UpsertRateTierDto, user?: User, ip?: string): Promise<{
+        id: string;
+        createdAt: Date;
+        companyId: string;
+        priority: number;
+        minWeightGrams: number | null;
+        maxWeightGrams: number | null;
+        rateId: string;
+        minSubtotal: string | null;
+        maxSubtotal: string | null;
+        amount: string;
+    }>;
+    updateRateTier(companyId: string, tierId: string, patch: Partial<UpsertRateTierDto>, user?: User, ip?: string): Promise<{
+        id: string;
+        companyId: string;
+        rateId: string;
+        minWeightGrams: number | null;
+        maxWeightGrams: number | null;
+        minSubtotal: string | null;
+        maxSubtotal: string | null;
+        amount: string;
+        priority: number;
+        createdAt: Date;
+    }>;
+    deleteRateTier(companyId: string, tierId: string, user?: User, ip?: string): Promise<{
+        ok: boolean;
+    }>;
+    quote(companyId: string, dto: QuoteShippingDto): Promise<{
+        zone: null;
+        rate: null;
+        amount: Money;
+    } | {
+        zone: {
+            id: string;
+            name: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+            storeId: string;
+            metadata: Record<string, any> | null;
+            priority: number;
+        };
+        rate: null;
+        amount: Money;
+    } | {
+        zone: {
+            id: string;
+            name: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            description: string | null;
+            storeId: string;
+            metadata: Record<string, any> | null;
+            priority: number;
+        };
+        rate: {
+            id: string;
+            name: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            type: "flat" | "weight" | "price";
+            isDefault: boolean;
+            metadata: Record<string, any> | null;
+            priority: number;
+            zoneId: string;
+            flatAmount: string | null;
+            minOrderSubtotal: string | null;
+            maxOrderSubtotal: string | null;
+            minWeightGrams: number | null;
+            maxWeightGrams: number | null;
+            carrierId: string | null;
+            carrierServiceCode: string | null;
+            carrierServiceName: string | null;
+            minDeliveryDays: number | null;
+            maxDeliveryDays: number | null;
+            calc: "flat" | "weight";
+        };
+        amount: string;
+    }>;
+    private pickBestRate;
+    private computeRateAmount;
+}
+export {};

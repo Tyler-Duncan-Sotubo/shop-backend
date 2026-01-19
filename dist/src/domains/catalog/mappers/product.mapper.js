@@ -1,0 +1,353 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.buildPriceHtmlRange = buildPriceHtmlRange;
+exports.buildDiscountAwarePriceHtml = buildDiscountAwarePriceHtml;
+exports.mapProductToDetailResponse = mapProductToDetailResponse;
+exports.mapProductsListToStorefront = mapProductsListToStorefront;
+exports.mapProductToCollectionListResponse = mapProductToCollectionListResponse;
+const pricing_1 = require("../utils/pricing");
+function buildPermalink(slug) {
+    return `/products/${slug}`;
+}
+function formatNaira(amount) {
+    return new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })
+        .format(amount)
+        .replace('NGN', '₦');
+}
+function buildPriceHtmlRange(min, max) {
+    if (!Number.isFinite(min))
+        min = 0;
+    if (!Number.isFinite(max))
+        max = 0;
+    const minF = formatNaira(min);
+    const maxF = formatNaira(max);
+    if (min === max)
+        return minF;
+    return `${minF} – ${maxF}`;
+}
+function buildDiscountAwarePriceHtml(minRegular, maxRegular, minSale, onSale) {
+    if (!minRegular)
+        return '';
+    if (!onSale || !minSale || minSale <= 0 || minSale >= minRegular) {
+        return buildPriceHtmlRange(minRegular, maxRegular || minRegular);
+    }
+    const regularHtml = buildPriceHtmlRange(minRegular, maxRegular || minRegular);
+    const saleHtml = buildPriceHtmlRange(minSale, minSale);
+    return `<del>${regularHtml}</del> <ins>${saleHtml}</ins>`;
+}
+function getVariantEffectivePrice(v) {
+    const effective = (0, pricing_1.getEffectivePrice)({
+        regularPrice: v.regularPrice,
+        salePrice: v.salePrice,
+        saleStartAt: v.saleStartAt ?? null,
+        saleEndAt: v.saleEndAt ?? null,
+    });
+    return Number(effective ?? 0);
+}
+function getVariantRegularPrice(v) {
+    return Number(v.regularPrice ?? 0);
+}
+function getVariantSalePrice(v) {
+    return v.salePrice != null ? Number(v.salePrice) : null;
+}
+function mapProductAttributes(product) {
+    const opts = (product.options ?? [])
+        .slice()
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    return opts.map((opt, idx) => ({
+        id: 0,
+        name: opt.name,
+        slug: opt.name,
+        position: idx,
+        visible: true,
+        variation: true,
+        options: (opt.values ?? []).map((v) => v.value),
+    }));
+}
+function recordToMetaData(record) {
+    if (!record || typeof record !== 'object')
+        return [];
+    return Object.entries(record).map(([key, value]) => ({
+        key,
+        value,
+    }));
+}
+function buildProductMetaData(product) {
+    const seoTitle = product.seoTitle ?? null;
+    const seoDescription = product.seoDescription ?? null;
+    const metadataObj = product.metadata ?? {};
+    return [
+        { key: 'seo_title', value: seoTitle },
+        { key: 'seo_description', value: seoDescription },
+        ...recordToMetaData(metadataObj),
+    ];
+}
+function buildVariantMetaData(variant) {
+    const metadataObj = variant.metadata ?? {};
+    return recordToMetaData(metadataObj);
+}
+function mapVariantToWooLike(variant, product) {
+    const effective = getVariantEffectivePrice(variant);
+    const regular = getVariantRegularPrice(variant);
+    const sale = getVariantSalePrice(variant);
+    const opts = (product.options ?? [])
+        .slice()
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    const attributes = [];
+    if (variant.option1) {
+        attributes.push({
+            id: 0,
+            name: opts[0]?.name ?? 'Option 1',
+            option: variant.option1,
+        });
+    }
+    if (variant.option2) {
+        attributes.push({
+            id: 0,
+            name: opts[1]?.name ?? 'Option 2',
+            option: variant.option2,
+        });
+    }
+    if (variant.option3) {
+        attributes.push({
+            id: 0,
+            name: opts[2]?.name ?? 'Option 3',
+            option: variant.option3,
+        });
+    }
+    const img = variant.image ?? null;
+    const image = img
+        ? { id: img.id, src: img.url, alt: img.altText ?? null }
+        : null;
+    const stock_quantity = Number(variant.stock ?? 0);
+    const manage_stock = true;
+    const stock_status = stock_quantity > 0 ? 'instock' : 'outofstock';
+    return {
+        id: variant.id,
+        price: String(effective),
+        regular_price: String(regular),
+        sale_price: sale != null ? String(sale) : '',
+        on_sale: sale != null && sale < regular,
+        manage_stock,
+        stock_quantity,
+        stock_status,
+        weight: variant.weight != null ? String(variant.weight) : '',
+        image,
+        attributes,
+        meta_data: buildVariantMetaData(variant),
+    };
+}
+function mapProductToDetailResponse(product) {
+    const hero = product.defaultImage ??
+        (product.images && product.images.length ? product.images[0] : null);
+    const all = (product.images ?? []).slice().sort((a, b) => {
+        const ap = a.position ?? 0;
+        const bp = b.position ?? 0;
+        return ap - bp;
+    });
+    const ordered = hero
+        ? [hero, ...all.filter((img) => img.id !== hero.id)]
+        : all;
+    const images = Array.from(new Map(ordered.map((i) => [i.id, i])).values()).map((img) => ({
+        id: img.id,
+        src: img.url,
+        alt: img.altText ?? null,
+    }));
+    const rawCats = (product.productCategories ?? [])
+        .map((pc) => pc.category)
+        .filter(Boolean);
+    const byId = new Map(rawCats.map((c) => [c.id, c]));
+    const uniqueCats = Array.from(byId.values());
+    const hasAnyChild = new Set();
+    for (const c of uniqueCats) {
+        if (c.parentId)
+            hasAnyChild.add(c.parentId);
+    }
+    const catsWithHub = uniqueCats.map((c) => ({
+        ...c,
+        isHub: typeof c.isHub === 'boolean' ? c.isHub : hasAnyChild.has(c.id),
+    }));
+    let orderedCats = catsWithHub;
+    const childWithParent = catsWithHub.find((c) => c.parentId && byId.has(c.parentId));
+    if (childWithParent?.parentId) {
+        const parent = byId.get(childWithParent.parentId);
+        const child = childWithParent;
+        const parentWithHub = catsWithHub.find((c) => c.id === parent.id) ?? parent;
+        const childWithHub = catsWithHub.find((c) => c.id === child.id) ?? child;
+        orderedCats = [
+            { ...parentWithHub, isHub: Boolean(parentWithHub.isHub) },
+            { ...childWithHub, isHub: Boolean(childWithHub.isHub) },
+            ...catsWithHub.filter((c) => c.id !== parent.id && c.id !== child.id),
+        ];
+    }
+    const categories = orderedCats.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        parentId: c.parentId ?? null,
+        isHub: Boolean(c.isHub),
+    }));
+    const attributes = mapProductAttributes(product);
+    const activeVariants = (product.variants ?? []).filter((v) => v.isActive);
+    const isVariable = attributes.some((a) => a.variation) && activeVariants.length > 0;
+    const getVariantRegular = (v) => Number(v.regularPrice ?? v.price ?? 0);
+    const getVariantSale = (v) => Number(v.salePrice ?? 0);
+    const isVariantOnSale = (v) => {
+        const r = getVariantRegular(v);
+        const s = getVariantSale(v);
+        return s > 0 && r > 0 && s < r;
+    };
+    const getVariantEffective = (v) => {
+        const r = getVariantRegular(v);
+        const s = getVariantSale(v);
+        return isVariantOnSale(v) ? s : r;
+    };
+    const pricingBase = activeVariants.length ? activeVariants : [];
+    const effectivePrices = pricingBase
+        .map(getVariantEffective)
+        .filter((n) => n > 0);
+    const regularPrices = pricingBase.map(getVariantRegular).filter((n) => n > 0);
+    const salePrices = pricingBase
+        .filter(isVariantOnSale)
+        .map(getVariantSale)
+        .filter((n) => n > 0);
+    const minEffective = effectivePrices.length
+        ? Math.min(...effectivePrices)
+        : 0;
+    const maxEffective = effectivePrices.length
+        ? Math.max(...effectivePrices)
+        : 0;
+    const minRegular = regularPrices.length ? Math.min(...regularPrices) : 0;
+    const minSale = salePrices.length ? Math.min(...salePrices) : 0;
+    const onSale = pricingBase.some(isVariantOnSale);
+    const primaryVariant = activeVariants[0] ?? null;
+    const simpleRegular = primaryVariant
+        ? getVariantRegular(primaryVariant)
+        : minRegular;
+    const simpleSale = primaryVariant && isVariantOnSale(primaryVariant)
+        ? getVariantSale(primaryVariant)
+        : 0;
+    const simpleOnSale = primaryVariant
+        ? isVariantOnSale(primaryVariant)
+        : onSale;
+    const variations = activeVariants.map((v) => mapVariantToWooLike(v, product));
+    const totalStock = activeVariants.reduce((sum, v) => sum + Number(v.stock ?? 0), 0);
+    const simpleStock = Number(primaryVariant?.stock ?? 0);
+    const productStockQty = isVariable ? totalStock : simpleStock;
+    return {
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        permalink: buildPermalink(product.slug),
+        type: isVariable ? 'variable' : 'simple',
+        price: String(isVariable ? minEffective : simpleOnSale ? simpleSale : simpleRegular),
+        regular_price: String(isVariable ? minRegular : simpleRegular),
+        sale_price: isVariable
+            ? minSale > 0
+                ? String(minSale)
+                : ''
+            : simpleSale > 0
+                ? String(simpleSale)
+                : '',
+        on_sale: Boolean(isVariable ? onSale : simpleOnSale),
+        average_rating: Number(product.average_rating ?? 0).toFixed(2),
+        rating_count: Number(product.rating_count ?? 0),
+        images,
+        tags: [],
+        categories,
+        attributes,
+        description: product.description ?? '',
+        short_description: '',
+        variations,
+        manage_stock: true,
+        stock_quantity: productStockQty,
+        stock_status: productStockQty > 0 ? 'instock' : 'outofstock',
+        weight: '',
+        price_html: buildPriceHtmlRange(minEffective, maxEffective),
+        meta_data: buildProductMetaData(product),
+    };
+}
+function mapProductsListToStorefront(rows) {
+    const rangeLabel = (min, max) => {
+        if (min == null && max == null)
+            return '';
+        if (min != null && max != null)
+            return min === max ? `${min}` : `${min} - ${max}`;
+        return `${min ?? max}`;
+    };
+    return rows.map((p) => {
+        const regularMin = p.minPrice ?? 0;
+        const saleMin = p.minSalePrice ?? null;
+        const saleMax = p.maxSalePrice ?? p.minSalePrice ?? null;
+        const onSale = saleMin != null && saleMin > 0 && regularMin > 0 && saleMin < regularMin;
+        const regularLabel = rangeLabel(p.minPrice, p.maxPrice);
+        const saleLabel = rangeLabel(saleMin, saleMax);
+        const price_html = onSale && regularLabel && saleLabel
+            ? `<del>${regularLabel}</del> <ins>${saleLabel}</ins>`
+            : regularLabel;
+        const current = onSale ? saleMin : regularMin;
+        return {
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+            permalink: buildPermalink(p.slug),
+            price: String(current),
+            regular_price: String(regularMin),
+            sale_price: onSale ? String(saleMin) : null,
+            on_sale: onSale,
+            price_html,
+            average_rating: (p.averageRating ?? 0).toFixed(2),
+            rating_count: p.ratingCount ?? 0,
+            images: p.imageUrl ? [{ src: p.imageUrl, alt: p.name }] : [],
+            tags: (p.categories ?? [])
+                .slice(0, 1)
+                .map((c) => ({ name: c.name, slug: c.id })),
+        };
+    });
+}
+function mapProductToCollectionListResponse(product) {
+    const hero = product.defaultImage ??
+        (product.images && product.images.length ? product.images[0] : null);
+    const images = hero
+        ? [{ id: hero.id, src: hero.url, alt: hero.altText ?? null }]
+        : [];
+    const categories = (product.productCategories ?? [])
+        .filter((pc) => pc.category)
+        .map((pc) => ({
+        id: pc.category.id,
+        name: pc.category.name,
+        slug: pc.category.slug,
+    }));
+    const attributes = mapProductAttributes(product);
+    const isVariable = attributes.some((a) => a.variation);
+    const minRegular = Number(product.minRegular ?? 0);
+    const maxRegular = Number(product.maxRegular ?? minRegular);
+    const minSale = Number(product.minSale ?? 0);
+    const onSale = Boolean(product.onSale);
+    const minEffective = onSale && minSale > 0 ? minSale : minRegular;
+    const maxEffective = maxRegular || minEffective;
+    return {
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        permalink: buildPermalink(product.slug),
+        type: isVariable ? 'variable' : 'simple',
+        price: String(minEffective),
+        regular_price: String(minRegular),
+        sale_price: onSale && minSale > 0 ? String(minSale) : '',
+        on_sale: onSale,
+        average_rating: Number(product.average_rating ?? 0).toFixed(2),
+        rating_count: Number(product.rating_count ?? 0),
+        images,
+        tags: [],
+        categories,
+        attributes,
+        price_html: buildPriceHtmlRange(minEffective, maxEffective),
+    };
+}
+//# sourceMappingURL=product.mapper.js.map

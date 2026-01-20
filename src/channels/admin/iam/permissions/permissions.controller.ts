@@ -55,9 +55,15 @@ export class PermissionsController extends BaseController {
   @SetMetadata('permissions', ['roles.manage'])
   createCompanyRole(
     @CurrentUser() user: User,
-    @Body('name') name: CompanyRoleName,
+    @Body()
+    body: { displayName: string; baseRoleId?: string; permissionIds: string[] },
   ) {
-    return this.permissionsService.createRole(user.companyId, name);
+    return this.permissionsService.createCompanyRole({
+      companyId: user.companyId,
+      displayName: body.displayName,
+      baseRoleId: body.baseRoleId,
+      permissionIds: body.permissionIds,
+    });
   }
 
   @Patch('company/roles/:roleId')

@@ -7,8 +7,6 @@ export declare class AuthUsersController {
     private readonly invitations;
     constructor(user: UserService, invitations: InvitationsService);
     invite(dto: InviteUserDto, user: User): Promise<{
-        token: string;
-        companyName: string;
         inviteLink: string;
     }>;
     acceptInvite(token: string): Promise<{
@@ -19,7 +17,7 @@ export declare class AuthUsersController {
     getCompanyUsers(user: User): Promise<{
         id: string;
         email: string;
-        role: "owner" | "manager" | "staff" | "support";
+        role: string;
         firstName: string | null;
         lastName: string | null;
         avatar: string | null;

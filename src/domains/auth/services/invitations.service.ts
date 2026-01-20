@@ -1,3 +1,4 @@
+// invitations.service.ts
 import {
   Injectable,
   Inject,
@@ -29,6 +30,12 @@ export class InvitationsService {
     private readonly permissionsService: PermissionsService,
   ) {}
 
+  /**
+   * Invite a user to a company.
+   * - Uses an existing role (preset or custom) by roleId.
+   * - Email shows role.displayName (fallback to role.name).
+   * - Token contains email + companyId + companyRoleId.
+   */
   async inviteUser(dto: InviteUserInput, companyId: string) {
     const [company] = await this.db
       .select({ name: companies.name })
@@ -40,10 +47,69 @@ export class InvitationsService {
       throw new BadRequestException('Company not found.');
     }
 
+    // -----------------------------
+    // Validate intent
+    // -----------------------------
+    if (dto.companyRoleId && dto.createRole) {
+      throw new BadRequestException(
+        'Choose an existing role OR create a new role, not both.',
+      );
+    }
+
+    if (
+      dto.createRole &&
+      (!dto.permissionIds || dto.permissionIds.length === 0)
+    ) {
+      throw new BadRequestException(
+        'Permissions are required when creating a role.',
+      );
+    }
+
+    let roleId: string;
+
+    // -----------------------------
+    // Case 1: Assign existing role
+    // -----------------------------
+    if (dto.companyRoleId) {
+      const role = await this.permissionsService.getRoleById(dto.companyRoleId);
+
+      if (role.companyId !== companyId) {
+        throw new BadRequestException('Invalid role for this company.');
+      }
+
+      roleId = role.id;
+    }
+
+    // -----------------------------
+    // Case 2: Create role during invite
+    // -----------------------------
+    else if (dto.createRole) {
+      const role = await this.permissionsService.createCompanyRole({
+        companyId,
+        displayName: dto.roleName ?? 'Custom Role',
+        baseRoleId: dto.baseRoleId,
+        permissionIds: dto.permissionIds!,
+      });
+
+      roleId = role.id;
+    }
+
+    // -----------------------------
+    // Invalid payload
+    // -----------------------------
+    else {
+      throw new BadRequestException(
+        'Either companyRoleId or createRole must be provided.',
+      );
+    }
+
+    // -----------------------------
+    // Create invite token
+    // -----------------------------
     const token = this.jwtService.sign({
-      email: dto.email,
-      companyRoleId: dto.companyRoleId,
+      email: dto.email.toLowerCase(),
       companyId,
+      companyRoleId: roleId,
     });
 
     const clientUrl = this.configService.get<string>('CLIENT_URL');
@@ -51,26 +117,27 @@ export class InvitationsService {
       throw new Error('CLIENT_URL is not configured');
     }
 
-    // get companies role
-    const role = await this.permissionsService.getRoleById(dto.companyRoleId);
-
     const inviteLink = `${clientUrl}/auth/invite/${token}`;
 
+    const role = await this.permissionsService.getRoleById(roleId);
+    const roleLabel = role.displayName ?? role.name;
+
     await this.invitationService.sendInvitationEmail(
-      dto.email,
+      dto.email.toLowerCase(),
       dto.name,
       company.name,
-      role.name,
+      roleLabel,
       inviteLink,
     );
 
-    return {
-      token,
-      companyName: company.name,
-      inviteLink,
-    };
+    return { inviteLink };
   }
 
+  /**
+   * Verify invite token and attach user to company + role.
+   * - Validates role belongs to company.
+   * - Creates user if not exists, else updates role for existing user in company.
+   */
   async verifyInvite(token: string) {
     let decoded: any;
     try {
@@ -79,8 +146,15 @@ export class InvitationsService {
       throw new UnauthorizedException('Invalid or expired invite token');
     }
 
-    const { email, companyId, companyRoleId } = decoded;
+    const email = String(decoded?.email ?? '').toLowerCase();
+    const companyId = String(decoded?.companyId ?? '');
+    const companyRoleId = String(decoded?.companyRoleId ?? '');
 
+    if (!email || !companyId || !companyRoleId) {
+      throw new BadRequestException('Invalid invite token payload.');
+    }
+
+    // Validate role exists AND belongs to this company
     const [role] = await this.db
       .select({ id: companyRoles.id })
       .from(companyRoles)
@@ -96,46 +170,36 @@ export class InvitationsService {
       throw new BadRequestException('Invalid role for this company.');
     }
 
+    // Create or update user
     const defaultPassword = await bcrypt.hash('ChangeMe123!', 10);
 
     const [existingUser] = await this.db
       .select()
       .from(users)
-      .where(eq(users.email, email.toLowerCase()))
+      .where(and(eq(users.email, email), eq(users.companyId, companyId)))
       .limit(1)
       .execute();
 
-    let user = existingUser;
-
-    if (!user) {
-      const [newUser] = await this.db
+    if (!existingUser) {
+      await this.db
         .insert(users)
         .values({
-          email: email.toLowerCase(),
+          email,
           password: defaultPassword,
           companyRoleId,
           companyId,
         })
-        .returning()
         .execute();
-      user = newUser;
     } else {
       await this.db
         .update(users)
         .set({ companyRoleId })
         .where(
-          and(
-            eq(users.email, email.toLowerCase()),
-            eq(users.companyId, companyId),
-          ),
+          and(eq(users.id, existingUser.id), eq(users.companyId, companyId)),
         )
         .execute();
     }
 
-    if (!user) {
-      throw new BadRequestException('User creation or retrieval failed.');
-    }
-
-    return { message: 'Invitation accepted', email: user.email };
+    return { message: 'Invitation accepted', email };
   }
 }

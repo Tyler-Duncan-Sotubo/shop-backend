@@ -15,8 +15,8 @@ export declare class AnalyticsService {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        enabled: boolean;
         provider: string;
+        enabled: boolean;
         publicConfig: unknown;
         privateConfig: unknown;
         requiresConsent: boolean;
@@ -75,8 +75,8 @@ export declare class AnalyticsService {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        enabled: boolean;
         provider: string;
+        enabled: boolean;
         publicConfig: unknown;
         privateConfig: unknown;
         requiresConsent: boolean;

@@ -1,23 +1,12 @@
-import { PermissionsRegistryService } from './permissions-registry.service';
-import { CompanyAccessService } from './company-access.service';
+import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { CacheService } from 'src/infrastructure/cache/cache.service';
+import { AuditService } from 'src/domains/audit/audit.service';
 import { User } from 'src/channels/admin/common/types/user.type';
-export declare class PermissionsService {
-    private readonly registry;
-    private readonly access;
-    constructor(registry: PermissionsRegistryService, access: CompanyAccessService);
-    create(): Promise<string>;
-    findAll(): Promise<{
-        id: string;
-        key: string;
-        description: string | null;
-        createdAt: Date;
-    }[]>;
-    findOne(id: string): Promise<{
-        id: string;
-        key: string;
-        description: string | null;
-        createdAt: Date;
-    }>;
+export declare class CompanyAccessService {
+    private readonly db;
+    private readonly cache;
+    private readonly auditService;
+    constructor(db: db, cache: CacheService, auditService: AuditService);
     createRole(params: {
         companyId: string;
         name: string;
@@ -48,7 +37,7 @@ export declare class PermissionsService {
         name: string;
         displayName: string | null;
     }[]>;
-    updateRole(companyId: string, roleId: string, name: any): Promise<{
+    updateRole(companyId: string, roleId: string, name: string): Promise<{
         id: string;
         companyId: string;
         name: string;
@@ -68,6 +57,7 @@ export declare class PermissionsService {
         description: string | null;
         isSystem: boolean;
     }>;
+    private findRoleById;
     assignPermissionToRole(companyId: string, roleId: string, permissionId: string): Promise<{
         id: string;
         createdAt: Date;
@@ -99,10 +89,10 @@ export declare class PermissionsService {
         rolePermissions: Record<string, string[]>;
     }>;
     updateCompanyRolePermissions(rolePermissions: Record<string, string[]>, user: User, ip: string): Promise<void>;
-    createCompanyRole({ companyId, baseRoleId, displayName, permissionIds, }: {
+    createCompanyRole(params: {
         companyId: string;
-        baseRoleId?: string;
         displayName: string;
+        baseRoleId?: string;
         permissionIds: string[];
     }): Promise<{
         id: string;
@@ -114,4 +104,5 @@ export declare class PermissionsService {
         description: string | null;
         isSystem: boolean;
     }>;
+    private cloneRolePermissions;
 }

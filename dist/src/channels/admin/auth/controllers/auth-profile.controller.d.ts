@@ -16,7 +16,7 @@ export declare class AuthProfileController {
     getUserProfile(user: User): Promise<{
         id: string;
         email: string;
-        role: "owner" | "manager" | "staff" | "support";
+        role: string;
         first_name: string | null;
         last_name: string | null;
         avatar: string | null;

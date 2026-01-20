@@ -39,23 +39,47 @@ let InvitationsService = class InvitationsService {
         if (!company) {
             throw new common_1.BadRequestException('Company not found.');
         }
+        if (dto.companyRoleId && dto.createRole) {
+            throw new common_1.BadRequestException('Choose an existing role OR create a new role, not both.');
+        }
+        if (dto.createRole &&
+            (!dto.permissionIds || dto.permissionIds.length === 0)) {
+            throw new common_1.BadRequestException('Permissions are required when creating a role.');
+        }
+        let roleId;
+        if (dto.companyRoleId) {
+            const role = await this.permissionsService.getRoleById(dto.companyRoleId);
+            if (role.companyId !== companyId) {
+                throw new common_1.BadRequestException('Invalid role for this company.');
+            }
+            roleId = role.id;
+        }
+        else if (dto.createRole) {
+            const role = await this.permissionsService.createCompanyRole({
+                companyId,
+                displayName: dto.roleName ?? 'Custom Role',
+                baseRoleId: dto.baseRoleId,
+                permissionIds: dto.permissionIds,
+            });
+            roleId = role.id;
+        }
+        else {
+            throw new common_1.BadRequestException('Either companyRoleId or createRole must be provided.');
+        }
         const token = this.jwtService.sign({
-            email: dto.email,
-            companyRoleId: dto.companyRoleId,
+            email: dto.email.toLowerCase(),
             companyId,
+            companyRoleId: roleId,
         });
         const clientUrl = this.configService.get('CLIENT_URL');
         if (!clientUrl) {
             throw new Error('CLIENT_URL is not configured');
         }
-        const role = await this.permissionsService.getRoleById(dto.companyRoleId);
         const inviteLink = `${clientUrl}/auth/invite/${token}`;
-        await this.invitationService.sendInvitationEmail(dto.email, dto.name, company.name, role.name, inviteLink);
-        return {
-            token,
-            companyName: company.name,
-            inviteLink,
-        };
+        const role = await this.permissionsService.getRoleById(roleId);
+        const roleLabel = role.displayName ?? role.name;
+        await this.invitationService.sendInvitationEmail(dto.email.toLowerCase(), dto.name, company.name, roleLabel, inviteLink);
+        return { inviteLink };
     }
     async verifyInvite(token) {
         let decoded;
@@ -65,7 +89,12 @@ let InvitationsService = class InvitationsService {
         catch {
             throw new common_1.UnauthorizedException('Invalid or expired invite token');
         }
-        const { email, companyId, companyRoleId } = decoded;
+        const email = String(decoded?.email ?? '').toLowerCase();
+        const companyId = String(decoded?.companyId ?? '');
+        const companyRoleId = String(decoded?.companyRoleId ?? '');
+        if (!email || !companyId || !companyRoleId) {
+            throw new common_1.BadRequestException('Invalid invite token payload.');
+        }
         const [role] = await this.db
             .select({ id: schema_1.companyRoles.id })
             .from(schema_1.companyRoles)
@@ -78,34 +107,28 @@ let InvitationsService = class InvitationsService {
         const [existingUser] = await this.db
             .select()
             .from(schema_1.users)
-            .where((0, drizzle_orm_1.eq)(schema_1.users.email, email.toLowerCase()))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.email, email), (0, drizzle_orm_1.eq)(schema_1.users.companyId, companyId)))
             .limit(1)
             .execute();
-        let user = existingUser;
-        if (!user) {
-            const [newUser] = await this.db
+        if (!existingUser) {
+            await this.db
                 .insert(schema_1.users)
                 .values({
-                email: email.toLowerCase(),
+                email,
                 password: defaultPassword,
                 companyRoleId,
                 companyId,
             })
-                .returning()
                 .execute();
-            user = newUser;
         }
         else {
             await this.db
                 .update(schema_1.users)
                 .set({ companyRoleId })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.email, email.toLowerCase()), (0, drizzle_orm_1.eq)(schema_1.users.companyId, companyId)))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.id, existingUser.id), (0, drizzle_orm_1.eq)(schema_1.users.companyId, companyId)))
                 .execute();
         }
-        if (!user) {
-            throw new common_1.BadRequestException('User creation or retrieval failed.');
-        }
-        return { message: 'Invitation accepted', email: user.email };
+        return { message: 'Invitation accepted', email };
     }
 };
 exports.InvitationsService = InvitationsService;

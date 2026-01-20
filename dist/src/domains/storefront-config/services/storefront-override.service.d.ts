@@ -13,12 +13,12 @@ export declare class StorefrontOverrideService {
     constructor(db: db, cache: CacheService, storefrontConfigService: StorefrontConfigService, storefrontRevalidateService: StorefrontRevalidateService, companySettings: CompanySettingsService);
     private assertStore;
     getPublishedOverride(companyId: string, storeId: string): Promise<{
-        status: "draft" | "published";
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         storeId: string;
+        status: "draft" | "published";
         publishedAt: Date | null;
         theme: unknown;
         header: unknown;
@@ -31,12 +31,12 @@ export declare class StorefrontOverrideService {
     } | undefined>;
     private validateOverridePayloadOrThrow;
     upsertOverride(companyId: string, storeId: string, dto: UpsertStorefrontOverrideDto): Promise<{
-        status: "draft" | "published";
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         storeId: string;
+        status: "draft" | "published";
         publishedAt: Date | null;
         theme: unknown;
         header: unknown;

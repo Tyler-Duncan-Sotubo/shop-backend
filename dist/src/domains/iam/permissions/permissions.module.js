@@ -9,12 +9,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PermissionsModule = void 0;
 const common_1 = require("@nestjs/common");
 const permissions_service_1 = require("./permissions.service");
+const company_access_service_1 = require("./company-access.service");
+const permissions_registry_service_1 = require("./permissions-registry.service");
 let PermissionsModule = class PermissionsModule {
 };
 exports.PermissionsModule = PermissionsModule;
 exports.PermissionsModule = PermissionsModule = __decorate([
     (0, common_1.Module)({
-        providers: [permissions_service_1.PermissionsService],
+        providers: [
+            permissions_registry_service_1.PermissionsRegistryService,
+            company_access_service_1.CompanyAccessService,
+            permissions_service_1.PermissionsService,
+        ],
         exports: [permissions_service_1.PermissionsService],
     })
 ], PermissionsModule);

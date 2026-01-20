@@ -41,8 +41,8 @@ export declare class SetupController {
             updatedAt: Date;
             deletedAt: Date | null;
             companyId: string;
-            storeId: string;
             type: string;
+            storeId: string;
             city: string | null;
             postalCode: string | null;
             code: string | null;
@@ -61,12 +61,12 @@ export declare class SetupController {
             isPrimary: boolean;
         }[];
         draftOverride: {
-            status: "draft" | "published";
             id: string;
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
             storeId: string;
+            status: "draft" | "published";
             publishedAt: Date | null;
             theme: unknown;
             header: unknown;

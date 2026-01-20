@@ -19,7 +19,7 @@ export declare class AuthLoginController {
             email: string;
             firstName: string | null;
             lastName: string | null;
-            role: "owner" | "manager" | "staff" | "support";
+            role: string;
             companyId: string;
             avatar: string | null;
             roleId: string;
@@ -43,7 +43,7 @@ export declare class AuthLoginController {
             email: string;
             firstName: string | null;
             lastName: string | null;
-            role: "owner" | "manager" | "staff" | "support";
+            role: string;
             companyId: string;
             avatar: string | null;
             roleId: string;

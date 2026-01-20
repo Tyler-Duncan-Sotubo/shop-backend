@@ -12,8 +12,6 @@ export declare class InvitationsService {
     private readonly permissionsService;
     constructor(db: db, jwtService: JwtService, configService: ConfigService, invitationService: InvitationService, permissionsService: PermissionsService);
     inviteUser(dto: InviteUserInput, companyId: string): Promise<{
-        token: string;
-        companyName: string;
         inviteLink: string;
     }>;
     verifyInvite(token: string): Promise<{

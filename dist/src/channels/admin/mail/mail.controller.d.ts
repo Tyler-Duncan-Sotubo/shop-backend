@@ -28,13 +28,13 @@ export declare class MailController {
         };
     }>;
     getSubscriberAdmin(user: User, params: IdParamDto): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         email: string;
         storeId: string | null;
+        status: string;
         metadata: Record<string, any> | null;
         source: string | null;
     }>;
@@ -69,8 +69,6 @@ export declare class MailController {
         offset: number;
     }>;
     getContactMessageAdmin(user: User, params: IdParamDto): Promise<{
-        message: string;
-        status: string;
         id: string;
         name: string | null;
         createdAt: Date;
@@ -79,6 +77,7 @@ export declare class MailController {
         email: string;
         storeId: string | null;
         phone: string | null;
+        status: string;
         metadata: {
             [k: string]: any;
             ip?: string;
@@ -86,6 +85,7 @@ export declare class MailController {
             pageUrl?: string;
             referrer?: string;
         } | null;
+        message: string;
         company: string | null;
         subject: string | null;
     }>;

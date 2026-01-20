@@ -29,7 +29,7 @@ export declare class UserService {
     getUserProfile(userId: string): Promise<{
         id: string;
         email: string;
-        role: "owner" | "manager" | "staff" | "support";
+        role: string;
         first_name: string | null;
         last_name: string | null;
         avatar: string | null;
@@ -45,7 +45,7 @@ export declare class UserService {
     companyUsers(companyId: string): Promise<{
         id: string;
         email: string;
-        role: "owner" | "manager" | "staff" | "support";
+        role: string;
         firstName: string | null;
         lastName: string | null;
         avatar: string | null;

@@ -8,9 +8,9 @@ export declare class VariantsController extends BaseController {
     constructor(variantsService: VariantsService);
     listVariantsForProduct(user: User, productId: string, query: VariantQueryDto): Promise<import("src/domains/catalog/mappers/variant.mapper").VariantResponseWithImage[]>;
     listForStore(user: User, query: StoreVariantQueryDto): Promise<{
-        id: string;
-        title: string | null;
-        sku: string | null;
+        id: any;
+        title: any;
+        sku: any;
         productName: any;
         imageUrl: any;
         suggestedUnitPrice: number | null;
@@ -19,7 +19,7 @@ export declare class VariantsController extends BaseController {
     }[]>;
     getVariant(user: User, variantId: string): Promise<import("src/domains/catalog/mappers/variant.mapper").VariantResponse>;
     createVariant(user: User, productId: string, dto: CreateVariantDto, ip: string): Promise<import("src/domains/catalog/mappers/variant.mapper").VariantResponse>;
-    generateVariantsForProduct(user: User, productId: string, ip: string): Promise<import("src/domains/catalog/mappers/variant.mapper").VariantResponse[]>;
+    generateVariantsForProduct(user: User, productId: string, ip: string): Promise<any>;
     updateVariant(user: User, variantId: string, dto: UpdateVariantDto, ip: string): Promise<import("src/domains/catalog/mappers/variant.mapper").VariantResponse>;
     deleteVariant(user: User, variantId: string, ip: string): Promise<{
         success: boolean;

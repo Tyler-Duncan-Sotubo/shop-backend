@@ -17,21 +17,28 @@ export declare class PermissionsController extends BaseController {
     }[]>;
     findAllCompanyRoles(user: User): Promise<{
         id: string;
-        name: "owner" | "manager" | "staff" | "support";
+        name: string;
+        displayName: string | null;
     }[]>;
-    createCompanyRole(user: User, name: CompanyRoleName): Promise<{
+    createCompanyRole(user: User, body: {
+        displayName: string;
+        baseRoleId?: string;
+        permissionIds: string[];
+    }): Promise<{
         id: string;
-        name: "owner" | "manager" | "staff" | "support";
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        displayName: string | null;
         description: string | null;
         isSystem: boolean;
     }>;
     findCompanyRoleById(user: User, roleId: string, name: CompanyRoleName): Promise<{
         id: string;
         companyId: string;
-        name: "owner" | "manager" | "staff" | "support";
+        name: string;
+        displayName: string | null;
         description: string | null;
         isSystem: boolean;
         createdAt: Date;
@@ -47,7 +54,8 @@ export declare class PermissionsController extends BaseController {
     findAllUserPermissions(user: User): Promise<{
         roles: {
             id: string;
-            name: "owner" | "manager" | "staff" | "support";
+            name: string;
+            displayName: string | null;
         }[];
         permissions: {
             id: string;

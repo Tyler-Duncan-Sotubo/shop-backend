@@ -15,7 +15,6 @@ export declare class QuoteService {
     private findQuoteByIdOrThrow;
     private bumpCompany;
     create(companyId: string, dto: CreateQuoteDto, user?: User, ip?: string): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -23,15 +22,15 @@ export declare class QuoteService {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
-        meta: Record<string, unknown> | null;
+        status: string;
+        convertedOrderId: string | null;
         customerEmail: string;
         customerNote: string | null;
+        meta: Record<string, unknown> | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
-        convertedOrderId: string | null;
     }>;
     createFromStorefront(storeId: string, dto: CreateQuoteDto, ip?: string): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -39,12 +38,13 @@ export declare class QuoteService {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
-        meta: Record<string, unknown> | null;
+        status: string;
+        convertedOrderId: string | null;
         customerEmail: string;
         customerNote: string | null;
+        meta: Record<string, unknown> | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
-        convertedOrderId: string | null;
     }>;
     findAll(companyId: string, query: GetQuotesQueryDto): Promise<{
         rows: {
@@ -82,7 +82,6 @@ export declare class QuoteService {
             createdAt: Date;
             deletedAt: Date | null;
         }[];
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -90,12 +89,13 @@ export declare class QuoteService {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
-        meta: Record<string, unknown> | null;
+        status: string;
+        convertedOrderId: string | null;
         customerEmail: string;
         customerNote: string | null;
+        meta: Record<string, unknown> | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
-        convertedOrderId: string | null;
     }>;
     update(companyId: string, quoteId: string, dto: UpdateQuoteDto, user?: User, ip?: string): Promise<{
         id: string;

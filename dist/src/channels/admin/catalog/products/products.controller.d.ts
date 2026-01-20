@@ -13,11 +13,11 @@ export declare class ProductsController extends BaseController {
         offset: number;
     }>;
     listProducts(user: User, query: ProductQueryDto): Promise<{
-        id: string;
-        name: string;
-        createdAt: Date;
-        status: "draft" | "active" | "archived";
-        slug: string;
+        id: any;
+        name: any;
+        createdAt: any;
+        status: any;
+        slug: any;
         imageUrl: any;
         stock: number;
         regular_price: string | null;
@@ -39,23 +39,23 @@ export declare class ProductsController extends BaseController {
     getProduct(user: User, productId: string): Promise<import("src/domains/catalog/mappers/product.mapper").ProductDetailResponse>;
     getProductWithRelations(user: User, productId: string): Promise<import("src/domains/catalog/mappers/product.mapper").ProductDetailResponse>;
     getProductForEdit(user: User, productId: string): Promise<{
-        id: string;
-        name: string;
-        description: string | null;
-        status: "draft" | "active" | "archived";
-        productType: "simple" | "variable";
+        id: any;
+        name: any;
+        description: any;
+        status: any;
+        productType: any;
         images: {
             id: any;
             url: any;
         }[];
         defaultImageIndex: number;
-        seoTitle: string | null;
-        seoDescription: string | null;
+        seoTitle: any;
+        seoDescription: any;
         metadata: Record<string, any>;
         categoryIds: string[];
         links: Partial<Record<"related" | "upsell" | "cross_sell" | "accessory", string[]>>;
-        createdAt: Date;
-        updatedAt: Date;
+        createdAt: any;
+        updatedAt: any;
     }>;
     createProduct(user: User, dto: CreateProductDto, ip: string): Promise<import("src/domains/catalog/mappers/product.mapper").ProductDetailResponse>;
     updateProduct(user: User, productId: string, dto: UpdateProductDto, ip: string): Promise<import("src/domains/catalog/mappers/product.mapper").ProductDetailResponse>;

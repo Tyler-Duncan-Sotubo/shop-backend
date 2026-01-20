@@ -40,19 +40,40 @@ export declare const companyRoles: import("drizzle-orm/pg-core").PgTableWithColu
             name: "name";
             tableName: "company_roles";
             dataType: "string";
-            columnType: "PgEnumColumn";
-            data: "owner" | "manager" | "staff" | "support";
+            columnType: "PgVarchar";
+            data: string;
             driverParam: string;
             notNull: true;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: ["owner", "manager", "staff", "support"];
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            length: 64;
+        }>;
+        displayName: import("drizzle-orm/pg-core").PgColumn<{
+            name: "display_name";
+            tableName: "company_roles";
+            dataType: "string";
+            columnType: "PgVarchar";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            length: 128;
+        }>;
         description: import("drizzle-orm/pg-core").PgColumn<{
             name: "description";
             tableName: "company_roles";

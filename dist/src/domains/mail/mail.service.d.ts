@@ -31,13 +31,13 @@ export declare class MailService {
         };
     }>;
     getSubscriber(companyId: string, id: string): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         email: string;
         storeId: string | null;
+        status: string;
         metadata: Record<string, any> | null;
         source: string | null;
     }>;
@@ -78,8 +78,6 @@ export declare class MailService {
         offset: number;
     }>;
     getContactMessage(companyId: string, id: string): Promise<{
-        message: string;
-        status: string;
         id: string;
         name: string | null;
         createdAt: Date;
@@ -88,6 +86,7 @@ export declare class MailService {
         email: string;
         storeId: string | null;
         phone: string | null;
+        status: string;
         metadata: {
             [k: string]: any;
             ip?: string;
@@ -95,6 +94,7 @@ export declare class MailService {
             pageUrl?: string;
             referrer?: string;
         } | null;
+        message: string;
         company: string | null;
         subject: string | null;
     }>;
@@ -124,13 +124,13 @@ export declare class MailService {
         storeId?: string;
         source?: string;
     }, metadata?: any): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         email: string;
         storeId: string | null;
+        status: string;
         metadata: Record<string, any> | null;
         source: string | null;
     }>;
@@ -143,8 +143,6 @@ export declare class MailService {
         message: string;
         subject?: string;
     }, metadata?: any): Promise<{
-        message: string;
-        status: string;
         id: string;
         name: string | null;
         createdAt: Date;
@@ -153,6 +151,7 @@ export declare class MailService {
         email: string;
         storeId: string | null;
         phone: string | null;
+        status: string;
         metadata: {
             [k: string]: any;
             ip?: string;
@@ -160,6 +159,7 @@ export declare class MailService {
             pageUrl?: string;
             referrer?: string;
         } | null;
+        message: string;
         company: string | null;
         subject: string | null;
     }>;

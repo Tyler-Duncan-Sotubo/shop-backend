@@ -12,7 +12,7 @@ export declare class JwtStrategy extends JwtStrategy_base {
     }): Promise<{
         email: string;
         id: string;
-        role: "owner" | "manager" | "staff" | "support";
+        role: string;
         last_login: Date | null;
         firstName: string | null;
         lastName: string | null;

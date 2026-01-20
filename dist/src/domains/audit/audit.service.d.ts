@@ -32,7 +32,7 @@ export declare class AuditService {
         changes: unknown;
         ipAddress: string | null;
         name: unknown;
-        role: "owner" | "manager" | "staff" | "support";
+        role: string;
     }[]>;
     getLoginAudit(companyId: string): Promise<{
         id: string;
@@ -44,6 +44,6 @@ export declare class AuditService {
         changes: unknown;
         ipAddress: string | null;
         name: unknown;
-        role: "owner" | "manager" | "staff" | "support";
+        role: string;
     }[]>;
 }

@@ -21,16 +21,16 @@ export declare class PaymentController extends BaseController {
         note?: string;
     }): Promise<{
         data: {
-            url: string;
             id: string;
             createdAt: Date;
             companyId: string;
+            paymentId: string;
+            url: string;
             fileName: string;
             mimeType: string;
-            note: string | null;
-            kind: string;
-            paymentId: string;
             sizeBytes: number | null;
+            kind: string;
+            note: string | null;
             uploadedByUserId: string | null;
         };
     }>;

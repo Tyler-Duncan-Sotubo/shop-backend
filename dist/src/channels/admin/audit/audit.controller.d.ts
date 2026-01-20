@@ -14,7 +14,7 @@ export declare class AuditController extends BaseController {
         changes: unknown;
         ipAddress: string | null;
         name: unknown;
-        role: "owner" | "manager" | "staff" | "support";
+        role: string;
     }[]>;
     getAuthenticationLogs(user: User): Promise<{
         id: string;
@@ -26,6 +26,6 @@ export declare class AuditController extends BaseController {
         changes: unknown;
         ipAddress: string | null;
         name: unknown;
-        role: "owner" | "manager" | "staff" | "support";
+        role: string;
     }[]>;
 }

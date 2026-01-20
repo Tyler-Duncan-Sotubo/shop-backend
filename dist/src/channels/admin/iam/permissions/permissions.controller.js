@@ -37,8 +37,13 @@ let PermissionsController = class PermissionsController extends base_controller_
     findAllCompanyRoles(user) {
         return this.permissionsService.getRolesByCompany(user.companyId);
     }
-    createCompanyRole(user, name) {
-        return this.permissionsService.createRole(user.companyId, name);
+    createCompanyRole(user, body) {
+        return this.permissionsService.createCompanyRole({
+            companyId: user.companyId,
+            displayName: body.displayName,
+            baseRoleId: body.baseRoleId,
+            permissionIds: body.permissionIds,
+        });
     }
     findCompanyRoleById(user, roleId, name) {
         return this.permissionsService.updateRole(user.companyId, roleId, name);
@@ -93,9 +98,9 @@ __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.SetMetadata)('permissions', ['roles.manage']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
-    __param(1, (0, common_1.Body)('name')),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], PermissionsController.prototype, "createCompanyRole", null);
 __decorate([

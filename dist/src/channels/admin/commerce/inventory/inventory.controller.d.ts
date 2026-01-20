@@ -35,12 +35,12 @@ export declare class InventoryController extends BaseController {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        type: string;
         storeId: string;
+        type: string;
         city: string | null;
         postalCode: string | null;
-        code: string | null;
         isDefault: boolean;
+        code: string | null;
         addressLine1: string | null;
         addressLine2: string | null;
         region: string | null;
@@ -177,38 +177,38 @@ export declare class InventoryController extends BaseController {
         items: {
             id: string;
             createdAt: Date;
+            quantity: number;
             transferId: string;
             productVariantId: string;
-            quantity: number;
         }[];
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         notes: string | null;
+        status: string;
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
-        status: string;
         completedAt: Date | null;
     }>;
     createTransfer(user: User, dto: CreateTransferDto, ip: string): Promise<{
         items: {
             id: string;
             createdAt: Date;
+            quantity: number;
             transferId: string;
             productVariantId: string;
-            quantity: number;
         }[];
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         notes: string | null;
+        status: string;
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
-        status: string;
         completedAt: Date | null;
     }>;
     updateTransferStatus(user: User, transferId: string, dto: UpdateTransferStatusDto, ip: string): Promise<{

@@ -33,9 +33,9 @@ export declare class BlogController extends BaseController {
         updatedAt: Date;
         storeId: string;
         status: string;
+        title: string;
         seoTitle: string | null;
         seoDescription: string | null;
-        title: string;
         content: string;
         excerpt: string | null;
         coverImageUrl: string | null;

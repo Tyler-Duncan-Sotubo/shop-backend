@@ -9,8 +9,8 @@ export declare class MailController {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        email: string;
         storeId: string | null;
+        email: string;
         status: string;
         metadata: Record<string, any> | null;
         source: string | null;
@@ -21,9 +21,9 @@ export declare class MailController {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        email: string;
         storeId: string | null;
         phone: string | null;
+        email: string;
         status: string;
         metadata: {
             [k: string]: any;

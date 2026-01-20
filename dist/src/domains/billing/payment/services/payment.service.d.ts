@@ -196,13 +196,13 @@ export declare class PaymentService {
         id: string;
         createdAt: Date;
         companyId: string;
-        paymentId: string;
-        url: string;
         fileName: string;
         mimeType: string;
-        sizeBytes: number | null;
-        kind: string;
+        url: string;
         note: string | null;
+        kind: string;
+        paymentId: string;
+        sizeBytes: number | null;
         uploadedByUserId: string | null;
     }>;
 }

@@ -20,9 +20,9 @@ export declare class QuoteService {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
         status: string;
+        expiresAt: Date | null;
         convertedOrderId: string | null;
         customerEmail: string;
         customerNote: string | null;
@@ -36,9 +36,9 @@ export declare class QuoteService {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
         status: string;
+        expiresAt: Date | null;
         convertedOrderId: string | null;
         customerEmail: string;
         customerNote: string | null;
@@ -87,9 +87,9 @@ export declare class QuoteService {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
         status: string;
+        expiresAt: Date | null;
         convertedOrderId: string | null;
         customerEmail: string;
         customerNote: string | null;

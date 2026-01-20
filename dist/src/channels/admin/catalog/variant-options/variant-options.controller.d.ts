@@ -48,8 +48,8 @@ export declare class VariantOptionsController extends BaseController {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        value: string;
         position: number;
+        value: string;
         productOptionId: string;
     }>;
     updateOptionValue(user: User, valueId: string, dto: UpdateOptionValueDto, ip: string): Promise<{

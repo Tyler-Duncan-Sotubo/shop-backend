@@ -20,9 +20,9 @@ export declare class ReviewsController extends BaseController {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        userId: string | null;
         storeId: string | null;
         productId: string;
+        userId: string | null;
         authorName: string;
         authorEmail: string;
         rating: number;

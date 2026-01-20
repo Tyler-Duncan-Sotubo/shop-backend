@@ -11,31 +11,54 @@ export const PG_POOL = Symbol('PG_POOL');
 
 function buildPoolConfig(cfg: ConfigService): PoolConfig {
   const isProd = process.env.NODE_ENV === 'production';
+
   const connectionString = cfg.get<string>('DATABASE_URL');
   if (!connectionString) throw new Error('DATABASE_URL is not set');
 
-  // SSL policy:
-  // - Prod: typically internal, so disable unless PGSSL_DISABLE=0 and you provide PG_CA_CERT.
-  // - Dev: allow self-signed unless you provide a CA.
+  // If you're connecting to PgBouncer, set PGBOUNCER=1 (recommended).
+  const usingPgbouncer = cfg.get<string>('PGBOUNCER') === '1';
+
+  /**
+   * SSL policy (simple and PgBouncer-friendly):
+   * - Default: ssl = false (works for local Postgres and most PgBouncer setups)
+   * - If PGSSL_DISABLE=1 => force ssl=false
+   * - If PG_CA_CERT is provided => ssl with strict verification
+   * - Else if PGSSL_ENABLE=1 => ssl with rejectUnauthorized=false (useful for managed/self-signed)
+   *
+   * Notes:
+   * - If your endpoint does NOT support SSL (common with PgBouncer), leave SSL off.
+   * - If your managed Postgres requires SSL, use PG_CA_CERT (best) or PGSSL_ENABLE=1.
+   */
   const sslDisabled = cfg.get<string>('PGSSL_DISABLE') === '1';
+  const sslEnabled = cfg.get<string>('PGSSL_ENABLE') === '1';
   const ca = cfg.get<string>('PG_CA_CERT'); // PEM chain (optional)
 
-  const ssl: PoolConfig['ssl'] = sslDisabled
-    ? false
-    : ca
-      ? { rejectUnauthorized: true, ca }
-      : isProd
-        ? false
-        : { rejectUnauthorized: false }; // dev fallback for self-signed
+  let ssl: PoolConfig['ssl'] = false;
+
+  if (!sslDisabled) {
+    if (ca) {
+      ssl = { rejectUnauthorized: true, ca };
+    } else if (sslEnabled) {
+      ssl = { rejectUnauthorized: false };
+    } else {
+      ssl = false;
+    }
+  }
 
   const config: PoolConfig = {
     connectionString,
     ssl,
-    max: Number(process.env.PG_POOL_MAX || (isProd ? 20 : 10)),
+
+    // With PgBouncer, keep app pool small (PgBouncer is the pool).
+    max: Number(
+      process.env.PG_POOL_MAX || (usingPgbouncer ? 5 : isProd ? 20 : 10),
+    ),
+
     idleTimeoutMillis: Number(
       process.env.PG_IDLE_TIMEOUT_MS || (isProd ? 30_000 : 10_000),
     ),
     connectionTimeoutMillis: Number(process.env.PG_CONN_TIMEOUT_MS || 5_000),
+
     keepAlive: true,
     keepAliveInitialDelayMillis: 10_000,
   };

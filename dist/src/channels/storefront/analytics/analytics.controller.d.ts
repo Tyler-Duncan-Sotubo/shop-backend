@@ -18,9 +18,9 @@ export declare class AnalyticsController {
                 cartId: string | null;
                 checkoutId: string | null;
                 meta: unknown;
+                title: string | null;
                 orderId: string | null;
                 paymentId: string | null;
-                title: string | null;
                 sessionId: string;
                 event: string;
                 path: string | null;

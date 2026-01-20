@@ -19,9 +19,9 @@ export declare class InventoryTransfersService {
         items: {
             id: string;
             createdAt: Date;
+            quantity: number;
             transferId: string;
             productVariantId: string;
-            quantity: number;
         }[];
         id: string;
         createdAt: Date;
@@ -29,9 +29,9 @@ export declare class InventoryTransfersService {
         companyId: string;
         notes: string | null;
         status: string;
-        reference: string | null;
         fromLocationId: string;
         toLocationId: string;
+        reference: string | null;
         completedAt: Date | null;
     }>;
     listTransfers(companyId: string, storeId?: string): Promise<{
@@ -62,9 +62,9 @@ export declare class InventoryTransfersService {
         items: {
             id: string;
             createdAt: Date;
+            quantity: number;
             transferId: string;
             productVariantId: string;
-            quantity: number;
         }[];
         id: string;
         createdAt: Date;
@@ -72,9 +72,9 @@ export declare class InventoryTransfersService {
         companyId: string;
         notes: string | null;
         status: string;
-        reference: string | null;
         fromLocationId: string;
         toLocationId: string;
+        reference: string | null;
         completedAt: Date | null;
     }>;
     updateTransferStatus(companyId: string, transferId: string, dto: UpdateTransferStatusDto, user?: User, ip?: string): Promise<{

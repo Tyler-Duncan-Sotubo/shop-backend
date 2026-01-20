@@ -49,15 +49,15 @@ export declare class QuoteController extends BaseController {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
         status: string;
-        meta: Record<string, unknown> | null;
+        expiresAt: Date | null;
+        convertedOrderId: string | null;
         customerEmail: string;
         customerNote: string | null;
+        meta: Record<string, unknown> | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
-        convertedOrderId: string | null;
     }>;
     createQuote(user: User, dto: CreateQuoteDto, ip: string): Promise<{
         id: string;
@@ -65,15 +65,15 @@ export declare class QuoteController extends BaseController {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
         status: string;
-        meta: Record<string, unknown> | null;
+        expiresAt: Date | null;
+        convertedOrderId: string | null;
         customerEmail: string;
         customerNote: string | null;
+        meta: Record<string, unknown> | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
-        convertedOrderId: string | null;
     }>;
     updateQuote(user: User, quoteId: string, dto: UpdateQuoteDto, ip: string): Promise<{
         id: string;

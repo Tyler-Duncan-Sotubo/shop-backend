@@ -131,8 +131,8 @@ export declare class ShippingRatesService {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            description: string | null;
             storeId: string;
+            description: string | null;
             priority: number;
             metadata: Record<string, any> | null;
         };
@@ -146,8 +146,8 @@ export declare class ShippingRatesService {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            description: string | null;
             storeId: string;
+            description: string | null;
             priority: number;
             metadata: Record<string, any> | null;
         };

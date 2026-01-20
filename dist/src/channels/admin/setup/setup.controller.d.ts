@@ -41,12 +41,12 @@ export declare class SetupController {
             updatedAt: Date;
             deletedAt: Date | null;
             companyId: string;
-            type: string;
             storeId: string;
+            type: string;
             city: string | null;
             postalCode: string | null;
-            code: string | null;
             isDefault: boolean;
+            code: string | null;
             addressLine1: string | null;
             addressLine2: string | null;
             region: string | null;

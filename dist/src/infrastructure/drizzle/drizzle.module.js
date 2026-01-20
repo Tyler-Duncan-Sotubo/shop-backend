@@ -19,19 +19,26 @@ function buildPoolConfig(cfg) {
     const connectionString = cfg.get('DATABASE_URL');
     if (!connectionString)
         throw new Error('DATABASE_URL is not set');
+    const usingPgbouncer = cfg.get('PGBOUNCER') === '1';
     const sslDisabled = cfg.get('PGSSL_DISABLE') === '1';
+    const sslEnabled = cfg.get('PGSSL_ENABLE') === '1';
     const ca = cfg.get('PG_CA_CERT');
-    const ssl = sslDisabled
-        ? false
-        : ca
-            ? { rejectUnauthorized: true, ca }
-            : isProd
-                ? false
-                : { rejectUnauthorized: false };
+    let ssl = false;
+    if (!sslDisabled) {
+        if (ca) {
+            ssl = { rejectUnauthorized: true, ca };
+        }
+        else if (sslEnabled) {
+            ssl = { rejectUnauthorized: false };
+        }
+        else {
+            ssl = false;
+        }
+    }
     const config = {
         connectionString,
         ssl,
-        max: Number(process.env.PG_POOL_MAX || (isProd ? 20 : 10)),
+        max: Number(process.env.PG_POOL_MAX || (usingPgbouncer ? 5 : isProd ? 20 : 10)),
         idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || (isProd ? 30_000 : 10_000)),
         connectionTimeoutMillis: Number(process.env.PG_CONN_TIMEOUT_MS || 5_000),
         keepAlive: true,

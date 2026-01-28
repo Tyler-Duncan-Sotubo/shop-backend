@@ -122,4 +122,71 @@ __decorate([
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], UpdateProductDto.prototype, "defaultImageIndex", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)({ message: 'MOQ must be an integer' }),
+    (0, class_validator_1.Min)(1, { message: 'MOQ must be at least 1' }),
+    __metadata("design:type", Number)
+], UpdateProductDto.prototype, "moq", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.productType === 'simple'),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateProductDto.prototype, "sku", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.productType === 'simple'),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateProductDto.prototype, "barcode", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.productType === 'simple'),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumberString)({}, { message: 'regularPrice must be a numeric string' }),
+    __metadata("design:type", String)
+], UpdateProductDto.prototype, "regularPrice", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.productType === 'simple'),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumberString)({}, { message: 'salePrice must be a numeric string' }),
+    __metadata("design:type", String)
+], UpdateProductDto.prototype, "salePrice", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.productType === 'simple'),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumberString)({}, { message: 'stockQuantity must be a numeric string' }),
+    __metadata("design:type", String)
+], UpdateProductDto.prototype, "stockQuantity", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.productType === 'simple'),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumberString)({}, { message: 'lowStockThreshold must be a numeric string' }),
+    __metadata("design:type", String)
+], UpdateProductDto.prototype, "lowStockThreshold", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.productType === 'simple'),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumberString)({}, { message: 'weight must be a numeric string' }),
+    __metadata("design:type", String)
+], UpdateProductDto.prototype, "weight", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.productType === 'simple'),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumberString)({}, { message: 'length must be a numeric string' }),
+    __metadata("design:type", String)
+], UpdateProductDto.prototype, "length", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.productType === 'simple'),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumberString)({}, { message: 'width must be a numeric string' }),
+    __metadata("design:type", String)
+], UpdateProductDto.prototype, "width", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.productType === 'simple'),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumberString)({}, { message: 'height must be a numeric string' }),
+    __metadata("design:type", String)
+], UpdateProductDto.prototype, "height", void 0);
 //# sourceMappingURL=update-product.dto.js.map

@@ -51,6 +51,7 @@ export type ProductDetailResponse = {
   regular_price: string;
   sale_price: string;
   on_sale: boolean;
+  moq: number;
 
   average_rating: string;
   rating_count: number;
@@ -499,7 +500,7 @@ export function mapProductToDetailResponse(
     name: product.name,
     slug: product.slug,
     permalink: buildPermalink(product.slug),
-
+    moq: (product as any).moq ?? 1,
     type: isVariable ? 'variable' : 'simple',
 
     price: String(

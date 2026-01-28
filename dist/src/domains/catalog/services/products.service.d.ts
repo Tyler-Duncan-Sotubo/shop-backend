@@ -8,6 +8,7 @@ import { LinkedProductsService } from './linked-products.service';
 import { AwsService } from 'src/infrastructure/aws/aws.service';
 import { mapProductToCollectionListResponse } from '../mappers/product.mapper';
 import { ConfigService } from '@nestjs/config';
+import { InventoryStockService } from 'src/domains/commerce/inventory/services/inventory-stock.service';
 type CollectionCategory = {
     id: string;
     name: string;
@@ -31,7 +32,8 @@ export declare class ProductsService {
     private readonly linkedProductsService;
     private readonly aws;
     private readonly configService;
-    constructor(db: db, cache: CacheService, auditService: AuditService, categoryService: CategoriesService, linkedProductsService: LinkedProductsService, aws: AwsService, configService: ConfigService);
+    private readonly inventoryService;
+    constructor(db: db, cache: CacheService, auditService: AuditService, categoryService: CategoriesService, linkedProductsService: LinkedProductsService, aws: AwsService, configService: ConfigService, inventoryService: InventoryStockService);
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;
@@ -116,6 +118,7 @@ export declare class ProductsService {
         description: any;
         status: any;
         productType: any;
+        moq: any;
         images: {
             id: any;
             url: any;
@@ -204,10 +207,6 @@ export declare class ProductsService {
         })[];
     }>;
     listProductsGroupedUnderParentCategorySlug(companyId: string, storeId: string, parentSlug: string, query: ProductQueryDto): Promise<{
-        parent: null;
-        groups: never[];
-        exploreMore: never[];
-    } | {
         parent: {
             id: any;
             name: any;
@@ -260,6 +259,11 @@ export declare class ProductsService {
             slug: any;
             imageUrl: string | null;
         })[];
+    } | {
+        parent: null;
+        groups: never[];
+        exploreMore: never[];
     }>;
+    private ensureSkuUnique;
 }
 export {};

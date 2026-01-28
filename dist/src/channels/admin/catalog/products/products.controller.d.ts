@@ -44,6 +44,7 @@ export declare class ProductsController extends BaseController {
         description: any;
         status: any;
         productType: any;
+        moq: any;
         images: {
             id: any;
             url: any;

@@ -244,6 +244,7 @@ function mapProductToDetailResponse(product) {
         name: product.name,
         slug: product.slug,
         permalink: buildPermalink(product.slug),
+        moq: product.moq ?? 1,
         type: isVariable ? 'variable' : 'simple',
         price: String(isVariable ? minEffective : simpleOnSale ? simpleSale : simpleRegular),
         regular_price: String(isVariable ? minRegular : simpleRegular),

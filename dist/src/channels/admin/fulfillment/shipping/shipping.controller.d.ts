@@ -30,8 +30,8 @@ export declare class ShippingController extends BaseController {
         companyId: string;
         storeId: string;
         description: string | null;
-        priority: number;
         metadata: Record<string, any> | null;
+        priority: number;
     }>;
     updateZone(user: User, zoneId: string, dto: Partial<CreateZoneDto>, ip: string): Promise<{
         id: string;
@@ -116,11 +116,11 @@ export declare class ShippingController extends BaseController {
         zoneId: string;
         name: string;
         flatAmount: string | null;
-        calc: "flat" | "weight";
+        calc: "weight" | "flat";
         isDefault: boolean;
         isActive: boolean;
         priority: number;
-        type: "flat" | "weight" | "price";
+        type: "weight" | "flat" | "price";
     }[]>;
     createRate(user: User, dto: CreateRateDto, ip: string): Promise<{
         id: string;
@@ -129,10 +129,10 @@ export declare class ShippingController extends BaseController {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        type: "flat" | "weight" | "price";
+        metadata: Record<string, any> | null;
+        type: "weight" | "flat" | "price";
         isDefault: boolean;
         priority: number;
-        metadata: Record<string, any> | null;
         zoneId: string;
         flatAmount: string | null;
         minOrderSubtotal: string | null;
@@ -144,7 +144,7 @@ export declare class ShippingController extends BaseController {
         carrierServiceName: string | null;
         minDeliveryDays: number | null;
         maxDeliveryDays: number | null;
-        calc: "flat" | "weight";
+        calc: "weight" | "flat";
     }>;
     updateRate(user: User, rateId: string, dto: UpdateRateDto, ip: string): Promise<{
         id: string;
@@ -153,7 +153,7 @@ export declare class ShippingController extends BaseController {
         zoneId: string;
         name: string;
         isActive: boolean;
-        type: "flat" | "weight" | "price";
+        type: "weight" | "flat" | "price";
         flatAmount: string | null;
         minOrderSubtotal: string | null;
         maxOrderSubtotal: string | null;
@@ -165,7 +165,7 @@ export declare class ShippingController extends BaseController {
         minDeliveryDays: number | null;
         maxDeliveryDays: number | null;
         priority: number;
-        calc: "flat" | "weight";
+        calc: "weight" | "flat";
         metadata: Record<string, any> | null;
         createdAt: Date;
         updatedAt: Date;
@@ -226,8 +226,8 @@ export declare class ShippingController extends BaseController {
             companyId: string;
             storeId: string;
             description: string | null;
-            priority: number;
             metadata: Record<string, any> | null;
+            priority: number;
         };
         rate: null;
         amount: string;
@@ -241,8 +241,8 @@ export declare class ShippingController extends BaseController {
             companyId: string;
             storeId: string;
             description: string | null;
-            priority: number;
             metadata: Record<string, any> | null;
+            priority: number;
         };
         rate: {
             id: string;
@@ -251,10 +251,10 @@ export declare class ShippingController extends BaseController {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            type: "flat" | "weight" | "price";
+            metadata: Record<string, any> | null;
+            type: "weight" | "flat" | "price";
             isDefault: boolean;
             priority: number;
-            metadata: Record<string, any> | null;
             zoneId: string;
             flatAmount: string | null;
             minOrderSubtotal: string | null;
@@ -266,7 +266,7 @@ export declare class ShippingController extends BaseController {
             carrierServiceName: string | null;
             minDeliveryDays: number | null;
             maxDeliveryDays: number | null;
-            calc: "flat" | "weight";
+            calc: "weight" | "flat";
         };
         amount: string;
     }>;

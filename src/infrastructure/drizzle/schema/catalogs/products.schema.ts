@@ -8,6 +8,7 @@ import {
   uniqueIndex,
   index,
   jsonb,
+  integer,
 } from 'drizzle-orm/pg-core';
 import { companies } from '../companies/companies.schema';
 import { productStatusEnum, productTypeEnum } from '../enum.schema';
@@ -32,6 +33,7 @@ export const products = pgTable(
     description: text('description'),
 
     slug: text('slug').notNull(),
+    moq: integer('moq').notNull().default(1),
 
     status: productStatusEnum('status').notNull().default('draft'),
     isGiftCard: boolean('is_gift_card').notNull().default(false),

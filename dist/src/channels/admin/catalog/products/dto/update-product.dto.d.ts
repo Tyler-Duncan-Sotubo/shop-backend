@@ -22,4 +22,15 @@ export declare class UpdateProductDto {
     links?: Partial<Record<ProductLinkType, string[]>>;
     images?: UpdateProductImageDto[];
     defaultImageIndex?: number;
+    moq?: number;
+    sku?: string;
+    barcode?: string;
+    regularPrice?: string;
+    salePrice?: string;
+    stockQuantity?: string;
+    lowStockThreshold?: string;
+    weight?: string;
+    length?: string;
+    width?: string;
+    height?: string;
 }

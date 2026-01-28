@@ -18,6 +18,7 @@ exports.products = (0, pg_core_1.pgTable)('products', {
     name: (0, pg_core_1.text)('name').notNull(),
     description: (0, pg_core_1.text)('description'),
     slug: (0, pg_core_1.text)('slug').notNull(),
+    moq: (0, pg_core_1.integer)('moq').notNull().default(1),
     status: (0, enum_schema_1.productStatusEnum)('status').notNull().default('draft'),
     isGiftCard: (0, pg_core_1.boolean)('is_gift_card').notNull().default(false),
     productType: (0, enum_schema_1.productTypeEnum)('product_type').notNull().default('simple'),

@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "moq" integer DEFAULT 1 NOT NULL;

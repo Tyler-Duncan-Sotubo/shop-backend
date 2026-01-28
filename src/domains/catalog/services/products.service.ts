@@ -42,6 +42,7 @@ import {
   mapProductToCollectionListResponse,
 } from '../mappers/product.mapper';
 import { ConfigService } from '@nestjs/config';
+import { InventoryStockService } from 'src/domains/commerce/inventory/services/inventory-stock.service';
 
 type CollectionCategory = {
   id: string;
@@ -70,6 +71,7 @@ export class ProductsService {
     private readonly linkedProductsService: LinkedProductsService,
     private readonly aws: AwsService,
     private readonly configService: ConfigService,
+    private readonly inventoryService: InventoryStockService,
   ) {}
 
   // ----------------- Helpers -----------------
@@ -211,7 +213,6 @@ export class ProductsService {
   //////////////////////////////////////////////////////
   // 4) Update createProduct(): accept keys/urls        //
   //////////////////////////////////////////////////////
-
   async createProduct(
     companyId: string,
     dto: CreateProductDto,
@@ -237,7 +238,20 @@ export class ProductsService {
     const safeDefaultIndex =
       productType === 'variable' ? 0 : (dto.defaultImageIndex ?? 0);
 
+    // ✅ If simple product, ensure SKU uniqueness (if provided)
+    // (Matches createVariant() behavior)
+    if (productType === 'simple' && dto.sku?.trim()) {
+      await this.ensureSkuUnique(companyId, dto.sku.trim());
+    }
+
+    // We’ll use this to decide if we need to sync the sales category after creation
+    const shouldSyncSalesCategory =
+      productType === 'simple' &&
+      dto.salePrice != null &&
+      String(dto.salePrice).trim() !== '';
+
     const created = await this.db.transaction(async (tx) => {
+      // 1) Create product shell
       const [product] = await tx
         .insert(products)
         .values({
@@ -250,13 +264,16 @@ export class ProductsService {
           productType,
           isGiftCard: dto.isGiftCard ?? false,
           seoTitle: dto.seoTitle ?? null,
+          moq: dto.moq ?? 1,
           seoDescription: dto.seoDescription ?? null,
           metadata: dto.metadata ?? {},
         })
         .returning()
         .execute();
 
-      // ✅ Images: from S3 key (client uploaded)
+      let defaultImageId: string | null = null;
+
+      // 2) Images (product-level images from S3 key)
       if (dto.images?.length) {
         const inserted: Array<{ id: string }> = [];
 
@@ -264,13 +281,12 @@ export class ProductsService {
           const image = dto.images[i];
           const position = image.position ?? i;
 
-          // expect dto.images[i].key from client
           const img = await this.createProductImageFromS3Key({
             tx,
             companyId,
             product,
             image: {
-              key: image.key, // ✅ new
+              key: image.key,
               mimeType: image.mimeType,
               fileName: image.fileName,
               altText: image.altText,
@@ -282,6 +298,7 @@ export class ProductsService {
         }
 
         const chosen = inserted[safeDefaultIndex] ?? inserted[0];
+        defaultImageId = chosen?.id ?? null;
 
         if (chosen) {
           await tx
@@ -296,7 +313,7 @@ export class ProductsService {
         }
       }
 
-      // categories
+      // 3) Categories
       if (uniqueCategoryIds.length) {
         await this.categoryService.assertCategoriesBelongToCompany(
           companyId,
@@ -315,7 +332,7 @@ export class ProductsService {
           .execute();
       }
 
-      // linked products
+      // 4) Linked products
       const allLinkedIds: string[] = [];
       for (const ids of Object.values(linksByType)) {
         if (Array.isArray(ids)) allLinkedIds.push(...ids);
@@ -358,8 +375,88 @@ export class ProductsService {
         }
       }
 
+      // 5) ✅ If SIMPLE: create default variant + inventory
+      if (productType === 'simple') {
+        // Variant metadata: keep it separate from product metadata
+        const variantMetadata: Record<string, any> = {};
+        if (dto.lowStockThreshold !== undefined) {
+          // follow your existing convention used in updateVariant()
+          variantMetadata.low_stock_threshold = dto.lowStockThreshold;
+        }
+
+        const [variant] = await tx
+          .insert(productVariants)
+          .values({
+            companyId,
+            productId: product.id,
+            storeId: dto.storeId,
+            imageId: defaultImageId,
+            // Simple product default variant
+            title: 'Default',
+            sku: dto.sku?.trim() ? dto.sku.trim() : null,
+            barcode: dto.barcode?.trim() ? dto.barcode.trim() : null,
+
+            option1: null,
+            option2: null,
+            option3: null,
+
+            isActive: true,
+
+            // Pricing
+            regularPrice: dto.regularPrice ?? '0',
+            salePrice: dto.salePrice?.trim() ? dto.salePrice.trim() : null,
+            currency: 'NGN',
+
+            // Dimensions
+            weight: dto.weight?.trim() ? dto.weight.trim() : null,
+            length: dto.length?.trim() ? dto.length.trim() : null,
+            width: dto.width?.trim() ? dto.width.trim() : null,
+            height: dto.height?.trim() ? dto.height.trim() : null,
+
+            metadata: variantMetadata,
+          })
+          .returning()
+          .execute();
+
+        // Inventory is managed via inventoryService in your system
+        // Use the same semantics as updateVariant: stockQuantity + safetyStock
+        const stockQty =
+          dto.stockQuantity !== undefined &&
+          String(dto.stockQuantity).trim() !== ''
+            ? Number(dto.stockQuantity)
+            : 0;
+
+        const safetyStock =
+          dto.lowStockThreshold !== undefined &&
+          String(dto.lowStockThreshold).trim() !== ''
+            ? Number(dto.lowStockThreshold)
+            : 0;
+
+        // If your inventory service expects numbers, this is fine.
+        // If it expects strings, adjust accordingly.
+        await this.inventoryService.setInventoryLevel(
+          companyId,
+          variant.id,
+          stockQty,
+          safetyStock,
+          user,
+          ip,
+          { tx, skipCacheBump: true, skipAudit: true },
+        );
+      }
+
       return product;
     });
+
+    // ✅ After TX: sync sales category if simple product was created with a sale price
+    if (shouldSyncSalesCategory) {
+      // we already have dto.storeId, no need to re-load product
+      await this.categoryService.syncSalesCategoryForProduct({
+        companyId,
+        storeId: dto.storeId,
+        productId: created.id,
+      });
+    }
 
     await this.cache.bumpCompanyVersion(companyId);
 
@@ -376,10 +473,22 @@ export class ProductsService {
           productId: created.id,
           name: created.name,
           status: created.status,
+          productType,
           categoryIds: uniqueCategoryIds,
           links: dto.links ?? {},
           imagesCount: dto.images?.length ?? 0,
           defaultImageIndex: safeDefaultIndex,
+
+          // ✅ Helpful for audits when simple products include pricing/inventory
+          ...(productType === 'simple'
+            ? {
+                sku: dto.sku ?? null,
+                regularPrice: dto.regularPrice ?? '0',
+                salePrice: dto.salePrice ?? null,
+                stockQuantity: dto.stockQuantity ?? null,
+                lowStockThreshold: dto.lowStockThreshold ?? null,
+              }
+            : {}),
         },
       });
     }
@@ -981,7 +1090,7 @@ export class ProductsService {
             metadata: products.metadata,
             createdAt: products.createdAt,
             updatedAt: products.updatedAt,
-
+            moq: products.moq,
             defaultImageId: products.defaultImageId,
           })
           .from(products)
@@ -1080,7 +1189,7 @@ export class ProductsService {
           description: product.description ?? null,
           status: product.status,
           productType: product.productType,
-
+          moq: product.moq,
           images: images.map((img) => ({
             id: img.id,
             url: img.url,
@@ -1117,7 +1226,9 @@ export class ProductsService {
   ) {
     const existing = await this.findProductByIdOrThrow(companyId, productId);
 
-    // slug logic
+    // -----------------------
+    // Slug logic (unchanged)
+    // -----------------------
     let slug = existing.slug;
     if (dto.slug) {
       slug = slugify(dto.slug);
@@ -1127,9 +1238,12 @@ export class ProductsService {
     }
 
     const updated = await this.db.transaction(async (tx) => {
-      // 1) update product fields
+      // Decide next product type
       const nextProductType = dto.productType ?? existing.productType;
 
+      // -----------------------
+      // 1) Update product fields
+      // -----------------------
       const [p] = await tx
         .update(products)
         .set({
@@ -1141,6 +1255,7 @@ export class ProductsService {
           productType: nextProductType,
           seoTitle: dto.seoTitle ?? existing.seoTitle,
           seoDescription: dto.seoDescription ?? existing.seoDescription,
+          moq: dto.moq ?? existing.moq,
           metadata: dto.metadata ?? existing.metadata,
           updatedAt: new Date(),
         })
@@ -1158,11 +1273,16 @@ export class ProductsService {
       if (dto.images) {
         const maxImages = nextProductType === 'variable' ? 1 : 9;
 
-        const incoming = Array.isArray(dto.images)
-          ? dto.images.slice(0, maxImages)
-          : [];
+        // ✅ match createProduct behavior: throw instead of silently truncating
+        if (Array.isArray(dto.images) && dto.images.length > maxImages) {
+          throw new BadRequestException(
+            `Too many images. Max is ${maxImages}.`,
+          );
+        }
 
-        // Load current (non-deleted) images for this product
+        const incoming = Array.isArray(dto.images) ? dto.images : [];
+
+        // Load current (non-deleted) images
         const currentImages = await tx
           .select({
             id: productImages.id,
@@ -1180,7 +1300,6 @@ export class ProductsService {
           .orderBy(productImages.position)
           .execute();
 
-        // Insert new images (keys already uploaded by client)
         const inserted: Array<{ id: string; url: string; position: number }> =
           [];
 
@@ -1191,20 +1310,16 @@ export class ProductsService {
             throw new BadRequestException('Image must include key or url');
           }
 
-          // prefer key (safe). if only url provided, extract key from it.
           const key =
             img.key ?? (img.url ? this.aws.extractKeyFromUrl(img.url) : null);
 
           if (!key) throw new BadRequestException('Invalid image url/key');
 
-          // (recommended) enforce prefix ownership
-          // choose your key convention; example uses companies/<companyId>/products/
           const prefix = `companies/${companyId}/products/`;
           if (!key.startsWith(prefix) || key.includes('..')) {
             throw new BadRequestException('Invalid image key');
           }
 
-          // ensure object exists
           try {
             await this.aws.assertObjectExists(key);
           } catch {
@@ -1215,8 +1330,6 @@ export class ProductsService {
 
           const position = typeof img.position === 'number' ? img.position : i;
 
-          // optional: move tmp -> final folder
-          // if you don't use tmp keys, keep as-is
           const isTmp = key.includes('/tmp/');
           const safeProvidedName = this.sanitizeFileName(img.fileName);
 
@@ -1247,7 +1360,6 @@ export class ProductsService {
           const mimeType =
             (img.mimeType ?? 'image/jpeg').trim() || 'image/jpeg';
 
-          // insert row
           const [row] = await tx
             .insert(productImages)
             .values({
@@ -1258,12 +1370,10 @@ export class ProductsService {
               altText: img.altText ?? `${p.name} product image`,
               fileName: img.fileName ?? finalFileName ?? null,
               mimeType,
-              // size/width/height not available without reading bytes; keep null
               size: null,
               width: null,
               height: null,
               position,
-              // storageKey: moved.key, // ✅ if you add this column later
             })
             .returning()
             .execute();
@@ -1271,7 +1381,6 @@ export class ProductsService {
           inserted.push({ id: row.id, url: row.url, position });
         }
 
-        // default index: variable => 0 always
         const safeDefaultIndex =
           nextProductType === 'variable' ? 0 : (dto.defaultImageIndex ?? 0);
 
@@ -1288,7 +1397,7 @@ export class ProductsService {
           )
           .execute();
 
-        // Soft-delete old images rows
+        // Soft-delete old image rows
         if (currentImages.length) {
           await tx
             .update(productImages)
@@ -1302,17 +1411,45 @@ export class ProductsService {
             )
             .execute();
 
-          // Best-effort S3 cleanup for old images
+          // Best-effort S3 cleanup
           for (const old of currentImages) {
             const oldKey = this.aws.extractKeyFromUrl(old.url);
             if (!oldKey) continue;
-
-            // if you use strict prefixes, enforce it here too
             try {
               await this.aws.deleteFromS3(oldKey);
             } catch {
-              // don't block update
+              // ignore
             }
+          }
+        }
+
+        // ✅ If simple: keep default variant image in sync (optional but recommended)
+        if (nextProductType === 'simple') {
+          const defaultVariant = await tx
+            .select({ id: productVariants.id })
+            .from(productVariants)
+            .where(
+              and(
+                eq(productVariants.companyId, companyId),
+                eq(productVariants.productId, productId),
+                eq(productVariants.title, 'Default'),
+              ),
+            )
+            .limit(1)
+            .execute()
+            .then((r) => r[0]);
+
+          if (defaultVariant) {
+            await tx
+              .update(productVariants)
+              .set({ imageId: chosen?.id ?? null, updatedAt: new Date() })
+              .where(
+                and(
+                  eq(productVariants.companyId, companyId),
+                  eq(productVariants.id, defaultVariant.id),
+                ),
+              )
+              .execute();
           }
         }
       }
@@ -1411,8 +1548,204 @@ export class ProductsService {
         }
       }
 
+      // ---------------------------------------------------------------------
+      // 4) ✅ SIMPLE product: upsert Default variant (no duplicate creation)
+      // ---------------------------------------------------------------------
+      if (nextProductType === 'simple') {
+        // find existing default variant
+        const defaultVariant = await tx
+          .select({
+            id: productVariants.id,
+            sku: productVariants.sku,
+          })
+          .from(productVariants)
+          .where(
+            and(
+              eq(productVariants.companyId, companyId),
+              eq(productVariants.productId, productId),
+              eq(productVariants.title, 'Default'),
+            ),
+          )
+          .limit(1)
+          .execute()
+          .then((r) => r[0]);
+
+        // SKU uniqueness if sku provided & changed
+        const incomingSku = dto.sku?.trim() ? dto.sku.trim() : undefined;
+        if (incomingSku) {
+          const currentSku = defaultVariant?.sku ?? null;
+          if (!currentSku || currentSku !== incomingSku) {
+            await this.ensureSkuUnique(companyId, incomingSku);
+          }
+        }
+
+        // variant metadata (keep separate from product metadata)
+        const variantMetadataPatch: Record<string, any> = {};
+        if (dto.lowStockThreshold !== undefined) {
+          variantMetadataPatch.low_stock_threshold = dto.lowStockThreshold;
+        }
+
+        // Get product default image for variant image sync
+        const productRow = await tx
+          .select({ defaultImageId: products.defaultImageId })
+          .from(products)
+          .where(
+            and(eq(products.companyId, companyId), eq(products.id, productId)),
+          )
+          .limit(1)
+          .execute()
+          .then((r) => r[0]);
+
+        let variantId: string;
+
+        if (defaultVariant) {
+          // update existing default variant
+          const updates: Partial<typeof productVariants.$inferInsert> = {
+            updatedAt: new Date(),
+          };
+
+          // Only update fields if provided (so partial update doesn't wipe)
+          if (dto.sku !== undefined) updates.sku = incomingSku ?? null;
+          if (dto.barcode !== undefined)
+            updates.barcode = dto.barcode?.trim() ? dto.barcode.trim() : null;
+
+          if (dto.regularPrice !== undefined)
+            updates.regularPrice = dto.regularPrice ?? '0';
+          if (dto.salePrice !== undefined)
+            updates.salePrice = dto.salePrice?.trim()
+              ? dto.salePrice.trim()
+              : null;
+
+          if (dto.weight !== undefined)
+            updates.weight = dto.weight?.trim() ? dto.weight.trim() : null;
+          if (dto.length !== undefined)
+            updates.length = dto.length?.trim() ? dto.length.trim() : null;
+          if (dto.width !== undefined)
+            updates.width = dto.width?.trim() ? dto.width.trim() : null;
+          if (dto.height !== undefined)
+            updates.height = dto.height?.trim() ? dto.height.trim() : null;
+
+          // If you want to keep variant image aligned with product default image:
+          if (productRow) updates.imageId = productRow.defaultImageId ?? null;
+
+          // Merge metadata if needed
+          if (dto.lowStockThreshold !== undefined) {
+            // pull existing metadata to merge
+            const current = await tx
+              .select({ metadata: productVariants.metadata })
+              .from(productVariants)
+              .where(
+                and(
+                  eq(productVariants.companyId, companyId),
+                  eq(productVariants.id, defaultVariant.id),
+                ),
+              )
+              .limit(1)
+              .execute()
+              .then((r) => r[0]);
+
+            updates.metadata = {
+              ...(current?.metadata ?? {}),
+              ...variantMetadataPatch,
+            };
+          }
+
+          await tx
+            .update(productVariants)
+            .set(updates)
+            .where(
+              and(
+                eq(productVariants.companyId, companyId),
+                eq(productVariants.id, defaultVariant.id),
+              ),
+            )
+            .execute();
+
+          variantId = defaultVariant.id;
+        } else {
+          // create default variant only if missing
+          const [variant] = await tx
+            .insert(productVariants)
+            .values({
+              companyId,
+              productId,
+              storeId: p.storeId,
+              imageId: productRow?.defaultImageId ?? null,
+              title: 'Default',
+              sku: incomingSku ?? null,
+              barcode: dto.barcode?.trim() ? dto.barcode.trim() : null,
+              option1: null,
+              option2: null,
+              option3: null,
+              isActive: true,
+              regularPrice: dto.regularPrice ?? '0',
+              salePrice: dto.salePrice?.trim() ? dto.salePrice.trim() : null,
+              currency: 'NGN',
+              weight: dto.weight?.trim() ? dto.weight.trim() : null,
+              length: dto.length?.trim() ? dto.length.trim() : null,
+              width: dto.width?.trim() ? dto.width.trim() : null,
+              height: dto.height?.trim() ? dto.height.trim() : null,
+              metadata: variantMetadataPatch,
+            })
+            .returning()
+            .execute();
+
+          variantId = variant.id;
+        }
+
+        // Inventory: only update when caller sends values
+        const shouldUpdateInventory =
+          dto.stockQuantity !== undefined ||
+          dto.lowStockThreshold !== undefined;
+
+        if (shouldUpdateInventory) {
+          const stockQty =
+            dto.stockQuantity !== undefined &&
+            String(dto.stockQuantity).trim() !== ''
+              ? Number(dto.stockQuantity)
+              : 0;
+
+          const safetyStock =
+            dto.lowStockThreshold !== undefined &&
+            String(dto.lowStockThreshold).trim() !== ''
+              ? Number(dto.lowStockThreshold)
+              : 0;
+
+          await this.inventoryService.setInventoryLevel(
+            companyId,
+            variantId,
+            stockQty,
+            safetyStock,
+            user,
+            ip,
+            { tx, skipCacheBump: true, skipAudit: true },
+          );
+        }
+      }
+
       return p;
     });
+
+    // ---------------------------------------------------------------------
+    // After TX: sales category sync (optional but matches createProduct)
+    // ---------------------------------------------------------------------
+    const finalProductType = dto.productType ?? existing.productType;
+
+    // if salePrice was provided in this update, use it to decide.
+    // otherwise, you might need to read the variant price to know whether it is now on sale.
+    const shouldSyncSalesCategory =
+      finalProductType === 'simple' &&
+      dto.salePrice !== undefined &&
+      dto.salePrice != null &&
+      String(dto.salePrice).trim() !== '';
+
+    if (shouldSyncSalesCategory) {
+      await this.categoryService.syncSalesCategoryForProduct({
+        companyId,
+        storeId: updated.storeId,
+        productId: updated.id,
+      });
+    }
 
     await this.cache.bumpCompanyVersion(companyId);
 
@@ -1457,6 +1790,16 @@ export class ProductsService {
             (dto.productType ?? existing.productType) === 'variable'
               ? 0
               : dto.defaultImageIndex,
+          // helpful audit fields for simple
+          ...(finalProductType === 'simple'
+            ? {
+                sku: dto.sku ?? undefined,
+                regularPrice: dto.regularPrice ?? undefined,
+                salePrice: dto.salePrice ?? undefined,
+                stockQuantity: dto.stockQuantity ?? undefined,
+                lowStockThreshold: dto.lowStockThreshold ?? undefined,
+              }
+            : {}),
         },
       });
     }
@@ -2336,5 +2679,32 @@ export class ProductsService {
       parent.id,
       query,
     );
+  }
+
+  private async ensureSkuUnique(
+    companyId: string,
+    sku: string | undefined,
+    excludeVariantId?: string,
+  ) {
+    if (!sku) return;
+
+    const existing = await this.db
+      .select({ id: productVariants.id })
+      .from(productVariants)
+      .where(
+        and(
+          eq(productVariants.companyId, companyId),
+          eq(productVariants.sku, sku),
+        ),
+      )
+      .execute();
+
+    const conflict = existing.find((v) => v.id !== excludeVariantId);
+
+    if (conflict) {
+      throw new ConflictException(
+        `SKU "${sku}" already exists for this company`,
+      );
+    }
   }
 }

@@ -44,8 +44,8 @@ export declare class MediaService {
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        storeId: string;
         size: number | null;
+        storeId: string;
         width: number | null;
         height: number | null;
         fileName: string;
@@ -62,8 +62,8 @@ export declare class MediaService {
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        storeId: string;
         size: number | null;
+        storeId: string;
         width: number | null;
         height: number | null;
         fileName: string;

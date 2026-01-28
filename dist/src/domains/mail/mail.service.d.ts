@@ -36,9 +36,9 @@ export declare class MailService {
         updatedAt: Date;
         companyId: string;
         storeId: string | null;
-        email: string;
         status: string;
         metadata: Record<string, any> | null;
+        email: string;
         source: string | null;
     }>;
     updateSubscriberStatus(companyId: string, id: string, status: 'subscribed' | 'unsubscribed' | 'pending'): Promise<{
@@ -84,8 +84,6 @@ export declare class MailService {
         updatedAt: Date;
         companyId: string;
         storeId: string | null;
-        phone: string | null;
-        email: string;
         status: string;
         metadata: {
             [k: string]: any;
@@ -94,6 +92,8 @@ export declare class MailService {
             pageUrl?: string;
             referrer?: string;
         } | null;
+        phone: string | null;
+        email: string;
         message: string;
         company: string | null;
         subject: string | null;
@@ -129,9 +129,9 @@ export declare class MailService {
         updatedAt: Date;
         companyId: string;
         storeId: string | null;
-        email: string;
         status: string;
         metadata: Record<string, any> | null;
+        email: string;
         source: string | null;
     }>;
     createContactMessage(companyId: string, dto: {
@@ -149,8 +149,6 @@ export declare class MailService {
         updatedAt: Date;
         companyId: string;
         storeId: string | null;
-        phone: string | null;
-        email: string;
         status: string;
         metadata: {
             [k: string]: any;
@@ -159,6 +157,8 @@ export declare class MailService {
             pageUrl?: string;
             referrer?: string;
         } | null;
+        phone: string | null;
+        email: string;
         message: string;
         company: string | null;
         subject: string | null;

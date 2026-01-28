@@ -25,8 +25,9 @@ const linked_products_service_1 = require("./linked-products.service");
 const aws_service_1 = require("../../../infrastructure/aws/aws.service");
 const product_mapper_1 = require("../mappers/product.mapper");
 const config_1 = require("@nestjs/config");
+const inventory_stock_service_1 = require("../../commerce/inventory/services/inventory-stock.service");
 let ProductsService = class ProductsService {
-    constructor(db, cache, auditService, categoryService, linkedProductsService, aws, configService) {
+    constructor(db, cache, auditService, categoryService, linkedProductsService, aws, configService, inventoryService) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
@@ -34,6 +35,7 @@ let ProductsService = class ProductsService {
         this.linkedProductsService = linkedProductsService;
         this.aws = aws;
         this.configService = configService;
+        this.inventoryService = inventoryService;
     }
     async assertCompanyExists(companyId) {
         const company = await this.db.query.companies.findFirst({
@@ -144,6 +146,12 @@ let ProductsService = class ProductsService {
             throw new common_1.BadRequestException(`Too many images. Max is ${maxImages}.`);
         }
         const safeDefaultIndex = productType === 'variable' ? 0 : (dto.defaultImageIndex ?? 0);
+        if (productType === 'simple' && dto.sku?.trim()) {
+            await this.ensureSkuUnique(companyId, dto.sku.trim());
+        }
+        const shouldSyncSalesCategory = productType === 'simple' &&
+            dto.salePrice != null &&
+            String(dto.salePrice).trim() !== '';
         const created = await this.db.transaction(async (tx) => {
             const [product] = await tx
                 .insert(schema_1.products)
@@ -157,11 +165,13 @@ let ProductsService = class ProductsService {
                 productType,
                 isGiftCard: dto.isGiftCard ?? false,
                 seoTitle: dto.seoTitle ?? null,
+                moq: dto.moq ?? 1,
                 seoDescription: dto.seoDescription ?? null,
                 metadata: dto.metadata ?? {},
             })
                 .returning()
                 .execute();
+            let defaultImageId = null;
             if (dto.images?.length) {
                 const inserted = [];
                 for (let i = 0; i < dto.images.length; i++) {
@@ -182,6 +192,7 @@ let ProductsService = class ProductsService {
                     inserted.push(img);
                 }
                 const chosen = inserted[safeDefaultIndex] ?? inserted[0];
+                defaultImageId = chosen?.id ?? null;
                 if (chosen) {
                     await tx
                         .update(schema_1.products)
@@ -227,8 +238,55 @@ let ProductsService = class ProductsService {
                     await tx.insert(schema_1.productLinks).values(rowsToInsert).execute();
                 }
             }
+            if (productType === 'simple') {
+                const variantMetadata = {};
+                if (dto.lowStockThreshold !== undefined) {
+                    variantMetadata.low_stock_threshold = dto.lowStockThreshold;
+                }
+                const [variant] = await tx
+                    .insert(schema_1.productVariants)
+                    .values({
+                    companyId,
+                    productId: product.id,
+                    storeId: dto.storeId,
+                    imageId: defaultImageId,
+                    title: 'Default',
+                    sku: dto.sku?.trim() ? dto.sku.trim() : null,
+                    barcode: dto.barcode?.trim() ? dto.barcode.trim() : null,
+                    option1: null,
+                    option2: null,
+                    option3: null,
+                    isActive: true,
+                    regularPrice: dto.regularPrice ?? '0',
+                    salePrice: dto.salePrice?.trim() ? dto.salePrice.trim() : null,
+                    currency: 'NGN',
+                    weight: dto.weight?.trim() ? dto.weight.trim() : null,
+                    length: dto.length?.trim() ? dto.length.trim() : null,
+                    width: dto.width?.trim() ? dto.width.trim() : null,
+                    height: dto.height?.trim() ? dto.height.trim() : null,
+                    metadata: variantMetadata,
+                })
+                    .returning()
+                    .execute();
+                const stockQty = dto.stockQuantity !== undefined &&
+                    String(dto.stockQuantity).trim() !== ''
+                    ? Number(dto.stockQuantity)
+                    : 0;
+                const safetyStock = dto.lowStockThreshold !== undefined &&
+                    String(dto.lowStockThreshold).trim() !== ''
+                    ? Number(dto.lowStockThreshold)
+                    : 0;
+                await this.inventoryService.setInventoryLevel(companyId, variant.id, stockQty, safetyStock, user, ip, { tx, skipCacheBump: true, skipAudit: true });
+            }
             return product;
         });
+        if (shouldSyncSalesCategory) {
+            await this.categoryService.syncSalesCategoryForProduct({
+                companyId,
+                storeId: dto.storeId,
+                productId: created.id,
+            });
+        }
         await this.cache.bumpCompanyVersion(companyId);
         if (user && ip) {
             await this.auditService.logAction({
@@ -243,10 +301,20 @@ let ProductsService = class ProductsService {
                     productId: created.id,
                     name: created.name,
                     status: created.status,
+                    productType,
                     categoryIds: uniqueCategoryIds,
                     links: dto.links ?? {},
                     imagesCount: dto.images?.length ?? 0,
                     defaultImageIndex: safeDefaultIndex,
+                    ...(productType === 'simple'
+                        ? {
+                            sku: dto.sku ?? null,
+                            regularPrice: dto.regularPrice ?? '0',
+                            salePrice: dto.salePrice ?? null,
+                            stockQuantity: dto.stockQuantity ?? null,
+                            lowStockThreshold: dto.lowStockThreshold ?? null,
+                        }
+                        : {}),
                 },
             });
         }
@@ -630,6 +698,7 @@ let ProductsService = class ProductsService {
                 metadata: schema_1.products.metadata,
                 createdAt: schema_1.products.createdAt,
                 updatedAt: schema_1.products.updatedAt,
+                moq: schema_1.products.moq,
                 defaultImageId: schema_1.products.defaultImageId,
             })
                 .from(schema_1.products)
@@ -693,6 +762,7 @@ let ProductsService = class ProductsService {
                 description: product.description ?? null,
                 status: product.status,
                 productType: product.productType,
+                moq: product.moq,
                 images: images.map((img) => ({
                     id: img.id,
                     url: img.url,
@@ -730,6 +800,7 @@ let ProductsService = class ProductsService {
                 productType: nextProductType,
                 seoTitle: dto.seoTitle ?? existing.seoTitle,
                 seoDescription: dto.seoDescription ?? existing.seoDescription,
+                moq: dto.moq ?? existing.moq,
                 metadata: dto.metadata ?? existing.metadata,
                 updatedAt: new Date(),
             })
@@ -740,9 +811,10 @@ let ProductsService = class ProductsService {
                 throw new common_1.NotFoundException('Product not found');
             if (dto.images) {
                 const maxImages = nextProductType === 'variable' ? 1 : 9;
-                const incoming = Array.isArray(dto.images)
-                    ? dto.images.slice(0, maxImages)
-                    : [];
+                if (Array.isArray(dto.images) && dto.images.length > maxImages) {
+                    throw new common_1.BadRequestException(`Too many images. Max is ${maxImages}.`);
+                }
+                const incoming = Array.isArray(dto.images) ? dto.images : [];
                 const currentImages = await tx
                     .select({
                     id: schema_1.productImages.id,
@@ -840,6 +912,22 @@ let ProductsService = class ProductsService {
                         }
                     }
                 }
+                if (nextProductType === 'simple') {
+                    const defaultVariant = await tx
+                        .select({ id: schema_1.productVariants.id })
+                        .from(schema_1.productVariants)
+                        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.productId, productId), (0, drizzle_orm_1.eq)(schema_1.productVariants.title, 'Default')))
+                        .limit(1)
+                        .execute()
+                        .then((r) => r[0]);
+                    if (defaultVariant) {
+                        await tx
+                            .update(schema_1.productVariants)
+                            .set({ imageId: chosen?.id ?? null, updatedAt: new Date() })
+                            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.id, defaultVariant.id)))
+                            .execute();
+                    }
+                }
             }
             if (dto.categoryIds) {
                 const uniqueCategoryIds = Array.from(new Set(dto.categoryIds ?? []));
@@ -893,8 +981,136 @@ let ProductsService = class ProductsService {
                     await tx.insert(schema_1.productLinks).values(rowsToInsert).execute();
                 }
             }
+            if (nextProductType === 'simple') {
+                const defaultVariant = await tx
+                    .select({
+                    id: schema_1.productVariants.id,
+                    sku: schema_1.productVariants.sku,
+                })
+                    .from(schema_1.productVariants)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.productId, productId), (0, drizzle_orm_1.eq)(schema_1.productVariants.title, 'Default')))
+                    .limit(1)
+                    .execute()
+                    .then((r) => r[0]);
+                const incomingSku = dto.sku?.trim() ? dto.sku.trim() : undefined;
+                if (incomingSku) {
+                    const currentSku = defaultVariant?.sku ?? null;
+                    if (!currentSku || currentSku !== incomingSku) {
+                        await this.ensureSkuUnique(companyId, incomingSku);
+                    }
+                }
+                const variantMetadataPatch = {};
+                if (dto.lowStockThreshold !== undefined) {
+                    variantMetadataPatch.low_stock_threshold = dto.lowStockThreshold;
+                }
+                const productRow = await tx
+                    .select({ defaultImageId: schema_1.products.defaultImageId })
+                    .from(schema_1.products)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, productId)))
+                    .limit(1)
+                    .execute()
+                    .then((r) => r[0]);
+                let variantId;
+                if (defaultVariant) {
+                    const updates = {
+                        updatedAt: new Date(),
+                    };
+                    if (dto.sku !== undefined)
+                        updates.sku = incomingSku ?? null;
+                    if (dto.barcode !== undefined)
+                        updates.barcode = dto.barcode?.trim() ? dto.barcode.trim() : null;
+                    if (dto.regularPrice !== undefined)
+                        updates.regularPrice = dto.regularPrice ?? '0';
+                    if (dto.salePrice !== undefined)
+                        updates.salePrice = dto.salePrice?.trim()
+                            ? dto.salePrice.trim()
+                            : null;
+                    if (dto.weight !== undefined)
+                        updates.weight = dto.weight?.trim() ? dto.weight.trim() : null;
+                    if (dto.length !== undefined)
+                        updates.length = dto.length?.trim() ? dto.length.trim() : null;
+                    if (dto.width !== undefined)
+                        updates.width = dto.width?.trim() ? dto.width.trim() : null;
+                    if (dto.height !== undefined)
+                        updates.height = dto.height?.trim() ? dto.height.trim() : null;
+                    if (productRow)
+                        updates.imageId = productRow.defaultImageId ?? null;
+                    if (dto.lowStockThreshold !== undefined) {
+                        const current = await tx
+                            .select({ metadata: schema_1.productVariants.metadata })
+                            .from(schema_1.productVariants)
+                            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.id, defaultVariant.id)))
+                            .limit(1)
+                            .execute()
+                            .then((r) => r[0]);
+                        updates.metadata = {
+                            ...(current?.metadata ?? {}),
+                            ...variantMetadataPatch,
+                        };
+                    }
+                    await tx
+                        .update(schema_1.productVariants)
+                        .set(updates)
+                        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.id, defaultVariant.id)))
+                        .execute();
+                    variantId = defaultVariant.id;
+                }
+                else {
+                    const [variant] = await tx
+                        .insert(schema_1.productVariants)
+                        .values({
+                        companyId,
+                        productId,
+                        storeId: p.storeId,
+                        imageId: productRow?.defaultImageId ?? null,
+                        title: 'Default',
+                        sku: incomingSku ?? null,
+                        barcode: dto.barcode?.trim() ? dto.barcode.trim() : null,
+                        option1: null,
+                        option2: null,
+                        option3: null,
+                        isActive: true,
+                        regularPrice: dto.regularPrice ?? '0',
+                        salePrice: dto.salePrice?.trim() ? dto.salePrice.trim() : null,
+                        currency: 'NGN',
+                        weight: dto.weight?.trim() ? dto.weight.trim() : null,
+                        length: dto.length?.trim() ? dto.length.trim() : null,
+                        width: dto.width?.trim() ? dto.width.trim() : null,
+                        height: dto.height?.trim() ? dto.height.trim() : null,
+                        metadata: variantMetadataPatch,
+                    })
+                        .returning()
+                        .execute();
+                    variantId = variant.id;
+                }
+                const shouldUpdateInventory = dto.stockQuantity !== undefined ||
+                    dto.lowStockThreshold !== undefined;
+                if (shouldUpdateInventory) {
+                    const stockQty = dto.stockQuantity !== undefined &&
+                        String(dto.stockQuantity).trim() !== ''
+                        ? Number(dto.stockQuantity)
+                        : 0;
+                    const safetyStock = dto.lowStockThreshold !== undefined &&
+                        String(dto.lowStockThreshold).trim() !== ''
+                        ? Number(dto.lowStockThreshold)
+                        : 0;
+                    await this.inventoryService.setInventoryLevel(companyId, variantId, stockQty, safetyStock, user, ip, { tx, skipCacheBump: true, skipAudit: true });
+                }
+            }
             return p;
         });
+        const finalProductType = dto.productType ?? existing.productType;
+        const shouldSyncSalesCategory = finalProductType === 'simple' &&
+            dto.salePrice !== undefined &&
+            dto.salePrice != null &&
+            String(dto.salePrice).trim() !== '';
+        if (shouldSyncSalesCategory) {
+            await this.categoryService.syncSalesCategoryForProduct({
+                companyId,
+                storeId: updated.storeId,
+                productId: updated.id,
+            });
+        }
         await this.cache.bumpCompanyVersion(companyId);
         if (user && ip) {
             await this.auditService.logAction({
@@ -936,6 +1152,15 @@ let ProductsService = class ProductsService {
                     defaultImageIndex: (dto.productType ?? existing.productType) === 'variable'
                         ? 0
                         : dto.defaultImageIndex,
+                    ...(finalProductType === 'simple'
+                        ? {
+                            sku: dto.sku ?? undefined,
+                            regularPrice: dto.regularPrice ?? undefined,
+                            salePrice: dto.salePrice ?? undefined,
+                            stockQuantity: dto.stockQuantity ?? undefined,
+                            lowStockThreshold: dto.lowStockThreshold ?? undefined,
+                        }
+                        : {}),
                 },
             });
         }
@@ -1474,6 +1699,19 @@ let ProductsService = class ProductsService {
             return { parent: null, groups: [], exploreMore: [] };
         return this.listProductsGroupedUnderParentCategory(companyId, storeId, parent.id, query);
     }
+    async ensureSkuUnique(companyId, sku, excludeVariantId) {
+        if (!sku)
+            return;
+        const existing = await this.db
+            .select({ id: schema_1.productVariants.id })
+            .from(schema_1.productVariants)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.sku, sku)))
+            .execute();
+        const conflict = existing.find((v) => v.id !== excludeVariantId);
+        if (conflict) {
+            throw new common_1.ConflictException(`SKU "${sku}" already exists for this company`);
+        }
+    }
 };
 exports.ProductsService = ProductsService;
 exports.ProductsService = ProductsService = __decorate([
@@ -1484,6 +1722,7 @@ exports.ProductsService = ProductsService = __decorate([
         categories_service_1.CategoriesService,
         linked_products_service_1.LinkedProductsService,
         aws_service_1.AwsService,
-        config_1.ConfigService])
+        config_1.ConfigService,
+        inventory_stock_service_1.InventoryStockService])
 ], ProductsService);
 //# sourceMappingURL=products.service.js.map

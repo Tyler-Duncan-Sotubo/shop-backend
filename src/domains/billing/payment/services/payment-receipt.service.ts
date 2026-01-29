@@ -104,7 +104,6 @@ export class PaymentReceiptService {
   }
 
   async getReceiptViewModel(companyId: string, paymentId: string) {
-    console.log('Generating receipt view model for payment:', paymentId);
     // receipt row (must exist)
     const [r] = await this.db
       .select()

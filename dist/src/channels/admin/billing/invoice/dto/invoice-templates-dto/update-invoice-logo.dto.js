@@ -17,7 +17,12 @@ exports.UpdateInvoiceLogoDto = UpdateInvoiceLogoDto;
 __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], UpdateInvoiceLogoDto.prototype, "base64Image", void 0);
+], UpdateInvoiceLogoDto.prototype, "storageKey", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateInvoiceLogoDto.prototype, "url", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),

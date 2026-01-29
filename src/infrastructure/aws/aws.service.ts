@@ -52,7 +52,7 @@ export class AwsService {
    * Otherwise keep false and serve via signed URLs / CloudFront later.
    */
   private publicReadEnabled() {
-    return this.configService.get<string>('AWS_S3_PUBLIC_READ') === 'true';
+    return true;
   }
 
   async headObject(key: string) {
@@ -128,6 +128,7 @@ export class AwsService {
       key: params.key,
       body: params.pdfBuffer,
       contentType: 'application/pdf',
+      ...(this.publicReadEnabled() ? { ACL: 'public-read' } : {}),
     });
   }
 

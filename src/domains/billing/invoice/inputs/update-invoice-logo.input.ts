@@ -1,5 +1,6 @@
 export interface UpdateInvoiceLogoInput {
-  base64Image: string;
+  storeId?: string | null;
+  storageKey?: string; // key returned from presign
+  url?: string; // url returned from presign
   altText?: string;
-  storeId?: string;
 }

@@ -33,7 +33,7 @@ export class PaymentReceiptController {
     return { data };
   }
 
-  @Post(':paymentId/receipt/pdf')
+  @Post('admin/:paymentId/receipt/pdf')
   @SetMetadata('permissions', ['payments.read'])
   async generateReceiptPdfAdmin(
     @CurrentUser() user: User,

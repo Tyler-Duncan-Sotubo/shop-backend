@@ -12,9 +12,11 @@ export declare class CompaniesController {
             companyId: string;
         };
         company: {
-            id: string;
             name: string;
+            id: string;
             slug: string;
+            createdAt: Date;
+            updatedAt: Date;
             legalName: string | null;
             country: string | null;
             vatNumber: string | null;
@@ -30,8 +32,6 @@ export declare class CompaniesController {
             useCase: string | null;
             trialEndsAt: Date | null;
             isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
             deletedAt: Date | null;
         };
     }>;

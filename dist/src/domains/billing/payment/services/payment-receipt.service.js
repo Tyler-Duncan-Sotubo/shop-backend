@@ -73,7 +73,6 @@ let PaymentReceiptService = class PaymentReceiptService {
         };
     }
     async getReceiptViewModel(companyId, paymentId) {
-        console.log('Generating receipt view model for payment:', paymentId);
         const [r] = await this.db
             .select()
             .from(schema_1.paymentReceipts)

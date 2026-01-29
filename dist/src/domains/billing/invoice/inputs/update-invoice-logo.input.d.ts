@@ -1,5 +1,6 @@
 export interface UpdateInvoiceLogoInput {
-    base64Image: string;
+    storeId?: string | null;
+    storageKey?: string;
+    url?: string;
     altText?: string;
-    storeId?: string;
 }

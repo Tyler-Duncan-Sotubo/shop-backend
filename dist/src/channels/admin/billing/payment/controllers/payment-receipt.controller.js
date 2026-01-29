@@ -42,7 +42,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PaymentReceiptController.prototype, "getReceiptAdmin", null);
 __decorate([
-    (0, common_1.Post)(':paymentId/receipt/pdf'),
+    (0, common_1.Post)('admin/:paymentId/receipt/pdf'),
     (0, common_1.SetMetadata)('permissions', ['payments.read']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('paymentId')),

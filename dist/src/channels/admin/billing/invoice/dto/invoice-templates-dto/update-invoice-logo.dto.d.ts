@@ -1,5 +1,6 @@
 export declare class UpdateInvoiceLogoDto {
-    base64Image: string;
+    storageKey: string;
+    url?: string;
     altText?: string;
     storeId?: string;
 }

@@ -13,12 +13,12 @@ export declare class AnalyticsController {
             sessionId: string;
             stored: {
                 id: string;
-                companyId: string;
-                storeId: string | null;
                 title: string | null;
+                storeId: string | null;
+                companyId: string;
+                meta: unknown;
                 cartId: string | null;
                 checkoutId: string | null;
-                meta: unknown;
                 orderId: string | null;
                 paymentId: string | null;
                 sessionId: string;

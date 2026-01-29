@@ -470,16 +470,6 @@ export class InvoiceTemplatesService {
     const companyId = user.companyId;
     const storeId = dto.storeId ?? null;
 
-    if (!dto.base64Image?.startsWith('data:image/')) {
-      throw new BadRequestException('Invalid base64 image');
-    }
-
-    const logoUrl = await this.aws.uploadImageToS3(
-      companyId,
-      'business-invoice-logo',
-      dto.base64Image,
-    );
-
     // ✅ correct WHERE clause for null storeId
     const whereClause = storeId
       ? and(
@@ -498,16 +488,42 @@ export class InvoiceTemplatesService {
       .limit(1)
       .execute();
 
+    // ✅ REQUIRE presigned upload reference
+    const key = dto.storageKey?.trim();
+    if (!key) {
+      throw new BadRequestException('storageKey is required');
+    }
+
+    // ✅ ensure it belongs to this company (prevents cross-tenant injection)
+    if (!key.startsWith(`companies/${companyId}/`)) {
+      throw new BadRequestException('Invalid storageKey');
+    }
+
+    // ✅ ensure object exists in S3
+    try {
+      await this.aws.headObject(key);
+    } catch {
+      throw new BadRequestException('Uploaded logo not found in storage');
+    }
+
+    const logoStorageKey = key;
+
+    // use provided url if sent, else compute from key
+    const logoUrl =
+      dto.url && dto.url.trim()
+        ? dto.url.trim()
+        : this.aws.publicUrlForKey(key);
+
     let saved;
 
     if (!existing) {
-      // insert
       const [inserted] = await this.db
         .insert(invoiceBranding)
         .values({
           companyId,
           storeId,
           logoUrl,
+          logoStorageKey, // ✅ make sure this column exists
           updatedAt: new Date(),
         } as any)
         .returning()
@@ -515,14 +531,13 @@ export class InvoiceTemplatesService {
 
       saved = inserted;
     } else {
-      // update
       const [updated] = await this.db
         .update(invoiceBranding)
         .set({
           logoUrl,
           updatedAt: new Date(),
         })
-        .where(whereClause) // ✅ reuse
+        .where(whereClause)
         .returning()
         .execute();
 
@@ -538,9 +553,9 @@ export class InvoiceTemplatesService {
       userId: user.id,
       ipAddress: ip,
       details: 'Updated invoice branding logo',
-      changes: { companyId, storeId, logoUrl },
+      changes: { companyId, storeId, logoUrl, logoStorageKey },
     });
 
-    return { logoUrl, storeId, branding: saved };
+    return { logoUrl, logoStorageKey, storeId, branding: saved };
   }
 }

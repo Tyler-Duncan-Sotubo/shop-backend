@@ -31,14 +31,14 @@ export declare class MailService {
         };
     }>;
     getSubscriber(companyId: string, id: string): Promise<{
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        storeId: string | null;
-        status: string;
-        metadata: Record<string, any> | null;
         email: string;
+        storeId: string | null;
+        metadata: Record<string, any> | null;
         source: string | null;
     }>;
     updateSubscriberStatus(companyId: string, id: string, status: 'subscribed' | 'unsubscribed' | 'pending'): Promise<{
@@ -78,13 +78,16 @@ export declare class MailService {
         offset: number;
     }>;
     getContactMessage(companyId: string, id: string): Promise<{
+        message: string;
+        status: string;
         id: string;
         name: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        email: string;
         storeId: string | null;
-        status: string;
+        phone: string | null;
         metadata: {
             [k: string]: any;
             ip?: string;
@@ -92,9 +95,6 @@ export declare class MailService {
             pageUrl?: string;
             referrer?: string;
         } | null;
-        phone: string | null;
-        email: string;
-        message: string;
         company: string | null;
         subject: string | null;
     }>;
@@ -124,14 +124,14 @@ export declare class MailService {
         storeId?: string;
         source?: string;
     }, metadata?: any): Promise<{
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        storeId: string | null;
-        status: string;
-        metadata: Record<string, any> | null;
         email: string;
+        storeId: string | null;
+        metadata: Record<string, any> | null;
         source: string | null;
     }>;
     createContactMessage(companyId: string, dto: {
@@ -143,13 +143,16 @@ export declare class MailService {
         message: string;
         subject?: string;
     }, metadata?: any): Promise<{
+        message: string;
+        status: string;
         id: string;
         name: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        email: string;
         storeId: string | null;
-        status: string;
+        phone: string | null;
         metadata: {
             [k: string]: any;
             ip?: string;
@@ -157,9 +160,6 @@ export declare class MailService {
             pageUrl?: string;
             referrer?: string;
         } | null;
-        phone: string | null;
-        email: string;
-        message: string;
         company: string | null;
         subject: string | null;
     }>;

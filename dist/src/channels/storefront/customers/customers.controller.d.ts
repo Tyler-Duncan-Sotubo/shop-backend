@@ -94,9 +94,9 @@ export declare class CustomersController {
     }[]>;
     createAddress(customer: AuthCustomer, dto: CreateCustomerAddressDto): Promise<{
         id: string;
-        country: string;
         createdAt: Date;
         updatedAt: Date;
+        country: string;
         companyId: string;
         firstName: string | null;
         lastName: string | null;
@@ -134,14 +134,21 @@ export declare class CustomersController {
         success: boolean;
     }>;
     getCustomerActivity(customer: AuthCustomer, storeId: string): Promise<{
-        orders: {
-            id: string;
-            orderNumber: string;
-            status: string;
-            createdAt: Date | null;
+        orders: ({
+            id: any;
+            orderNumber: any;
+            status: any;
+            createdAt: any;
             currency: any;
             totalMinor: any;
-        }[];
+        } | {
+            id: any;
+            orderNumber: any;
+            status: any;
+            createdAt: any;
+            currency: any;
+            totalMinor: any;
+        })[];
         products: {
             id: string;
             name: string;
@@ -205,6 +212,18 @@ export declare class CustomersController {
         offset?: string;
     }): Promise<{
         items: ({
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: any;
+            lastOrderedAt: Date;
+        } | {
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: any;
+            lastOrderedAt: Date;
+        } | {
             id: any;
             name: any;
             slug: any;

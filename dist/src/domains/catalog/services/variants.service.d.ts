@@ -18,9 +18,11 @@ export declare class VariantsService {
     private readonly companySettings;
     constructor(db: db, cache: CacheService, auditService: AuditService, imagesService: ImagesService, inventoryService: InventoryStockService, categoriesService: CategoriesService, companySettings: CompanySettingsService);
     assertCompanyExists(companyId: string): Promise<{
-        id: string;
         name: string;
+        id: string;
         slug: string;
+        createdAt: Date;
+        updatedAt: Date;
         legalName: string | null;
         country: string | null;
         vatNumber: string | null;
@@ -36,8 +38,6 @@ export declare class VariantsService {
         useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     assertProductBelongsToCompany(companyId: string, productId: string): Promise<{
@@ -67,11 +67,11 @@ export declare class VariantsService {
             url: any;
             altText: any;
             position: any;
-        } | null;
+        };
         inventory: {
             stockQuantity: number;
             lowStockThreshold: number;
-        } | null;
+        };
     } | {
         variant: any;
         image: {
@@ -79,11 +79,11 @@ export declare class VariantsService {
             url: any;
             altText: any;
             position: any;
-        };
+        } | null;
         inventory: {
             stockQuantity: number;
             lowStockThreshold: number;
-        };
+        } | null;
     } | {
         variant: any;
         image: never;

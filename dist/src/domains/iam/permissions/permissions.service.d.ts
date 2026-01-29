@@ -29,8 +29,8 @@ export declare class PermissionsService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        description: string | null;
         displayName: string | null;
+        description: string | null;
         isSystem: boolean;
     }>;
     createDefaultRoles(companyId: string): Promise<{
@@ -39,8 +39,8 @@ export declare class PermissionsService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        description: string | null;
         displayName: string | null;
+        description: string | null;
         isSystem: boolean;
     }[]>;
     getRolesByCompany(companyId: string): Promise<{
@@ -64,8 +64,8 @@ export declare class PermissionsService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        description: string | null;
         displayName: string | null;
+        description: string | null;
         isSystem: boolean;
     }>;
     assignPermissionToRole(companyId: string, roleId: string, permissionId: string): Promise<{
@@ -110,8 +110,8 @@ export declare class PermissionsService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        description: string | null;
         displayName: string | null;
+        description: string | null;
         isSystem: boolean;
     }>;
 }

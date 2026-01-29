@@ -128,6 +128,7 @@ export declare class InvoiceTemplatesService {
     private normalizeBranding;
     uploadBrandingLogo(user: User, dto: UpdateInvoiceLogoInput, ip?: string): Promise<{
         logoUrl: string;
+        logoStorageKey: string;
         storeId: string | null;
         branding: any;
     }>;

@@ -42,7 +42,7 @@ let AwsService = class AwsService {
         return `https://${this.bucket()}.s3.${this.region()}.amazonaws.com/${key}`;
     }
     publicReadEnabled() {
-        return this.configService.get('AWS_S3_PUBLIC_READ') === 'true';
+        return true;
     }
     async headObject(key) {
         const res = await this.s3Client.send(new client_s3_1.HeadObjectCommand({
@@ -86,6 +86,7 @@ let AwsService = class AwsService {
             key: params.key,
             body: params.pdfBuffer,
             contentType: 'application/pdf',
+            ...(this.publicReadEnabled() ? { ACL: 'public-read' } : {}),
         });
     }
     async getSignedUrl(key, expiresInSeconds = 300) {

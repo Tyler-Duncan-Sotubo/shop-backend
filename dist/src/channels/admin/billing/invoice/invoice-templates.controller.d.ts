@@ -117,10 +117,11 @@ export declare class AdminInvoiceTemplatesController extends BaseController {
     generateForInvoice(user: User, invoiceId: string, storeId: string, templateId?: string): Promise<{
         pdfUrl: string;
         fileName: string;
-        generatedInvoiceId: any;
+        generatedInvoiceId: string;
     }>;
     uploadInvoiceBrandingLogo(user: User, dto: UpdateInvoiceLogoDto, ip: string): Promise<{
         logoUrl: string;
+        logoStorageKey: string;
         storeId: string | null;
         branding: any;
     }>;

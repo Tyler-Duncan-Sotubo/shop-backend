@@ -44,8 +44,8 @@ export declare class InventoryLocationsService {
         type: string;
         city: string | null;
         postalCode: string | null;
-        isDefault: boolean;
         code: string | null;
+        isDefault: boolean;
         addressLine1: string | null;
         addressLine2: string | null;
         region: string | null;
@@ -78,8 +78,8 @@ export declare class InventoryLocationsService {
         type: string;
         city: string | null;
         postalCode: string | null;
-        isDefault: boolean;
         code: string | null;
+        isDefault: boolean;
         addressLine1: string | null;
         addressLine2: string | null;
         region: string | null;

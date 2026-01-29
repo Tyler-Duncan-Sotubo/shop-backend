@@ -28,8 +28,8 @@ export declare class ShippingController extends BaseController {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        storeId: string;
         description: string | null;
+        storeId: string;
         metadata: Record<string, any> | null;
         priority: number;
     }>;
@@ -116,11 +116,11 @@ export declare class ShippingController extends BaseController {
         zoneId: string;
         name: string;
         flatAmount: string | null;
-        calc: "weight" | "flat";
+        calc: "flat" | "weight";
         isDefault: boolean;
         isActive: boolean;
         priority: number;
-        type: "weight" | "flat" | "price";
+        type: "flat" | "weight" | "price";
     }[]>;
     createRate(user: User, dto: CreateRateDto, ip: string): Promise<{
         id: string;
@@ -129,9 +129,9 @@ export declare class ShippingController extends BaseController {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        metadata: Record<string, any> | null;
-        type: "weight" | "flat" | "price";
+        type: "flat" | "weight" | "price";
         isDefault: boolean;
+        metadata: Record<string, any> | null;
         priority: number;
         zoneId: string;
         flatAmount: string | null;
@@ -144,7 +144,7 @@ export declare class ShippingController extends BaseController {
         carrierServiceName: string | null;
         minDeliveryDays: number | null;
         maxDeliveryDays: number | null;
-        calc: "weight" | "flat";
+        calc: "flat" | "weight";
     }>;
     updateRate(user: User, rateId: string, dto: UpdateRateDto, ip: string): Promise<{
         id: string;
@@ -153,7 +153,7 @@ export declare class ShippingController extends BaseController {
         zoneId: string;
         name: string;
         isActive: boolean;
-        type: "weight" | "flat" | "price";
+        type: "flat" | "weight" | "price";
         flatAmount: string | null;
         minOrderSubtotal: string | null;
         maxOrderSubtotal: string | null;
@@ -165,7 +165,7 @@ export declare class ShippingController extends BaseController {
         minDeliveryDays: number | null;
         maxDeliveryDays: number | null;
         priority: number;
-        calc: "weight" | "flat";
+        calc: "flat" | "weight";
         metadata: Record<string, any> | null;
         createdAt: Date;
         updatedAt: Date;
@@ -224,8 +224,8 @@ export declare class ShippingController extends BaseController {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            storeId: string;
             description: string | null;
+            storeId: string;
             metadata: Record<string, any> | null;
             priority: number;
         };
@@ -239,8 +239,8 @@ export declare class ShippingController extends BaseController {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            storeId: string;
             description: string | null;
+            storeId: string;
             metadata: Record<string, any> | null;
             priority: number;
         };
@@ -251,9 +251,9 @@ export declare class ShippingController extends BaseController {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            metadata: Record<string, any> | null;
-            type: "weight" | "flat" | "price";
+            type: "flat" | "weight" | "price";
             isDefault: boolean;
+            metadata: Record<string, any> | null;
             priority: number;
             zoneId: string;
             flatAmount: string | null;
@@ -266,7 +266,7 @@ export declare class ShippingController extends BaseController {
             carrierServiceName: string | null;
             minDeliveryDays: number | null;
             maxDeliveryDays: number | null;
-            calc: "weight" | "flat";
+            calc: "flat" | "weight";
         };
         amount: string;
     }>;

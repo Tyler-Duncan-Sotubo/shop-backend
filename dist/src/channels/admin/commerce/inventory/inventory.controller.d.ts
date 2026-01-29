@@ -39,8 +39,8 @@ export declare class InventoryController extends BaseController {
         type: string;
         city: string | null;
         postalCode: string | null;
-        isDefault: boolean;
         code: string | null;
+        isDefault: boolean;
         addressLine1: string | null;
         addressLine2: string | null;
         region: string | null;
@@ -177,15 +177,15 @@ export declare class InventoryController extends BaseController {
         items: {
             id: string;
             createdAt: Date;
-            quantity: number;
             transferId: string;
             productVariantId: string;
+            quantity: number;
         }[];
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;
@@ -196,15 +196,15 @@ export declare class InventoryController extends BaseController {
         items: {
             id: string;
             createdAt: Date;
-            quantity: number;
             transferId: string;
             productVariantId: string;
+            quantity: number;
         }[];
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;

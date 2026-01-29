@@ -5,24 +5,17 @@ export declare class MailController {
     private readonly mailService;
     constructor(mailService: MailService);
     createSubscriberPublic(companyId: string, storeId: string, dto: CreateSubscriberDto, ip: string): Promise<{
+        metadata: Record<string, any> | null;
         id: string;
+        storeId: string | null;
+        status: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        storeId: string | null;
-        status: string;
-        metadata: Record<string, any> | null;
         email: string;
         source: string | null;
     }>;
     createContactMessagePublic(companyId: string, storeId: string, dto: CreateContactMessageDto, ip: string): Promise<{
-        id: string;
-        name: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-        storeId: string | null;
-        status: string;
         metadata: {
             [k: string]: any;
             ip?: string;
@@ -30,8 +23,15 @@ export declare class MailController {
             pageUrl?: string;
             referrer?: string;
         } | null;
-        phone: string | null;
+        name: string | null;
+        id: string;
+        storeId: string | null;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
         email: string;
+        phone: string | null;
         message: string;
         company: string | null;
         subject: string | null;

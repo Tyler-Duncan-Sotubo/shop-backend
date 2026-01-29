@@ -16,13 +16,13 @@ export declare class ReviewsController extends BaseController {
     }[]>;
     createStorefrontReview(companyId: string, storeId: string, productId: string, dto: CreateStorefrontReviewDto, ip: string, userAgent: string): Promise<{
         id: string;
+        storeId: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        storeId: string | null;
-        productId: string;
         userId: string | null;
+        productId: string;
         authorName: string;
         authorEmail: string;
         rating: number;

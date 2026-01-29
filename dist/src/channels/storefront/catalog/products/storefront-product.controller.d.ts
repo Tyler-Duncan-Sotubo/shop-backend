@@ -19,9 +19,9 @@ export declare class StorefrontProductsController extends BaseController {
             imageAltText: string | null;
         } | null;
         products: {
-            id: string;
-            name: string;
-            slug: string;
+            id: any;
+            name: any;
+            slug: any;
             permalink: string;
             type: string;
             price: string;
@@ -36,20 +36,8 @@ export declare class StorefrontProductsController extends BaseController {
                 alt: any;
             }[];
             tags: never[];
-            categories: {
-                id: any;
-                name: any;
-                slug: any;
-            }[];
-            attributes: {
-                id: number;
-                name: string;
-                slug: string;
-                position: number;
-                visible: boolean;
-                variation: boolean;
-                options: string[];
-            }[];
+            categories: any;
+            attributes: any;
             price_html: string;
         }[];
     }>;

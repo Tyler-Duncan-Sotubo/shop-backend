@@ -347,10 +347,6 @@ let InvoiceTemplatesService = class InvoiceTemplatesService {
     async uploadBrandingLogo(user, dto, ip) {
         const companyId = user.companyId;
         const storeId = dto.storeId ?? null;
-        if (!dto.base64Image?.startsWith('data:image/')) {
-            throw new common_1.BadRequestException('Invalid base64 image');
-        }
-        const logoUrl = await this.aws.uploadImageToS3(companyId, 'business-invoice-logo', dto.base64Image);
         const whereClause = storeId
             ? (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceBranding.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceBranding.storeId, storeId))
             : (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceBranding.companyId, companyId), (0, drizzle_orm_1.isNull)(schema_1.invoiceBranding.storeId));
@@ -360,6 +356,23 @@ let InvoiceTemplatesService = class InvoiceTemplatesService {
             .where(whereClause)
             .limit(1)
             .execute();
+        const key = dto.storageKey?.trim();
+        if (!key) {
+            throw new common_1.BadRequestException('storageKey is required');
+        }
+        if (!key.startsWith(`companies/${companyId}/`)) {
+            throw new common_1.BadRequestException('Invalid storageKey');
+        }
+        try {
+            await this.aws.headObject(key);
+        }
+        catch {
+            throw new common_1.BadRequestException('Uploaded logo not found in storage');
+        }
+        const logoStorageKey = key;
+        const logoUrl = dto.url && dto.url.trim()
+            ? dto.url.trim()
+            : this.aws.publicUrlForKey(key);
         let saved;
         if (!existing) {
             const [inserted] = await this.db
@@ -368,6 +381,7 @@ let InvoiceTemplatesService = class InvoiceTemplatesService {
                 companyId,
                 storeId,
                 logoUrl,
+                logoStorageKey,
                 updatedAt: new Date(),
             })
                 .returning()
@@ -394,9 +408,9 @@ let InvoiceTemplatesService = class InvoiceTemplatesService {
             userId: user.id,
             ipAddress: ip,
             details: 'Updated invoice branding logo',
-            changes: { companyId, storeId, logoUrl },
+            changes: { companyId, storeId, logoUrl, logoStorageKey },
         });
-        return { logoUrl, storeId, branding: saved };
+        return { logoUrl, logoStorageKey, storeId, branding: saved };
     }
 };
 exports.InvoiceTemplatesService = InvoiceTemplatesService;

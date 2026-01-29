@@ -6,6 +6,7 @@ import { EmailVerificationService } from './services/email-verification.service'
 import { EmployeeInvitationService } from './services/employee-invitation.service';
 import { EmailQueueProcessor } from './services/email-queue.processor';
 import { ContactNotificationService } from './services/contact-notification.service';
+import { QuoteNotificationService } from './services/quote-notification.service';
 
 @Module({
   imports: [
@@ -21,12 +22,14 @@ import { ContactNotificationService } from './services/contact-notification.serv
     EmployeeInvitationService,
     EmailQueueProcessor,
     ContactNotificationService,
+    QuoteNotificationService,
   ],
   exports: [
     PasswordResetEmailService,
     InvitationService,
     EmailVerificationService,
     EmployeeInvitationService,
+    QuoteNotificationService,
   ],
 })
 export class NotificationModule {}

@@ -21,12 +21,14 @@ const cache_service_1 = require("../../../infrastructure/cache/cache.service");
 const audit_service_1 = require("../../audit/audit.service");
 const schema_1 = require("../../../infrastructure/drizzle/schema");
 const manual_orders_service_1 = require("../orders/manual-orders.service");
+const quote_notification_service_1 = require("../../notification/services/quote-notification.service");
 let QuoteService = class QuoteService {
-    constructor(db, cache, auditService, manualOrdersService) {
+    constructor(db, cache, auditService, manualOrdersService, quoteNotification) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
         this.manualOrdersService = manualOrdersService;
+        this.quoteNotification = quoteNotification;
     }
     async findQuoteByIdOrThrow(companyId, quoteId) {
         const row = await this.db.query.quoteRequests.findFirst({
@@ -73,6 +75,28 @@ let QuoteService = class QuoteService {
             })))
                 .execute();
             return quote;
+        });
+        const [company] = await this.db
+            .select({ email: schema_1.users.email })
+            .from(schema_1.users)
+            .where((0, drizzle_orm_1.eq)(schema_1.users.companyId, companyId))
+            .limit(1);
+        const [store] = await this.db
+            .select({ name: schema_1.stores.name })
+            .from(schema_1.stores)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.stores.id, storeId), (0, drizzle_orm_1.eq)(schema_1.stores.companyId, companyId)))
+            .limit(1);
+        await this.quoteNotification.sendQuoteNotification({
+            to: company.email ? [company.email] : [''],
+            fromName: store?.name || 'Quote Request',
+            storeName: store?.name,
+            quoteId: created.id,
+            customerEmail: created.customerEmail,
+            customerNote: created.customerNote ?? null,
+            items: items.map((it) => ({
+                name: it.name,
+                quantity: it.quantity,
+            })),
         });
         await this.bumpCompany(companyId);
         if (user && ip) {
@@ -291,6 +315,7 @@ exports.QuoteService = QuoteService = __decorate([
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, cache_service_1.CacheService,
         audit_service_1.AuditService,
-        manual_orders_service_1.ManualOrdersService])
+        manual_orders_service_1.ManualOrdersService,
+        quote_notification_service_1.QuoteNotificationService])
 ], QuoteService);
 //# sourceMappingURL=quote.service.js.map

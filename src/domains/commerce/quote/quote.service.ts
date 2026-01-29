@@ -18,8 +18,9 @@ import { User } from 'src/channels/admin/common/types/user.type';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { GetQuotesQueryDto } from './dto/get-quotes-query.dto';
-import { stores } from 'src/infrastructure/drizzle/schema';
+import { stores, users } from 'src/infrastructure/drizzle/schema';
 import { ManualOrdersService } from '../orders/manual-orders.service';
+import { QuoteNotificationService } from 'src/domains/notification/services/quote-notification.service';
 
 @Injectable()
 export class QuoteService {
@@ -28,6 +29,7 @@ export class QuoteService {
     private readonly cache: CacheService,
     private readonly auditService: AuditService,
     private readonly manualOrdersService: ManualOrdersService,
+    private readonly quoteNotification: QuoteNotificationService,
   ) {}
 
   // --------------------------------------------------------------------------
@@ -102,6 +104,31 @@ export class QuoteService {
         .execute();
 
       return quote;
+    });
+
+    const [company] = await this.db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.companyId, companyId))
+      .limit(1);
+
+    const [store] = await this.db
+      .select({ name: stores.name })
+      .from(stores)
+      .where(and(eq(stores.id, storeId), eq(stores.companyId, companyId)))
+      .limit(1);
+
+    await this.quoteNotification.sendQuoteNotification({
+      to: company.email ? [company.email] : [''],
+      fromName: store?.name || 'Quote Request',
+      storeName: store?.name,
+      quoteId: created.id,
+      customerEmail: created.customerEmail,
+      customerNote: created.customerNote ?? null,
+      items: items.map((it) => ({
+        name: it.name,
+        quantity: it.quantity,
+      })),
     });
 
     await this.bumpCompany(companyId);

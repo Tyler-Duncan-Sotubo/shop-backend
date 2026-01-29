@@ -35,11 +35,9 @@ export declare class ProductsService {
     private readonly inventoryService;
     constructor(db: db, cache: CacheService, auditService: AuditService, categoryService: CategoriesService, linkedProductsService: LinkedProductsService, aws: AwsService, configService: ConfigService, inventoryService: InventoryStockService);
     assertCompanyExists(companyId: string): Promise<{
-        name: string;
         id: string;
+        name: string;
         slug: string;
-        createdAt: Date;
-        updatedAt: Date;
         legalName: string | null;
         country: string | null;
         vatNumber: string | null;
@@ -55,6 +53,8 @@ export declare class ProductsService {
         useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     findProductByIdOrThrow(companyId: string, productId: string): Promise<{

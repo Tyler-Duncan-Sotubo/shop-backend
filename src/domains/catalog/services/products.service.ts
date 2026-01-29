@@ -1609,12 +1609,24 @@ export class ProductsService {
           if (dto.barcode !== undefined)
             updates.barcode = dto.barcode?.trim() ? dto.barcode.trim() : null;
 
-          if (dto.regularPrice !== undefined)
-            updates.regularPrice = dto.regularPrice ?? '0';
-          if (dto.salePrice !== undefined)
-            updates.salePrice = dto.salePrice?.trim()
-              ? dto.salePrice.trim()
-              : null;
+          // Only update regularPrice if provided (allows null to clear)
+          if (dto.regularPrice !== undefined) {
+            const v =
+              dto.regularPrice === null
+                ? undefined
+                : String(dto.regularPrice).trim();
+            if (v) updates.regularPrice = v; // only update if non-empty
+          }
+
+          // Only update salePrice if provided (allows null to clear)
+          if (dto.salePrice !== undefined) {
+            const v =
+              dto.salePrice === null ? undefined : String(dto.salePrice).trim();
+
+            if (v) {
+              updates.salePrice = v; // update
+            }
+          }
 
           if (dto.weight !== undefined)
             updates.weight = dto.weight?.trim() ? dto.weight.trim() : null;

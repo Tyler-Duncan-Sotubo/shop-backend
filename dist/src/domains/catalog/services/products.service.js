@@ -1019,12 +1019,19 @@ let ProductsService = class ProductsService {
                         updates.sku = incomingSku ?? null;
                     if (dto.barcode !== undefined)
                         updates.barcode = dto.barcode?.trim() ? dto.barcode.trim() : null;
-                    if (dto.regularPrice !== undefined)
-                        updates.regularPrice = dto.regularPrice ?? '0';
-                    if (dto.salePrice !== undefined)
-                        updates.salePrice = dto.salePrice?.trim()
-                            ? dto.salePrice.trim()
-                            : null;
+                    if (dto.regularPrice !== undefined) {
+                        const v = dto.regularPrice === null
+                            ? undefined
+                            : String(dto.regularPrice).trim();
+                        if (v)
+                            updates.regularPrice = v;
+                    }
+                    if (dto.salePrice !== undefined) {
+                        const v = dto.salePrice === null ? undefined : String(dto.salePrice).trim();
+                        if (v) {
+                            updates.salePrice = v;
+                        }
+                    }
                     if (dto.weight !== undefined)
                         updates.weight = dto.weight?.trim() ? dto.weight.trim() : null;
                     if (dto.length !== undefined)

@@ -23,20 +23,32 @@ async function bootstrap() {
     await fastify.register(cookie_1.default, {
         secret: process.env.COOKIE_SECRET,
     });
+    const extraAllowed = (process.env.EXTRA_ALLOWED_ORIGINS ?? '')
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+    function matchesAllowedHost(hostname, rule) {
+        hostname = hostname.toLowerCase();
+        if (rule.startsWith('*.')) {
+            const root = rule.slice(2);
+            return hostname === root || hostname.endsWith(`.${root}`);
+        }
+        return hostname === rule;
+    }
     app.enableCors({
         origin: (origin, callback) => {
             if (!origin)
                 return callback(null, true);
             try {
                 const { hostname } = new URL(origin);
-                const primaryDomain = process.env.PRIMARY_DOMAIN;
+                const primaryDomain = process.env.PRIMARY_DOMAIN?.toLowerCase();
                 const allowLocalhost = process.env.ALLOW_LOCALHOST === 'true';
+                const host = hostname.toLowerCase();
                 const isPrimaryDomain = primaryDomain &&
-                    (hostname === primaryDomain ||
-                        hostname.endsWith(`.${primaryDomain}`));
-                const isLocalhost = allowLocalhost &&
-                    (hostname === 'localhost' || hostname === '127.0.0.1');
-                if (isPrimaryDomain || isLocalhost) {
+                    (host === primaryDomain || host.endsWith(`.${primaryDomain}`));
+                const isLocalhost = allowLocalhost && (host === 'localhost' || host === '127.0.0.1');
+                const isExtraAllowed = extraAllowed.some((rule) => matchesAllowedHost(host, rule));
+                if (isPrimaryDomain || isLocalhost || isExtraAllowed) {
                     return callback(null, true);
                 }
                 return callback(new Error(`CORS blocked: ${origin}`), false);

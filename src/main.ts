@@ -39,6 +39,25 @@ async function bootstrap() {
   });
 
   // CORS, cookie parser, pipes, etc.
+  const extraAllowed = (process.env.EXTRA_ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+
+  function matchesAllowedHost(hostname: string, rule: string) {
+    hostname = hostname.toLowerCase();
+
+    // wildcard: *.example.com
+    if (rule.startsWith('*.')) {
+      const root = rule.slice(2); // example.com
+      // allow both the root itself and any subdomain
+      return hostname === root || hostname.endsWith(`.${root}`);
+    }
+
+    // exact match
+    return hostname === rule;
+  }
+
   app.enableCors({
     origin: (origin, callback) => {
       // Allow SSR / server-to-server / Postman
@@ -47,19 +66,23 @@ async function bootstrap() {
       try {
         const { hostname } = new URL(origin);
 
-        const primaryDomain = process.env.PRIMARY_DOMAIN;
+        const primaryDomain = process.env.PRIMARY_DOMAIN?.toLowerCase();
         const allowLocalhost = process.env.ALLOW_LOCALHOST === 'true';
+
+        const host = hostname.toLowerCase();
 
         const isPrimaryDomain =
           primaryDomain &&
-          (hostname === primaryDomain ||
-            hostname.endsWith(`.${primaryDomain}`));
+          (host === primaryDomain || host.endsWith(`.${primaryDomain}`));
 
         const isLocalhost =
-          allowLocalhost &&
-          (hostname === 'localhost' || hostname === '127.0.0.1');
+          allowLocalhost && (host === 'localhost' || host === '127.0.0.1');
 
-        if (isPrimaryDomain || isLocalhost) {
+        const isExtraAllowed = extraAllowed.some((rule) =>
+          matchesAllowedHost(host, rule),
+        );
+
+        if (isPrimaryDomain || isLocalhost || isExtraAllowed) {
           return callback(null, true);
         }
 

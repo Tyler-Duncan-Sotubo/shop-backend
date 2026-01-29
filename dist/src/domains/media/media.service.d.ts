@@ -42,11 +42,11 @@ export declare class MediaService {
     }): Promise<{
         url: string;
         id: string;
-        storeId: string;
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
         size: number | null;
+        storeId: string;
         fileName: string;
         mimeType: string;
         storageKey: string | null;
@@ -60,11 +60,11 @@ export declare class MediaService {
     uploadEditorImage(companyId: string, dto: UploadEditorImageDto): Promise<{
         url: string;
         id: string;
-        storeId: string;
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
         size: number | null;
+        storeId: string;
         fileName: string;
         mimeType: string;
         storageKey: string | null;

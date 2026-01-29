@@ -5,14 +5,14 @@ export declare class QuoteController extends BaseController {
     private readonly quoteService;
     constructor(quoteService: QuoteService);
     submitQuoteFromStorefront(storeId: string, dto: CreateQuoteDto, ip: string): Promise<{
-        id: string;
-        storeId: string;
         status: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         expiresAt: Date | null;
+        storeId: string;
         meta: Record<string, unknown> | null;
         customerEmail: string;
         customerNote: string | null;

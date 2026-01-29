@@ -58,6 +58,26 @@ async function bootstrap() {
     return hostname === rule;
   }
 
+  app.use((req, res, next) => {
+    // allow tag script to be embedded by any storefront domain
+    if (req.path === '/api/storefront/analytics/tag.js') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS');
+      // no credentials for wildcard
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    }
+
+    // handle preflight quickly if any
+    if (
+      req.method === 'OPTIONS' &&
+      req.path === '/api/storefront/analytics/tag.js'
+    ) {
+      return res.status(204).send();
+    }
+
+    next();
+  });
+
   app.enableCors({
     origin: (origin, callback) => {
       // Allow SSR / server-to-server / Postman

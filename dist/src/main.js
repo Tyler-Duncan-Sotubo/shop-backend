@@ -35,6 +35,18 @@ async function bootstrap() {
         }
         return hostname === rule;
     }
+    app.use((req, res, next) => {
+        if (req.path === '/api/storefront/analytics/tag.js') {
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS');
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        }
+        if (req.method === 'OPTIONS' &&
+            req.path === '/api/storefront/analytics/tag.js') {
+            return res.status(204).send();
+        }
+        next();
+    });
     app.enableCors({
         origin: (origin, callback) => {
             if (!origin)

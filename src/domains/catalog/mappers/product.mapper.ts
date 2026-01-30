@@ -11,6 +11,7 @@ import {
 } from 'src/infrastructure/drizzle/schema';
 import { getEffectivePrice } from '../utils/pricing';
 import { StorefrontProductDto } from '../dtos/products/storefront-product.dto';
+import { toCdnUrl } from 'src/infrastructure/cdn/to-cdn-url';
 
 // ---- DB row types ----
 type ProductRow = typeof products.$inferSelect;
@@ -204,23 +205,6 @@ function getVariantSalePrice(v: VariantRow): number | null {
   return v.salePrice != null ? Number(v.salePrice) : null;
 }
 
-// function computeMinMaxPrices(activeVariants: VariantRow[]) {
-//   if (!activeVariants.length) return { min: 0, max: 0 };
-
-//   let min = Infinity;
-//   let max = -Infinity;
-
-//   for (const v of activeVariants) {
-//     const p = getVariantEffectivePrice(v);
-//     if (p < min) min = p;
-//     if (p > max) max = p;
-//   }
-
-//   if (!Number.isFinite(min)) min = 0;
-//   if (!Number.isFinite(max)) max = 0;
-//   return { min, max };
-// }
-
 function mapProductAttributes(product: ProductWithRelations) {
   const opts = (product.options ?? [])
     .slice()
@@ -307,7 +291,7 @@ function mapVariantToWooLike(
 
   const img = variant.image ?? null;
   const image = img
-    ? { id: img.id, src: img.url, alt: img.altText ?? null }
+    ? { id: img.id, src: toCdnUrl(img.url), alt: img.altText ?? null }
     : null;
 
   const stock_quantity = Number(variant.stock ?? 0);
@@ -366,7 +350,7 @@ export function mapProductToDetailResponse(
     new Map(ordered.map((i) => [i.id, i])).values(),
   ).map((img: any) => ({
     id: img.id,
-    src: img.url,
+    src: toCdnUrl(img.url),
     alt: img.altText ?? null,
   }));
 
@@ -594,7 +578,7 @@ export function mapProductsListToStorefront(
 
       average_rating: (p.averageRating ?? 0).toFixed(2),
       rating_count: p.ratingCount ?? 0,
-      images: p.imageUrl ? [{ src: p.imageUrl, alt: p.name }] : [],
+      images: p.imageUrl ? [{ src: toCdnUrl(p.imageUrl), alt: p.name }] : [],
       tags: (p.categories ?? [])
         .slice(0, 1)
         .map((c) => ({ name: c.name, slug: c.id })),
@@ -622,7 +606,7 @@ export function mapProductToCollectionListResponse(
     (product.images && product.images.length ? product.images[0] : null);
 
   const images = hero
-    ? [{ id: hero.id, src: hero.url, alt: hero.altText ?? null }]
+    ? [{ id: hero.id, src: toCdnUrl(hero.url), alt: hero.altText ?? null }]
     : [];
 
   /* ================= CATEGORIES ================= */

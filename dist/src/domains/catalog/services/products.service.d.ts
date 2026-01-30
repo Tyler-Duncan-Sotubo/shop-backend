@@ -207,10 +207,6 @@ export declare class ProductsService {
         })[];
     }>;
     listProductsGroupedUnderParentCategorySlug(companyId: string, storeId: string, parentSlug: string, query: ProductQueryDto): Promise<{
-        parent: null;
-        groups: never[];
-        exploreMore: never[];
-    } | {
         parent: {
             id: any;
             name: any;
@@ -263,6 +259,10 @@ export declare class ProductsService {
             slug: any;
             imageUrl: string | null;
         })[];
+    } | {
+        parent: null;
+        groups: never[];
+        exploreMore: never[];
     }>;
     private ensureSkuUnique;
 }

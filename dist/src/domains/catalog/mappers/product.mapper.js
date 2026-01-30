@@ -6,6 +6,7 @@ exports.mapProductToDetailResponse = mapProductToDetailResponse;
 exports.mapProductsListToStorefront = mapProductsListToStorefront;
 exports.mapProductToCollectionListResponse = mapProductToCollectionListResponse;
 const pricing_1 = require("../utils/pricing");
+const to_cdn_url_1 = require("../../../infrastructure/cdn/to-cdn-url");
 function buildPermalink(slug) {
     return `/products/${slug}`;
 }
@@ -122,7 +123,7 @@ function mapVariantToWooLike(variant, product) {
     }
     const img = variant.image ?? null;
     const image = img
-        ? { id: img.id, src: img.url, alt: img.altText ?? null }
+        ? { id: img.id, src: (0, to_cdn_url_1.toCdnUrl)(img.url), alt: img.altText ?? null }
         : null;
     const stock_quantity = Number(variant.stock ?? 0);
     const manage_stock = true;
@@ -155,7 +156,7 @@ function mapProductToDetailResponse(product) {
         : all;
     const images = Array.from(new Map(ordered.map((i) => [i.id, i])).values()).map((img) => ({
         id: img.id,
-        src: img.url,
+        src: (0, to_cdn_url_1.toCdnUrl)(img.url),
         alt: img.altText ?? null,
     }));
     const rawCats = (product.productCategories ?? [])
@@ -304,7 +305,7 @@ function mapProductsListToStorefront(rows) {
             price_html,
             average_rating: (p.averageRating ?? 0).toFixed(2),
             rating_count: p.ratingCount ?? 0,
-            images: p.imageUrl ? [{ src: p.imageUrl, alt: p.name }] : [],
+            images: p.imageUrl ? [{ src: (0, to_cdn_url_1.toCdnUrl)(p.imageUrl), alt: p.name }] : [],
             tags: (p.categories ?? [])
                 .slice(0, 1)
                 .map((c) => ({ name: c.name, slug: c.id })),
@@ -315,7 +316,7 @@ function mapProductToCollectionListResponse(product) {
     const hero = product.defaultImage ??
         (product.images && product.images.length ? product.images[0] : null);
     const images = hero
-        ? [{ id: hero.id, src: hero.url, alt: hero.altText ?? null }]
+        ? [{ id: hero.id, src: (0, to_cdn_url_1.toCdnUrl)(hero.url), alt: hero.altText ?? null }]
         : [];
     const categories = (product.productCategories ?? [])
         .filter((pc) => pc.category)

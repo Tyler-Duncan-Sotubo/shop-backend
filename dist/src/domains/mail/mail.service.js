@@ -180,21 +180,14 @@ let MailService = class MailService {
             metadata: metadata ?? null,
         })
             .returning();
-        const [company] = await this.db
-            .select({ name: schema_1.companies.name })
-            .from(schema_1.companies)
-            .where((0, drizzle_orm_1.eq)(schema_1.companies.id, companyId))
+        const [store] = await this.db
+            .select({ storeEmail: schema_1.stores.storeEmail, name: schema_1.stores.name })
+            .from(schema_1.stores)
+            .where((0, drizzle_orm_1.eq)(schema_1.stores.id, dto.storeId))
             .limit(1);
-        const companyUsers = await this.db
-            .select({ email: schema_1.users.email })
-            .from(schema_1.users)
-            .where((0, drizzle_orm_1.eq)(schema_1.users.companyId, companyId));
-        const to = companyUsers
-            .map((u) => u.email)
-            .filter((e) => Boolean(e?.trim()));
         await this.emailQueue.add('sendContactNotification', {
-            to: to.length ? to : ['support@store.com'],
-            storeName: company?.name ?? 'My Store',
+            to: store.storeEmail,
+            storeName: store?.name ?? 'My Store',
             customerName: dto.name ?? null,
             customerEmail: normalizedEmail,
             subject: dto.subject ?? '(no subject)',

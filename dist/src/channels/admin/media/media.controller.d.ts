@@ -11,19 +11,19 @@ export declare class MediaController {
     private readonly mediaService;
     constructor(mediaService: MediaService);
     uploadEditorImage(user: User, dto: UploadEditorImageDto): Promise<{
-        url: string;
         id: string;
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
         size: number | null;
         storeId: string;
-        fileName: string;
-        mimeType: string;
-        storageKey: string | null;
         width: number | null;
         height: number | null;
+        fileName: string;
+        mimeType: string;
+        url: string;
         altText: string | null;
+        storageKey: string | null;
         folder: string | null;
         tag: string | null;
     }>;
@@ -58,19 +58,19 @@ export declare class MediaController {
         }[];
     }>;
     finalizeMediaUpload(user: User, dto: FinalizeMediaUploadDto): Promise<{
-        url: string;
         id: string;
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
         size: number | null;
         storeId: string;
-        fileName: string;
-        mimeType: string;
-        storageKey: string | null;
         width: number | null;
         height: number | null;
+        fileName: string;
+        mimeType: string;
+        url: string;
         altText: string | null;
+        storageKey: string | null;
         folder: string | null;
         tag: string | null;
     }>;

@@ -3,10 +3,9 @@ import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import {
-  companies,
   contactMessages,
+  stores,
   subscribers,
-  users,
 } from 'src/infrastructure/drizzle/schema';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -249,7 +248,7 @@ export class MailService {
   async createContactMessage(
     companyId: string,
     dto: {
-      storeId?: string;
+      storeId: string;
       name?: string;
       email: string;
       phone?: string;
@@ -277,26 +276,17 @@ export class MailService {
       })
       .returning();
 
-    const [company] = await this.db
-      .select({ name: companies.name })
-      .from(companies)
-      .where(eq(companies.id, companyId))
+    const [store] = await this.db
+      .select({ storeEmail: stores.storeEmail, name: stores.name })
+      .from(stores)
+      .where(eq(stores.id, dto.storeId))
       .limit(1);
-
-    const companyUsers = await this.db
-      .select({ email: users.email })
-      .from(users)
-      .where(eq(users.companyId, companyId));
-
-    const to = companyUsers
-      .map((u) => u.email)
-      .filter((e): e is string => Boolean(e?.trim()));
 
     await this.emailQueue.add(
       'sendContactNotification',
       {
-        to: to.length ? to : ['support@store.com'],
-        storeName: company?.name ?? 'My Store',
+        to: store.storeEmail,
+        storeName: store?.name ?? 'My Store',
         customerName: dto.name ?? null,
         customerEmail: normalizedEmail,
         subject: dto.subject ?? '(no subject)',

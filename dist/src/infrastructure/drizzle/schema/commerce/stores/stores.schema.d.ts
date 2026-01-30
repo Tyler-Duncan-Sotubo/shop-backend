@@ -104,6 +104,23 @@ export declare const stores: import("drizzle-orm/pg-core").PgTableWithColumns<{
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        storeEmail: import("drizzle-orm/pg-core").PgColumn<{
+            name: "store_email";
+            tableName: "stores";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         defaultCurrency: import("drizzle-orm/pg-core").PgColumn<{
             name: "default_currency";
             tableName: "stores";

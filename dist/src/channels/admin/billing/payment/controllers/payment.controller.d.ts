@@ -60,7 +60,7 @@ export declare class PaymentController extends BaseController {
         companyId: string;
         orderId: string | null;
         invoiceId: string | null;
-        method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+        method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
         status: "pending" | "succeeded" | "reversed";
         currency: string;
         amountMinor: number;
@@ -92,7 +92,7 @@ export declare class PaymentController extends BaseController {
                 amountMinor: number;
                 pdfUrl: string | null;
                 pdfStorageKey: string | null;
-                method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+                method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
                 reference: string | null;
                 customerSnapshot: unknown;
                 storeSnapshot: unknown;

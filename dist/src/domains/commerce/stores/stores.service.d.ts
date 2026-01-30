@@ -26,6 +26,7 @@ export declare class StoresService {
         companyId: string;
         imageUrl: string | null;
         imageAltText: string | null;
+        storeEmail: string | null;
         supportedCurrencies: string[] | null;
     }>;
     getStoresByCompany(companyId: string): Promise<{
@@ -37,6 +38,7 @@ export declare class StoresService {
         slug: string;
         imageUrl: string | null;
         imageAltText: string | null;
+        storeEmail: string | null;
         defaultCurrency: string;
         defaultLocale: string;
         supportedCurrencies: string[] | null;
@@ -58,6 +60,7 @@ export declare class StoresService {
         companyId: string;
         imageUrl: string | null;
         imageAltText: string | null;
+        storeEmail: string | null;
         supportedCurrencies: string[] | null;
     }>;
     updateStore(companyId: string, storeId: string, payload: UpdateStoreDto, user?: User, ip?: string): Promise<{
@@ -67,6 +70,7 @@ export declare class StoresService {
         slug: string;
         imageUrl: string | null;
         imageAltText: string | null;
+        storeEmail: string | null;
         defaultCurrency: string;
         defaultLocale: string;
         supportedCurrencies: string[] | null;
@@ -121,6 +125,7 @@ export declare class StoresService {
             slug: string;
             imageUrl: string | null;
             imageAltText: string | null;
+            storeEmail: string | null;
             defaultCurrency: string;
             defaultLocale: string;
             supportedCurrencies: string[] | null;

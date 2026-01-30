@@ -267,6 +267,13 @@
       "when": 1769626083690,
       "tag": "0037_demonic_cammi",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1769770176340,
+      "tag": "0038_tearful_red_skull",
+      "breakpoints": true
     }
   ]
 }

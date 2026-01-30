@@ -23,6 +23,11 @@ __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.Length)(1, 255),
     __metadata("design:type", String)
+], CreateStoreDto.prototype, "storeEmail", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Length)(1, 255),
+    __metadata("design:type", String)
 ], CreateStoreDto.prototype, "slug", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),

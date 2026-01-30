@@ -12,7 +12,7 @@ export declare class PaymentService {
         companyId: string;
         orderId: string | null;
         invoiceId: string | null;
-        method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+        method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
         status: "pending" | "succeeded" | "reversed";
         currency: string;
         amountMinor: number;
@@ -147,7 +147,7 @@ export declare class PaymentService {
             amountMinor: number;
             pdfUrl: string | null;
             pdfStorageKey: string | null;
-            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+            method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
             reference: string | null;
             customerSnapshot: unknown;
             storeSnapshot: unknown;
@@ -193,12 +193,12 @@ export declare class PaymentService {
         uploadedByUserId?: string | null;
         requirePendingBankTransfer?: boolean;
     }): Promise<{
-        url: string;
         id: string;
         createdAt: Date;
         companyId: string;
         fileName: string;
         mimeType: string;
+        url: string;
         note: string | null;
         kind: string;
         paymentId: string;

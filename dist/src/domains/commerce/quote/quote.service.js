@@ -76,18 +76,13 @@ let QuoteService = class QuoteService {
                 .execute();
             return quote;
         });
-        const [company] = await this.db
-            .select({ email: schema_1.users.email })
-            .from(schema_1.users)
-            .where((0, drizzle_orm_1.eq)(schema_1.users.companyId, companyId))
-            .limit(1);
         const [store] = await this.db
-            .select({ name: schema_1.stores.name })
+            .select({ storeEmail: schema_1.stores.storeEmail, name: schema_1.stores.name })
             .from(schema_1.stores)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.stores.id, storeId), (0, drizzle_orm_1.eq)(schema_1.stores.companyId, companyId)))
+            .where((0, drizzle_orm_1.eq)(schema_1.stores.id, dto.storeId))
             .limit(1);
         await this.quoteNotification.sendQuoteNotification({
-            to: company.email ? [company.email] : [''],
+            to: store?.storeEmail ? [store.storeEmail] : [''],
             fromName: store?.name || 'Quote Request',
             storeName: store?.name,
             quoteId: created.id,

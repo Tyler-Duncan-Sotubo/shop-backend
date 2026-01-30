@@ -38,8 +38,8 @@ export declare class ShippingRatesService {
         companyId: string;
         type: "flat" | "weight" | "price";
         isDefault: boolean;
-        metadata: Record<string, any> | null;
         priority: number;
+        metadata: Record<string, any> | null;
         zoneId: string;
         flatAmount: string | null;
         minOrderSubtotal: string | null;
@@ -131,10 +131,10 @@ export declare class ShippingRatesService {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            description: string | null;
             storeId: string;
-            metadata: Record<string, any> | null;
+            description: string | null;
             priority: number;
+            metadata: Record<string, any> | null;
         };
         rate: null;
         amount: Money;
@@ -146,10 +146,10 @@ export declare class ShippingRatesService {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            description: string | null;
             storeId: string;
-            metadata: Record<string, any> | null;
+            description: string | null;
             priority: number;
+            metadata: Record<string, any> | null;
         };
         rate: {
             id: string;
@@ -160,8 +160,8 @@ export declare class ShippingRatesService {
             companyId: string;
             type: "flat" | "weight" | "price";
             isDefault: boolean;
-            metadata: Record<string, any> | null;
             priority: number;
+            metadata: Record<string, any> | null;
             zoneId: string;
             flatAmount: string | null;
             minOrderSubtotal: string | null;

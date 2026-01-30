@@ -13,6 +13,7 @@ exports.stores = (0, pg_core_1.pgTable)('stores', {
     slug: (0, pg_core_1.text)('slug').notNull(),
     imageUrl: (0, pg_core_1.text)('image_url'),
     imageAltText: (0, pg_core_1.text)('image_alt_text'),
+    storeEmail: (0, pg_core_1.text)('store_email'),
     defaultCurrency: (0, pg_core_1.text)('default_currency').notNull().default('USD'),
     defaultLocale: (0, pg_core_1.text)('default_locale').notNull().default('en'),
     supportedCurrencies: (0, pg_core_1.text)('supported_currencies').array(),

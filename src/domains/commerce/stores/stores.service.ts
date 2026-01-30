@@ -84,6 +84,7 @@ export class StoresService {
           companyId,
           name: payload.name,
           slug: payload.slug,
+          storeEmail: payload.storeEmail ?? null,
           defaultCurrency: payload.defaultCurrency ?? 'NGN',
           defaultLocale: payload.defaultLocale ?? 'en-US',
           isActive: payload.isActive ?? true,
@@ -260,6 +261,7 @@ export class StoresService {
         .set({
           name: payload.name ?? existing.name,
           slug: payload.slug ?? existing.slug,
+          storeEmail: payload.storeEmail ?? existing.storeEmail,
           defaultCurrency: payload.defaultCurrency ?? existing.defaultCurrency,
           defaultLocale: payload.defaultLocale ?? existing.defaultLocale,
           isActive:
@@ -306,6 +308,7 @@ export class StoresService {
             isActive: existing.isActive,
             imageUrl: existing.imageUrl ?? null,
             imageAltText: (existing as any).imageAltText ?? null,
+            storeEmail: existing.storeEmail ?? null,
           },
           after: {
             name: updated.name,
@@ -315,6 +318,7 @@ export class StoresService {
             isActive: updated.isActive,
             imageUrl: updated.imageUrl ?? null,
             imageAltText: (updated as any).imageAltText ?? null,
+            storeEmail: updated.storeEmail ?? null,
           },
         },
       });

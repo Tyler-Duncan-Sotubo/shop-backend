@@ -14,6 +14,9 @@ export class CreateStoreDto {
   name: string;
 
   @IsString()
+  storeEmail: string;
+
+  @IsString()
   @Length(1, 255)
   slug: string;
 

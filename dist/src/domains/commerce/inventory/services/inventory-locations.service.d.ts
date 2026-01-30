@@ -44,8 +44,8 @@ export declare class InventoryLocationsService {
         type: string;
         city: string | null;
         postalCode: string | null;
-        code: string | null;
         isDefault: boolean;
+        code: string | null;
         addressLine1: string | null;
         addressLine2: string | null;
         region: string | null;
@@ -63,6 +63,7 @@ export declare class InventoryLocationsService {
         companyId: string;
         imageUrl: string | null;
         imageAltText: string | null;
+        storeEmail: string | null;
         supportedCurrencies: string[] | null;
     } | null>;
     createLocation(companyId: string, dto: CreateLocationDto, user?: User, ip?: string): Promise<{
@@ -78,8 +79,8 @@ export declare class InventoryLocationsService {
         type: string;
         city: string | null;
         postalCode: string | null;
-        code: string | null;
         isDefault: boolean;
+        code: string | null;
         addressLine1: string | null;
         addressLine2: string | null;
         region: string | null;

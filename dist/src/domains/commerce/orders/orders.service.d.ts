@@ -77,7 +77,7 @@ export declare class OrdersService {
             evidenceCount: number;
             lastEvidenceUrl: string | null;
             id: string;
-            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+            method: "pos" | "bank_transfer" | "cash" | "manual" | "gateway";
             status: "pending" | "succeeded" | "reversed";
             provider: string | null;
             amountMinor: number;

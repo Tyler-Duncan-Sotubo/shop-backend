@@ -18,7 +18,7 @@ import { User } from 'src/channels/admin/common/types/user.type';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { GetQuotesQueryDto } from './dto/get-quotes-query.dto';
-import { stores, users } from 'src/infrastructure/drizzle/schema';
+import { stores } from 'src/infrastructure/drizzle/schema';
 import { ManualOrdersService } from '../orders/manual-orders.service';
 import { QuoteNotificationService } from 'src/domains/notification/services/quote-notification.service';
 
@@ -106,20 +106,14 @@ export class QuoteService {
       return quote;
     });
 
-    const [company] = await this.db
-      .select({ email: users.email })
-      .from(users)
-      .where(eq(users.companyId, companyId))
-      .limit(1);
-
     const [store] = await this.db
-      .select({ name: stores.name })
+      .select({ storeEmail: stores.storeEmail, name: stores.name })
       .from(stores)
-      .where(and(eq(stores.id, storeId), eq(stores.companyId, companyId)))
+      .where(eq(stores.id, dto.storeId))
       .limit(1);
 
     await this.quoteNotification.sendQuoteNotification({
-      to: company.email ? [company.email] : [''],
+      to: store?.storeEmail ? [store.storeEmail] : [''],
       fromName: store?.name || 'Quote Request',
       storeName: store?.name,
       quoteId: created.id,

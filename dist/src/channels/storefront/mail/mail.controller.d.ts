@@ -10,20 +10,22 @@ export declare class MailController {
         updatedAt: Date;
         companyId: string;
         storeId: string | null;
-        email: string;
         status: string;
-        source: string | null;
+        email: string;
         metadata: Record<string, any> | null;
+        source: string | null;
     }>;
     createContactMessagePublic(companyId: string, storeId: string, dto: CreateContactMessageDto, ip: string): Promise<{
+        company: string | null;
         id: string;
         name: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         storeId: string | null;
-        email: string;
         status: string;
+        email: string;
+        phone: string | null;
         metadata: {
             [k: string]: any;
             ip?: string;
@@ -31,9 +33,7 @@ export declare class MailController {
             pageUrl?: string;
             referrer?: string;
         } | null;
-        phone: string | null;
         message: string;
-        company: string | null;
         subject: string | null;
     }>;
 }

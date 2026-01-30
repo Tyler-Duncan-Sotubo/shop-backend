@@ -29,9 +29,9 @@ export declare class PermissionsController extends BaseController {
         name: string;
         createdAt: Date;
         updatedAt: Date;
+        description: string | null;
         companyId: string;
         displayName: string | null;
-        description: string | null;
         isSystem: boolean;
     }>;
     findCompanyRoleById(user: User, roleId: string, name: CompanyRoleName): Promise<{

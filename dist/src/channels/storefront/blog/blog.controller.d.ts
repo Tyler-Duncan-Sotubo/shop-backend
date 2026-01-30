@@ -33,6 +33,7 @@ export declare class BlogController extends BaseController {
         updatedAt: Date;
         storeId: string;
         status: string;
+        publishedAt: Date | null;
         seoTitle: string | null;
         seoDescription: string | null;
         title: string;
@@ -40,7 +41,6 @@ export declare class BlogController extends BaseController {
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
-        publishedAt: Date | null;
         isFeatured: boolean;
         products: {
             [x: string]: any;

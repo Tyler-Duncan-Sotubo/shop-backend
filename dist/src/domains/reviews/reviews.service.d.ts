@@ -84,8 +84,8 @@ export declare class ReviewsService {
         deletedAt: Date | null;
         companyId: string;
         storeId: string | null;
-        productId: string;
         userId: string | null;
+        productId: string;
         authorName: string;
         authorEmail: string;
         rating: number;

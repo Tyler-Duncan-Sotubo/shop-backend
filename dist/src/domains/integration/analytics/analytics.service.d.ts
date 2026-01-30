@@ -15,10 +15,10 @@ export declare class AnalyticsService {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        enabled: boolean;
         provider: string;
         publicConfig: unknown;
         privateConfig: unknown;
+        enabled: boolean;
         requiresConsent: boolean;
     }>;
     findAllForStore(companyId: string, storeId: string): Promise<{
@@ -75,10 +75,10 @@ export declare class AnalyticsService {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        enabled: boolean;
         provider: string;
         publicConfig: unknown;
         privateConfig: unknown;
+        enabled: boolean;
         requiresConsent: boolean;
     }>;
     getPublicForStore(companyId: string, storeId: string): Promise<{

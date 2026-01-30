@@ -50,8 +50,8 @@ export declare class OptionsService {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        position: number;
         value: string;
+        position: number;
         productOptionId: string;
     }>;
     getOptionsWithValues(companyId: string, productId: string): Promise<{
@@ -97,8 +97,8 @@ export declare class OptionsService {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        position: number;
         value: string;
+        position: number;
         productOptionId: string;
     }>;
     updateOptionValue(companyId: string, valueId: string, dto: UpdateOptionValueDto, user?: User, ip?: string): Promise<{

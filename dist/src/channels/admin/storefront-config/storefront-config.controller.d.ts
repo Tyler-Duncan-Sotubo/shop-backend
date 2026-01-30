@@ -32,16 +32,16 @@ export declare class StorefrontConfigController extends BaseController {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        status: "draft" | "published";
-        publishedAt: Date | null;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
         baseId: string;
         themeId: string | null;
+        status: "draft" | "published";
+        publishedAt: Date | null;
     } | undefined>;
     upsertStoreOverride(user: User, storeId: string, dto: UpsertStorefrontOverrideDto): Promise<{
         id: string;
@@ -49,16 +49,16 @@ export declare class StorefrontConfigController extends BaseController {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        status: "draft" | "published";
-        publishedAt: Date | null;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
         baseId: string;
         themeId: string | null;
+        status: "draft" | "published";
+        publishedAt: Date | null;
     }>;
     publishStoreOverride(user: User, storeId: string): Promise<{
         ok: boolean;
@@ -71,11 +71,11 @@ export declare class StorefrontConfigController extends BaseController {
         key: string;
         version: number;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
     }>;
     listBases(activeOnly?: string): Promise<{
         id: string;
@@ -99,11 +99,11 @@ export declare class StorefrontConfigController extends BaseController {
         key: string;
         version: number;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
     }>;
     updateBase(user: User, baseId: string, dto: UpdateBaseDto): Promise<{
         id: string;
@@ -131,11 +131,11 @@ export declare class StorefrontConfigController extends BaseController {
         key: string;
         version: number;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
     }>;
     listThemes(user: User, key?: string, storeId?: string, activeOnly?: string, scope?: 'global' | 'company'): Promise<{
         id: string;
@@ -161,11 +161,11 @@ export declare class StorefrontConfigController extends BaseController {
         key: string;
         version: number;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
     }>;
     updateTheme(user: User, themeId: string, dto: UpdateThemeDto): Promise<{
         id: string;

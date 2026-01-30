@@ -6,7 +6,7 @@ import { CurrentCompanyId } from '../../common/decorators/current-company-id.dec
 import { CurrentStoreId } from '../../common/decorators/current-store.decorator';
 
 @Controller('integrations/analytics')
-export class AnalyticsController extends BaseController {
+export class StorefrontIntegrationAnalyticsController extends BaseController {
   constructor(private readonly analyticsService: AnalyticsService) {
     super();
   }

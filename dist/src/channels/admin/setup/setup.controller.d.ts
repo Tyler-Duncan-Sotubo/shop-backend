@@ -42,15 +42,15 @@ export declare class SetupController {
             updatedAt: Date;
             deletedAt: Date | null;
             companyId: string;
-            storeId: string;
             type: string;
-            city: string | null;
-            postalCode: string | null;
-            isDefault: boolean;
+            storeId: string;
             code: string | null;
+            isDefault: boolean;
             addressLine1: string | null;
             addressLine2: string | null;
+            city: string | null;
             region: string | null;
+            postalCode: string | null;
         };
         domains: {
             id: string;
@@ -67,16 +67,16 @@ export declare class SetupController {
             updatedAt: Date;
             companyId: string;
             storeId: string;
-            status: "draft" | "published";
-            publishedAt: Date | null;
             theme: unknown;
-            header: unknown;
-            pages: unknown;
             ui: unknown;
             seo: unknown;
+            header: unknown;
             footer: unknown;
+            pages: unknown;
             baseId: string;
             themeId: string | null;
+            status: "draft" | "published";
+            publishedAt: Date | null;
         };
     }>;
     markSetupCompleted(user: User): Promise<{

@@ -107,6 +107,8 @@ export declare class CustomersService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        city: string;
+        postalCode: string | null;
         firstName: string | null;
         lastName: string | null;
         phone: string | null;
@@ -114,9 +116,7 @@ export declare class CustomersService {
         label: string | null;
         line1: string;
         line2: string | null;
-        city: string;
         state: string | null;
-        postalCode: string | null;
         isDefaultBilling: boolean;
         isDefaultShipping: boolean;
     }>;
@@ -149,14 +149,21 @@ export declare class CustomersService {
         reviewsLimit?: number;
         quotesLimit?: number;
     }): Promise<{
-        orders: {
-            id: string;
-            orderNumber: string;
-            status: string;
-            createdAt: Date | null;
+        orders: ({
+            id: any;
+            orderNumber: any;
+            status: any;
+            createdAt: any;
             currency: any;
             totalMinor: any;
-        }[];
+        } | {
+            id: any;
+            orderNumber: any;
+            status: any;
+            createdAt: any;
+            currency: any;
+            totalMinor: any;
+        })[];
         products: {
             id: string;
             name: string;
@@ -198,6 +205,18 @@ export declare class CustomersService {
         offset?: number;
     }): Promise<{
         items: ({
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: any;
+            lastOrderedAt: Date;
+        } | {
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: any;
+            lastOrderedAt: Date;
+        } | {
             id: any;
             name: any;
             slug: any;

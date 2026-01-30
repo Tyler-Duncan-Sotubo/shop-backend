@@ -53,8 +53,8 @@ export declare class PaymentMethodsService {
         companyId: string;
         storeId: string;
         status: string;
-        method: string;
         provider: string | null;
+        method: string;
         isEnabled: boolean;
         config: unknown;
         lastError: string | null;
@@ -67,8 +67,8 @@ export declare class PaymentMethodsService {
         companyId: string;
         storeId: string;
         status: string;
-        method: string;
         provider: string | null;
+        method: string;
         isEnabled: boolean;
         config: unknown;
         lastError: string | null;
@@ -81,8 +81,8 @@ export declare class PaymentMethodsService {
         companyId: string;
         storeId: string;
         status: string;
-        method: string;
         provider: string | null;
+        method: string;
         isEnabled: boolean;
         config: unknown;
         lastError: string | null;

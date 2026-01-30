@@ -17,9 +17,9 @@ export declare class CompanyAccessService {
         name: string;
         createdAt: Date;
         updatedAt: Date;
+        description: string | null;
         companyId: string;
         displayName: string | null;
-        description: string | null;
         isSystem: boolean;
     }>;
     createDefaultRoles(companyId: string): Promise<{
@@ -27,9 +27,9 @@ export declare class CompanyAccessService {
         name: string;
         createdAt: Date;
         updatedAt: Date;
+        description: string | null;
         companyId: string;
         displayName: string | null;
-        description: string | null;
         isSystem: boolean;
     }[]>;
     getRolesByCompany(companyId: string): Promise<{
@@ -52,9 +52,9 @@ export declare class CompanyAccessService {
         name: string;
         createdAt: Date;
         updatedAt: Date;
+        description: string | null;
         companyId: string;
         displayName: string | null;
-        description: string | null;
         isSystem: boolean;
     }>;
     private findRoleById;
@@ -99,9 +99,9 @@ export declare class CompanyAccessService {
         name: string;
         createdAt: Date;
         updatedAt: Date;
+        description: string | null;
         companyId: string;
         displayName: string | null;
-        description: string | null;
         isSystem: boolean;
     }>;
     private cloneRolePermissions;

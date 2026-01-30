@@ -14,11 +14,11 @@ export declare class BaseThemeAdminService {
         key: string;
         version: number;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
     }>;
     listBases(params?: {
         activeOnly?: boolean;
@@ -44,11 +44,11 @@ export declare class BaseThemeAdminService {
         key: string;
         version: number;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
     }>;
     getBaseByKey(key: string): Promise<{
         id: string;
@@ -58,11 +58,11 @@ export declare class BaseThemeAdminService {
         key: string;
         version: number;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
     }>;
     updateBase(baseId: string, dto: UpdateBaseDto): Promise<{
         id: string;
@@ -90,11 +90,11 @@ export declare class BaseThemeAdminService {
         key: string;
         version: number;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
     }>;
     createGlobalTheme(dto: CreateThemeDto): Promise<{
         id: string;
@@ -105,11 +105,11 @@ export declare class BaseThemeAdminService {
         key: string;
         version: number;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
     }>;
     listThemes(companyId: string, params?: {
         key?: string;
@@ -139,11 +139,11 @@ export declare class BaseThemeAdminService {
         key: string;
         version: number;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
     }>;
     updateTheme(companyId: string, themeId: string, dto: UpdateThemeDto): Promise<{
         id: string;

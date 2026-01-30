@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { AnalyticsController } from './analytics.controller';
+import { StorefrontIntegrationAnalyticsController } from './analytics.controller';
 
 @Module({
-  controllers: [AnalyticsController],
+  controllers: [StorefrontIntegrationAnalyticsController],
 })
-export class StorefrontAnalyticsModule {}
+export class StorefrontIntegrationAnalyticsModule {}

@@ -8,13 +8,13 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StorefrontIntegrationModule = void 0;
 const common_1 = require("@nestjs/common");
-const analytics_module_1 = require("../analytics/analytics.module");
+const analytics_module_1 = require("./analytics/analytics.module");
 let StorefrontIntegrationModule = class StorefrontIntegrationModule {
 };
 exports.StorefrontIntegrationModule = StorefrontIntegrationModule;
 exports.StorefrontIntegrationModule = StorefrontIntegrationModule = __decorate([
     (0, common_1.Module)({
-        imports: [analytics_module_1.StorefrontAnalyticsModule],
+        imports: [analytics_module_1.StorefrontIntegrationAnalyticsModule],
     })
 ], StorefrontIntegrationModule);
 //# sourceMappingURL=integration.module.js.map

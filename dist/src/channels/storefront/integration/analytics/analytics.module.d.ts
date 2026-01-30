@@ -1,2 +1,2 @@
-export declare class StorefrontAnalyticsModule {
+export declare class StorefrontIntegrationAnalyticsModule {
 }

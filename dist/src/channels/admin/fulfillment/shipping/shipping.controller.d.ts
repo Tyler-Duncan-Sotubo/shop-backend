@@ -27,11 +27,11 @@ export declare class ShippingController extends BaseController {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        description: string | null;
         companyId: string;
         storeId: string;
-        description: string | null;
-        priority: number;
         metadata: Record<string, any> | null;
+        priority: number;
     }>;
     updateZone(user: User, zoneId: string, dto: Partial<CreateZoneDto>, ip: string): Promise<{
         id: string;
@@ -131,8 +131,8 @@ export declare class ShippingController extends BaseController {
         companyId: string;
         type: "flat" | "weight" | "price";
         isDefault: boolean;
-        priority: number;
         metadata: Record<string, any> | null;
+        priority: number;
         zoneId: string;
         flatAmount: string | null;
         minOrderSubtotal: string | null;
@@ -223,11 +223,11 @@ export declare class ShippingController extends BaseController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            description: string | null;
             companyId: string;
             storeId: string;
-            description: string | null;
-            priority: number;
             metadata: Record<string, any> | null;
+            priority: number;
         };
         rate: null;
         amount: string;
@@ -238,11 +238,11 @@ export declare class ShippingController extends BaseController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            description: string | null;
             companyId: string;
             storeId: string;
-            description: string | null;
-            priority: number;
             metadata: Record<string, any> | null;
+            priority: number;
         };
         rate: {
             id: string;
@@ -253,8 +253,8 @@ export declare class ShippingController extends BaseController {
             companyId: string;
             type: "flat" | "weight" | "price";
             isDefault: boolean;
-            priority: number;
             metadata: Record<string, any> | null;
+            priority: number;
             zoneId: string;
             flatAmount: string | null;
             minOrderSubtotal: string | null;

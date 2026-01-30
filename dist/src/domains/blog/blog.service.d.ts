@@ -19,14 +19,14 @@ export declare class BlogService {
         updatedAt: Date;
         storeId: string;
         status: string;
-        title: string;
+        publishedAt: Date | null;
         seoTitle: string | null;
         seoDescription: string | null;
+        title: string;
         content: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
-        publishedAt: Date | null;
         isFeatured: boolean;
     }>;
     listAdmin(user: User, filters?: BlogPostsAdminQueryDto): Promise<{
@@ -56,14 +56,14 @@ export declare class BlogService {
         updatedAt: Date;
         storeId: string;
         status: string;
-        title: string;
+        publishedAt: Date | null;
         seoTitle: string | null;
         seoDescription: string | null;
+        title: string;
         content: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
-        publishedAt: Date | null;
         isFeatured: boolean;
         products: {
             [x: string]: any;
@@ -102,14 +102,14 @@ export declare class BlogService {
         updatedAt: Date;
         storeId: string;
         status: string;
-        title: string;
+        publishedAt: Date | null;
         seoTitle: string | null;
         seoDescription: string | null;
+        title: string;
         content: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
-        publishedAt: Date | null;
         isFeatured: boolean;
         products: {
             [x: string]: any;

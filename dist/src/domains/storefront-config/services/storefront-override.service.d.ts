@@ -18,16 +18,16 @@ export declare class StorefrontOverrideService {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        status: "draft" | "published";
-        publishedAt: Date | null;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
         baseId: string;
         themeId: string | null;
+        status: "draft" | "published";
+        publishedAt: Date | null;
     } | undefined>;
     private validateOverridePayloadOrThrow;
     upsertOverride(companyId: string, storeId: string, dto: UpsertStorefrontOverrideDto): Promise<{
@@ -36,16 +36,16 @@ export declare class StorefrontOverrideService {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        status: "draft" | "published";
-        publishedAt: Date | null;
         theme: unknown;
-        header: unknown;
-        pages: unknown;
         ui: unknown;
         seo: unknown;
+        header: unknown;
         footer: unknown;
+        pages: unknown;
         baseId: string;
         themeId: string | null;
+        status: "draft" | "published";
+        publishedAt: Date | null;
     }>;
     publishDraft(companyId: string, storeId: string): Promise<{
         ok: boolean;

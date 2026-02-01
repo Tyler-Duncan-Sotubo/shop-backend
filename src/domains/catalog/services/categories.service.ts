@@ -29,6 +29,7 @@ import { slugify } from '../utils/slugify';
 import { AwsService } from 'src/infrastructure/aws/aws.service';
 import { defaultId } from 'src/infrastructure/drizzle/id';
 import { MediaService } from 'src/domains/media/media.service';
+import { toCdnUrl } from 'src/infrastructure/cdn/to-cdn-url';
 
 @Injectable()
 export class CategoriesService {
@@ -588,7 +589,6 @@ export class CategoriesService {
   ) {
     await this.assertCompanyExists(companyId);
 
-    // keep existing behavior
     if (!storeId) return [];
 
     return this.cache.getOrSetVersioned(
@@ -602,22 +602,16 @@ export class CategoriesService {
             slug: categories.slug,
             imageUrl: media.url,
             imageAltText: media.altText,
-
-            // ✅ include parentId
             parentId: categories.parentId,
-
-            // ✅ include hasChildren (store + company scoped, ignores deleted)
-            hasChildren: sql<boolean>`
-            exists (
-              select 1
-              from ${categories} as child
-              where
-                child.company_id = ${companyId}
-                and child.store_id = ${storeId}
-                and child.parent_id = ${categories.id}
-                and child.deleted_at is null
-            )
-          `.as('hasChildren'),
+            hasChildren: sql<boolean>`exists (
+            select 1
+            from ${categories} as child
+            where
+              child.company_id = ${companyId}
+              and child.store_id = ${storeId}
+              and child.parent_id = ${categories.id}
+              and child.deleted_at is null
+          )`.as('hasChildren'),
           })
           .from(categories)
           .leftJoin(
@@ -638,11 +632,16 @@ export class CategoriesService {
           )
           .orderBy(categories.position);
 
-        if (typeof limit === 'number') {
-          return baseQuery.limit(limit).execute();
-        }
+        const rows =
+          typeof limit === 'number'
+            ? await baseQuery.limit(limit).execute()
+            : await baseQuery.execute();
 
-        return baseQuery.execute();
+        // ✅ rewrite to CDN
+        return rows.map((r) => ({
+          ...r,
+          imageUrl: toCdnUrl(r.imageUrl),
+        }));
       },
     );
   }

@@ -23,15 +23,15 @@ export declare class PaymentMethodsController extends BaseController {
     }>;
     toggleMethod(user: User, dto: ToggleStorePaymentMethodDto): Promise<{
         data: {
+            status: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             companyId: string;
             storeId: string;
-            status: string;
-            provider: string | null;
             method: string;
+            provider: string | null;
             isEnabled: boolean;
             config: unknown;
             lastError: string | null;
@@ -39,15 +39,15 @@ export declare class PaymentMethodsController extends BaseController {
     }>;
     upsertGateway(user: User, dto: UpsertGatewayConfigDto): Promise<{
         data: {
+            status: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             companyId: string;
             storeId: string;
-            status: string;
-            provider: string | null;
             method: string;
+            provider: string | null;
             isEnabled: boolean;
             config: unknown;
             lastError: string | null;
@@ -55,15 +55,15 @@ export declare class PaymentMethodsController extends BaseController {
     }>;
     upsertBankTransfer(user: User, dto: UpsertBankTransferConfigDto): Promise<{
         data: {
+            status: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
             companyId: string;
             storeId: string;
-            status: string;
-            provider: string | null;
             method: string;
+            provider: string | null;
             isEnabled: boolean;
             config: unknown;
             lastError: string | null;

@@ -43,6 +43,7 @@ import {
 } from '../mappers/product.mapper';
 import { ConfigService } from '@nestjs/config';
 import { InventoryStockService } from 'src/domains/commerce/inventory/services/inventory-stock.service';
+import { toCdnUrl } from 'src/infrastructure/cdn/to-cdn-url';
 
 type CollectionCategory = {
   id: string;
@@ -2613,7 +2614,7 @@ export class ProductsService {
       const images = b.imageUrl
         ? {
             id: 'default',
-            src: b.imageUrl,
+            src: toCdnUrl(b.imageUrl),
             alt: null,
           }
         : null;

@@ -9,11 +9,11 @@ export declare class PublicInvoicesController {
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
-            enabled: boolean;
-            meta: unknown;
-            expiresAt: Date | null;
             token: string;
+            expiresAt: Date | null;
+            meta: unknown;
             invoiceId: string;
+            enabled: boolean;
             viewCount: number;
             lastViewedAt: Date | null;
             createdBy: string;

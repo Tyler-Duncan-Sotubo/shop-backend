@@ -26,8 +26,8 @@ export declare class ShippingZonesService {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
         companyId: string;
+        description: string | null;
         storeId: string;
         metadata: Record<string, any> | null;
         priority: number;
@@ -87,8 +87,8 @@ export declare class ShippingZonesService {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
         companyId: string;
+        description: string | null;
         storeId: string;
         metadata: Record<string, any> | null;
         priority: number;

@@ -26,6 +26,7 @@ const aws_service_1 = require("../../../infrastructure/aws/aws.service");
 const product_mapper_1 = require("../mappers/product.mapper");
 const config_1 = require("@nestjs/config");
 const inventory_stock_service_1 = require("../../commerce/inventory/services/inventory-stock.service");
+const to_cdn_url_1 = require("../../../infrastructure/cdn/to-cdn-url");
 let ProductsService = class ProductsService {
     constructor(db, cache, auditService, categoryService, linkedProductsService, aws, configService, inventoryService) {
         this.db = db;
@@ -1663,7 +1664,7 @@ let ProductsService = class ProductsService {
             const images = b.imageUrl
                 ? {
                     id: 'default',
-                    src: b.imageUrl,
+                    src: (0, to_cdn_url_1.toCdnUrl)(b.imageUrl),
                     alt: null,
                 }
                 : null;

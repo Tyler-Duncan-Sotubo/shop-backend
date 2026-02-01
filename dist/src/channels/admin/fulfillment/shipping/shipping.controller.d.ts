@@ -27,8 +27,8 @@ export declare class ShippingController extends BaseController {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
         companyId: string;
+        description: string | null;
         storeId: string;
         metadata: Record<string, any> | null;
         priority: number;
@@ -223,8 +223,8 @@ export declare class ShippingController extends BaseController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            description: string | null;
             companyId: string;
+            description: string | null;
             storeId: string;
             metadata: Record<string, any> | null;
             priority: number;
@@ -238,8 +238,8 @@ export declare class ShippingController extends BaseController {
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            description: string | null;
             companyId: string;
+            description: string | null;
             storeId: string;
             metadata: Record<string, any> | null;
             priority: number;

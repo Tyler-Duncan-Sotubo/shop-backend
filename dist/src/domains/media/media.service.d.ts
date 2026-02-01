@@ -40,6 +40,7 @@ export declare class MediaService {
         tag?: string | null;
         altText?: string | null;
     }): Promise<{
+        url: string;
         id: string;
         createdAt: Date;
         deletedAt: Date | null;
@@ -48,7 +49,6 @@ export declare class MediaService {
         storeId: string;
         fileName: string;
         mimeType: string;
-        url: string;
         storageKey: string | null;
         width: number | null;
         height: number | null;
@@ -58,6 +58,7 @@ export declare class MediaService {
     }>;
     private buildMediaPayload;
     uploadEditorImage(companyId: string, dto: UploadEditorImageDto): Promise<{
+        url: string;
         id: string;
         createdAt: Date;
         deletedAt: Date | null;
@@ -66,7 +67,6 @@ export declare class MediaService {
         storeId: string;
         fileName: string;
         mimeType: string;
-        url: string;
         storageKey: string | null;
         width: number | null;
         height: number | null;

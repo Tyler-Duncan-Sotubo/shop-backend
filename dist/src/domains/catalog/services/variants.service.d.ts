@@ -67,11 +67,11 @@ export declare class VariantsService {
             url: any;
             altText: any;
             position: any;
-        } | null;
+        };
         inventory: {
             stockQuantity: number;
             lowStockThreshold: number;
-        } | null;
+        };
     } | {
         variant: any;
         image: {
@@ -79,11 +79,11 @@ export declare class VariantsService {
             url: any;
             altText: any;
             position: any;
-        };
+        } | null;
         inventory: {
             stockQuantity: number;
             lowStockThreshold: number;
-        };
+        } | null;
     } | {
         variant: any;
         image: never;

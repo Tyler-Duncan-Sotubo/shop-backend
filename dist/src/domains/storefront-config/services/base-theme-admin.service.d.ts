@@ -7,18 +7,18 @@ export declare class BaseThemeAdminService {
     private readonly cache;
     constructor(db: db, cache: CacheService);
     createBase(dto: CreateBaseDto): Promise<{
+        version: number;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         key: string;
-        version: number;
         theme: unknown;
+        header: unknown;
+        pages: unknown;
         ui: unknown;
         seo: unknown;
-        header: unknown;
         footer: unknown;
-        pages: unknown;
     }>;
     listBases(params?: {
         activeOnly?: boolean;
@@ -37,32 +37,32 @@ export declare class BaseThemeAdminService {
         updatedAt: Date;
     }[]>;
     getBaseById(baseId: string): Promise<{
+        version: number;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         key: string;
-        version: number;
         theme: unknown;
+        header: unknown;
+        pages: unknown;
         ui: unknown;
         seo: unknown;
-        header: unknown;
         footer: unknown;
-        pages: unknown;
     }>;
     getBaseByKey(key: string): Promise<{
+        version: number;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         key: string;
-        version: number;
         theme: unknown;
+        header: unknown;
+        pages: unknown;
         ui: unknown;
         seo: unknown;
-        header: unknown;
         footer: unknown;
-        pages: unknown;
     }>;
     updateBase(baseId: string, dto: UpdateBaseDto): Promise<{
         id: string;
@@ -82,34 +82,34 @@ export declare class BaseThemeAdminService {
         ok: boolean;
     }>;
     createTheme(companyId: string, dto: CreateThemeDto): Promise<{
+        version: number;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         companyId: string | null;
         key: string;
-        version: number;
         theme: unknown;
+        header: unknown;
+        pages: unknown;
         ui: unknown;
         seo: unknown;
-        header: unknown;
         footer: unknown;
-        pages: unknown;
     }>;
     createGlobalTheme(dto: CreateThemeDto): Promise<{
+        version: number;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         companyId: string | null;
         key: string;
-        version: number;
         theme: unknown;
+        header: unknown;
+        pages: unknown;
         ui: unknown;
         seo: unknown;
-        header: unknown;
         footer: unknown;
-        pages: unknown;
     }>;
     listThemes(companyId: string, params?: {
         key?: string;
@@ -131,19 +131,19 @@ export declare class BaseThemeAdminService {
         updatedAt: Date;
     }[]>;
     getThemeById(companyId: string, themeId: string): Promise<{
+        version: number;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         companyId: string | null;
         key: string;
-        version: number;
         theme: unknown;
+        header: unknown;
+        pages: unknown;
         ui: unknown;
         seo: unknown;
-        header: unknown;
         footer: unknown;
-        pages: unknown;
     }>;
     updateTheme(companyId: string, themeId: string, dto: UpdateThemeDto): Promise<{
         id: string;

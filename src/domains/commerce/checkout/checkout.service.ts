@@ -102,8 +102,6 @@ export class CheckoutService {
       // orderBy: (fields, { desc }) => [desc(fields.createdAt)],
     });
 
-    console.log('[checkout] createFromCart existing?', { existing });
-
     // Helper: time-expired?
     const isTimeExpired = (row: any) => {
       const exp = row?.expiresAt ? new Date(row.expiresAt) : null;

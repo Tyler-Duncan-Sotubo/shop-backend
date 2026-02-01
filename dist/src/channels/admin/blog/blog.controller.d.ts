@@ -9,20 +9,20 @@ export declare class BlogController extends BaseController {
     constructor(blogService: BlogService);
     create(user: User, dto: CreateBlogPostDto, ip: string): Promise<{
         id: string;
-        slug: string;
-        createdAt: Date;
-        updatedAt: Date;
-        storeId: string;
-        status: string;
-        publishedAt: Date | null;
-        seoTitle: string | null;
-        seoDescription: string | null;
         title: string;
-        content: string;
+        slug: string;
+        storeId: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
+        content: string;
+        status: string;
+        publishedAt: Date | null;
         isFeatured: boolean;
+        seoTitle: string | null;
+        seoDescription: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     listAdmin(user: User, filters?: BlogPostsAdminQueryDto): Promise<{
         rows: {
@@ -46,20 +46,20 @@ export declare class BlogController extends BaseController {
     }>;
     getByIdAdmin(user: User, params: BlogPostIdParamDto): Promise<{
         id: string;
-        slug: string;
-        createdAt: Date;
-        updatedAt: Date;
-        storeId: string;
-        status: string;
-        publishedAt: Date | null;
-        seoTitle: string | null;
-        seoDescription: string | null;
         title: string;
-        content: string;
+        slug: string;
+        storeId: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
+        content: string;
+        status: string;
+        publishedAt: Date | null;
         isFeatured: boolean;
+        seoTitle: string | null;
+        seoDescription: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         products: {
             [x: string]: any;
         }[];

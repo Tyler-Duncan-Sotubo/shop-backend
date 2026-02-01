@@ -193,12 +193,12 @@ export declare class PaymentService {
         uploadedByUserId?: string | null;
         requirePendingBankTransfer?: boolean;
     }): Promise<{
+        url: string;
         id: string;
         createdAt: Date;
         companyId: string;
         fileName: string;
         mimeType: string;
-        url: string;
         note: string | null;
         kind: string;
         paymentId: string;

@@ -27,8 +27,6 @@ export declare class AdminCustomersController extends BaseController {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        city: string;
-        postalCode: string | null;
         firstName: string | null;
         lastName: string | null;
         phone: string | null;
@@ -36,7 +34,9 @@ export declare class AdminCustomersController extends BaseController {
         label: string | null;
         line1: string;
         line2: string | null;
+        city: string;
         state: string | null;
+        postalCode: string | null;
         isDefaultBilling: boolean;
         isDefaultShipping: boolean;
     }>;

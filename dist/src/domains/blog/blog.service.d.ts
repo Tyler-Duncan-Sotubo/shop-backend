@@ -14,20 +14,20 @@ export declare class BlogService {
     constructor(db: db, cache: CacheService, auditService: AuditService, aws: AwsService);
     create(user: User, dto: CreateBlogPostDto, ip: string): Promise<{
         id: string;
-        slug: string;
-        createdAt: Date;
-        updatedAt: Date;
-        storeId: string;
-        status: string;
-        publishedAt: Date | null;
-        seoTitle: string | null;
-        seoDescription: string | null;
         title: string;
-        content: string;
+        slug: string;
+        storeId: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
+        content: string;
+        status: string;
+        publishedAt: Date | null;
         isFeatured: boolean;
+        seoTitle: string | null;
+        seoDescription: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     listAdmin(user: User, filters?: BlogPostsAdminQueryDto): Promise<{
         rows: {
@@ -51,20 +51,20 @@ export declare class BlogService {
     }>;
     getByIdAdmin(user: User, id: string): Promise<{
         id: string;
-        slug: string;
-        createdAt: Date;
-        updatedAt: Date;
-        storeId: string;
-        status: string;
-        publishedAt: Date | null;
-        seoTitle: string | null;
-        seoDescription: string | null;
         title: string;
-        content: string;
+        slug: string;
+        storeId: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
+        content: string;
+        status: string;
+        publishedAt: Date | null;
         isFeatured: boolean;
+        seoTitle: string | null;
+        seoDescription: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         products: {
             [x: string]: any;
         }[];
@@ -97,20 +97,20 @@ export declare class BlogService {
     }>;
     getBySlugPublic(storeId: string, slug: string): Promise<{
         id: string;
-        slug: string;
-        createdAt: Date;
-        updatedAt: Date;
-        storeId: string;
-        status: string;
-        publishedAt: Date | null;
-        seoTitle: string | null;
-        seoDescription: string | null;
         title: string;
-        content: string;
+        slug: string;
+        storeId: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
+        content: string;
+        status: string;
+        publishedAt: Date | null;
         isFeatured: boolean;
+        seoTitle: string | null;
+        seoDescription: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         products: {
             [x: string]: any;
         }[];

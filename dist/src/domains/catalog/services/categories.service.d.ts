@@ -248,18 +248,18 @@ export declare class CategoriesService {
         imageAltText: string | null;
     })[]>;
     getCategoriesWithLimit(companyId: string, storeId?: string | null, limit?: number): Promise<({
+        imageUrl: string;
         id: any;
         name: any;
         slug: any;
-        imageUrl: string | null;
         imageAltText: string | null;
         parentId: any;
         hasChildren: boolean;
     } | {
+        imageUrl: string;
         id: any;
         name: any;
         slug: any;
-        imageUrl: string | null;
         imageAltText: string | null;
         parentId: any;
         hasChildren: boolean;

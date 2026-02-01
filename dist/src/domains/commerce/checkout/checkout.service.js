@@ -56,7 +56,6 @@ let CheckoutService = class CheckoutService {
         const existing = await dbOrTx.query.checkouts?.findFirst?.({
             where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.checkouts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.checkouts.cartId, cartId)),
         });
-        console.log('[checkout] createFromCart existing?', { existing });
         const isTimeExpired = (row) => {
             const exp = row?.expiresAt ? new Date(row.expiresAt) : null;
             return !!exp && exp.getTime() < Date.now();

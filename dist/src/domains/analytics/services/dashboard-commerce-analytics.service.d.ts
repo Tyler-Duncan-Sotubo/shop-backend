@@ -85,6 +85,6 @@ export declare class DashboardCommerceAnalyticsService {
             quantity: number;
             revenueMinor: number;
         }[];
-        bucket: "15m" | "day" | "month";
+        bucket: "day" | "15m" | "month";
     }>;
 }

@@ -22,7 +22,6 @@ let StorefrontRevalidateService = StorefrontRevalidateService_1 = class Storefro
     constructor(db) {
         this.db = db;
         this.logger = new common_1.Logger(StorefrontRevalidateService_1.name);
-        this.nextBaseUrl = process.env.NEXT_STOREFRONT_URL;
         this.secret = process.env.NEXT_REVALIDATE_SECRET;
         this.wildcardBaseDomain = process.env.PLATFORM_WILDCARD_DOMAIN;
     }
@@ -34,39 +33,50 @@ let StorefrontRevalidateService = StorefrontRevalidateService_1 = class Storefro
             .split('/')[0]
             .split(':')[0];
     }
+    buildWildcardHost(storeSlug) {
+        if (!storeSlug || !this.wildcardBaseDomain)
+            return '';
+        return `${storeSlug}.${this.normalizeHost(this.wildcardBaseDomain)}`;
+    }
     async revalidateStorefront(storeId) {
-        if (!this.nextBaseUrl || !this.secret) {
-            this.logger.warn('revalidateStorefront skipped: missing NEXT_STOREFRONT_URL or NEXT_REVALIDATE_SECRET');
+        if (!this.secret) {
+            this.logger.warn('revalidateStorefront skipped: missing NEXT_REVALIDATE_SECRET');
             return;
         }
         const store = await this.db.query.stores.findFirst({
             where: (0, drizzle_orm_1.eq)(schema_1.stores.id, storeId),
-            columns: {
-                id: true,
-                slug: true,
-            },
+            columns: { id: true, slug: true },
         });
         const domains = await this.db.query.storeDomains.findMany({
             where: (0, drizzle_orm_1.eq)(schema_1.storeDomains.storeId, storeId),
-            columns: {
-                domain: true,
-            },
+            columns: { domain: true },
         });
-        const hosts = new Set();
-        for (const d of domains ?? []) {
-            const host = this.normalizeHost(d.domain);
-            if (host)
-                hosts.add(host);
+        const customHost = (domains ?? []).map((d) => this.normalizeHost(d.domain)).find(Boolean) ??
+            '';
+        const wildcardHost = store?.slug ? this.buildWildcardHost(store.slug) : '';
+        const targetHost = customHost || wildcardHost;
+        if (!targetHost) {
+            this.logger.warn(`revalidateStorefront skipped: no domain/slug for storeId=${storeId}`);
+            return;
         }
-        if (store?.slug && this.wildcardBaseDomain) {
-            hosts.add(`${store.slug}.${this.normalizeHost(this.wildcardBaseDomain)}`);
+        const allHosts = new Set();
+        if (customHost)
+            allHosts.add(customHost);
+        if (wildcardHost)
+            allHosts.add(wildcardHost);
+        for (const d of domains ?? []) {
+            const h = this.normalizeHost(d.domain);
+            if (h)
+                allHosts.add(h);
         }
         const body = {
+            storeId,
             tags: ['storefront-config'],
-            hosts: Array.from(hosts),
+            hosts: Array.from(allHosts),
         };
+        const url = `https://${targetHost}/api/revalidate`;
         try {
-            const res = await fetch(`${this.nextBaseUrl}/api/revalidate`, {
+            const res = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'content-type': 'application/json',
@@ -76,13 +86,13 @@ let StorefrontRevalidateService = StorefrontRevalidateService_1 = class Storefro
             });
             if (!res.ok) {
                 const text = await res.text().catch(() => '');
-                this.logger.warn(`revalidateStorefront failed (${res.status}) ${text}`);
+                this.logger.warn(`revalidateStorefront failed (${res.status}) ${text} url=${url}`);
                 return;
             }
-            this.logger.log(`revalidateStorefront OK storeId=${storeId} hosts=${body.hosts.join(',') || '(none)'}`);
+            this.logger.log(`revalidateStorefront OK storeId=${storeId} url=${url}`);
         }
         catch (e) {
-            this.logger.warn(`revalidateStorefront error: ${e?.message ?? e}`);
+            this.logger.warn(`revalidateStorefront error: ${e?.message ?? e} url=${url}`);
         }
     }
 };

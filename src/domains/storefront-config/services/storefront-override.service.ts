@@ -228,6 +228,8 @@ export class StorefrontOverrideService {
 
     await this.cache.bumpCompanyVersion(store.companyId);
 
+    await this.storefrontRevalidateService.revalidateStorefront(storeId);
+
     await this.companySettings.markOnboardingStep(
       companyId,
       'online_store_customization_complete',

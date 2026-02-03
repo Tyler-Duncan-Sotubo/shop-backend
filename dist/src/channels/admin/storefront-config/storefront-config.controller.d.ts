@@ -27,12 +27,12 @@ export declare class StorefrontConfigController extends BaseController {
         pages: {};
     }>;
     getStorePublishedOverride(user: User, storeId: string): Promise<{
+        status: "draft" | "published";
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        status: "draft" | "published";
         publishedAt: Date | null;
         theme: unknown;
         header: unknown;
@@ -44,12 +44,12 @@ export declare class StorefrontConfigController extends BaseController {
         themeId: string | null;
     } | undefined>;
     upsertStoreOverride(user: User, storeId: string, dto: UpsertStorefrontOverrideDto): Promise<{
+        status: "draft" | "published";
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        status: "draft" | "published";
         publishedAt: Date | null;
         theme: unknown;
         header: unknown;
@@ -64,12 +64,12 @@ export declare class StorefrontConfigController extends BaseController {
         ok: boolean;
     }>;
     createBase(dto: CreateBaseDto): Promise<{
+        version: number;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         key: string;
-        version: number;
         theme: unknown;
         header: unknown;
         pages: unknown;
@@ -92,12 +92,12 @@ export declare class StorefrontConfigController extends BaseController {
         updatedAt: Date;
     }[]>;
     getBase(baseId: string): Promise<{
+        version: number;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         key: string;
-        version: number;
         theme: unknown;
         header: unknown;
         pages: unknown;
@@ -123,13 +123,13 @@ export declare class StorefrontConfigController extends BaseController {
         ok: boolean;
     }>;
     createTheme(user: User, dto: CreateThemeDto): Promise<{
+        version: number;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         companyId: string | null;
         key: string;
-        version: number;
         theme: unknown;
         header: unknown;
         pages: unknown;
@@ -153,13 +153,13 @@ export declare class StorefrontConfigController extends BaseController {
         updatedAt: Date;
     }[]>;
     getTheme(user: User, themeId: string): Promise<{
+        version: number;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         companyId: string | null;
         key: string;
-        version: number;
         theme: unknown;
         header: unknown;
         pages: unknown;

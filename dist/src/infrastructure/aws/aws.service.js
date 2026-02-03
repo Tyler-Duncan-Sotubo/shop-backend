@@ -18,6 +18,17 @@ const client_s3_1 = require("@aws-sdk/client-s3");
 const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 const config_1 = require("@nestjs/config");
 const drizzle_module_1 = require("../drizzle/drizzle.module");
+const fs = require("fs");
+const path = require("path");
+const util_1 = require("util");
+function guessMimeType(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.csv')
+        return 'text/csv';
+    if (ext === '.xlsx')
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    return 'application/octet-stream';
+}
 let AwsService = class AwsService {
     constructor(configService, db) {
         this.configService = configService;
@@ -182,6 +193,26 @@ let AwsService = class AwsService {
             buffer: Buffer.concat(chunks),
             contentType: res.ContentType ?? null,
         };
+    }
+    async uploadFilePath(filePath, companyId, root, folder) {
+        const buffer = await (0, util_1.promisify)(fs.readFile)(filePath);
+        const fileName = path.basename(filePath);
+        const key = `${root}/${companyId}/${folder}/${fileName}`;
+        const mimeType = guessMimeType(filePath);
+        return this.uploadBuffer(buffer, key, mimeType);
+    }
+    async uploadBuffer(buffer, key, mimeType) {
+        const bucket = this.configService.get('AWS_BUCKET_NAME');
+        const region = this.configService.get('AWS_REGION');
+        await this.s3Client.send(new client_s3_1.PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            Body: buffer,
+            ContentType: mimeType,
+            ACL: 'public-read',
+        }));
+        const url = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+        return { key, url };
     }
 };
 exports.AwsService = AwsService;

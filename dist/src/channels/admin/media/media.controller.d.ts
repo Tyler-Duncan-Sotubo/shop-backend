@@ -13,11 +13,11 @@ export declare class MediaController {
     uploadEditorImage(user: User, dto: UploadEditorImageDto): Promise<{
         url: string;
         id: string;
+        storeId: string;
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
         size: number | null;
-        storeId: string;
         fileName: string;
         mimeType: string;
         storageKey: string | null;
@@ -60,11 +60,11 @@ export declare class MediaController {
     finalizeMediaUpload(user: User, dto: FinalizeMediaUploadDto): Promise<{
         url: string;
         id: string;
+        storeId: string;
         createdAt: Date;
         deletedAt: Date | null;
         companyId: string;
         size: number | null;
-        storeId: string;
         fileName: string;
         mimeType: string;
         storageKey: string | null;

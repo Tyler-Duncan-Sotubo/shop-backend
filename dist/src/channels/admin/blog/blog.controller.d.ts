@@ -4,9 +4,11 @@ import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { BlogPostIdParamDto, UpdateBlogPostDto } from './dto/update-blog-post.dto';
 import { BlogPostsAdminQueryDto } from './dto/blog-posts-admin-query.dto';
 import { BlogService } from 'src/domains/blog/blog.service';
+import { BlogPostsReportService } from 'src/domains/blog/blog-posts-report.service';
 export declare class BlogController extends BaseController {
     private readonly blogService;
-    constructor(blogService: BlogService);
+    private readonly blogPostsReportService;
+    constructor(blogService: BlogService, blogPostsReportService: BlogPostsReportService);
     create(user: User, dto: CreateBlogPostDto, ip: string): Promise<{
         id: string;
         title: string;
@@ -117,5 +119,8 @@ export declare class BlogController extends BaseController {
     }>;
     remove(user: User, params: BlogPostIdParamDto, ip: string): Promise<{
         message: string;
+    }>;
+    exportPosts(user: User, format?: 'csv' | 'excel', storeId?: string, status?: string, search?: string, includeProducts?: string, includeSeo?: string, includeContent?: string): Promise<{
+        url: string | null;
     }>;
 }

@@ -23,11 +23,15 @@ import { BlogPostsAdminQueryDto } from './dto/blog-posts-admin-query.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorator/current-user.decorator';
 import { BlogService } from 'src/domains/blog/blog.service';
+import { BlogPostsReportService } from 'src/domains/blog/blog-posts-report.service';
 
 @Controller('blog-posts')
 @UseGuards(JwtAuthGuard)
 export class BlogController extends BaseController {
-  constructor(private readonly blogService: BlogService) {
+  constructor(
+    private readonly blogService: BlogService,
+    private readonly blogPostsReportService: BlogPostsReportService,
+  ) {
     super();
   }
 
@@ -99,5 +103,36 @@ export class BlogController extends BaseController {
     @Ip() ip: string,
   ) {
     return this.blogService.remove(user, params.id, ip);
+  }
+
+  // Reports
+
+  @Get('export-posts')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permission', ['blog.posts.read'])
+  async exportPosts(
+    @CurrentUser() user: User,
+    @Query('format') format: 'csv' | 'excel' = 'csv',
+    @Query('storeId') storeId?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('includeProducts') includeProducts?: string,
+    @Query('includeSeo') includeSeo?: string,
+    @Query('includeContent') includeContent?: string,
+  ) {
+    const res = await this.blogPostsReportService.exportBlogPostsToS3(
+      user.companyId,
+      {
+        format,
+        storeId,
+        status: 'published',
+        search,
+        includeProducts: includeProducts === 'true',
+        includeSeo: includeSeo === 'true',
+        includeContent: includeContent === 'true',
+      },
+    );
+
+    return { url: res?.url ?? null };
   }
 }

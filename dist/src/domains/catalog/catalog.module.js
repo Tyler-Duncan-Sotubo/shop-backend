@@ -22,6 +22,7 @@ const inventory_ledger_service_1 = require("../commerce/inventory/services/inven
 const stores_service_1 = require("../commerce/stores/stores.service");
 const product_discovery_service_1 = require("./services/product-discovery.service");
 const media_service_1 = require("../media/media.service");
+const products_report_service_1 = require("./reports/products-report.service");
 let CatalogModule = class CatalogModule {
 };
 exports.CatalogModule = CatalogModule;
@@ -42,6 +43,7 @@ exports.CatalogModule = CatalogModule = __decorate([
             stores_service_1.StoresService,
             product_discovery_service_1.ProductDiscoveryService,
             media_service_1.MediaService,
+            products_report_service_1.ProductsReportService,
         ],
         exports: [
             products_service_1.ProductsService,
@@ -51,6 +53,7 @@ exports.CatalogModule = CatalogModule = __decorate([
             categories_service_1.CategoriesService,
             linked_products_service_1.LinkedProductsService,
             product_discovery_service_1.ProductDiscoveryService,
+            products_report_service_1.ProductsReportService,
         ],
     })
 ], CatalogModule);

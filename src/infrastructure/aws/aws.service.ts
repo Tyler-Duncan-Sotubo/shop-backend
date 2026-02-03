@@ -12,6 +12,17 @@ import { ConfigService } from '@nestjs/config';
 import { db } from '../drizzle/types/drizzle';
 import { DRIZZLE } from '../drizzle/drizzle.module';
 import { Readable } from 'stream';
+import * as fs from 'fs';
+import * as path from 'path';
+import { promisify } from 'util';
+
+function guessMimeType(filePath: string) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === '.csv') return 'text/csv';
+  if (ext === '.xlsx')
+    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  return 'application/octet-stream';
+}
 
 @Injectable()
 export class AwsService {
@@ -282,5 +293,41 @@ export class AwsService {
       buffer: Buffer.concat(chunks),
       contentType: res.ContentType ?? null,
     };
+  }
+
+  // Report Logic
+
+  async uploadFilePath(
+    filePath: string,
+    companyId: string,
+    root: string, // e.g. 'report'
+    folder: string, // e.g. 'products'
+  ) {
+    const buffer = await promisify(fs.readFile)(filePath);
+
+    const fileName = path.basename(filePath);
+    const key = `${root}/${companyId}/${folder}/${fileName}`;
+
+    const mimeType = guessMimeType(filePath);
+
+    return this.uploadBuffer(buffer, key, mimeType);
+  }
+
+  async uploadBuffer(buffer: Buffer, key: string, mimeType: string) {
+    const bucket = this.configService.get('AWS_BUCKET_NAME');
+    const region = this.configService.get('AWS_REGION');
+
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: mimeType,
+        ACL: 'public-read',
+      }),
+    );
+
+    const url = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+    return { key, url };
   }
 }

@@ -63,4 +63,12 @@ export declare class AwsService {
         buffer: Buffer;
         contentType?: string | null;
     }>;
+    uploadFilePath(filePath: string, companyId: string, root: string, folder: string): Promise<{
+        key: string;
+        url: string;
+    }>;
+    uploadBuffer(buffer: Buffer, key: string, mimeType: string): Promise<{
+        key: string;
+        url: string;
+    }>;
 }

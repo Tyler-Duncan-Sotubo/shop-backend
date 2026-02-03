@@ -13,6 +13,7 @@ import { InventoryLedgerService } from '../commerce/inventory/services/inventory
 import { StoresService } from '../commerce/stores/stores.service';
 import { ProductDiscoveryService } from './services/product-discovery.service';
 import { MediaService } from '../media/media.service';
+import { ProductsReportService } from './reports/products-report.service';
 
 @Module({
   providers: [
@@ -30,6 +31,7 @@ import { MediaService } from '../media/media.service';
     StoresService,
     ProductDiscoveryService,
     MediaService,
+    ProductsReportService,
   ],
   exports: [
     ProductsService,
@@ -39,6 +41,7 @@ import { MediaService } from '../media/media.service';
     CategoriesService,
     LinkedProductsService,
     ProductDiscoveryService,
+    ProductsReportService,
   ],
 })
 export class CatalogModule {}

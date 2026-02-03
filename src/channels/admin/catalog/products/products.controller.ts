@@ -19,11 +19,15 @@ import { ProductQueryDto } from './dto/product-query.dto';
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
 import { mapProductToDetailResponse } from 'src/domains/catalog/mappers/product.mapper';
 import { CreateProductDto, UpdateProductDto } from './dto';
+import { ProductsReportService } from 'src/domains/catalog/reports/products-report.service';
 
 @Controller('catalog/products')
 @UseGuards(JwtAuthGuard)
 export class ProductsController extends BaseController {
-  constructor(private readonly productsService: ProductsService) {
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly productsReportService: ProductsReportService,
+  ) {
     super();
   }
 
@@ -142,5 +146,30 @@ export class ProductsController extends BaseController {
       user,
       ip,
     );
+  }
+
+  // Reports
+
+  @Get('export-products')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['products.update'])
+  async exportProducts(
+    @CurrentUser() user: User,
+    @Query('format') format: 'csv' | 'excel' = 'csv',
+    @Query('storeId') storeId?: string,
+    @Query('status') status?: 'active' | 'draft' | 'archived',
+    @Query('includeMetaJson') includeMetaJson?: string,
+  ) {
+    const url = await this.productsReportService.exportProductsToS3(
+      user.companyId,
+      {
+        format,
+        storeId,
+        status,
+        includeMetaJson: includeMetaJson === 'true',
+      },
+    );
+
+    return { url };
   }
 }

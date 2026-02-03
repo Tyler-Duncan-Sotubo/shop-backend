@@ -33,9 +33,9 @@ export declare class AdminCustomersService {
     }>;
     createCustomerAddress(companyId: string, customerId: string, dto: CreateCustomerAddressAdminDto, actorUserId: string | null): Promise<{
         id: string;
-        country: string;
         createdAt: Date;
         updatedAt: Date;
+        country: string;
         companyId: string;
         firstName: string | null;
         lastName: string | null;

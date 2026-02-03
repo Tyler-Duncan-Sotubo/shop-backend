@@ -3,9 +3,11 @@ import { BaseController } from 'src/infrastructure/interceptor/base.controller';
 import { ProductsService } from 'src/domains/catalog/services/products.service';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto, UpdateProductDto } from './dto';
+import { ProductsReportService } from 'src/domains/catalog/reports/products-report.service';
 export declare class ProductsController extends BaseController {
     private readonly productsService;
-    constructor(productsService: ProductsService);
+    private readonly productsReportService;
+    constructor(productsService: ProductsService, productsReportService: ProductsReportService);
     listProductsAdmin(user: User, query: ProductQueryDto): Promise<{
         items: any[];
         total: number;
@@ -13,11 +15,11 @@ export declare class ProductsController extends BaseController {
         offset: number;
     }>;
     listProducts(user: User, query: ProductQueryDto): Promise<{
-        id: any;
-        name: any;
-        createdAt: any;
-        status: any;
-        slug: any;
+        id: string;
+        name: string;
+        createdAt: Date;
+        status: "draft" | "active" | "archived";
+        slug: string;
         imageUrl: any;
         stock: number;
         regular_price: string | null;
@@ -39,28 +41,34 @@ export declare class ProductsController extends BaseController {
     getProduct(user: User, productId: string): Promise<import("src/domains/catalog/mappers/product.mapper").ProductDetailResponse>;
     getProductWithRelations(user: User, productId: string): Promise<import("src/domains/catalog/mappers/product.mapper").ProductDetailResponse>;
     getProductForEdit(user: User, productId: string): Promise<{
-        id: any;
-        name: any;
-        description: any;
-        status: any;
-        productType: any;
-        moq: any;
+        id: string;
+        name: string;
+        description: string | null;
+        status: "draft" | "active" | "archived";
+        productType: "simple" | "variable";
+        moq: number;
         images: {
             id: any;
             url: any;
         }[];
         defaultImageIndex: number;
-        seoTitle: any;
-        seoDescription: any;
+        seoTitle: string | null;
+        seoDescription: string | null;
         metadata: Record<string, any>;
         categoryIds: string[];
         links: Partial<Record<"related" | "upsell" | "cross_sell" | "accessory", string[]>>;
-        createdAt: any;
-        updatedAt: any;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     createProduct(user: User, dto: CreateProductDto, ip: string): Promise<import("src/domains/catalog/mappers/product.mapper").ProductDetailResponse>;
     updateProduct(user: User, productId: string, dto: UpdateProductDto, ip: string): Promise<import("src/domains/catalog/mappers/product.mapper").ProductDetailResponse>;
     deleteProduct(user: User, productId: string, ip: string): Promise<{
         success: boolean;
+    }>;
+    exportProducts(user: User, format?: 'csv' | 'excel', storeId?: string, status?: 'active' | 'draft' | 'archived', includeMetaJson?: string): Promise<{
+        url: {
+            key: string;
+            url: string;
+        } | null;
     }>;
 }

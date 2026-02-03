@@ -94,9 +94,9 @@ export declare class CustomersController {
     }[]>;
     createAddress(customer: AuthCustomer, dto: CreateCustomerAddressDto): Promise<{
         id: string;
-        country: string;
         createdAt: Date;
         updatedAt: Date;
+        country: string;
         companyId: string;
         firstName: string | null;
         lastName: string | null;

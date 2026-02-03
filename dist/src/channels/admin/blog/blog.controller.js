@@ -21,10 +21,12 @@ const blog_posts_admin_query_dto_1 = require("./dto/blog-posts-admin-query.dto")
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../common/decorator/current-user.decorator");
 const blog_service_1 = require("../../../domains/blog/blog.service");
+const blog_posts_report_service_1 = require("../../../domains/blog/blog-posts-report.service");
 let BlogController = class BlogController extends base_controller_1.BaseController {
-    constructor(blogService) {
+    constructor(blogService, blogPostsReportService) {
         super();
         this.blogService = blogService;
+        this.blogPostsReportService = blogPostsReportService;
     }
     create(user, dto, ip) {
         return this.blogService.create(user, dto, ip);
@@ -46,6 +48,18 @@ let BlogController = class BlogController extends base_controller_1.BaseControll
     }
     remove(user, params, ip) {
         return this.blogService.remove(user, params.id, ip);
+    }
+    async exportPosts(user, format = 'csv', storeId, status, search, includeProducts, includeSeo, includeContent) {
+        const res = await this.blogPostsReportService.exportBlogPostsToS3(user.companyId, {
+            format,
+            storeId,
+            status: 'published',
+            search,
+            includeProducts: includeProducts === 'true',
+            includeSeo: includeSeo === 'true',
+            includeContent: includeContent === 'true',
+        });
+        return { url: res?.url ?? null };
     }
 };
 exports.BlogController = BlogController;
@@ -119,9 +133,26 @@ __decorate([
     __metadata("design:paramtypes", [Object, update_blog_post_dto_1.BlogPostIdParamDto, String]),
     __metadata("design:returntype", void 0)
 ], BlogController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Get)('export-posts'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permission', ['blog.posts.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)('format')),
+    __param(2, (0, common_1.Query)('storeId')),
+    __param(3, (0, common_1.Query)('status')),
+    __param(4, (0, common_1.Query)('search')),
+    __param(5, (0, common_1.Query)('includeProducts')),
+    __param(6, (0, common_1.Query)('includeSeo')),
+    __param(7, (0, common_1.Query)('includeContent')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], BlogController.prototype, "exportPosts", null);
 exports.BlogController = BlogController = __decorate([
     (0, common_1.Controller)('blog-posts'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [blog_service_1.BlogService])
+    __metadata("design:paramtypes", [blog_service_1.BlogService,
+        blog_posts_report_service_1.BlogPostsReportService])
 ], BlogController);
 //# sourceMappingURL=blog.controller.js.map

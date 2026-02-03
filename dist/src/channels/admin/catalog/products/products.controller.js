@@ -21,10 +21,12 @@ const product_query_dto_1 = require("./dto/product-query.dto");
 const current_user_decorator_1 = require("../../common/decorator/current-user.decorator");
 const product_mapper_1 = require("../../../../domains/catalog/mappers/product.mapper");
 const dto_1 = require("./dto");
+const products_report_service_1 = require("../../../../domains/catalog/reports/products-report.service");
 let ProductsController = class ProductsController extends base_controller_1.BaseController {
-    constructor(productsService) {
+    constructor(productsService, productsReportService) {
         super();
         this.productsService = productsService;
+        this.productsReportService = productsReportService;
     }
     listProductsAdmin(user, query) {
         return this.productsService.listProductsAdmin(user.companyId, query);
@@ -54,6 +56,15 @@ let ProductsController = class ProductsController extends base_controller_1.Base
     }
     async deleteProduct(user, productId, ip) {
         return this.productsService.deleteProduct(user.companyId, productId, user, ip);
+    }
+    async exportProducts(user, format = 'csv', storeId, status, includeMetaJson) {
+        const url = await this.productsReportService.exportProductsToS3(user.companyId, {
+            format,
+            storeId,
+            status,
+            includeMetaJson: includeMetaJson === 'true',
+        });
+        return { url };
     }
 };
 exports.ProductsController = ProductsController;
@@ -136,9 +147,23 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "deleteProduct", null);
+__decorate([
+    (0, common_1.Get)('export-products'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['products.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)('format')),
+    __param(2, (0, common_1.Query)('storeId')),
+    __param(3, (0, common_1.Query)('status')),
+    __param(4, (0, common_1.Query)('includeMetaJson')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "exportProducts", null);
 exports.ProductsController = ProductsController = __decorate([
     (0, common_1.Controller)('catalog/products'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [products_service_1.ProductsService])
+    __metadata("design:paramtypes", [products_service_1.ProductsService,
+        products_report_service_1.ProductsReportService])
 ], ProductsController);
 //# sourceMappingURL=products.controller.js.map

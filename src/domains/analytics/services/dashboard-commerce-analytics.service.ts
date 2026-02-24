@@ -35,6 +35,11 @@ import {
   RecentOrderItemPreview,
   RecentOrderRow,
 } from '../inputs/analytics.input';
+import {
+  Bucket,
+  OverviewArgs,
+  resolvePreset,
+} from 'src/common/utils/resolve-preset';
 
 @Injectable()
 export class DashboardCommerceAnalyticsService {
@@ -289,9 +294,13 @@ export class DashboardCommerceAnalyticsService {
     );
   }
 
-  async salesTimeseries(
-    args: DashboardRangeArgs & { bucket?: '15m' | 'day' | 'month' },
-  ) {
+  async salesTimeseries(args: {
+    companyId: string;
+    storeId: string | null;
+    from: Date;
+    to: Date;
+    bucket: '15m' | 'day' | 'month';
+  }) {
     const bucket = args.bucket ?? 'day';
 
     const cacheKeyParts = [
@@ -313,25 +322,20 @@ export class DashboardCommerceAnalyticsService {
               ? sql`interval '15 minutes'`
               : sql`interval '1 day'`;
 
-        // For "today" you should pass:
-        // from = today 00:00, to = tomorrow 00:00 (exclusive)
         const seriesStart =
           bucket === 'month'
             ? sql`date_trunc('month', ${args.from}::timestamptz)`
             : bucket === '15m'
-              ? sql`date_trunc('day', ${args.from}::timestamptz)`
+              ? sql`date_bin(interval '15 minutes', ${args.from}::timestamptz, date_trunc('day', ${args.from}::timestamptz))`
               : sql`date_trunc('day', ${args.from}::timestamptz)`;
 
         const seriesEndInclusive =
           bucket === 'month'
             ? sql`date_trunc('month', (${args.to}::timestamptz - interval '1 microsecond'))`
             : bucket === '15m'
-              ? sql`date_trunc('day', ${args.from}::timestamptz) + interval '1 day' - interval '15 minutes'`
-              : sql`date_trunc('day',   (${args.to}::timestamptz - interval '1 microsecond'))`;
+              ? sql`date_bin(interval '15 minutes', (${args.to}::timestamptz - interval '1 microsecond'), date_trunc('day', ${args.from}::timestamptz))`
+              : sql`date_trunc('day', (${args.to}::timestamptz - interval '1 microsecond'))`;
 
-        // ✅ bucket by paidAt (revenue recognition timestamp)
-        // - month/day: date_trunc
-        // - 15m: date_bin into 15-minute buckets anchored at day start
         const bucketExpr =
           bucket === 'month'
             ? sql`date_trunc('month', ${orders.paidAt})`
@@ -340,36 +344,32 @@ export class DashboardCommerceAnalyticsService {
               : sql`date_trunc('day', ${orders.paidAt})`;
 
         const rows = await this.db.execute(sql`
-        with series as (
-          select generate_series(
-            ${seriesStart},
-            ${seriesEndInclusive},
-            ${interval}
-          ) as t
-        ),
-        agg as (
-          select
-            ${bucketExpr} as t,
-            count(*)::int as orders,
-            coalesce(sum(${orders.total}), 0)::bigint as sales_minor
-          from ${orders}
-          where
-            ${eq(orders.companyId, args.companyId)}
-            and ${orders.paidAt} is not null
-            and ${gte(orders.paidAt, args.from)}
-            and ${lt(orders.paidAt, args.to)}
-            and ${inArray(orders.status, [...this.SALE_STATUSES])}
-            and ${args.storeId ? eq(orders.storeId, args.storeId) : sql`true`}
-          group by 1
-        )
+      with series as (
+        select generate_series(${seriesStart}, ${seriesEndInclusive}, ${interval}) as t
+      ),
+      agg as (
         select
-          series.t as t,
-          coalesce(agg.orders, 0)::int as orders,
-          coalesce(agg.sales_minor, 0)::bigint as sales_minor
-        from series
-        left join agg using (t)
-        order by series.t asc;
-      `);
+          ${bucketExpr} as t,
+          count(*)::int as orders,
+          coalesce(sum(${orders.total}), 0)::bigint as sales_minor
+        from ${orders}
+        where
+          ${eq(orders.companyId, args.companyId)}
+          and ${orders.paidAt} is not null
+          and ${gte(orders.paidAt, args.from)}
+          and ${lt(orders.paidAt, args.to)}
+          and ${inArray(orders.status, [...this.SALE_STATUSES])}
+          and ${args.storeId ? eq(orders.storeId, args.storeId) : sql`true`}
+        group by 1
+      )
+      select
+        series.t as t,
+        coalesce(agg.orders, 0)::int as orders,
+        coalesce(agg.sales_minor, 0)::bigint as sales_minor
+      from series
+      left join agg using (t)
+      order by series.t asc;
+    `);
 
         const resultRows: any[] = Array.isArray((rows as any)?.rows)
           ? (rows as any).rows
@@ -936,42 +936,53 @@ export class DashboardCommerceAnalyticsService {
     );
   }
 
-  async overview(
-    args: DashboardRangeArgs & {
-      topProductsLimit?: number;
-      recentOrdersLimit?: number;
-      paymentsLimit?: number;
-      topProductsBy?: 'revenue' | 'units';
-    },
-  ) {
+  async overview(args: OverviewArgs) {
     const topProductsLimit = args.topProductsLimit ?? 5;
     const recentOrdersLimit = args.recentOrdersLimit ?? 5;
     const paymentsLimit = args.paymentsLimit ?? 5;
     const topProductsBy = args.topProductsBy ?? 'revenue';
 
-    // ✅ choose bucket for chart automatically based on range length
-    const days =
-      (args.to.getTime() - args.from.getTime()) / (24 * 60 * 60 * 1000);
-    const bucket =
-      days <= 1.05
-        ? ('15m' as const)
-        : days >= 330
-          ? ('month' as const)
-          : ('day' as const);
+    // base range (cards, orders, products, payments)
+    const base = {
+      companyId: args.companyId,
+      storeId: args.storeId,
+      from: args.from,
+      to: args.to,
+    };
+
+    // sales chart range (can be different)
+    const salesResolved = args.salesPreset
+      ? resolvePreset(args.salesPreset)
+      : null;
+    const salesBase = salesResolved
+      ? {
+          companyId: args.companyId,
+          storeId: args.storeId,
+          from: salesResolved.from,
+          to: salesResolved.to,
+        }
+      : base;
+
+    const salesBucket: Bucket =
+      salesResolved?.bucket ??
+      ((): Bucket => {
+        const days = (base.to.getTime() - base.from.getTime()) / 86400000;
+        return days <= 1.05 ? '15m' : days >= 330 ? 'month' : 'day';
+      })();
 
     const [grossCards, salesTs, latestPayments, recentOrders, topProducts] =
       await Promise.all([
-        this.grossSalesCards(args),
-        this.salesTimeseries({ ...args, bucket }),
-        this.latestPayments({ ...args, limit: paymentsLimit }),
+        this.grossSalesCards(base),
+        this.salesTimeseries({ ...salesBase, bucket: salesBucket }),
+        this.latestPayments({ ...base, limit: paymentsLimit }),
         this.recentOrders({
-          ...args,
+          ...base,
           limit: recentOrdersLimit,
           orderBy: 'paidAt',
           itemsPerOrder: 3,
         }),
         this.topSellingProducts({
-          ...args,
+          ...base,
           limit: topProductsLimit,
           by: topProductsBy,
         }),
@@ -983,7 +994,15 @@ export class DashboardCommerceAnalyticsService {
       latestPayments,
       recentOrders,
       topProducts,
-      bucket,
+
+      // ✅ return both ranges so UI can show what happened
+      range: { from: base.from.toISOString(), to: base.to.toISOString() },
+      salesRange: {
+        from: salesBase.from.toISOString(),
+        to: salesBase.to.toISOString(),
+        bucket: salesBucket,
+        preset: args.salesPreset ?? null,
+      },
     };
   }
 }

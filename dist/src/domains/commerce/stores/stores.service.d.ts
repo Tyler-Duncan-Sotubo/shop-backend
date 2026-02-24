@@ -14,14 +14,14 @@ export declare class StoresService {
     private findStoreByIdOrThrow;
     private ensureSlugUniqueForCompany;
     createStore(companyId: string, payload: CreateStoreDto, user?: User, ip?: string): Promise<{
-        name: string;
         id: string;
+        name: string;
         slug: string;
-        createdAt: Date;
-        updatedAt: Date;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         imageUrl: string | null;
@@ -48,14 +48,14 @@ export declare class StoresService {
         deletedAt: Date | null;
     }[]>;
     getStoreById(companyId: string, storeId: string): Promise<{
-        name: string;
         id: string;
+        name: string;
         slug: string;
-        createdAt: Date;
-        updatedAt: Date;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         imageUrl: string | null;
@@ -96,10 +96,10 @@ export declare class StoresService {
         isPrimary?: boolean;
     }>, user?: User, ip?: string): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        storeId: string;
         domain: string;
         isPrimary: boolean;
     }[]>;

@@ -18,6 +18,7 @@ const drizzle_orm_1 = require("drizzle-orm");
 const drizzle_module_1 = require("../../../infrastructure/drizzle/drizzle.module");
 const schema_1 = require("../../../infrastructure/drizzle/schema");
 const cache_service_1 = require("../../../infrastructure/cache/cache.service");
+const resolve_preset_1 = require("../../../common/utils/resolve-preset");
 let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService {
     constructor(db, cache) {
         this.db = db;
@@ -212,49 +213,45 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
             const seriesStart = bucket === 'month'
                 ? (0, drizzle_orm_1.sql) `date_trunc('month', ${args.from}::timestamptz)`
                 : bucket === '15m'
-                    ? (0, drizzle_orm_1.sql) `date_trunc('day', ${args.from}::timestamptz)`
+                    ? (0, drizzle_orm_1.sql) `date_bin(interval '15 minutes', ${args.from}::timestamptz, date_trunc('day', ${args.from}::timestamptz))`
                     : (0, drizzle_orm_1.sql) `date_trunc('day', ${args.from}::timestamptz)`;
             const seriesEndInclusive = bucket === 'month'
                 ? (0, drizzle_orm_1.sql) `date_trunc('month', (${args.to}::timestamptz - interval '1 microsecond'))`
                 : bucket === '15m'
-                    ? (0, drizzle_orm_1.sql) `date_trunc('day', ${args.from}::timestamptz) + interval '1 day' - interval '15 minutes'`
-                    : (0, drizzle_orm_1.sql) `date_trunc('day',   (${args.to}::timestamptz - interval '1 microsecond'))`;
+                    ? (0, drizzle_orm_1.sql) `date_bin(interval '15 minutes', (${args.to}::timestamptz - interval '1 microsecond'), date_trunc('day', ${args.from}::timestamptz))`
+                    : (0, drizzle_orm_1.sql) `date_trunc('day', (${args.to}::timestamptz - interval '1 microsecond'))`;
             const bucketExpr = bucket === 'month'
                 ? (0, drizzle_orm_1.sql) `date_trunc('month', ${schema_1.orders.paidAt})`
                 : bucket === '15m'
                     ? (0, drizzle_orm_1.sql) `date_bin(interval '15 minutes', ${schema_1.orders.paidAt}, date_trunc('day', ${args.from}::timestamptz))`
                     : (0, drizzle_orm_1.sql) `date_trunc('day', ${schema_1.orders.paidAt})`;
             const rows = await this.db.execute((0, drizzle_orm_1.sql) `
-        with series as (
-          select generate_series(
-            ${seriesStart},
-            ${seriesEndInclusive},
-            ${interval}
-          ) as t
-        ),
-        agg as (
-          select
-            ${bucketExpr} as t,
-            count(*)::int as orders,
-            coalesce(sum(${schema_1.orders.total}), 0)::bigint as sales_minor
-          from ${schema_1.orders}
-          where
-            ${(0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId)}
-            and ${schema_1.orders.paidAt} is not null
-            and ${(0, drizzle_orm_1.gte)(schema_1.orders.paidAt, args.from)}
-            and ${(0, drizzle_orm_1.lt)(schema_1.orders.paidAt, args.to)}
-            and ${(0, drizzle_orm_1.inArray)(schema_1.orders.status, [...this.SALE_STATUSES])}
-            and ${args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`}
-          group by 1
-        )
+      with series as (
+        select generate_series(${seriesStart}, ${seriesEndInclusive}, ${interval}) as t
+      ),
+      agg as (
         select
-          series.t as t,
-          coalesce(agg.orders, 0)::int as orders,
-          coalesce(agg.sales_minor, 0)::bigint as sales_minor
-        from series
-        left join agg using (t)
-        order by series.t asc;
-      `);
+          ${bucketExpr} as t,
+          count(*)::int as orders,
+          coalesce(sum(${schema_1.orders.total}), 0)::bigint as sales_minor
+        from ${schema_1.orders}
+        where
+          ${(0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId)}
+          and ${schema_1.orders.paidAt} is not null
+          and ${(0, drizzle_orm_1.gte)(schema_1.orders.paidAt, args.from)}
+          and ${(0, drizzle_orm_1.lt)(schema_1.orders.paidAt, args.to)}
+          and ${(0, drizzle_orm_1.inArray)(schema_1.orders.status, [...this.SALE_STATUSES])}
+          and ${args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`}
+        group by 1
+      )
+      select
+        series.t as t,
+        coalesce(agg.orders, 0)::int as orders,
+        coalesce(agg.sales_minor, 0)::bigint as sales_minor
+      from series
+      left join agg using (t)
+      order by series.t asc;
+    `);
             const resultRows = Array.isArray(rows?.rows)
                 ? rows.rows
                 : rows;
@@ -550,24 +547,40 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
         const recentOrdersLimit = args.recentOrdersLimit ?? 5;
         const paymentsLimit = args.paymentsLimit ?? 5;
         const topProductsBy = args.topProductsBy ?? 'revenue';
-        const days = (args.to.getTime() - args.from.getTime()) / (24 * 60 * 60 * 1000);
-        const bucket = days <= 1.05
-            ? '15m'
-            : days >= 330
-                ? 'month'
-                : 'day';
+        const base = {
+            companyId: args.companyId,
+            storeId: args.storeId,
+            from: args.from,
+            to: args.to,
+        };
+        const salesResolved = args.salesPreset
+            ? (0, resolve_preset_1.resolvePreset)(args.salesPreset)
+            : null;
+        const salesBase = salesResolved
+            ? {
+                companyId: args.companyId,
+                storeId: args.storeId,
+                from: salesResolved.from,
+                to: salesResolved.to,
+            }
+            : base;
+        const salesBucket = salesResolved?.bucket ??
+            (() => {
+                const days = (base.to.getTime() - base.from.getTime()) / 86400000;
+                return days <= 1.05 ? '15m' : days >= 330 ? 'month' : 'day';
+            })();
         const [grossCards, salesTs, latestPayments, recentOrders, topProducts] = await Promise.all([
-            this.grossSalesCards(args),
-            this.salesTimeseries({ ...args, bucket }),
-            this.latestPayments({ ...args, limit: paymentsLimit }),
+            this.grossSalesCards(base),
+            this.salesTimeseries({ ...salesBase, bucket: salesBucket }),
+            this.latestPayments({ ...base, limit: paymentsLimit }),
             this.recentOrders({
-                ...args,
+                ...base,
                 limit: recentOrdersLimit,
                 orderBy: 'paidAt',
                 itemsPerOrder: 3,
             }),
             this.topSellingProducts({
-                ...args,
+                ...base,
                 limit: topProductsLimit,
                 by: topProductsBy,
             }),
@@ -578,7 +591,13 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
             latestPayments,
             recentOrders,
             topProducts,
-            bucket,
+            range: { from: base.from.toISOString(), to: base.to.toISOString() },
+            salesRange: {
+                from: salesBase.from.toISOString(),
+                to: salesBase.to.toISOString(),
+                bucket: salesBucket,
+                preset: args.salesPreset ?? null,
+            },
         };
     }
 };

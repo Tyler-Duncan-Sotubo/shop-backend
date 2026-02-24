@@ -10,21 +10,21 @@ export declare class BlogController extends BaseController {
     private readonly blogPostsReportService;
     constructor(blogService: BlogService, blogPostsReportService: BlogPostsReportService);
     create(user: User, dto: CreateBlogPostDto, ip: string): Promise<{
+        status: string;
         id: string;
-        title: string;
         slug: string;
+        createdAt: Date;
+        updatedAt: Date;
         storeId: string;
+        seoTitle: string | null;
+        seoDescription: string | null;
+        title: string;
+        content: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
-        content: string;
-        status: string;
         publishedAt: Date | null;
         isFeatured: boolean;
-        seoTitle: string | null;
-        seoDescription: string | null;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     listAdmin(user: User, filters?: BlogPostsAdminQueryDto): Promise<{
         rows: {
@@ -47,21 +47,21 @@ export declare class BlogController extends BaseController {
         count: number;
     }>;
     getByIdAdmin(user: User, params: BlogPostIdParamDto): Promise<{
+        status: string;
         id: string;
-        title: string;
         slug: string;
+        createdAt: Date;
+        updatedAt: Date;
         storeId: string;
+        seoTitle: string | null;
+        seoDescription: string | null;
+        title: string;
+        content: string;
         excerpt: string | null;
         coverImageUrl: string | null;
         focusKeyword: string | null;
-        content: string;
-        status: string;
         publishedAt: Date | null;
         isFeatured: boolean;
-        seoTitle: string | null;
-        seoDescription: string | null;
-        createdAt: Date;
-        updatedAt: Date;
         products: {
             [x: string]: any;
         }[];

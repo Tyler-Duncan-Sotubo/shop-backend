@@ -13,11 +13,9 @@ export declare class CategoriesService {
     private readonly mediaService;
     constructor(db: db, cache: CacheService, audit: AuditService, aws: AwsService, mediaService: MediaService);
     assertCompanyExists(companyId: string): Promise<{
-        name: string;
         id: string;
+        name: string;
         slug: string;
-        createdAt: Date;
-        updatedAt: Date;
         legalName: string | null;
         country: string | null;
         vatNumber: string | null;
@@ -33,6 +31,8 @@ export declare class CategoriesService {
         useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     assertProductBelongsToCompany(companyId: string, productId: string): Promise<{

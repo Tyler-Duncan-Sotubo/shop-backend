@@ -13,9 +13,9 @@ export declare class AnalyticsController {
             sessionId: string;
             stored: {
                 id: string;
-                title: string | null;
-                storeId: string | null;
                 companyId: string;
+                storeId: string | null;
+                title: string | null;
                 meta: unknown;
                 cartId: string | null;
                 checkoutId: string | null;

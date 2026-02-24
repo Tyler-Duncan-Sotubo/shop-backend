@@ -6,16 +6,16 @@ export declare class QuoteController extends BaseController {
     constructor(quoteService: QuoteService);
     submitQuoteFromStorefront(storeId: string, dto: CreateQuoteDto, ip: string): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
-        meta: Record<string, unknown> | null;
+        storeId: string;
+        status: string;
         customerEmail: string;
         customerNote: string | null;
+        meta: Record<string, unknown> | null;
+        expiresAt: Date | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;

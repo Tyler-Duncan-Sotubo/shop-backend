@@ -58,14 +58,14 @@ export declare class StoresController extends BaseController {
         deletedAt: Date | null;
     }[]>;
     createStore(user: User, dto: CreateStoreDto, ip: string): Promise<{
-        name: string;
         id: string;
+        name: string;
         slug: string;
-        createdAt: Date;
-        updatedAt: Date;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         imageUrl: string | null;
@@ -74,14 +74,14 @@ export declare class StoresController extends BaseController {
         supportedCurrencies: string[] | null;
     }>;
     getStoreById(user: User, storeId: string): Promise<{
-        name: string;
         id: string;
+        name: string;
         slug: string;
-        createdAt: Date;
-        updatedAt: Date;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         imageUrl: string | null;
@@ -119,10 +119,10 @@ export declare class StoresController extends BaseController {
     }[]>;
     updateStoreDomains(user: User, storeId: string, dto: UpdateStoreDomainsDto, ip: string): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        storeId: string;
         domain: string;
         isPrimary: boolean;
     }[]>;

@@ -18,6 +18,7 @@ const base_controller_1 = require("../../../../infrastructure/interceptor/base.c
 const jwt_auth_guard_1 = require("../../common/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../../common/decorator/current-user.decorator");
 const dashboard_commerce_analytics_service_1 = require("../../../../domains/analytics/services/dashboard-commerce-analytics.service");
+const resolve_preset_1 = require("../../../../common/utils/resolve-preset");
 let DashboardCommerceAnalyticsController = class DashboardCommerceAnalyticsController extends base_controller_1.BaseController {
     constructor(commerce) {
         super();
@@ -32,15 +33,15 @@ let DashboardCommerceAnalyticsController = class DashboardCommerceAnalyticsContr
         });
         return data;
     }
-    async salesTimeseries(user, from, to, storeId, bucket) {
-        const data = await this.commerce.salesTimeseries({
+    async salesTimeseries(user, preset, storeId) {
+        const { from, to, bucket } = (0, resolve_preset_1.resolvePreset)(preset);
+        return this.commerce.salesTimeseries({
             companyId: user.companyId,
             storeId: storeId ?? null,
-            from: new Date(from),
-            to: new Date(to),
-            bucket: bucket ?? 'day',
+            from,
+            to,
+            bucket,
         });
-        return data;
     }
     async grossSalesCards(user, from, to, storeId) {
         return this.commerce.grossSalesCards({
@@ -91,12 +92,13 @@ let DashboardCommerceAnalyticsController = class DashboardCommerceAnalyticsContr
             metric: metric ?? 'orders',
         });
     }
-    async overview(user, from, to, storeId, topProductsLimit, recentOrdersLimit, paymentsLimit, topProductsBy) {
+    async overview(user, from, to, salesPreset, storeId, topProductsLimit, recentOrdersLimit, paymentsLimit, topProductsBy) {
         return this.commerce.overview({
             companyId: user.companyId,
             storeId: storeId ?? null,
             from: new Date(from),
             to: new Date(to),
+            salesPreset: salesPreset ?? undefined,
             topProductsLimit: Number(topProductsLimit ?? 5),
             recentOrdersLimit: Number(recentOrdersLimit ?? 5),
             paymentsLimit: Number(paymentsLimit ?? 5),
@@ -118,12 +120,10 @@ __decorate([
 __decorate([
     (0, common_1.Get)('admin/sales-timeseries'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
-    __param(1, (0, common_1.Query)('from')),
-    __param(2, (0, common_1.Query)('to')),
-    __param(3, (0, common_1.Query)('storeId')),
-    __param(4, (0, common_1.Query)('bucket')),
+    __param(1, (0, common_1.Query)('preset')),
+    __param(2, (0, common_1.Query)('storeId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], DashboardCommerceAnalyticsController.prototype, "salesTimeseries", null);
 __decorate([
@@ -189,13 +189,14 @@ __decorate([
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Query)('from')),
     __param(2, (0, common_1.Query)('to')),
-    __param(3, (0, common_1.Query)('storeId')),
-    __param(4, (0, common_1.Query)('topProductsLimit')),
-    __param(5, (0, common_1.Query)('recentOrdersLimit')),
-    __param(6, (0, common_1.Query)('paymentsLimit')),
-    __param(7, (0, common_1.Query)('topProductsBy')),
+    __param(3, (0, common_1.Query)('salesPreset')),
+    __param(4, (0, common_1.Query)('storeId')),
+    __param(5, (0, common_1.Query)('topProductsLimit')),
+    __param(6, (0, common_1.Query)('recentOrdersLimit')),
+    __param(7, (0, common_1.Query)('paymentsLimit')),
+    __param(8, (0, common_1.Query)('topProductsBy')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], DashboardCommerceAnalyticsController.prototype, "overview", null);
 exports.DashboardCommerceAnalyticsController = DashboardCommerceAnalyticsController = __decorate([

@@ -15,6 +15,7 @@ export declare class ManualOrdersService {
     private readonly stock;
     private readonly invoiceService;
     constructor(db: DbType, cache: CacheService, audit: AuditService, stock: InventoryStockService, invoiceService: InvoiceService);
+    private allocateOrderNumberInTx;
     createManualOrder(companyId: string, input: CreateManualOrderDto, actor?: User, ip?: string, ctx?: {
         tx?: TxOrDb;
     }): Promise<any>;

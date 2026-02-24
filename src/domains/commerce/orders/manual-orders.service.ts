@@ -11,6 +11,7 @@ import { CacheService } from 'src/infrastructure/cache/cache.service';
 import { AuditService } from 'src/domains/audit/audit.service';
 import { User } from 'src/channels/admin/common/types/user.type';
 import {
+  orderCounters,
   orderEvents,
   orderItems,
   orders,
@@ -35,17 +36,66 @@ export class ManualOrdersService {
     private readonly invoiceService: InvoiceService,
   ) {}
 
-  /**
-   * Manual/POS order creation:
-   * - creates order in 'draft'
-   * - totals start at 0 (computed from items)
-   * - orderNumber can be generated elsewhere (counter service) or passed in later
-   *
-   * IMPORTANT:
-   * Your orders schema has orderNumber NOT NULL.
-   * If you generate orderNumber elsewhere, wire it here.
-   * For now, we generate a temporary one (replace with your counter logic).
-   */
+  private async allocateOrderNumberInTx(tx: TxOrDb, companyId: string) {
+    // lock counter row if exists
+    const existing = await tx
+      .select()
+      .from(orderCounters)
+      .where(eq(orderCounters.companyId, companyId))
+      .for('update')
+      .limit(1)
+      .execute();
+
+    // create counter row if missing (race-safe-ish, relies on unique index)
+    if (!existing.length) {
+      try {
+        await tx
+          .insert(orderCounters)
+          .values({
+            id: sql`gen_random_uuid()` as any,
+            companyId,
+            nextNumber: 1,
+            updatedAt: new Date(),
+          } as any)
+          .execute();
+      } catch {
+        // another tx likely inserted it; continue
+      }
+
+      const created = await tx
+        .select()
+        .from(orderCounters)
+        .where(eq(orderCounters.companyId, companyId))
+        .for('update')
+        .limit(1)
+        .execute();
+
+      if (!created.length) {
+        throw new BadRequestException('Failed to initialize order counter');
+      }
+
+      const n = Number(created[0].nextNumber);
+      await tx
+        .update(orderCounters)
+        .set({ nextNumber: n + 1, updatedAt: new Date() } as any)
+        .where(eq(orderCounters.companyId, companyId))
+        .execute();
+
+      return n;
+    }
+
+    const n = Number(existing[0].nextNumber);
+
+    await tx
+      .update(orderCounters)
+      .set({ nextNumber: n + 1, updatedAt: new Date() } as any)
+      .where(eq(orderCounters.companyId, companyId))
+      .execute();
+
+    return n;
+  }
+
+  // ✅ UPDATED createManualOrder() (only changed orderNumber part)
   async createManualOrder(
     companyId: string,
     input: CreateManualOrderDto,
@@ -62,27 +112,27 @@ export class ManualOrdersService {
       if (!input.currency)
         throw new BadRequestException('currency is required');
 
-      // TEMP order number: replace with real counter allocation
-      const tmpOrderNo = `MAN-${Date.now().toString(36).toUpperCase()}`;
+      // ✅ allocate sequential number from order_counters (locked in-tx)
+      const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
+
+      // optional: prefix to match your existing format (adjust to your needs)
+      const orderNo = `ORD-${String(nextNo).padStart(3, '0')}`;
 
       const [created] = await tx
         .insert(orders)
         .values({
-          id: sql`gen_random_uuid()` as any, // or rely on defaultId if configured in schema
+          id: sql`gen_random_uuid()` as any,
           companyId,
-          orderNumber: tmpOrderNo,
+          orderNumber: orderNo, // ✅ no more random
           status: 'draft',
           channel: input.channel ?? 'manual',
           currency: input.currency,
           storeId: input.storeId ?? null,
           customerId: input.customerId ?? null,
-          // delivery snapshots optional at draft stage
           deliveryMethodType: 'shipping',
           shippingAddress: input.shippingAddress ?? null,
           billingAddress: input.billingAddress ?? null,
-
           originInventoryLocationId: input.originInventoryLocationId,
-
           subtotal: '0.00',
           discountTotal: '0.00',
           taxTotal: '0.00',
@@ -119,6 +169,7 @@ export class ManualOrdersService {
             channel: created.channel,
             status: created.status,
             currency: created.currency,
+            orderNumber: created.orderNumber,
           },
         });
       }

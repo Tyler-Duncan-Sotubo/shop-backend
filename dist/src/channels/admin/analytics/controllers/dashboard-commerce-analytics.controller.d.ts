@@ -1,11 +1,12 @@
 import { User } from 'src/channels/admin/common/types/user.type';
 import { BaseController } from 'src/infrastructure/interceptor/base.controller';
 import { DashboardCommerceAnalyticsService } from 'src/domains/analytics/services/dashboard-commerce-analytics.service';
+import { Preset } from 'src/common/utils/resolve-preset';
 export declare class DashboardCommerceAnalyticsController extends BaseController {
     private readonly commerce;
     constructor(commerce: DashboardCommerceAnalyticsService);
     cards(user: User, from: string, to: string, storeId?: string): Promise<import("../../../../domains/analytics/inputs/analytics.input").CardsResult>;
-    salesTimeseries(user: User, from: string, to: string, storeId?: string, bucket?: '15m' | 'day' | 'month'): Promise<{
+    salesTimeseries(user: User, preset: Preset, storeId?: string): Promise<{
         t: string;
         orders: number;
         salesMinor: number;
@@ -32,7 +33,7 @@ export declare class DashboardCommerceAnalyticsController extends BaseController
         ordersCount: number;
         revenueMinor: number;
     }[]>;
-    overview(user: User, from: string, to: string, storeId?: string, topProductsLimit?: string, recentOrdersLimit?: string, paymentsLimit?: string, topProductsBy?: 'revenue' | 'units'): Promise<{
+    overview(user: User, from: string, to: string, salesPreset?: Preset, storeId?: string, topProductsLimit?: string, recentOrdersLimit?: string, paymentsLimit?: string, topProductsBy?: 'revenue' | 'units'): Promise<{
         grossCards: import("../../../../domains/analytics/inputs/analytics.input").GrossSalesCardsResult;
         salesTimeseries: {
             t: string;
@@ -53,6 +54,15 @@ export declare class DashboardCommerceAnalyticsController extends BaseController
             quantity: number;
             revenueMinor: number;
         }[];
-        bucket: "day" | "15m" | "month";
+        range: {
+            from: string;
+            to: string;
+        };
+        salesRange: {
+            from: string;
+            to: string;
+            bucket: import("src/common/utils/resolve-preset").Bucket;
+            preset: Preset | null;
+        };
     }>;
 }

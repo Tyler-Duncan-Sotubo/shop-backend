@@ -29,6 +29,54 @@ let ManualOrdersService = class ManualOrdersService {
         this.stock = stock;
         this.invoiceService = invoiceService;
     }
+    async allocateOrderNumberInTx(tx, companyId) {
+        const existing = await tx
+            .select()
+            .from(schema_1.orderCounters)
+            .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
+            .for('update')
+            .limit(1)
+            .execute();
+        if (!existing.length) {
+            try {
+                await tx
+                    .insert(schema_1.orderCounters)
+                    .values({
+                    id: (0, drizzle_orm_1.sql) `gen_random_uuid()`,
+                    companyId,
+                    nextNumber: 1,
+                    updatedAt: new Date(),
+                })
+                    .execute();
+            }
+            catch {
+            }
+            const created = await tx
+                .select()
+                .from(schema_1.orderCounters)
+                .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
+                .for('update')
+                .limit(1)
+                .execute();
+            if (!created.length) {
+                throw new common_1.BadRequestException('Failed to initialize order counter');
+            }
+            const n = Number(created[0].nextNumber);
+            await tx
+                .update(schema_1.orderCounters)
+                .set({ nextNumber: n + 1, updatedAt: new Date() })
+                .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
+                .execute();
+            return n;
+        }
+        const n = Number(existing[0].nextNumber);
+        await tx
+            .update(schema_1.orderCounters)
+            .set({ nextNumber: n + 1, updatedAt: new Date() })
+            .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
+            .execute();
+        return n;
+    }
     async createManualOrder(companyId, input, actor, ip, ctx) {
         const outerTx = ctx?.tx;
         const run = async (tx) => {
@@ -37,13 +85,14 @@ let ManualOrdersService = class ManualOrdersService {
             }
             if (!input.currency)
                 throw new common_1.BadRequestException('currency is required');
-            const tmpOrderNo = `MAN-${Date.now().toString(36).toUpperCase()}`;
+            const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
+            const orderNo = `ORD-${String(nextNo).padStart(3, '0')}`;
             const [created] = await tx
                 .insert(schema_1.orders)
                 .values({
                 id: (0, drizzle_orm_1.sql) `gen_random_uuid()`,
                 companyId,
-                orderNumber: tmpOrderNo,
+                orderNumber: orderNo,
                 status: 'draft',
                 channel: input.channel ?? 'manual',
                 currency: input.currency,
@@ -87,6 +136,7 @@ let ManualOrdersService = class ManualOrdersService {
                         channel: created.channel,
                         status: created.status,
                         currency: created.currency,
+                        orderNumber: created.orderNumber,
                     },
                 });
             }

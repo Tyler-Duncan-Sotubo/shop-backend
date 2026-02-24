@@ -1,6 +1,7 @@
 import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
 import { CardsResult, DashboardRangeArgs, GrossSalesCardsResult, LatestPaymentRow, RecentOrderRow } from '../inputs/analytics.input';
+import { Bucket, OverviewArgs } from 'src/common/utils/resolve-preset';
 export declare class DashboardCommerceAnalyticsService {
     private readonly db;
     private readonly cache;
@@ -19,8 +20,12 @@ export declare class DashboardCommerceAnalyticsService {
     private computeGrossSalesCards;
     grossSalesCards(args: DashboardRangeArgs): Promise<GrossSalesCardsResult>;
     cards(args: DashboardRangeArgs): Promise<CardsResult>;
-    salesTimeseries(args: DashboardRangeArgs & {
-        bucket?: '15m' | 'day' | 'month';
+    salesTimeseries(args: {
+        companyId: string;
+        storeId: string | null;
+        from: Date;
+        to: Date;
+        bucket: '15m' | 'day' | 'month';
     }): Promise<{
         t: string;
         orders: number;
@@ -59,12 +64,7 @@ export declare class DashboardCommerceAnalyticsService {
     latestPayments(args: DashboardRangeArgs & {
         limit?: number;
     }): Promise<LatestPaymentRow[]>;
-    overview(args: DashboardRangeArgs & {
-        topProductsLimit?: number;
-        recentOrdersLimit?: number;
-        paymentsLimit?: number;
-        topProductsBy?: 'revenue' | 'units';
-    }): Promise<{
+    overview(args: OverviewArgs): Promise<{
         grossCards: GrossSalesCardsResult;
         salesTimeseries: {
             t: string;
@@ -85,6 +85,15 @@ export declare class DashboardCommerceAnalyticsService {
             quantity: number;
             revenueMinor: number;
         }[];
-        bucket: "day" | "15m" | "month";
+        range: {
+            from: string;
+            to: string;
+        };
+        salesRange: {
+            from: string;
+            to: string;
+            bucket: Bucket;
+            preset: import("src/common/utils/resolve-preset").Preset | null;
+        };
     }>;
 }

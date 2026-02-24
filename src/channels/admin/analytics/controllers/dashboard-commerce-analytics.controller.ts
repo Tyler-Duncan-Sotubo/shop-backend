@@ -4,6 +4,7 @@ import { BaseController } from 'src/infrastructure/interceptor/base.controller';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
 import { DashboardCommerceAnalyticsService } from 'src/domains/analytics/services/dashboard-commerce-analytics.service';
+import { Preset, resolvePreset } from 'src/common/utils/resolve-preset';
 
 @Controller('analytics/commerce')
 @UseGuards(JwtAuthGuard)
@@ -49,20 +50,18 @@ export class DashboardCommerceAnalyticsController extends BaseController {
   @Get('admin/sales-timeseries')
   async salesTimeseries(
     @CurrentUser() user: User,
-    @Query('from') from: string,
-    @Query('to') to: string,
+    @Query('preset') preset: Preset,
     @Query('storeId') storeId?: string,
-    @Query('bucket') bucket?: '15m' | 'day' | 'month',
   ) {
-    const data = await this.commerce.salesTimeseries({
+    const { from, to, bucket } = resolvePreset(preset);
+
+    return this.commerce.salesTimeseries({
       companyId: user.companyId,
       storeId: storeId ?? null,
-      from: new Date(from),
-      to: new Date(to),
-      bucket: bucket ?? 'day',
+      from,
+      to,
+      bucket,
     });
-
-    return data;
   }
 
   /**
@@ -187,6 +186,7 @@ export class DashboardCommerceAnalyticsController extends BaseController {
     @CurrentUser() user: User,
     @Query('from') from: string,
     @Query('to') to: string,
+    @Query('salesPreset') salesPreset?: Preset, // ✅ only for sales chart
     @Query('storeId') storeId?: string,
     @Query('topProductsLimit') topProductsLimit?: string,
     @Query('recentOrdersLimit') recentOrdersLimit?: string,
@@ -198,6 +198,7 @@ export class DashboardCommerceAnalyticsController extends BaseController {
       storeId: storeId ?? null,
       from: new Date(from),
       to: new Date(to),
+      salesPreset: salesPreset ?? undefined,
       topProductsLimit: Number(topProductsLimit ?? 5),
       recentOrdersLimit: Number(recentOrdersLimit ?? 5),
       paymentsLimit: Number(paymentsLimit ?? 5),

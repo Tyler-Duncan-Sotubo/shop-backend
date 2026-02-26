@@ -324,11 +324,9 @@ export class BaseThemeAdminService {
   async updateTheme(companyId: string, themeId: string, dto: UpdateThemeDto) {
     // First: ensure it exists and is company-owned
     const existing = await this.db.query.storefrontThemes.findFirst({
-      where: and(
-        eq(storefrontThemes.id, themeId),
-        eq(storefrontThemes.companyId, companyId),
-      ),
+      where: eq(storefrontThemes.id, themeId),
     });
+
     if (!existing) throw new NotFoundException('Theme not found');
 
     // Validate the *resulting* theme shape (merge-ish validation)
@@ -365,12 +363,7 @@ export class BaseThemeAdminService {
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         updatedAt: new Date(),
       } as any)
-      .where(
-        and(
-          eq(storefrontThemes.id, themeId),
-          eq(storefrontThemes.companyId, companyId),
-        ),
-      )
+      .where(and(eq(storefrontThemes.id, themeId)))
       .returning()
       .execute();
 

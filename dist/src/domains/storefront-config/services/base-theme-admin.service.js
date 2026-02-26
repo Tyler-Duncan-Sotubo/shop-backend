@@ -250,7 +250,7 @@ let BaseThemeAdminService = class BaseThemeAdminService {
     }
     async updateTheme(companyId, themeId, dto) {
         const existing = await this.db.query.storefrontThemes.findFirst({
-            where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storefrontThemes.id, themeId), (0, drizzle_orm_1.eq)(schema_1.storefrontThemes.companyId, companyId)),
+            where: (0, drizzle_orm_1.eq)(schema_1.storefrontThemes.id, themeId),
         });
         if (!existing)
             throw new common_1.NotFoundException('Theme not found');
@@ -285,7 +285,7 @@ let BaseThemeAdminService = class BaseThemeAdminService {
             ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
             updatedAt: new Date(),
         })
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storefrontThemes.id, themeId), (0, drizzle_orm_1.eq)(schema_1.storefrontThemes.companyId, companyId)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storefrontThemes.id, themeId)))
             .returning()
             .execute();
         if (!updated)

@@ -14,6 +14,9 @@ const invoice_pdf_service_1 = require("./invoice-templates/invoice-pdf.service")
 const aws_service_1 = require("../../../infrastructure/aws/aws.service");
 const invoice_totals_service_1 = require("./invoice-totals.service");
 const payment_service_1 = require("../payment/services/payment.service");
+const zoho_invoices_service_1 = require("../../integration/zoho/zoho-invoices.service");
+const zoho_service_1 = require("../../integration/zoho/zoho.service");
+const zoho_common_helper_1 = require("../../integration/zoho/helpers/zoho-common.helper");
 let InvoiceModule = class InvoiceModule {
 };
 exports.InvoiceModule = InvoiceModule;
@@ -25,6 +28,9 @@ exports.InvoiceModule = InvoiceModule = __decorate([
             aws_service_1.AwsService,
             invoice_totals_service_1.InvoiceTotalsService,
             payment_service_1.PaymentService,
+            zoho_invoices_service_1.ZohoInvoicesService,
+            zoho_service_1.ZohoService,
+            zoho_common_helper_1.ZohoCommonHelper,
         ],
         imports: [invoice_templates_module_1.InvoiceTemplatesModule],
         exports: [
@@ -35,6 +41,9 @@ exports.InvoiceModule = InvoiceModule = __decorate([
             invoice_totals_service_1.InvoiceTotalsService,
             payment_service_1.PaymentService,
             invoice_templates_module_1.InvoiceTemplatesModule,
+            zoho_invoices_service_1.ZohoInvoicesService,
+            zoho_service_1.ZohoService,
+            zoho_common_helper_1.ZohoCommonHelper,
         ],
     })
 ], InvoiceModule);

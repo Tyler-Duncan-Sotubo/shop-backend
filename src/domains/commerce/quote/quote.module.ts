@@ -9,6 +9,8 @@ import { InventoryLedgerService } from '../inventory/services/inventory-ledger.s
 import { InvoiceTotalsService } from 'src/domains/billing/invoice/invoice-totals.service';
 import { StoresService } from '../stores/stores.service';
 import { AwsService } from 'src/infrastructure/aws/aws.service';
+import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
+import { ZohoService } from 'src/domains/integration/zoho/zoho.service';
 
 @Module({
   providers: [
@@ -22,6 +24,8 @@ import { AwsService } from 'src/infrastructure/aws/aws.service';
     InvoiceTotalsService,
     StoresService,
     AwsService,
+    ZohoBooksService,
+    ZohoService,
   ],
   exports: [QuoteService],
 })

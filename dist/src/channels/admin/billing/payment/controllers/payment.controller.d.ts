@@ -48,6 +48,17 @@ export declare class PaymentController extends BaseController {
             voidedAt: Date | null;
             voidReason: string | null;
             meta: unknown;
+            zohoOrganizationId: string | null;
+            zohoContactId: string | null;
+            zohoEstimateId: string | null;
+            zohoEstimateNumber: string | null;
+            zohoEstimateStatus: string | null;
+            zohoInvoiceId: string | null;
+            zohoInvoiceNumber: string | null;
+            zohoInvoiceStatus: string | null;
+            zohoSyncedAt: Date | null;
+            zohoSyncError: string | null;
+            zohoSentAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
         };

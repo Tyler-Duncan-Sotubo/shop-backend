@@ -153,5 +153,7 @@ exports.PermissionKeys = [
     'mail.messages.update',
     'integrations.analytics.read',
     'integrations.analytics.update',
+    'integrations.zoho.read',
+    'integrations.zoho.update',
 ];
 //# sourceMappingURL=permission-keys.js.map

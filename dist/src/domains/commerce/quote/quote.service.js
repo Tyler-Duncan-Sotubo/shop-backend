@@ -22,13 +22,15 @@ const audit_service_1 = require("../../audit/audit.service");
 const schema_1 = require("../../../infrastructure/drizzle/schema");
 const manual_orders_service_1 = require("../orders/manual-orders.service");
 const quote_notification_service_1 = require("../../notification/services/quote-notification.service");
+const zoho_books_service_1 = require("../../integration/zoho/zoho-books.service");
 let QuoteService = class QuoteService {
-    constructor(db, cache, auditService, manualOrdersService, quoteNotification) {
+    constructor(db, cache, auditService, manualOrdersService, quoteNotification, zohoBooks) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
         this.manualOrdersService = manualOrdersService;
         this.quoteNotification = quoteNotification;
+        this.zohoBooks = zohoBooks;
     }
     async findQuoteByIdOrThrow(companyId, quoteId) {
         const row = await this.db.query.quoteRequests.findFirst({
@@ -60,19 +62,56 @@ let QuoteService = class QuoteService {
             })
                 .returning()
                 .execute();
+            const variantIds = Array.from(new Set(items.map((i) => i.variantId).filter(Boolean)));
+            const variants = variantIds.length
+                ? await tx
+                    .select({
+                    id: schema_1.productVariants.id,
+                    price: schema_1.productVariants.regularPrice,
+                    salesPrice: schema_1.productVariants.salePrice,
+                    currency: schema_1.productVariants.currency,
+                })
+                    .from(schema_1.productVariants)
+                    .where((0, drizzle_orm_1.inArray)(schema_1.productVariants.id, variantIds))
+                    .execute()
+                : [];
+            const variantById = new Map(variants.map((v) => {
+                const hasSalesPrice = v.salesPrice !== null &&
+                    v.salesPrice !== undefined &&
+                    Number(v.salesPrice) > 0;
+                const unitPrice = (hasSalesPrice ? v.salesPrice : v.price) ?? null;
+                return [
+                    v.id,
+                    {
+                        unitPrice: unitPrice === null ? null : Number(unitPrice),
+                        currency: v.currency ?? null,
+                    },
+                ];
+            }));
+            for (const it of items) {
+                if (it.variantId && !variantById.has(it.variantId)) {
+                    throw new common_1.BadRequestException(`Variant not found: ${it.variantId}`);
+                }
+            }
             await tx
                 .insert(quote_requests_schema_1.quoteRequestItems)
-                .values(items.map((item, index) => ({
-                quoteRequestId: quote.id,
-                productId: item.productId ?? null,
-                variantId: item.variantId ?? null,
-                nameSnapshot: item.name,
-                variantSnapshot: item.variantLabel ?? null,
-                attributes: item.attributes ?? null,
-                imageUrl: item.imageUrl ?? null,
-                quantity: item.quantity ?? 1,
-                position: index + 1,
-            })))
+                .values(items.map((item, index) => {
+                const pricing = item.variantId
+                    ? (variantById.get(item.variantId) ?? null)
+                    : null;
+                return {
+                    quoteRequestId: quote.id,
+                    productId: item.productId ?? null,
+                    variantId: item.variantId ?? null,
+                    nameSnapshot: item.name,
+                    variantSnapshot: item.variantLabel ?? null,
+                    attributes: item.attributes ?? null,
+                    imageUrl: item.imageUrl ?? null,
+                    quantity: item.quantity ?? 1,
+                    position: index + 1,
+                    unitPriceMinor: pricing?.unitPrice ?? null,
+                };
+            }))
                 .execute();
             return quote;
         });
@@ -250,13 +289,63 @@ let QuoteService = class QuoteService {
         }
         return { success: true };
     }
+    async convertToManualOrderTx(tx, companyId, quoteId, input, actor, ip) {
+        const [quote] = await tx
+            .select()
+            .from(quote_requests_schema_1.quoteRequests)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId), (0, drizzle_orm_1.isNull)(quote_requests_schema_1.quoteRequests.deletedAt)))
+            .for('update')
+            .execute();
+        if (!quote)
+            throw new common_1.NotFoundException('Quote not found');
+        if (quote.convertedOrderId) {
+            throw new common_1.BadRequestException('Quote already converted');
+        }
+        const items = await tx
+            .select()
+            .from(quote_requests_schema_1.quoteRequestItems)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequestItems.quoteRequestId, quoteId), (0, drizzle_orm_1.isNull)(quote_requests_schema_1.quoteRequestItems.deletedAt)))
+            .orderBy((0, drizzle_orm_1.asc)(quote_requests_schema_1.quoteRequestItems.position))
+            .execute();
+        if (!items.length)
+            throw new common_1.BadRequestException('Quote has no items');
+        const order = await this.manualOrdersService.createManualOrder(companyId, {
+            storeId: quote.storeId,
+            currency: input.currency,
+            channel: input.channel ?? 'manual',
+            customerId: input.customerId ?? null,
+            shippingAddress: input.shippingAddress ?? null,
+            billingAddress: input.billingAddress ?? null,
+            originInventoryLocationId: input.originInventoryLocationId,
+        }, actor, ip, { tx });
+        for (const it of items) {
+            if (!it.variantId)
+                continue;
+            await this.manualOrdersService.addItem(companyId, {
+                orderId: order.id,
+                variantId: it.variantId,
+                quantity: it.quantity,
+                name: it.nameSnapshot?.trim() ?? undefined,
+                attributes: it.attributes ?? undefined,
+            }, actor, ip, { tx });
+        }
+        await tx
+            .update(quote_requests_schema_1.quoteRequests)
+            .set({
+            convertedOrderId: order.id,
+            status: 'converted',
+            updatedAt: new Date(),
+        })
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId)))
+            .execute();
+        return { orderId: order.id, quote };
+    }
     async convertToManualOrder(companyId, quoteId, input, actor, ip) {
         return this.db.transaction(async (tx) => {
             const [quote] = await tx
                 .select()
                 .from(quote_requests_schema_1.quoteRequests)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId), (0, drizzle_orm_1.isNull)(quote_requests_schema_1.quoteRequests.deletedAt)))
-                .for('update')
                 .execute();
             if (!quote)
                 throw new common_1.NotFoundException('Quote not found');
@@ -303,6 +392,39 @@ let QuoteService = class QuoteService {
             return { orderId: order.id };
         });
     }
+    async sendToZoho(companyId, quoteId, actor, ip) {
+        return this.db.transaction(async (tx) => {
+            const [quote] = await tx
+                .select()
+                .from(quote_requests_schema_1.quoteRequests)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId), (0, drizzle_orm_1.isNull)(quote_requests_schema_1.quoteRequests.deletedAt)))
+                .for('update')
+                .execute();
+            if (!quote)
+                throw new common_1.NotFoundException('Quote not found');
+            let orderId = quote.convertedOrderId;
+            if (!orderId) {
+                const [location] = await tx
+                    .select()
+                    .from(schema_1.inventoryLocations)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryLocations.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryLocations.storeId, quote.storeId), (0, drizzle_orm_1.eq)(schema_1.inventoryLocations.type, 'warehouse'), (0, drizzle_orm_1.eq)(schema_1.inventoryLocations.isActive, true), (0, drizzle_orm_1.isNull)(schema_1.inventoryLocations.deletedAt)))
+                    .orderBy((0, drizzle_orm_1.desc)(schema_1.inventoryLocations.isDefault))
+                    .limit(1)
+                    .execute();
+                if (!location)
+                    throw new common_1.BadRequestException('No warehouse inventory location found');
+                const currency = 'NGN';
+                const res = await this.convertToManualOrderTx(tx, companyId, quoteId, {
+                    originInventoryLocationId: location.id,
+                    currency,
+                    channel: 'manual',
+                }, actor, ip);
+                orderId = res.orderId;
+            }
+            const zohoResult = await this.zohoBooks.createEstimateFromOrder(tx, companyId, quoteId, orderId);
+            return { orderId, ...zohoResult };
+        });
+    }
 };
 exports.QuoteService = QuoteService;
 exports.QuoteService = QuoteService = __decorate([
@@ -311,6 +433,7 @@ exports.QuoteService = QuoteService = __decorate([
     __metadata("design:paramtypes", [Object, cache_service_1.CacheService,
         audit_service_1.AuditService,
         manual_orders_service_1.ManualOrdersService,
-        quote_notification_service_1.QuoteNotificationService])
+        quote_notification_service_1.QuoteNotificationService,
+        zoho_books_service_1.ZohoBooksService])
 ], QuoteService);
 //# sourceMappingURL=quote.service.js.map

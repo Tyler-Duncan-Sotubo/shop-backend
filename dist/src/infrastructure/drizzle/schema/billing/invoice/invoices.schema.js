@@ -68,6 +68,17 @@ exports.invoices = (0, pg_core_1.pgTable)('invoices', {
     voidedAt: (0, pg_core_1.timestamp)('voided_at', { withTimezone: true }),
     voidReason: (0, pg_core_1.text)('void_reason'),
     meta: (0, pg_core_1.jsonb)('meta'),
+    zohoOrganizationId: (0, pg_core_1.text)('zoho_organization_id'),
+    zohoContactId: (0, pg_core_1.text)('zoho_contact_id'),
+    zohoEstimateId: (0, pg_core_1.text)('zoho_estimate_id'),
+    zohoEstimateNumber: (0, pg_core_1.text)('zoho_estimate_number'),
+    zohoEstimateStatus: (0, pg_core_1.text)('zoho_estimate_status'),
+    zohoInvoiceId: (0, pg_core_1.text)('zoho_invoice_id'),
+    zohoInvoiceNumber: (0, pg_core_1.text)('zoho_invoice_number'),
+    zohoInvoiceStatus: (0, pg_core_1.text)('zoho_invoice_status'),
+    zohoSyncedAt: (0, pg_core_1.timestamp)('zoho_synced_at', { withTimezone: true }),
+    zohoSyncError: (0, pg_core_1.text)('zoho_sync_error'),
+    zohoSentAt: (0, pg_core_1.timestamp)('zoho_sent_at', { withTimezone: true }),
     createdAt: (0, pg_core_1.timestamp)('created_at', { withTimezone: true })
         .defaultNow()
         .notNull(),

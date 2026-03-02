@@ -18,6 +18,8 @@ const inventory_ledger_service_1 = require("../inventory/services/inventory-ledg
 const invoice_totals_service_1 = require("../../billing/invoice/invoice-totals.service");
 const stores_service_1 = require("../stores/stores.service");
 const aws_service_1 = require("../../../infrastructure/aws/aws.service");
+const zoho_books_service_1 = require("../../integration/zoho/zoho-books.service");
+const zoho_service_1 = require("../../integration/zoho/zoho.service");
 let QuoteModule = class QuoteModule {
 };
 exports.QuoteModule = QuoteModule;
@@ -34,6 +36,8 @@ exports.QuoteModule = QuoteModule = __decorate([
             invoice_totals_service_1.InvoiceTotalsService,
             stores_service_1.StoresService,
             aws_service_1.AwsService,
+            zoho_books_service_1.ZohoBooksService,
+            zoho_service_1.ZohoService,
         ],
         exports: [quote_service_1.QuoteService],
     })

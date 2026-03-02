@@ -4,7 +4,18 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, ilike, isNull, ne, or, sql, asc } from 'drizzle-orm';
+import {
+  and,
+  desc,
+  eq,
+  ilike,
+  isNull,
+  ne,
+  or,
+  sql,
+  asc,
+  inArray,
+} from 'drizzle-orm';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import {
@@ -18,9 +29,14 @@ import { User } from 'src/channels/admin/common/types/user.type';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { GetQuotesQueryDto } from './dto/get-quotes-query.dto';
-import { stores } from 'src/infrastructure/drizzle/schema';
+import {
+  inventoryLocations,
+  productVariants,
+  stores,
+} from 'src/infrastructure/drizzle/schema';
 import { ManualOrdersService } from '../orders/manual-orders.service';
 import { QuoteNotificationService } from 'src/domains/notification/services/quote-notification.service';
+import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
 
 @Injectable()
 export class QuoteService {
@@ -30,6 +46,7 @@ export class QuoteService {
     private readonly auditService: AuditService,
     private readonly manualOrdersService: ManualOrdersService,
     private readonly quoteNotification: QuoteNotificationService,
+    private readonly zohoBooks: ZohoBooksService,
   ) {}
 
   // --------------------------------------------------------------------------
@@ -58,6 +75,19 @@ export class QuoteService {
   // CRUD
   // --------------------------------------------------------------------------
 
+  /**
+   * CREATE QUOTE
+   *
+   * ✅ Uses variantId to look up price from productVariants
+   * ✅ Stores unitPriceSnapshot + currencySnapshot on quote_request_items
+   * ✅ Prefers salesPrice when present (>0); falls back to price
+   *
+   * NOTE: Ensure quote_request_items schema has:
+   *   - unitPriceSnapshot (number/numeric/int)
+   *   - currencySnapshot (string/text)
+   *
+   * ALSO: Adjust the productVariants import/path + column names to match your schema.
+   */
   async create(
     companyId: string,
     dto: CreateQuoteDto,
@@ -72,6 +102,9 @@ export class QuoteService {
     }
 
     const created = await this.db.transaction(async (tx) => {
+      // -----------------------------
+      // Create quote header
+      // -----------------------------
       const [quote] = await tx
         .insert(quoteRequests)
         .values({
@@ -86,26 +119,93 @@ export class QuoteService {
         .returning()
         .execute();
 
+      // -----------------------------
+      // Bulk fetch variant pricing
+      // -----------------------------
+      const variantIds = Array.from(
+        new Set(items.map((i) => i.variantId).filter(Boolean) as string[]),
+      );
+
+      // ✅ Adjust these fields to match your productVariants schema:
+      //    - price (regular price)
+      //    - salesPrice (optional sale price)
+      //    - currency
+      const variants = variantIds.length
+        ? await tx
+            .select({
+              id: productVariants.id,
+              price: productVariants.regularPrice,
+              salesPrice: productVariants.salePrice,
+              currency: productVariants.currency,
+            })
+            .from(productVariants)
+            .where(inArray(productVariants.id, variantIds))
+            .execute()
+        : [];
+
+      const variantById = new Map<
+        string,
+        { unitPrice: number | null; currency: string | null }
+      >(
+        variants.map((v) => {
+          // ✅ salesPrice wins if it is set and > 0; otherwise fallback to price
+          const hasSalesPrice =
+            v.salesPrice !== null &&
+            v.salesPrice !== undefined &&
+            Number(v.salesPrice) > 0;
+
+          const unitPrice = (hasSalesPrice ? v.salesPrice : v.price) ?? null;
+
+          return [
+            v.id,
+            {
+              unitPrice: unitPrice === null ? null : Number(unitPrice),
+              currency: (v.currency as any) ?? null,
+            },
+          ];
+        }),
+      );
+
+      // Optional but recommended: fail fast if variantId is provided but missing
+      for (const it of items) {
+        if (it.variantId && !variantById.has(it.variantId)) {
+          throw new BadRequestException(`Variant not found: ${it.variantId}`);
+        }
+      }
+
+      // -----------------------------
+      // Insert quote items w/ price snapshot
+      // -----------------------------
       await tx
         .insert(quoteRequestItems)
         .values(
-          items.map((item, index) => ({
-            quoteRequestId: quote.id,
-            productId: item.productId ?? null,
-            variantId: item.variantId ?? null,
-            nameSnapshot: item.name,
-            variantSnapshot: item.variantLabel ?? null,
-            attributes: item.attributes ?? null,
-            imageUrl: item.imageUrl ?? null,
-            quantity: item.quantity ?? 1,
-            position: index + 1,
-          })),
+          items.map((item, index) => {
+            const pricing = item.variantId
+              ? (variantById.get(item.variantId) ?? null)
+              : null;
+
+            return {
+              quoteRequestId: quote.id,
+              productId: item.productId ?? null,
+              variantId: item.variantId ?? null,
+              nameSnapshot: item.name,
+              variantSnapshot: item.variantLabel ?? null,
+              attributes: item.attributes ?? null,
+              imageUrl: item.imageUrl ?? null,
+              quantity: item.quantity ?? 1,
+              position: index + 1,
+              unitPriceMinor: pricing?.unitPrice ?? null,
+            } as any;
+          }),
         )
         .execute();
 
       return quote;
     });
 
+    // -----------------------------
+    // Notify store
+    // -----------------------------
     const [store] = await this.db
       .select({ storeEmail: stores.storeEmail, name: stores.name })
       .from(stores)
@@ -127,6 +227,9 @@ export class QuoteService {
 
     await this.bumpCompany(companyId);
 
+    // -----------------------------
+    // Audit
+    // -----------------------------
     if (user && ip) {
       await this.auditService.logAction({
         action: 'create',
@@ -376,6 +479,105 @@ export class QuoteService {
     return { success: true };
   }
 
+  private async convertToManualOrderTx(
+    tx: db,
+    companyId: string,
+    quoteId: string,
+    input: {
+      originInventoryLocationId: string;
+      currency: string;
+      channel?: 'manual' | 'pos';
+      shippingAddress?: any;
+      billingAddress?: any;
+      customerId?: string | null;
+    },
+    actor?: User,
+    ip?: string,
+  ) {
+    const [quote] = await tx
+      .select()
+      .from(quoteRequests)
+      .where(
+        and(
+          eq(quoteRequests.companyId, companyId),
+          eq(quoteRequests.id, quoteId),
+          isNull(quoteRequests.deletedAt),
+        ),
+      )
+      .for('update')
+      .execute();
+
+    if (!quote) throw new NotFoundException('Quote not found');
+    if ((quote as any).convertedOrderId) {
+      throw new BadRequestException('Quote already converted');
+    }
+
+    const items = await tx
+      .select()
+      .from(quoteRequestItems)
+      .where(
+        and(
+          eq(quoteRequestItems.quoteRequestId, quoteId),
+          isNull(quoteRequestItems.deletedAt),
+        ),
+      )
+      .orderBy(asc(quoteRequestItems.position))
+      .execute();
+
+    if (!items.length) throw new BadRequestException('Quote has no items');
+
+    const order = await this.manualOrdersService.createManualOrder(
+      companyId,
+      {
+        storeId: quote.storeId,
+        currency: input.currency,
+        channel: input.channel ?? 'manual',
+        customerId: input.customerId ?? null,
+        shippingAddress: input.shippingAddress ?? null,
+        billingAddress: input.billingAddress ?? null,
+        originInventoryLocationId: input.originInventoryLocationId,
+      },
+      actor,
+      ip,
+      { tx },
+    );
+
+    for (const it of items) {
+      if (!it.variantId) continue;
+
+      await this.manualOrdersService.addItem(
+        companyId,
+        {
+          orderId: order.id,
+          variantId: it.variantId,
+          quantity: it.quantity,
+          name: it.nameSnapshot?.trim() ?? undefined,
+          attributes: it.attributes ?? undefined,
+        } as any,
+        actor,
+        ip,
+        { tx },
+      );
+    }
+
+    await tx
+      .update(quoteRequests)
+      .set({
+        convertedOrderId: order.id,
+        status: 'converted',
+        updatedAt: new Date(),
+      } as any)
+      .where(
+        and(
+          eq(quoteRequests.companyId, companyId),
+          eq(quoteRequests.id, quoteId),
+        ),
+      )
+      .execute();
+
+    return { orderId: order.id, quote };
+  }
+
   async convertToManualOrder(
     companyId: string,
     quoteId: string,
@@ -401,7 +603,6 @@ export class QuoteService {
             isNull(quoteRequests.deletedAt),
           ),
         )
-        .for('update')
         .execute();
 
       if (!quote) throw new NotFoundException('Quote not found');
@@ -441,7 +642,7 @@ export class QuoteService {
       );
 
       for (const it of items) {
-        if (!it.variantId) continue; // or throw if required
+        if (!it.variantId) continue;
 
         await this.manualOrdersService.addItem(
           companyId,
@@ -451,7 +652,6 @@ export class QuoteService {
             quantity: it.quantity,
             name: it.nameSnapshot?.trim() ?? undefined,
             attributes: it.attributes ?? undefined,
-            // unitPrice: optional if you add negotiation inputs
           } as any,
           actor,
           ip,
@@ -475,6 +675,81 @@ export class QuoteService {
         .execute();
 
       return { orderId: order.id };
+    });
+  }
+
+  async sendToZoho(
+    companyId: string,
+    quoteId: string,
+    actor?: User,
+    ip?: string,
+  ) {
+    return this.db.transaction(async (tx) => {
+      const [quote] = await tx
+        .select()
+        .from(quoteRequests)
+        .where(
+          and(
+            eq(quoteRequests.companyId, companyId),
+            eq(quoteRequests.id, quoteId),
+            isNull(quoteRequests.deletedAt),
+          ),
+        )
+        .for('update')
+        .execute();
+
+      if (!quote) throw new NotFoundException('Quote not found');
+
+      let orderId = quote.convertedOrderId as string | undefined;
+
+      if (!orderId) {
+        const [location] = await tx
+          .select()
+          .from(inventoryLocations)
+          .where(
+            and(
+              eq(inventoryLocations.companyId, companyId),
+              eq(inventoryLocations.storeId, quote.storeId),
+              eq(inventoryLocations.type, 'warehouse'),
+              eq(inventoryLocations.isActive, true),
+              isNull(inventoryLocations.deletedAt),
+            ),
+          )
+          .orderBy(desc(inventoryLocations.isDefault))
+          .limit(1)
+          .execute();
+
+        if (!location)
+          throw new BadRequestException(
+            'No warehouse inventory location found',
+          );
+
+        const currency = 'NGN';
+
+        const res = await this.convertToManualOrderTx(
+          tx,
+          companyId,
+          quoteId,
+          {
+            originInventoryLocationId: location.id,
+            currency,
+            channel: 'manual',
+          },
+          actor,
+          ip,
+        );
+
+        orderId = res.orderId;
+      }
+
+      const zohoResult = await this.zohoBooks.createEstimateFromOrder(
+        tx,
+        companyId,
+        quoteId,
+        orderId!,
+      );
+
+      return { orderId, ...zohoResult };
     });
   }
 }

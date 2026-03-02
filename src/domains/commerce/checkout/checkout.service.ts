@@ -962,7 +962,7 @@ export class CheckoutService {
       .returning({ nextNumber: orderCounters.nextNumber });
 
     const seq = Number(row.nextNumber);
-    return `ORD-${String(seq).padStart(3, '0')}`;
+    return `ORD-${String(seq).padStart(6, '0')}`;
   }
 
   // -----------------------

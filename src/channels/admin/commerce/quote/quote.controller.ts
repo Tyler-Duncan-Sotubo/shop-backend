@@ -82,6 +82,16 @@ export class QuoteController extends BaseController {
     );
   }
 
+  @Post(':quoteId/send-to-zoho')
+  @SetMetadata('permissions', ['quotes.update']) // or better: ['quotes.convert']
+  sendToZoho(
+    @CurrentUser() user: User,
+    @Param('quoteId') quoteId: string,
+    @Ip() ip: string,
+  ) {
+    return this.quoteService.sendToZoho(user.companyId, quoteId, user, ip);
+  }
+
   @Delete(':quoteId')
   @SetMetadata('permissions', ['quotes.delete'])
   deleteQuote(

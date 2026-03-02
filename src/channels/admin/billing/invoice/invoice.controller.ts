@@ -142,7 +142,6 @@ export class AdminInvoiceController extends BaseController {
     @Param() params: InvoiceIdParamDto,
     @Body() dto: RecordInvoicePaymentDto,
   ) {
-    console.log('Recording payment for invoice:', dto);
     return this.paymentService.recordInvoicePayment(
       {
         invoiceId: params.invoiceId,

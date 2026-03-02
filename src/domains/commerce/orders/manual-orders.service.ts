@@ -116,7 +116,7 @@ export class ManualOrdersService {
       const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
 
       // optional: prefix to match your existing format (adjust to your needs)
-      const orderNo = `ORD-${String(nextNo).padStart(3, '0')}`;
+      const orderNo = `ORD-${String(nextNo).padStart(6, '0')}`;
 
       const [created] = await tx
         .insert(orders)

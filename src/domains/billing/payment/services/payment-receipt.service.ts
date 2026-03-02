@@ -1,10 +1,11 @@
+// src/modules/billing/payments/services/payment-receipt.service.ts
 import {
   Injectable,
   BadRequestException,
   Inject,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, isNull, or, desc } from 'drizzle-orm';
+import { and, eq, isNull, or, desc, sql } from 'drizzle-orm';
 import { chromium } from 'playwright-chromium';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
@@ -16,6 +17,7 @@ import {
   orders,
   invoiceBranding,
   companies,
+  receiptCounters,
 } from 'src/infrastructure/drizzle/schema';
 import {
   wrapInHtml,
@@ -58,7 +60,6 @@ export class PaymentReceiptService {
   }
 
   private async getBranding(companyId: string, storeId?: string | null) {
-    // same logic as InvoicePdfService
     if (!storeId) {
       const [b] = await this.db
         .select()
@@ -97,15 +98,49 @@ export class PaymentReceiptService {
         ? branding.logoUrl
         : this.DEFAULT_LOGO_URL;
 
-    return {
-      ...branding,
-      logoUrl,
-    };
+    return { ...branding, logoUrl };
   }
 
-  async getReceiptViewModel(companyId: string, paymentId: string) {
-    // receipt row (must exist)
-    const [r] = await this.db
+  /* ------------------------------------------------------------ */
+  /* Receipt ensure (idempotent, fixes "Receipt not found")        */
+  /* ------------------------------------------------------------ */
+
+  private formatReceiptNumber(seq: number) {
+    return `RCT-${String(seq).padStart(6, '0')}`;
+  }
+
+  private async nextReceiptSequenceTx(tx: any, companyId: string) {
+    const res = await tx.execute(
+      sql`SELECT * FROM receipt_counters WHERE company_id = ${companyId} FOR UPDATE`,
+    );
+    const row = (res as any)?.rows?.[0] ?? null;
+
+    if (!row) {
+      await tx.insert(receiptCounters).values({
+        companyId,
+        nextNumber: 2,
+        updatedAt: new Date(),
+      } as any);
+      return 1;
+    }
+
+    const seq = Number(row.next_number ?? 1);
+
+    await tx
+      .update(receiptCounters)
+      .set({ nextNumber: seq + 1, updatedAt: new Date() } as any)
+      .where(eq(receiptCounters.companyId, companyId))
+      .execute();
+
+    return seq;
+  }
+
+  private async ensureReceiptForPaymentTx(
+    tx: any,
+    companyId: string,
+    paymentId: string,
+  ) {
+    const [existing] = await tx
       .select()
       .from(paymentReceipts)
       .where(
@@ -116,7 +151,102 @@ export class PaymentReceiptService {
       )
       .execute();
 
-    if (!r) throw new NotFoundException('Receipt not found for payment');
+    if (existing) return existing;
+
+    const [p] = await tx
+      .select()
+      .from(payments)
+      .where(and(eq(payments.companyId, companyId), eq(payments.id, paymentId)))
+      .execute();
+    if (!p) throw new NotFoundException('Payment not found');
+
+    let inv: any | null = null;
+    if ((p as any).invoiceId) {
+      const [row] = await tx
+        .select({
+          id: invoices.id,
+          number: invoices.number,
+          orderId: invoices.orderId,
+          customerSnapshot: invoices.customerSnapshot,
+          supplierSnapshot: invoices.supplierSnapshot,
+          currency: invoices.currency,
+        })
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.companyId, companyId),
+            eq(invoices.id, (p as any).invoiceId),
+          ),
+        )
+        .execute();
+      inv = row ?? null;
+    }
+
+    const orderId = (p as any).orderId ?? inv?.orderId ?? null;
+
+    let orderNumber: string | null = null;
+    if (orderId) {
+      const [ord] = await tx
+        .select({ orderNumber: orders.orderNumber })
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .execute();
+      orderNumber = ord?.orderNumber ?? null;
+    }
+
+    const seq = await this.nextReceiptSequenceTx(tx, companyId);
+    const receiptNumber = this.formatReceiptNumber(seq);
+
+    const currency =
+      (p as any).currency ??
+      inv?.currency ??
+      (p as any).meta?.currency ??
+      'NGN';
+
+    const [created] = await tx
+      .insert(paymentReceipts)
+      .values({
+        companyId,
+        paymentId,
+
+        invoiceId: (p as any).invoiceId ?? null,
+        orderId,
+
+        invoiceNumber: inv?.number ?? null,
+        orderNumber,
+
+        sequenceNumber: seq,
+        receiptNumber,
+
+        currency,
+        amountMinor: Number((p as any).amountMinor ?? 0),
+
+        method: (p as any).method,
+        reference: (p as any).reference ?? null,
+
+        customerSnapshot: inv?.customerSnapshot ?? null,
+        storeSnapshot: inv?.supplierSnapshot ?? null,
+        meta: (p as any).meta ?? null,
+
+        issuedAt: new Date(),
+        createdByUserId: (p as any).createdByUserId ?? null,
+        updatedAt: new Date(),
+      } as any)
+      .returning()
+      .execute();
+
+    return created;
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Public API (names unchanged)                                 */
+  /* ------------------------------------------------------------ */
+
+  async getReceiptViewModel(companyId: string, paymentId: string) {
+    // ✅ ensure receipt exists (generate-on-click safe)
+    const r = await this.db.transaction((tx) =>
+      this.ensureReceiptForPaymentTx(tx, companyId, paymentId),
+    );
 
     // payment row
     const [p] = await this.db
@@ -128,7 +258,7 @@ export class PaymentReceiptService {
 
     // invoice balance remaining (optional)
     let inv: any | null = null;
-    if (r.invoiceId) {
+    if ((r as any).invoiceId) {
       const [row] = await this.db
         .select({
           number: invoices.number,
@@ -138,55 +268,67 @@ export class PaymentReceiptService {
         })
         .from(invoices)
         .where(
-          and(eq(invoices.companyId, companyId), eq(invoices.id, r.invoiceId)),
+          and(
+            eq(invoices.companyId, companyId),
+            eq(invoices.id, (r as any).invoiceId),
+          ),
         )
         .execute();
       inv = row ?? null;
     }
 
-    // orderNumber fallback if receipt didn’t store it (but it should)
+    // orderNumber fallback if receipt didn’t store it
     let ord: any | null = null;
-    if (r.orderId) {
+    if ((r as any).orderId) {
       const [row] = await this.db
         .select({ orderNumber: orders.orderNumber })
         .from(orders)
-        .where(and(eq(orders.companyId, companyId), eq(orders.id, r.orderId)))
+        .where(
+          and(
+            eq(orders.companyId, companyId),
+            eq(orders.id, (r as any).orderId),
+          ),
+        )
         .execute();
       ord = row ?? null;
     }
 
-    // company/store header (minimal)
+    // company existence check (kept)
     const [co] = await this.db
       .select({ id: companies.id })
       .from(companies)
       .where(eq(companies.id, companyId))
       .execute();
-
     if (!co) throw new BadRequestException('Company not found');
 
-    const storeId = (inv as any)?.storeId ?? null;
+    const storeId = inv?.storeId ?? null;
     const branding = this.normalizeBranding(
       await this.getBranding(companyId, storeId),
     );
 
-    const currency = p.currency ?? inv?.currency ?? r.currency ?? 'NGN';
+    const currency =
+      (p as any).currency ?? inv?.currency ?? (r as any).currency ?? 'NGN';
 
-    const issuedAt = (r.issuedAt ?? r.createdAt ?? new Date()).toISOString();
+    const issuedAt = (
+      (r as any).issuedAt ??
+      (r as any).createdAt ??
+      new Date()
+    ).toISOString();
 
     return {
       receipt: {
-        receiptNumber: r.receiptNumber,
+        receiptNumber: (r as any).receiptNumber,
         issuedAt,
-        orderNumber: r.orderNumber ?? ord?.orderNumber ?? null,
-        invoiceNumber: r.invoiceNumber ?? inv?.number ?? null,
+        orderNumber: (r as any).orderNumber ?? ord?.orderNumber ?? null,
+        invoiceNumber: (r as any).invoiceNumber ?? inv?.number ?? null,
       },
       payment: {
-        amount: this.formatMinor(Number(p.amountMinor ?? 0), currency),
-        amountMinor: Number(p.amountMinor ?? 0),
+        amount: this.formatMinor(Number((p as any).amountMinor ?? 0), currency),
+        amountMinor: Number((p as any).amountMinor ?? 0),
         currency,
-        method: p.method,
-        methodLabel: this.methodLabel(String(p.method)),
-        reference: p.reference ?? null,
+        method: (p as any).method,
+        methodLabel: this.methodLabel(String((p as any).method)),
+        reference: (p as any).reference ?? null,
       },
       invoice: inv
         ? {
@@ -225,38 +367,41 @@ export class PaymentReceiptService {
   }
 
   private async htmlToPdf(html: string): Promise<Buffer> {
-    const browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    try {
+      const browser = await chromium.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
 
-    const context = await browser.newContext();
-    const page = await context.newPage();
+      const context = await browser.newContext();
+      const page = await context.newPage();
 
-    await page.setContent(html, { waitUntil: 'networkidle' });
+      await page.setContent(html, { waitUntil: 'networkidle' });
 
-    // wait for images (logo) to load
-    await page.evaluate(async () => {
-      const imgs = Array.from(document.images);
-      await Promise.all(
-        imgs.map((img) =>
-          img.complete
-            ? Promise.resolve(true)
-            : new Promise((res) => {
-                img.addEventListener('load', () => res(true));
-                img.addEventListener('error', () => res(true));
-              }),
-        ),
+      // wait for images (logo) to load
+      await page.evaluate(async () => {
+        const imgs = Array.from(document.images);
+        await Promise.all(
+          imgs.map((img) =>
+            img.complete
+              ? Promise.resolve(true)
+              : new Promise((res) => {
+                  img.addEventListener('load', () => res(true));
+                  img.addEventListener('error', () => res(true));
+                }),
+          ),
+        );
+      });
+
+      const pdfBuffer = await page.pdf({ printBackground: true });
+
+      await browser.close();
+      return pdfBuffer;
+    } catch (e: any) {
+      throw new BadRequestException(
+        'Failed to generate PDF receipt: ' + (e.message ?? String(e)),
       );
-    });
-
-    const pdfBuffer = await page.pdf({
-      // Template already sets @page 80mm auto
-      printBackground: true,
-    });
-
-    await browser.close();
-    return pdfBuffer;
+    }
   }
 
   async attachPdfToReceiptByPaymentId(
@@ -265,7 +410,6 @@ export class PaymentReceiptService {
     pdfUrl: string,
     storageKey: string,
   ) {
-    // receipt must already exist (created when payment was confirmed/recorded)
     await this.db
       .update(paymentReceipts)
       .set({

@@ -18,6 +18,9 @@ const invoice_totals_service_1 = require("../../billing/invoice/invoice-totals.s
 const api_keys_service_1 = require("../../iam/api-keys/api-keys.service");
 const stores_service_1 = require("../stores/stores.service");
 const aws_service_1 = require("../../../infrastructure/aws/aws.service");
+const zoho_books_service_1 = require("../../integration/zoho/zoho-books.service");
+const zoho_service_1 = require("../../integration/zoho/zoho.service");
+const zoho_common_helper_1 = require("../../integration/zoho/helpers/zoho-common.helper");
 let OrdersModule = class OrdersModule {
 };
 exports.OrdersModule = OrdersModule;
@@ -34,6 +37,9 @@ exports.OrdersModule = OrdersModule = __decorate([
             api_keys_service_1.ApiKeysService,
             stores_service_1.StoresService,
             aws_service_1.AwsService,
+            zoho_books_service_1.ZohoBooksService,
+            zoho_service_1.ZohoService,
+            zoho_common_helper_1.ZohoCommonHelper,
         ],
         exports: [orders_service_1.OrdersService, manual_orders_service_1.ManualOrdersService],
     })

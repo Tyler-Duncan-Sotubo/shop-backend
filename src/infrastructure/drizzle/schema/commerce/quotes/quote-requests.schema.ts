@@ -47,6 +47,27 @@ export const quoteRequests = pgTable(
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { mode: 'date' }),
+
+    // 🕒 Lifecycle tracking
+    createdZohoAt: timestamp('created_zoho_at', { mode: 'date' }),
+    sentAt: timestamp('sent_at', { mode: 'date' }),
+    acceptedAt: timestamp('accepted_at', { mode: 'date' }),
+    convertedAt: timestamp('converted_at', { mode: 'date' }),
+
+    // 💰 Optional but recommended
+    currency: text('currency').default('GBP'),
+
+    totalsSnapshot: jsonb('totals_snapshot').$type<{
+      subtotal?: number;
+      tax?: number;
+      shipping?: number;
+      discount?: number;
+      total?: number;
+    }>(),
+
+    // 🔄 Sync health
+    lastSyncedAt: timestamp('last_synced_at', { mode: 'date' }),
+    syncError: text('sync_error'),
   },
   (table) => [
     index('idx_quote_requests_company_store').on(
@@ -85,11 +106,14 @@ export const quoteRequestItems = pgTable(
 
     // Any selected attributes (Size/Color/etc.)
     attributes: jsonb('attributes').$type<Record<string, string | null>>(),
-
     imageUrl: text('image_url'), // optional snapshot for UI
     quantity: integer('quantity').notNull().default(1),
-
     position: integer('position').notNull().default(1),
+
+    // ✅ Admin pricing (minor units, e.g. pennies)
+    unitPriceMinor: integer('unit_price_minor'), // null until quoted
+    discountMinor: integer('discount_minor').default(0), // optional
+    lineNote: text('line_note'),
 
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { mode: 'date' }),

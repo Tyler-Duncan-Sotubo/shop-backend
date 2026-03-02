@@ -18,23 +18,38 @@ let TokenGeneratorService = class TokenGeneratorService {
         this.configService = configService;
         this.jwtService = jwtService;
     }
+    mustGetString(key) {
+        const v = this.configService.get(key);
+        if (!v)
+            throw new common_1.BadRequestException(`${key} is missing`);
+        return v;
+    }
+    getNumberOrDefault(key, def) {
+        const v = this.configService.get(key);
+        return Number.isFinite(v) ? Number(v) : def;
+    }
     async generateToken(user) {
         const payload = { sub: user.id, email: user.email };
+        const accessSecret = this.mustGetString('JWT_SECRET');
+        const refreshSecret = this.mustGetString('JWT_REFRESH_SECRET');
+        const accessExpSeconds = this.getNumberOrDefault('JWT_EXPIRATION', 3600);
+        const refreshExpSeconds = this.getNumberOrDefault('JWT_REFRESH_EXPIRATION', 60 * 60 * 24 * 7);
         const accessToken = this.jwtService.sign(payload, {
-            secret: this.configService.get('JWT_SECRET'),
-            expiresIn: `${this.configService.get('JWT_EXPIRATION')}s`,
+            secret: accessSecret,
+            expiresIn: accessExpSeconds,
         });
         const refreshToken = this.jwtService.sign(payload, {
-            secret: this.configService.get('JWT_REFRESH_SECRET'),
-            expiresIn: `${this.configService.get('JWT_REFRESH_EXPIRATION')}s`,
+            secret: refreshSecret,
+            expiresIn: refreshExpSeconds,
         });
         return { accessToken, refreshToken };
     }
     async generateTempToken(user) {
         const payload = { sub: user.id, email: user.email };
+        const secret = this.mustGetString('JWT_SECRET');
         return this.jwtService.sign(payload, {
-            secret: this.configService.get('JWT_SECRET'),
-            expiresIn: `60m`,
+            secret,
+            expiresIn: '60m',
         });
     }
 };

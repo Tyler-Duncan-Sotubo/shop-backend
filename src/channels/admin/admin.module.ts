@@ -18,7 +18,7 @@ import { AdminSetupModule } from './setup/setup.module';
 import { AdminStorefrontConfigModule } from './storefront-config/storefront-config.module';
 import { AdminReviewsModule } from './reviews/reviews.module';
 import { GuardsModule } from './common/guards/guards.module';
-import { AdminAnalyticsModule } from './analytics/analytics.module';
+import { AdminAnalyticsModule } from './audit/analytics/analytics.module';
 
 @Module({
   imports: [

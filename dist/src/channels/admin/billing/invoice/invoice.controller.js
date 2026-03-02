@@ -60,7 +60,6 @@ let AdminInvoiceController = class AdminInvoiceController extends base_controlle
         return { message: 'Invoice series synchronized successfully.' };
     }
     async recordInvoicePayment(user, params, dto) {
-        console.log('Recording payment for invoice:', dto);
         return this.paymentService.recordInvoicePayment({
             invoiceId: params.invoiceId,
             amount: dto.amount,

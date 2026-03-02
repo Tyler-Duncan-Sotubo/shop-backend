@@ -274,6 +274,34 @@
       "when": 1769770176340,
       "tag": "0038_tearful_red_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1772351149532,
+      "tag": "0039_lovely_daimon_hellstrom",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1772353254782,
+      "tag": "0040_blushing_shinko_yamashiro",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1772363900319,
+      "tag": "0041_long_alice",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1772407294472,
+      "tag": "0042_thick_nehzno",
+      "breakpoints": true
     }
   ]
 }

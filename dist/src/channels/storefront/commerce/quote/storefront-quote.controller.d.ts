@@ -13,11 +13,25 @@ export declare class QuoteController extends BaseController {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
+        currency: string | null;
         meta: Record<string, unknown> | null;
         customerEmail: string;
         customerNote: string | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
+        createdZohoAt: Date | null;
+        sentAt: Date | null;
+        acceptedAt: Date | null;
+        convertedAt: Date | null;
+        totalsSnapshot: {
+            subtotal?: number;
+            tax?: number;
+            shipping?: number;
+            discount?: number;
+            total?: number;
+        } | null;
+        lastSyncedAt: Date | null;
+        syncError: string | null;
     }>;
 }

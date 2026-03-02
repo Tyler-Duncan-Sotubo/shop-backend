@@ -63,6 +63,12 @@ export class OrdersController extends BaseController {
     return this.orders.fulfill(user.companyId, id, user, undefined);
   }
 
+  @Post(':id/sync-zoho')
+  @SetMetadata('permissions', ['orders.update'])
+  syncZohoChanges(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.orders.syncZohoChanges(user.companyId, id, user, undefined);
+  }
+
   // MANUAL ORDERS
   @Post('manual')
   @SetMetadata('permissions', ['orders.manual.create'])

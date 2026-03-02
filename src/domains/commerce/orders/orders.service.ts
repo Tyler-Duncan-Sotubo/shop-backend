@@ -8,7 +8,6 @@ import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
 import { User } from 'src/channels/admin/common/types/user.type';
 import {
   orderItems,
@@ -22,14 +21,15 @@ import {
 } from 'src/infrastructure/drizzle/schema';
 import { ListOrdersDto } from './dto/list-orders.dto';
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
+import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
 
 @Injectable()
 export class OrdersService {
   constructor(
     @Inject(DRIZZLE) private readonly db: db,
     private readonly cache: CacheService,
-    private readonly audit: AuditService,
     private readonly stock: InventoryStockService,
+    private readonly zohoBooks: ZohoBooksService,
   ) {}
 
   // -----------------------
@@ -466,5 +466,20 @@ export class OrdersService {
 
     await this.cache.bumpCompanyVersion(companyId);
     return result;
+  }
+
+  // QuoteService (if you want to call it from quoteId)
+  async syncZohoChanges(
+    companyId: string,
+    orderId: string,
+    actor?: User,
+    ip?: string,
+  ) {
+    return this.zohoBooks.syncEstimateChangesFromOrder(
+      companyId,
+      orderId,
+      actor,
+      ip,
+    );
   }
 }

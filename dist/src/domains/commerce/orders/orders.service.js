@@ -17,15 +17,15 @@ const common_1 = require("@nestjs/common");
 const drizzle_orm_1 = require("drizzle-orm");
 const drizzle_module_1 = require("../../../infrastructure/drizzle/drizzle.module");
 const cache_service_1 = require("../../../infrastructure/cache/cache.service");
-const audit_service_1 = require("../../audit/audit.service");
 const schema_1 = require("../../../infrastructure/drizzle/schema");
 const inventory_stock_service_1 = require("../inventory/services/inventory-stock.service");
+const zoho_books_service_1 = require("../../integration/zoho/zoho-books.service");
 let OrdersService = class OrdersService {
-    constructor(db, cache, audit, stock) {
+    constructor(db, cache, stock, zohoBooks) {
         this.db = db;
         this.cache = cache;
-        this.audit = audit;
         this.stock = stock;
+        this.zohoBooks = zohoBooks;
     }
     async getOrder(companyId, orderId) {
         const order = await this.db
@@ -293,13 +293,16 @@ let OrdersService = class OrdersService {
         await this.cache.bumpCompanyVersion(companyId);
         return result;
     }
+    async syncZohoChanges(companyId, orderId, actor, ip) {
+        return this.zohoBooks.syncEstimateChangesFromOrder(companyId, orderId, actor, ip);
+    }
 };
 exports.OrdersService = OrdersService;
 exports.OrdersService = OrdersService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, cache_service_1.CacheService,
-        audit_service_1.AuditService,
-        inventory_stock_service_1.InventoryStockService])
+        inventory_stock_service_1.InventoryStockService,
+        zoho_books_service_1.ZohoBooksService])
 ], OrdersService);
 //# sourceMappingURL=orders.service.js.map

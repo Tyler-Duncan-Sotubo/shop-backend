@@ -132,6 +132,29 @@ export const invoices = pgTable(
     // extra metadata: notes, terms, tax breakdown, etc.
     meta: jsonb('meta'),
 
+    // -----------------------------
+    // Zoho Books integration fields
+    // -----------------------------
+    zohoOrganizationId: text('zoho_organization_id'),
+    zohoContactId: text('zoho_contact_id'),
+
+    // If you create an Estimate/Quote first in Zoho and want a hard link
+    zohoEstimateId: text('zoho_estimate_id'),
+    zohoEstimateNumber: text('zoho_estimate_number'),
+    zohoEstimateStatus: text('zoho_estimate_status'),
+
+    // Invoice in Zoho (main mapping)
+    zohoInvoiceId: text('zoho_invoice_id'),
+    zohoInvoiceNumber: text('zoho_invoice_number'),
+    zohoInvoiceStatus: text('zoho_invoice_status'),
+
+    // Sync tracking
+    zohoSyncedAt: timestamp('zoho_synced_at', { withTimezone: true }),
+    zohoSyncError: text('zoho_sync_error'),
+
+    // If you support “Send via Zoho”
+    zohoSentAt: timestamp('zoho_sent_at', { withTimezone: true }),
+
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),

@@ -9,6 +9,9 @@ import { InvoiceTotalsService } from 'src/domains/billing/invoice/invoice-totals
 import { ApiKeysService } from 'src/domains/iam/api-keys/api-keys.service';
 import { StoresService } from '../stores/stores.service';
 import { AwsService } from 'src/infrastructure/aws/aws.service';
+import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
+import { ZohoService } from 'src/domains/integration/zoho/zoho.service';
+import { ZohoCommonHelper } from 'src/domains/integration/zoho/helpers/zoho-common.helper';
 
 @Module({
   providers: [
@@ -22,6 +25,9 @@ import { AwsService } from 'src/infrastructure/aws/aws.service';
     ApiKeysService,
     StoresService,
     AwsService,
+    ZohoBooksService,
+    ZohoService,
+    ZohoCommonHelper,
   ],
   exports: [OrdersService, ManualOrdersService],
 })

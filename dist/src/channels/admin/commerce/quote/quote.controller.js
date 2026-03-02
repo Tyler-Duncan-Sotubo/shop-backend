@@ -42,6 +42,9 @@ let QuoteController = class QuoteController extends base_controller_1.BaseContro
     convertQuoteToOrder(user, quoteId, dto, ip) {
         return this.quoteService.convertToManualOrder(user.companyId, quoteId, dto, user, ip);
     }
+    sendToZoho(user, quoteId, ip) {
+        return this.quoteService.sendToZoho(user.companyId, quoteId, user, ip);
+    }
     deleteQuote(user, quoteId, ip) {
         return this.quoteService.remove(user.companyId, quoteId, user, ip);
     }
@@ -97,6 +100,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, convert_quote_to_manual_order_dto_1.ConvertQuoteToManualOrderDto, String]),
     __metadata("design:returntype", void 0)
 ], QuoteController.prototype, "convertQuoteToOrder", null);
+__decorate([
+    (0, common_1.Post)(':quoteId/send-to-zoho'),
+    (0, common_1.SetMetadata)('permissions', ['quotes.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('quoteId')),
+    __param(2, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", void 0)
+], QuoteController.prototype, "sendToZoho", null);
 __decorate([
     (0, common_1.Delete)(':quoteId'),
     (0, common_1.SetMetadata)('permissions', ['quotes.delete']),

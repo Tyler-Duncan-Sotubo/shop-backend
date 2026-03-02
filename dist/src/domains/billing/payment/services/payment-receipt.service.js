@@ -67,19 +67,105 @@ let PaymentReceiptService = class PaymentReceiptService {
         const logoUrl = branding?.logoUrl && branding.logoUrl.trim().length > 0
             ? branding.logoUrl
             : this.DEFAULT_LOGO_URL;
-        return {
-            ...branding,
-            logoUrl,
-        };
+        return { ...branding, logoUrl };
     }
-    async getReceiptViewModel(companyId, paymentId) {
-        const [r] = await this.db
+    formatReceiptNumber(seq) {
+        return `RCT-${String(seq).padStart(6, '0')}`;
+    }
+    async nextReceiptSequenceTx(tx, companyId) {
+        const res = await tx.execute((0, drizzle_orm_1.sql) `SELECT * FROM receipt_counters WHERE company_id = ${companyId} FOR UPDATE`);
+        const row = res?.rows?.[0] ?? null;
+        if (!row) {
+            await tx.insert(schema_1.receiptCounters).values({
+                companyId,
+                nextNumber: 2,
+                updatedAt: new Date(),
+            });
+            return 1;
+        }
+        const seq = Number(row.next_number ?? 1);
+        await tx
+            .update(schema_1.receiptCounters)
+            .set({ nextNumber: seq + 1, updatedAt: new Date() })
+            .where((0, drizzle_orm_1.eq)(schema_1.receiptCounters.companyId, companyId))
+            .execute();
+        return seq;
+    }
+    async ensureReceiptForPaymentTx(tx, companyId, paymentId) {
+        const [existing] = await tx
             .select()
             .from(schema_1.paymentReceipts)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.paymentReceipts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.paymentReceipts.paymentId, paymentId)))
             .execute();
-        if (!r)
-            throw new common_1.NotFoundException('Receipt not found for payment');
+        if (existing)
+            return existing;
+        const [p] = await tx
+            .select()
+            .from(schema_1.payments)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.payments.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.payments.id, paymentId)))
+            .execute();
+        if (!p)
+            throw new common_1.NotFoundException('Payment not found');
+        let inv = null;
+        if (p.invoiceId) {
+            const [row] = await tx
+                .select({
+                id: schema_1.invoices.id,
+                number: schema_1.invoices.number,
+                orderId: schema_1.invoices.orderId,
+                customerSnapshot: schema_1.invoices.customerSnapshot,
+                supplierSnapshot: schema_1.invoices.supplierSnapshot,
+                currency: schema_1.invoices.currency,
+            })
+                .from(schema_1.invoices)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.id, p.invoiceId)))
+                .execute();
+            inv = row ?? null;
+        }
+        const orderId = p.orderId ?? inv?.orderId ?? null;
+        let orderNumber = null;
+        if (orderId) {
+            const [ord] = await tx
+                .select({ orderNumber: schema_1.orders.orderNumber })
+                .from(schema_1.orders)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .execute();
+            orderNumber = ord?.orderNumber ?? null;
+        }
+        const seq = await this.nextReceiptSequenceTx(tx, companyId);
+        const receiptNumber = this.formatReceiptNumber(seq);
+        const currency = p.currency ??
+            inv?.currency ??
+            p.meta?.currency ??
+            'NGN';
+        const [created] = await tx
+            .insert(schema_1.paymentReceipts)
+            .values({
+            companyId,
+            paymentId,
+            invoiceId: p.invoiceId ?? null,
+            orderId,
+            invoiceNumber: inv?.number ?? null,
+            orderNumber,
+            sequenceNumber: seq,
+            receiptNumber,
+            currency,
+            amountMinor: Number(p.amountMinor ?? 0),
+            method: p.method,
+            reference: p.reference ?? null,
+            customerSnapshot: inv?.customerSnapshot ?? null,
+            storeSnapshot: inv?.supplierSnapshot ?? null,
+            meta: p.meta ?? null,
+            issuedAt: new Date(),
+            createdByUserId: p.createdByUserId ?? null,
+            updatedAt: new Date(),
+        })
+            .returning()
+            .execute();
+        return created;
+    }
+    async getReceiptViewModel(companyId, paymentId) {
+        const r = await this.db.transaction((tx) => this.ensureReceiptForPaymentTx(tx, companyId, paymentId));
         const [p] = await this.db
             .select()
             .from(schema_1.payments)
@@ -120,7 +206,9 @@ let PaymentReceiptService = class PaymentReceiptService {
         const storeId = inv?.storeId ?? null;
         const branding = this.normalizeBranding(await this.getBranding(companyId, storeId));
         const currency = p.currency ?? inv?.currency ?? r.currency ?? 'NGN';
-        const issuedAt = (r.issuedAt ?? r.createdAt ?? new Date()).toISOString();
+        const issuedAt = (r.issuedAt ??
+            r.createdAt ??
+            new Date()).toISOString();
         return {
             receipt: {
                 receiptNumber: r.receiptNumber,
@@ -166,27 +254,30 @@ let PaymentReceiptService = class PaymentReceiptService {
         return { pdfUrl: uploaded.url, storageKey: uploaded.key };
     }
     async htmlToPdf(html) {
-        const browser = await playwright_chromium_1.chromium.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        });
-        const context = await browser.newContext();
-        const page = await context.newPage();
-        await page.setContent(html, { waitUntil: 'networkidle' });
-        await page.evaluate(async () => {
-            const imgs = Array.from(document.images);
-            await Promise.all(imgs.map((img) => img.complete
-                ? Promise.resolve(true)
-                : new Promise((res) => {
-                    img.addEventListener('load', () => res(true));
-                    img.addEventListener('error', () => res(true));
-                })));
-        });
-        const pdfBuffer = await page.pdf({
-            printBackground: true,
-        });
-        await browser.close();
-        return pdfBuffer;
+        try {
+            const browser = await playwright_chromium_1.chromium.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            });
+            const context = await browser.newContext();
+            const page = await context.newPage();
+            await page.setContent(html, { waitUntil: 'networkidle' });
+            await page.evaluate(async () => {
+                const imgs = Array.from(document.images);
+                await Promise.all(imgs.map((img) => img.complete
+                    ? Promise.resolve(true)
+                    : new Promise((res) => {
+                        img.addEventListener('load', () => res(true));
+                        img.addEventListener('error', () => res(true));
+                    })));
+            });
+            const pdfBuffer = await page.pdf({ printBackground: true });
+            await browser.close();
+            return pdfBuffer;
+        }
+        catch (e) {
+            throw new common_1.BadRequestException('Failed to generate PDF receipt: ' + (e.message ?? String(e)));
+        }
     }
     async attachPdfToReceiptByPaymentId(companyId, paymentId, pdfUrl, storageKey) {
         await this.db

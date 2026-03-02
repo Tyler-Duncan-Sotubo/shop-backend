@@ -1,15 +1,15 @@
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
 import { User } from 'src/channels/admin/common/types/user.type';
 import { ListOrdersDto } from './dto/list-orders.dto';
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
+import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
 export declare class OrdersService {
     private readonly db;
     private readonly cache;
-    private readonly audit;
     private readonly stock;
-    constructor(db: db, cache: CacheService, audit: AuditService, stock: InventoryStockService);
+    private readonly zohoBooks;
+    constructor(db: db, cache: CacheService, stock: InventoryStockService, zohoBooks: ZohoBooksService);
     getOrder(companyId: string, orderId: string): Promise<{
         items: {
             imageUrl: any;
@@ -101,5 +101,10 @@ export declare class OrdersService {
     }>;
     fulfill(companyId: string, orderId: string, user?: User, ip?: string): Promise<{
         [x: string]: any;
+    }>;
+    syncZohoChanges(companyId: string, orderId: string, actor?: User, ip?: string): Promise<{
+        zohoEstimateId: string;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
     }>;
 }

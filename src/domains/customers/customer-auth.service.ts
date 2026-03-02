@@ -74,20 +74,42 @@ export class CustomerAuthService {
       type: 'customer',
     };
 
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+
+    if (!jwtSecret) throw new BadRequestException('JWT_SECRET missing');
+    if (!refreshSecret)
+      throw new BadRequestException('JWT_REFRESH_SECRET missing');
+
+    const accessExpSeconds = Number(
+      this.configService.get<number>('JWT_EXPIRATION') ?? 3600,
+    );
+    const refreshExpSeconds = Number(
+      this.configService.get<number>('JWT_REFRESH_EXPIRATION') ??
+        60 * 60 * 24 * 7,
+    );
+
+    if (!Number.isFinite(accessExpSeconds) || accessExpSeconds <= 0) {
+      throw new BadRequestException('JWT_EXPIRATION invalid');
+    }
+    if (!Number.isFinite(refreshExpSeconds) || refreshExpSeconds <= 0) {
+      throw new BadRequestException('JWT_REFRESH_EXPIRATION invalid');
+    }
+
     const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: `${this.configService.get<number>('JWT_EXPIRATION')}s`,
+      secret: jwtSecret,
+      expiresIn: accessExpSeconds, // ✅ number seconds
     });
 
     const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: `${this.configService.get<number>('JWT_REFRESH_EXPIRATION')}s`,
+      secret: refreshSecret,
+      expiresIn: refreshExpSeconds, // ✅ number seconds
     });
 
     return {
       accessToken,
       refreshToken,
-      expiresIn: Date.now() + 1000 * 60 * 60,
+      expiresIn: Date.now() + accessExpSeconds * 1000, // ✅ matches configured expiry
     };
   }
 

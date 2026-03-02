@@ -9,12 +9,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminIntegrationModule = void 0;
 const common_1 = require("@nestjs/common");
 const analytics_module_1 = require("./analytics/analytics.module");
+const zoho_module_1 = require("./zoho/zoho.module");
 let AdminIntegrationModule = class AdminIntegrationModule {
 };
 exports.AdminIntegrationModule = AdminIntegrationModule;
 exports.AdminIntegrationModule = AdminIntegrationModule = __decorate([
     (0, common_1.Module)({
-        imports: [analytics_module_1.AnalyticsModule],
+        imports: [analytics_module_1.AnalyticsModule, zoho_module_1.ZohoModule],
     })
 ], AdminIntegrationModule);
 //# sourceMappingURL=integration.module.js.map

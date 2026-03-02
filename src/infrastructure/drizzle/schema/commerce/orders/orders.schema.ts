@@ -91,6 +91,18 @@ export const orders = pgTable(
 
     paidAt: timestamp('paid_at', { withTimezone: true }),
 
+    // 🔗 Zoho linkage
+    zohoOrganizationId: text('zoho_organization_id'),
+    zohoContactId: text('zoho_contact_id'),
+    zohoEstimateId: text('zoho_estimate_id'),
+    zohoEstimateNumber: text('zoho_estimate_number'),
+    zohoEstimateStatus: text('zoho_estimate_status'),
+
+    zohoSalesOrderId: text('zoho_sales_order_id'),
+    zohoInvoiceId: text('zoho_invoice_id'),
+    zohoSyncedAt: timestamp('zoho_synced_at'),
+    zohoSyncError: text('zoho_sync_error'),
+
     // -----------------------------
     // Existing (major units) - keep for now
     // -----------------------------

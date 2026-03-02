@@ -7,13 +7,15 @@ import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { GetQuotesQueryDto } from './dto/get-quotes-query.dto';
 import { ManualOrdersService } from '../orders/manual-orders.service';
 import { QuoteNotificationService } from 'src/domains/notification/services/quote-notification.service';
+import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
 export declare class QuoteService {
     private readonly db;
     private readonly cache;
     private readonly auditService;
     private readonly manualOrdersService;
     private readonly quoteNotification;
-    constructor(db: db, cache: CacheService, auditService: AuditService, manualOrdersService: ManualOrdersService, quoteNotification: QuoteNotificationService);
+    private readonly zohoBooks;
+    constructor(db: db, cache: CacheService, auditService: AuditService, manualOrdersService: ManualOrdersService, quoteNotification: QuoteNotificationService, zohoBooks: ZohoBooksService);
     private findQuoteByIdOrThrow;
     private bumpCompany;
     create(companyId: string, dto: CreateQuoteDto, user?: User, ip?: string): Promise<{
@@ -25,12 +27,26 @@ export declare class QuoteService {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
+        currency: string | null;
         meta: Record<string, unknown> | null;
         customerEmail: string;
         customerNote: string | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
+        createdZohoAt: Date | null;
+        sentAt: Date | null;
+        acceptedAt: Date | null;
+        convertedAt: Date | null;
+        totalsSnapshot: {
+            subtotal?: number;
+            tax?: number;
+            shipping?: number;
+            discount?: number;
+            total?: number;
+        } | null;
+        lastSyncedAt: Date | null;
+        syncError: string | null;
     }>;
     createFromStorefront(storeId: string, dto: CreateQuoteDto, ip?: string): Promise<{
         status: string;
@@ -41,12 +57,26 @@ export declare class QuoteService {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
+        currency: string | null;
         meta: Record<string, unknown> | null;
         customerEmail: string;
         customerNote: string | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
+        createdZohoAt: Date | null;
+        sentAt: Date | null;
+        acceptedAt: Date | null;
+        convertedAt: Date | null;
+        totalsSnapshot: {
+            subtotal?: number;
+            tax?: number;
+            shipping?: number;
+            discount?: number;
+            total?: number;
+        } | null;
+        lastSyncedAt: Date | null;
+        syncError: string | null;
     }>;
     findAll(companyId: string, query: GetQuotesQueryDto): Promise<{
         rows: {
@@ -64,6 +94,20 @@ export declare class QuoteService {
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
+            createdZohoAt: Date | null;
+            sentAt: Date | null;
+            acceptedAt: Date | null;
+            convertedAt: Date | null;
+            currency: string | null;
+            totalsSnapshot: {
+                subtotal?: number;
+                tax?: number;
+                shipping?: number;
+                discount?: number;
+                total?: number;
+            } | null;
+            lastSyncedAt: Date | null;
+            syncError: string | null;
         }[];
         count: number;
         limit: number;
@@ -81,6 +125,9 @@ export declare class QuoteService {
             imageUrl: string | null;
             quantity: number;
             position: number;
+            unitPriceMinor: number | null;
+            discountMinor: number | null;
+            lineNote: string | null;
             createdAt: Date;
             deletedAt: Date | null;
         }[];
@@ -92,12 +139,26 @@ export declare class QuoteService {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
+        currency: string | null;
         meta: Record<string, unknown> | null;
         customerEmail: string;
         customerNote: string | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
+        createdZohoAt: Date | null;
+        sentAt: Date | null;
+        acceptedAt: Date | null;
+        convertedAt: Date | null;
+        totalsSnapshot: {
+            subtotal?: number;
+            tax?: number;
+            shipping?: number;
+            discount?: number;
+            total?: number;
+        } | null;
+        lastSyncedAt: Date | null;
+        syncError: string | null;
     }>;
     update(companyId: string, quoteId: string, dto: UpdateQuoteDto, user?: User, ip?: string): Promise<{
         id: string;
@@ -114,10 +175,25 @@ export declare class QuoteService {
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        createdZohoAt: Date | null;
+        sentAt: Date | null;
+        acceptedAt: Date | null;
+        convertedAt: Date | null;
+        currency: string | null;
+        totalsSnapshot: {
+            subtotal?: number;
+            tax?: number;
+            shipping?: number;
+            discount?: number;
+            total?: number;
+        } | null;
+        lastSyncedAt: Date | null;
+        syncError: string | null;
     }>;
     remove(companyId: string, quoteId: string, user?: User, ip?: string): Promise<{
         success: boolean;
     }>;
+    private convertToManualOrderTx;
     convertToManualOrder(companyId: string, quoteId: string, input: {
         originInventoryLocationId: string;
         currency: string;
@@ -127,5 +203,11 @@ export declare class QuoteService {
         customerId?: string | null;
     }, actor?: User, ip?: string): Promise<{
         orderId: any;
+    }>;
+    sendToZoho(companyId: string, quoteId: string, actor?: User, ip?: string): Promise<{
+        zohoEstimateId: string;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
+        orderId: string | undefined;
     }>;
 }

@@ -20,12 +20,14 @@ const schema_1 = require("../../../infrastructure/drizzle/schema");
 const invoice_totals_service_1 = require("./invoice-totals.service");
 const audit_service_1 = require("../../audit/audit.service");
 const cache_service_1 = require("../../../infrastructure/cache/cache.service");
+const zoho_invoices_service_1 = require("../../integration/zoho/zoho-invoices.service");
 let InvoiceService = class InvoiceService {
-    constructor(db, totals, auditService, cache) {
+    constructor(db, totals, auditService, cache, zohoInvoices) {
         this.db = db;
         this.totals = totals;
         this.auditService = auditService;
         this.cache = cache;
+        this.zohoInvoices = zohoInvoices;
     }
     async createDraftFromOrder(params, companyId, ctx) {
         const tx = ctx?.tx ?? this.db;
@@ -244,8 +246,9 @@ let InvoiceService = class InvoiceService {
             .execute();
         return updated;
     }
-    async issueInvoice(invoiceId, dto, companyId, userId, ctx) {
+    async issueInvoice(invoiceId, dto, companyId, userId, ctx, opts) {
         const outerTx = ctx?.tx;
+        const autoSyncZoho = opts?.autoSyncZoho ?? true;
         const firstRow = (res) => res?.rows?.[0] ?? res?.[0] ?? null;
         const toDateOrNull = (v) => {
             if (v == null)
@@ -260,10 +263,10 @@ let InvoiceService = class InvoiceService {
         };
         const run = async (tx) => {
             const invRes = await tx.execute((0, drizzle_orm_1.sql) `
-        SELECT * FROM invoices
-        WHERE id = ${invoiceId} AND company_id = ${companyId}
-        FOR UPDATE
-      `);
+          SELECT * FROM invoices
+          WHERE id = ${invoiceId} AND company_id = ${companyId}
+          FOR UPDATE
+        `);
             const inv = firstRow(invRes);
             if (!inv)
                 throw new common_1.NotFoundException('Invoice not found');
@@ -280,16 +283,16 @@ let InvoiceService = class InvoiceService {
             const year = new Date().getUTCFullYear();
             const requestedSeriesName = (dto.seriesName ?? 'Default').trim();
             const seriesRes = await tx.execute((0, drizzle_orm_1.sql) `
-        SELECT *
-        FROM invoice_series
-        WHERE company_id = ${companyId}
-          AND (store_id IS NULL OR store_id = ${storeId})
-          AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
-          AND (year IS NULL OR year = ${year})
-        ORDER BY store_id DESC NULLS LAST
-        LIMIT 1
-        FOR UPDATE
-      `);
+          SELECT *
+          FROM invoice_series
+          WHERE company_id = ${companyId}
+            AND (store_id IS NULL OR store_id = ${storeId})
+            AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
+            AND (year IS NULL OR year = ${year})
+          ORDER BY store_id DESC NULLS LAST
+          LIMIT 1
+          FOR UPDATE
+        `);
             const series = firstRow(seriesRes);
             if (!series) {
                 throw new common_1.BadRequestException(`Invoice series not found for company=${companyId}, store=${storeId ?? 'NULL'}, name=${requestedSeriesName}, year=${year}. Create invoice_series first.`);
@@ -297,11 +300,11 @@ let InvoiceService = class InvoiceService {
             const nextNumber = Number(series.next_number);
             const number = this.formatInvoiceNumber(series.prefix, nextNumber);
             await tx.execute((0, drizzle_orm_1.sql) `
-        UPDATE invoice_series
-        SET next_number = next_number + 1,
-            updated_at = NOW()
-        WHERE id = ${series.id}
-      `);
+          UPDATE invoice_series
+          SET next_number = next_number + 1,
+              updated_at = NOW()
+          WHERE id = ${series.id}
+        `);
             const brandingRows = await tx
                 .select()
                 .from(schema_1.invoiceBranding)
@@ -427,9 +430,23 @@ let InvoiceService = class InvoiceService {
             }
             return updated;
         };
-        if (outerTx)
-            return run(outerTx);
-        return this.db.transaction(async (tx) => run(tx));
+        const issued = outerTx
+            ? await run(outerTx)
+            : await this.db.transaction(async (tx) => run(tx));
+        await this.cache.bumpCompanyVersion(companyId);
+        if (!outerTx && autoSyncZoho) {
+            try {
+                await this.zohoInvoices.syncInvoiceToZoho(companyId, issued.id, opts?.actor, opts?.ip, {
+                    customer: opts?.zohoCustomer,
+                    softFailMissingCustomer: true,
+                });
+                await this.cache.bumpCompanyVersion(companyId);
+            }
+            catch (e) {
+                console.error('Error syncing issued invoice to Zoho:', e);
+            }
+        }
+        return issued;
     }
     async getInvoiceWithLines(companyId, invoiceId) {
         const [inv] = await this.db
@@ -761,6 +778,25 @@ let InvoiceService = class InvoiceService {
         await this.cache.bumpCompanyVersion(companyId);
         return result;
     }
+    async syncToZoho(companyId, invoiceId, actor, ip, input, ctx) {
+        const outerTx = ctx?.tx;
+        const run = async (tx) => {
+            const [inv] = await tx
+                .select({ id: schema_1.invoices.id })
+                .from(schema_1.invoices)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.id, invoiceId)))
+                .for('update')
+                .execute();
+            if (!inv)
+                throw new common_1.NotFoundException('Invoice not found');
+            return this.zohoInvoices.syncInvoiceToZohoTx(tx, companyId, invoiceId, actor, ip, input);
+        };
+        const result = outerTx
+            ? await run(outerTx)
+            : await this.db.transaction(run);
+        await this.cache.bumpCompanyVersion(companyId);
+        return result;
+    }
 };
 exports.InvoiceService = InvoiceService;
 exports.InvoiceService = InvoiceService = __decorate([
@@ -768,6 +804,7 @@ exports.InvoiceService = InvoiceService = __decorate([
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, invoice_totals_service_1.InvoiceTotalsService,
         audit_service_1.AuditService,
-        cache_service_1.CacheService])
+        cache_service_1.CacheService,
+        zoho_invoices_service_1.ZohoInvoicesService])
 ], InvoiceService);
 //# sourceMappingURL=invoice.service.js.map

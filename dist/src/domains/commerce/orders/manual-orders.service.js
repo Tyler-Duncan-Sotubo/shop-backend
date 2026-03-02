@@ -86,7 +86,7 @@ let ManualOrdersService = class ManualOrdersService {
             if (!input.currency)
                 throw new common_1.BadRequestException('currency is required');
             const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
-            const orderNo = `ORD-${String(nextNo).padStart(3, '0')}`;
+            const orderNo = `ORD-${String(nextNo).padStart(6, '0')}`;
             const [created] = await tx
                 .insert(schema_1.orders)
                 .values({

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
@@ -9,32 +9,37 @@ export class TokenGeneratorService {
     private readonly jwtService: JwtService,
   ) {}
 
-  /**
-   * Generates an access token and a refresh token for a given user.
-   *
-   * @param user - The user object containing user details.
-   * @returns An object containing the generated access token and refresh token.
-   *
-   * @remarks
-   * - The access token is generated with a short expiration time (e.g., 1 hour).
-   * - The refresh token is generated with a longer expiration time (e.g., 7 days).
-   * - Both tokens are signed using the JWT secret from the configuration service.
-   */
+  private mustGetString(key: string) {
+    const v = this.configService.get<string>(key);
+    if (!v) throw new BadRequestException(`${key} is missing`);
+    return v;
+  }
+
+  private getNumberOrDefault(key: string, def: number) {
+    const v = this.configService.get<number>(key);
+    return Number.isFinite(v as number) ? Number(v) : def;
+  }
 
   async generateToken(user: any) {
-    // Get payload from user
     const payload = { sub: user.id, email: user.email };
 
-    // Generate Access Token (short expiration)
+    const accessSecret = this.mustGetString('JWT_SECRET');
+    const refreshSecret = this.mustGetString('JWT_REFRESH_SECRET');
+
+    const accessExpSeconds = this.getNumberOrDefault('JWT_EXPIRATION', 3600);
+    const refreshExpSeconds = this.getNumberOrDefault(
+      'JWT_REFRESH_EXPIRATION',
+      60 * 60 * 24 * 7,
+    );
+
     const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: `${this.configService.get<number>('JWT_EXPIRATION')}s`, // Access token expires quickly (e.g., 1 hour)
+      secret: accessSecret,
+      expiresIn: accessExpSeconds, // ✅ number (seconds)
     });
 
-    // Generate Refresh Token (longer expiration)
     const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'), // Use a different secret for refresh token
-      expiresIn: `${this.configService.get<number>('JWT_REFRESH_EXPIRATION')}s`, // Refresh token expires longer (e.g., 7 days)
+      secret: refreshSecret,
+      expiresIn: refreshExpSeconds, // ✅ number (seconds)
     });
 
     return { accessToken, refreshToken };
@@ -42,9 +47,11 @@ export class TokenGeneratorService {
 
   async generateTempToken(user: any) {
     const payload = { sub: user.id, email: user.email };
+    const secret = this.mustGetString('JWT_SECRET');
+
     return this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET'), // Use a different secret for refresh token
-      expiresIn: `60m`,
+      secret,
+      expiresIn: '60m',
     });
   }
 }

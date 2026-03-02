@@ -90,4 +90,5 @@ __exportStar(require("./schema/storefront/configs.schema"), exports);
 __exportStar(require("./schema/mail/subscribers.schema"), exports);
 __exportStar(require("./schema/mail/contact-messages.schema"), exports);
 __exportStar(require("./schema/integrations/analytics/analytics-integration.schema"), exports);
+__exportStar(require("./schema/integrations/zoho/zoho-connections.schema"), exports);
 //# sourceMappingURL=schema.js.map

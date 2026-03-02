@@ -21,9 +21,10 @@ import { InvoiceTotalsService } from './invoice-totals.service';
 import { AuditService } from 'src/domains/audit/audit.service';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
 import { CreateInvoiceFromOrderInput } from './inputs/create-invoice-from-order.input';
-import { IssueInvoiceInput } from './inputs/issue-invoice.input';
 import { ListInvoicesQueryInput } from './inputs/list-invoices.query.input';
 import { UpdateInvoiceLineInput } from './inputs/update-invoice-line.input';
+import { User } from 'src/channels/admin/common/types/user.type';
+import { ZohoInvoicesService } from 'src/domains/integration/zoho/zoho-invoices.service';
 
 type TxOrDb = DbType | any;
 
@@ -34,6 +35,7 @@ export class InvoiceService {
     private readonly totals: InvoiceTotalsService,
     private readonly auditService: AuditService,
     private readonly cache: CacheService,
+    private readonly zohoInvoices: ZohoInvoicesService,
   ) {}
 
   /**
@@ -377,18 +379,30 @@ export class InvoiceService {
    */
   async issueInvoice(
     invoiceId: string,
-    dto: IssueInvoiceInput,
+    dto: any, // IssueInvoiceInput
     companyId: string,
     userId?: string,
     ctx?: { tx?: TxOrDb },
+    opts?: {
+      // optional: allow caller to pass customer fallback used by Zoho sync
+      zohoCustomer?: {
+        email: string;
+        name?: string | null;
+        companyName?: string | null;
+      };
+      // optional: you can pass actor/ip if you use them in zoho sync/audit
+      actor?: any;
+      ip?: string;
+      // turn off auto sync if you want
+      autoSyncZoho?: boolean;
+    },
   ) {
     const outerTx = ctx?.tx;
+    const autoSyncZoho = opts?.autoSyncZoho ?? true;
 
-    // Helper: normalize driver differences (some return { rows }, some return array)
     const firstRow = <T = any>(res: any): T | null =>
       (res?.rows?.[0] as T) ?? (res?.[0] as T) ?? null;
 
-    // Helper: ensure timestamps are real Date objects for Drizzle PgTimestamp
     const toDateOrNull = (v: any): Date | null => {
       if (v == null) return null;
       if (v instanceof Date) return v;
@@ -403,10 +417,10 @@ export class InvoiceService {
       // Lock invoice row to prevent double-issue
       const invRes = await tx.execute(
         sql`
-        SELECT * FROM invoices
-        WHERE id = ${invoiceId} AND company_id = ${companyId}
-        FOR UPDATE
-      ` as any,
+          SELECT * FROM invoices
+          WHERE id = ${invoiceId} AND company_id = ${companyId}
+          FOR UPDATE
+        ` as any,
       );
       const inv = firstRow<any>(invRes);
 
@@ -429,22 +443,20 @@ export class InvoiceService {
       // Resolve series (store-specific optional)
       const storeId = dto.storeId ?? inv.store_id ?? null;
       const year = new Date().getUTCFullYear();
-
-      // Normalize requested series name
       const requestedSeriesName = (dto.seriesName ?? 'Default').trim();
 
       const seriesRes = await tx.execute(
         sql`
-        SELECT *
-        FROM invoice_series
-        WHERE company_id = ${companyId}
-          AND (store_id IS NULL OR store_id = ${storeId})
-          AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
-          AND (year IS NULL OR year = ${year})
-        ORDER BY store_id DESC NULLS LAST
-        LIMIT 1
-        FOR UPDATE
-      ` as any,
+          SELECT *
+          FROM invoice_series
+          WHERE company_id = ${companyId}
+            AND (store_id IS NULL OR store_id = ${storeId})
+            AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
+            AND (year IS NULL OR year = ${year})
+          ORDER BY store_id DESC NULLS LAST
+          LIMIT 1
+          FOR UPDATE
+        ` as any,
       );
 
       const series = firstRow<any>(seriesRes);
@@ -460,11 +472,11 @@ export class InvoiceService {
 
       await tx.execute(
         sql`
-        UPDATE invoice_series
-        SET next_number = next_number + 1,
-            updated_at = NOW()
-        WHERE id = ${series.id}
-      ` as any,
+          UPDATE invoice_series
+          SET next_number = next_number + 1,
+              updated_at = NOW()
+          WHERE id = ${series.id}
+        ` as any,
       );
 
       // Supplier snapshot (company-level default branding)
@@ -538,8 +550,6 @@ export class InvoiceService {
             lineNetMinor: calc.lineNetMinor,
             taxMinor: calc.taxMinor,
             lineTotalMinor: calc.lineTotalMinor,
-
-            // freeze snapshot fields
             taxName,
             taxRateBps,
             taxInclusive,
@@ -631,9 +641,46 @@ export class InvoiceService {
       return updated;
     };
 
-    // If caller provided a tx (PaymentsService), use it; otherwise create a new transaction.
-    if (outerTx) return run(outerTx);
-    return this.db.transaction(async (tx) => run(tx));
+    // -----------------------------
+    // 1) Run issuance in tx
+    // -----------------------------
+    const issued = outerTx
+      ? await run(outerTx)
+      : await this.db.transaction(async (tx: TxOrDb) => run(tx));
+
+    // bump cache for issuance
+    await this.cache.bumpCompanyVersion(companyId);
+
+    // -----------------------------
+    // 2) Zoho sync: ONLY after commit when we control tx boundary
+    // -----------------------------
+    if (!outerTx && autoSyncZoho) {
+      try {
+        // NOTE: this calls Zoho after commit (safe).
+        await this.zohoInvoices.syncInvoiceToZoho(
+          companyId,
+          issued.id,
+          opts?.actor,
+          opts?.ip,
+          {
+            customer: opts?.zohoCustomer,
+            softFailMissingCustomer: true,
+          } as any,
+        );
+
+        // Optional: bump cache again after sync
+        await this.cache.bumpCompanyVersion(companyId);
+      } catch (e) {
+        console.error('Error syncing issued invoice to Zoho:', e);
+        // Do NOT fail issuing if Zoho fails.
+        // ZohoInvoicesService should write invoices.zohoSyncError for UI visibility.
+      }
+    }
+
+    // If outerTx was provided, caller should do this AFTER commit:
+    // await this.zohoInvoices.syncInvoiceToZoho(companyId, issued.id, actor, ip, { customer: ... })
+
+    return issued;
   }
 
   async getInvoiceWithLines(companyId: string, invoiceId: string) {
@@ -1083,6 +1130,54 @@ export class InvoiceService {
     // Keep cache in sync
     await this.cache.bumpCompanyVersion(companyId);
 
+    return result;
+  }
+
+  async syncToZoho(
+    companyId: string,
+    invoiceId: string,
+    actor?: User,
+    ip?: string,
+    input?: {
+      customer?: {
+        email: string;
+        name?: string | null;
+        companyName?: string | null;
+      };
+      softFailMissingCustomer?: boolean;
+    },
+    ctx?: { tx?: TxOrDb },
+  ) {
+    const outerTx = ctx?.tx;
+
+    const run = async (tx: TxOrDb) => {
+      // (Optional) validate invoice exists early
+      const [inv] = await tx
+        .select({ id: invoices.id })
+        .from(invoices)
+        .where(
+          and(eq(invoices.companyId, companyId), eq(invoices.id, invoiceId)),
+        )
+        .for('update')
+        .execute();
+
+      if (!inv) throw new NotFoundException('Invoice not found');
+
+      // Call Zoho service (tx-aware)
+      return this.zohoInvoices.syncInvoiceToZohoTx(
+        tx as any,
+        companyId,
+        invoiceId,
+        actor,
+        ip,
+        input,
+      );
+    };
+
+    const result = outerTx
+      ? await run(outerTx)
+      : await this.db.transaction(run);
+    await this.cache.bumpCompanyVersion(companyId);
     return result;
   }
 }

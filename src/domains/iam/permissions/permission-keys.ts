@@ -222,4 +222,6 @@ export const PermissionKeys = [
   // Integrations - Analytics
   'integrations.analytics.read',
   'integrations.analytics.update',
+  'integrations.zoho.read',
+  'integrations.zoho.update',
 ];

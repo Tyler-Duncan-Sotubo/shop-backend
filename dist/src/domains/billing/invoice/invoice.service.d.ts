@@ -3,24 +3,35 @@ import { InvoiceTotalsService } from './invoice-totals.service';
 import { AuditService } from 'src/domains/audit/audit.service';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
 import { CreateInvoiceFromOrderInput } from './inputs/create-invoice-from-order.input';
-import { IssueInvoiceInput } from './inputs/issue-invoice.input';
 import { ListInvoicesQueryInput } from './inputs/list-invoices.query.input';
 import { UpdateInvoiceLineInput } from './inputs/update-invoice-line.input';
+import { User } from 'src/channels/admin/common/types/user.type';
+import { ZohoInvoicesService } from 'src/domains/integration/zoho/zoho-invoices.service';
 type TxOrDb = DbType | any;
 export declare class InvoiceService {
     private readonly db;
     private readonly totals;
     private readonly auditService;
     private readonly cache;
-    constructor(db: DbType, totals: InvoiceTotalsService, auditService: AuditService, cache: CacheService);
+    private readonly zohoInvoices;
+    constructor(db: DbType, totals: InvoiceTotalsService, auditService: AuditService, cache: CacheService, zohoInvoices: ZohoInvoicesService);
     createDraftFromOrder(params: CreateInvoiceFromOrderInput, companyId: string, ctx?: {
         tx?: TxOrDb;
     }): Promise<any>;
     recalculateDraftTotals(companyId: string, invoiceId: string, ctx?: {
         tx?: TxOrDb;
     }): Promise<any>;
-    issueInvoice(invoiceId: string, dto: IssueInvoiceInput, companyId: string, userId?: string, ctx?: {
+    issueInvoice(invoiceId: string, dto: any, companyId: string, userId?: string, ctx?: {
         tx?: TxOrDb;
+    }, opts?: {
+        zohoCustomer?: {
+            email: string;
+            name?: string | null;
+            companyName?: string | null;
+        };
+        actor?: any;
+        ip?: string;
+        autoSyncZoho?: boolean;
     }): Promise<any>;
     getInvoiceWithLines(companyId: string, invoiceId: string): Promise<{
         invoice: {
@@ -56,6 +67,17 @@ export declare class InvoiceService {
             voidedAt: Date | null;
             voidReason: string | null;
             meta: unknown;
+            zohoOrganizationId: string | null;
+            zohoContactId: string | null;
+            zohoEstimateId: string | null;
+            zohoEstimateNumber: string | null;
+            zohoEstimateStatus: string | null;
+            zohoInvoiceId: string | null;
+            zohoInvoiceNumber: string | null;
+            zohoInvoiceStatus: string | null;
+            zohoSyncedAt: Date | null;
+            zohoSyncError: string | null;
+            zohoSentAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
         };
@@ -140,6 +162,17 @@ export declare class InvoiceService {
             voidedAt: Date | null;
             voidReason: string | null;
             meta: unknown;
+            zohoOrganizationId: string | null;
+            zohoContactId: string | null;
+            zohoEstimateId: string | null;
+            zohoEstimateNumber: string | null;
+            zohoEstimateStatus: string | null;
+            zohoInvoiceId: string | null;
+            zohoInvoiceNumber: string | null;
+            zohoInvoiceStatus: string | null;
+            zohoSyncedAt: Date | null;
+            zohoSyncError: string | null;
+            zohoSentAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
         };
@@ -177,6 +210,32 @@ export declare class InvoiceService {
     seedDefaultInvoiceSeriesForCompany(companyId: string): Promise<{
         created: boolean;
         id: string;
+    }>;
+    syncToZoho(companyId: string, invoiceId: string, actor?: User, ip?: string, input?: {
+        customer?: {
+            email: string;
+            name?: string | null;
+            companyName?: string | null;
+        };
+        softFailMissingCustomer?: boolean;
+    }, ctx?: {
+        tx?: TxOrDb;
+    }): Promise<{
+        ok: false;
+        reason: "missing_customer_details";
+        message: string;
+        created?: undefined;
+        zohoInvoiceId?: undefined;
+        zohoInvoiceNumber?: undefined;
+        zohoInvoiceStatus?: undefined;
+    } | {
+        ok: true;
+        created: boolean;
+        zohoInvoiceId: string;
+        zohoInvoiceNumber: string | null;
+        zohoInvoiceStatus: string | null;
+        reason?: undefined;
+        message?: undefined;
     }>;
 }
 export {};

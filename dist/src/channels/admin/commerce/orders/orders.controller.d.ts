@@ -59,6 +59,11 @@ export declare class OrdersController extends BaseController {
     fulfill(user: User, id: string): Promise<{
         [x: string]: any;
     }>;
+    syncZohoChanges(user: User, id: string): Promise<{
+        zohoEstimateId: string;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
+    }>;
     createManualOrder(user: User, dto: CreateManualOrderDto, ip: string): Promise<any>;
     addItem(user: User, dto: AddManualOrderItemDto, ip: string): Promise<any>;
     updateItem(user: User, itemId: string, dto: UpdateManualOrderItemDto, ip: string): Promise<{

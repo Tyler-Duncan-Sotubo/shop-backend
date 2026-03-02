@@ -5,18 +5,18 @@ export declare class PaymentReceiptController {
     getReceiptStorefront(companyId: string, paymentId: string): Promise<{
         data: {
             receipt: {
-                receiptNumber: string;
-                issuedAt: string;
+                receiptNumber: any;
+                issuedAt: any;
                 orderNumber: any;
                 invoiceNumber: any;
             };
             payment: {
                 amount: string;
                 amountMinor: number;
-                currency: string;
-                method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+                currency: any;
+                method: any;
                 methodLabel: string;
-                reference: string | null;
+                reference: any;
             };
             invoice: {
                 balance: string;

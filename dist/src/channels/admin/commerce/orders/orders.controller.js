@@ -44,6 +44,9 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
     fulfill(user, id) {
         return this.orders.fulfill(user.companyId, id, user, undefined);
     }
+    syncZohoChanges(user, id) {
+        return this.orders.syncZohoChanges(user.companyId, id, user, undefined);
+    }
     createManualOrder(user, dto, ip) {
         return this.manualOrdersService.createManualOrder(user.companyId, dto, user, ip);
     }
@@ -106,6 +109,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "fulfill", null);
+__decorate([
+    (0, common_1.Post)(':id/sync-zoho'),
+    (0, common_1.SetMetadata)('permissions', ['orders.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "syncZohoChanges", null);
 __decorate([
     (0, common_1.Post)('manual'),
     (0, common_1.SetMetadata)('permissions', ['orders.manual.create']),

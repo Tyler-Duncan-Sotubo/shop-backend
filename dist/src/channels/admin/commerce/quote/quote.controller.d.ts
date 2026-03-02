@@ -24,6 +24,20 @@ export declare class QuoteController extends BaseController {
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
+            createdZohoAt: Date | null;
+            sentAt: Date | null;
+            acceptedAt: Date | null;
+            convertedAt: Date | null;
+            currency: string | null;
+            totalsSnapshot: {
+                subtotal?: number;
+                tax?: number;
+                shipping?: number;
+                discount?: number;
+                total?: number;
+            } | null;
+            lastSyncedAt: Date | null;
+            syncError: string | null;
         }[];
         count: number;
         limit: number;
@@ -41,6 +55,9 @@ export declare class QuoteController extends BaseController {
             imageUrl: string | null;
             quantity: number;
             position: number;
+            unitPriceMinor: number | null;
+            discountMinor: number | null;
+            lineNote: string | null;
             createdAt: Date;
             deletedAt: Date | null;
         }[];
@@ -52,12 +69,26 @@ export declare class QuoteController extends BaseController {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
+        currency: string | null;
         meta: Record<string, unknown> | null;
         customerEmail: string;
         customerNote: string | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
+        createdZohoAt: Date | null;
+        sentAt: Date | null;
+        acceptedAt: Date | null;
+        convertedAt: Date | null;
+        totalsSnapshot: {
+            subtotal?: number;
+            tax?: number;
+            shipping?: number;
+            discount?: number;
+            total?: number;
+        } | null;
+        lastSyncedAt: Date | null;
+        syncError: string | null;
     }>;
     createQuote(user: User, dto: CreateQuoteDto, ip: string): Promise<{
         status: string;
@@ -68,12 +99,26 @@ export declare class QuoteController extends BaseController {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
+        currency: string | null;
         meta: Record<string, unknown> | null;
         customerEmail: string;
         customerNote: string | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
+        createdZohoAt: Date | null;
+        sentAt: Date | null;
+        acceptedAt: Date | null;
+        convertedAt: Date | null;
+        totalsSnapshot: {
+            subtotal?: number;
+            tax?: number;
+            shipping?: number;
+            discount?: number;
+            total?: number;
+        } | null;
+        lastSyncedAt: Date | null;
+        syncError: string | null;
     }>;
     updateQuote(user: User, quoteId: string, dto: UpdateQuoteDto, ip: string): Promise<{
         id: string;
@@ -90,9 +135,29 @@ export declare class QuoteController extends BaseController {
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        createdZohoAt: Date | null;
+        sentAt: Date | null;
+        acceptedAt: Date | null;
+        convertedAt: Date | null;
+        currency: string | null;
+        totalsSnapshot: {
+            subtotal?: number;
+            tax?: number;
+            shipping?: number;
+            discount?: number;
+            total?: number;
+        } | null;
+        lastSyncedAt: Date | null;
+        syncError: string | null;
     }>;
     convertQuoteToOrder(user: User, quoteId: string, dto: ConvertQuoteToManualOrderDto, ip: string): Promise<{
         orderId: any;
+    }>;
+    sendToZoho(user: User, quoteId: string, ip: string): Promise<{
+        zohoEstimateId: string;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
+        orderId: string | undefined;
     }>;
     deleteQuote(user: User, quoteId: string, ip: string): Promise<{
         success: boolean;

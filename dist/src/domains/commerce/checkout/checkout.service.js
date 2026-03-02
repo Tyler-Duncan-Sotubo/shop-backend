@@ -612,7 +612,7 @@ let CheckoutService = class CheckoutService {
         })
             .returning({ nextNumber: schema_1.orderCounters.nextNumber });
         const seq = Number(row.nextNumber);
-        return `ORD-${String(seq).padStart(3, '0')}`;
+        return `ORD-${String(seq).padStart(6, '0')}`;
     }
     async expire(companyId, checkoutId) {
         await this.db

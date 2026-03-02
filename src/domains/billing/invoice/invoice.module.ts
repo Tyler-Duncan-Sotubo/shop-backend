@@ -5,6 +5,9 @@ import { InvoicePdfService } from './invoice-templates/invoice-pdf.service';
 import { AwsService } from 'src/infrastructure/aws/aws.service';
 import { InvoiceTotalsService } from './invoice-totals.service';
 import { PaymentService } from '../payment/services/payment.service';
+import { ZohoInvoicesService } from 'src/domains/integration/zoho/zoho-invoices.service';
+import { ZohoService } from 'src/domains/integration/zoho/zoho.service';
+import { ZohoCommonHelper } from 'src/domains/integration/zoho/helpers/zoho-common.helper';
 
 @Module({
   providers: [
@@ -13,6 +16,9 @@ import { PaymentService } from '../payment/services/payment.service';
     AwsService,
     InvoiceTotalsService,
     PaymentService,
+    ZohoInvoicesService,
+    ZohoService,
+    ZohoCommonHelper,
   ],
   imports: [InvoiceTemplatesModule],
   exports: [
@@ -23,6 +29,9 @@ import { PaymentService } from '../payment/services/payment.service';
     InvoiceTotalsService,
     PaymentService,
     InvoiceTemplatesModule,
+    ZohoInvoicesService,
+    ZohoService,
+    ZohoCommonHelper,
   ],
 })
 export class InvoiceModule {}

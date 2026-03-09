@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "source_type" varchar(32) DEFAULT 'manual';

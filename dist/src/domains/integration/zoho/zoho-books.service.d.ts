@@ -11,22 +11,32 @@ export declare class ZohoBooksService {
     private readonly auditService;
     private readonly cache;
     constructor(db: db, zohoService: ZohoService, zohoHelper: ZohoCommonHelper, auditService: AuditService, cache: CacheService);
-    createEstimateFromOrderTx(tx: db, companyId: string, quoteId: string, orderId: string): Promise<{
+    createEstimateFromQuoteTx(tx: db, companyId: string, quoteId: string, actor?: User, ip?: string): Promise<{
         zohoEstimateId: string;
         zohoEstimateNumber: string | null;
         zohoEstimateStatus: string | null;
     }>;
-    createEstimateFromOrder(tx: db, companyId: string, quoteId: string, orderId: string): Promise<{
+    createEstimateFromQuote(companyId: string, quoteId: string, actor?: User, ip?: string): Promise<{
         zohoEstimateId: string;
         zohoEstimateNumber: string | null;
         zohoEstimateStatus: string | null;
     }>;
-    syncEstimateChangesFromOrderTx(tx: db, companyId: string, orderId: string, actor?: User, ip?: string): Promise<{
+    syncEstimateChangesFromQuoteTx(tx: db, companyId: string, quoteId: string, actor?: User, ip?: string): Promise<{
         zohoEstimateId: string;
         zohoEstimateNumber: string | null;
         zohoEstimateStatus: string | null;
     }>;
-    syncEstimateChangesFromOrder(companyId: string, orderId: string, actor?: User, ip?: string): Promise<{
+    syncEstimateChangesFromQuote(companyId: string, quoteId: string, actor?: User, ip?: string): Promise<{
+        zohoEstimateId: string;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
+    }>;
+    upsertEstimateFromQuoteTx(tx: db, companyId: string, quoteId: string, actor?: User, ip?: string): Promise<{
+        zohoEstimateId: string;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
+    }>;
+    upsertEstimateFromQuote(companyId: string, quoteId: string, actor?: User, ip?: string): Promise<{
         zohoEstimateId: string;
         zohoEstimateNumber: string | null;
         zohoEstimateStatus: string | null;

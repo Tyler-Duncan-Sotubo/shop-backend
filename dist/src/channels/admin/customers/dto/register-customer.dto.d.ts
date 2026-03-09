@@ -7,6 +7,7 @@ export declare class RegisterCustomerDto {
     marketingOptIn?: boolean;
 }
 export declare class CreateCustomerDto {
+    storeId: string;
     email: string;
     firstName?: string;
     lastName?: string;

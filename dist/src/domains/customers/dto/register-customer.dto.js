@@ -49,6 +49,10 @@ class CreateCustomerDto {
 }
 exports.CreateCustomerDto = CreateCustomerDto;
 __decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateCustomerDto.prototype, "storeId", void 0);
+__decorate([
     (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
 ], CreateCustomerDto.prototype, "email", void 0);

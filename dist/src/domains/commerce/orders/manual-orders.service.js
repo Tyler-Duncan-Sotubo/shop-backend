@@ -83,14 +83,15 @@ let ManualOrdersService = class ManualOrdersService {
             if (!input.originInventoryLocationId) {
                 throw new common_1.BadRequestException('originInventoryLocationId is required');
             }
-            if (!input.currency)
+            if (!input.currency) {
                 throw new common_1.BadRequestException('currency is required');
+            }
             const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
             const orderNo = `ORD-${String(nextNo).padStart(6, '0')}`;
+            const isFromQuote = !!input.quoteRequestId;
             const [created] = await tx
                 .insert(schema_1.orders)
                 .values({
-                id: (0, drizzle_orm_1.sql) `gen_random_uuid()`,
                 companyId,
                 orderNumber: orderNo,
                 status: 'draft',
@@ -102,6 +103,17 @@ let ManualOrdersService = class ManualOrdersService {
                 shippingAddress: input.shippingAddress ?? null,
                 billingAddress: input.billingAddress ?? null,
                 originInventoryLocationId: input.originInventoryLocationId,
+                ...(isFromQuote
+                    ? {
+                        quoteRequestId: input.quoteRequestId ?? null,
+                        sourceType: 'quote',
+                        zohoOrganizationId: input.zohoOrganizationId ?? null,
+                        zohoContactId: input.zohoContactId ?? null,
+                        zohoEstimateId: input.zohoEstimateId ?? null,
+                        zohoEstimateNumber: input.zohoEstimateNumber ?? null,
+                        zohoEstimateStatus: input.zohoEstimateStatus ?? null,
+                    }
+                    : {}),
                 subtotal: '0.00',
                 discountTotal: '0.00',
                 taxTotal: '0.00',
@@ -115,12 +127,14 @@ let ManualOrdersService = class ManualOrdersService {
             await tx.insert(schema_1.orderEvents).values({
                 companyId,
                 orderId: created.id,
-                type: 'created_manual',
+                type: isFromQuote ? 'created_from_quote' : 'created_manual',
                 fromStatus: null,
                 toStatus: created.status,
                 actorUserId: actor?.id ?? null,
                 ipAddress: ip ?? null,
-                message: 'Manual order created',
+                message: isFromQuote
+                    ? 'Order created from quote'
+                    : 'Manual order created',
             });
             if (actor?.id) {
                 await this.audit.logAction({
@@ -128,7 +142,9 @@ let ManualOrdersService = class ManualOrdersService {
                     entity: 'order',
                     entityId: created.id,
                     userId: actor.id,
-                    details: 'Created manual order',
+                    details: isFromQuote
+                        ? 'Created order from quote'
+                        : 'Created manual order',
                     ipAddress: ip,
                     changes: {
                         companyId,
@@ -137,6 +153,8 @@ let ManualOrdersService = class ManualOrdersService {
                         status: created.status,
                         currency: created.currency,
                         orderNumber: created.orderNumber,
+                        quoteRequestId: isFromQuote ? (input.quoteRequestId ?? null) : null,
+                        sourceType: isFromQuote ? 'quote' : null,
                     },
                 });
             }
@@ -148,7 +166,7 @@ let ManualOrdersService = class ManualOrdersService {
         await this.cache.bumpCompanyVersion(companyId);
         return result;
     }
-    async addItem(companyId, input, actor, ip, ctx) {
+    async addItem(companyId, input, isQuoteDerived, actor, ip, ctx) {
         const outerTx = ctx?.tx;
         const run = async (tx) => {
             const [ord] = await tx
@@ -225,7 +243,10 @@ let ManualOrdersService = class ManualOrdersService {
             if (!Number.isFinite(unitPrice) || unitPrice < 0) {
                 throw new common_1.BadRequestException('unitPrice must be a non-negative number');
             }
-            await this.stock.reserveForOrderInTx(tx, companyId, input.orderId, origin, input.variantId, qty);
+            const isQuoteDerivedOrder = isQuoteDerived === true;
+            if (!isQuoteDerivedOrder) {
+                await this.stock.reserveForOrderInTx(tx, companyId, input.orderId, origin, input.variantId, qty);
+            }
             const lineTotal = unitPrice * qty;
             const [createdItem] = await tx
                 .insert(schema_1.orderItems)
@@ -530,6 +551,16 @@ let ManualOrdersService = class ManualOrdersService {
         return status === 'draft' || status === 'pending_payment';
     }
     async recalculateTotalsInTx(tx, companyId, orderId) {
+        const [ord] = await tx
+            .select({
+            shippingTotal: schema_1.orders.shippingTotal,
+            shippingTotalMinor: schema_1.orders.shippingTotalMinor,
+        })
+            .from(schema_1.orders)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+            .execute();
+        if (!ord)
+            throw new common_1.NotFoundException('Order not found');
         const [{ subtotal }] = await tx
             .select({
             subtotal: (0, drizzle_orm_1.sql) `COALESCE(SUM(${schema_1.orderItems.lineTotal}), 0)::text`,
@@ -537,15 +568,17 @@ let ManualOrdersService = class ManualOrdersService {
             .from(schema_1.orderItems)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
             .execute();
-        const subtotalStr = (subtotal ?? '0.00').toString();
+        const subtotalNum = Number(subtotal ?? '0');
+        const shippingNum = Number(ord.shippingTotal ?? '0');
+        const totalNum = subtotalNum + shippingNum;
         await tx
             .update(schema_1.orders)
             .set({
-            subtotal: subtotalStr,
+            subtotal: subtotalNum.toFixed(2),
             discountTotal: '0.00',
             taxTotal: '0.00',
-            shippingTotal: '0.00',
-            total: subtotalStr,
+            shippingTotal: (ord.shippingTotal ?? '0.00').toString(),
+            total: totalNum.toFixed(2),
             updatedAt: new Date(),
         })
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))

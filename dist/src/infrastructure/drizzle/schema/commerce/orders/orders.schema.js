@@ -42,6 +42,7 @@ exports.orders = (0, pg_core_1.pgTable)('orders', {
     shippingAddress: (0, pg_core_1.jsonb)('shipping_address').$type(),
     billingAddress: (0, pg_core_1.jsonb)('billing_address').$type(),
     originInventoryLocationId: (0, pg_core_1.uuid)('origin_inventory_location_id').references(() => inventory_locations_schema_1.inventoryLocations.id, { onDelete: 'set null' }),
+    sourceType: (0, pg_core_1.varchar)('source_type', { length: 32 }).default('manual'),
     paymentMethodType: (0, pg_core_1.varchar)('payment_method_type', { length: 32 }),
     paymentProvider: (0, pg_core_1.varchar)('payment_provider', { length: 32 }),
     shippingQuote: (0, pg_core_1.jsonb)('shipping_quote').$type(),

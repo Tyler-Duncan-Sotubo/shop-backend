@@ -21,6 +21,7 @@ import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import {
   quoteRequests,
   quoteRequestItems,
+  quoteCounters,
 } from 'src/infrastructure/drizzle/schema/commerce/quotes/quote-requests.schema';
 
 import { CacheService } from 'src/infrastructure/cache/cache.service';
@@ -30,7 +31,8 @@ import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { GetQuotesQueryDto } from './dto/get-quotes-query.dto';
 import {
-  inventoryLocations,
+  productImages,
+  products,
   productVariants,
   stores,
 } from 'src/infrastructure/drizzle/schema';
@@ -67,49 +69,73 @@ export class QuoteService {
   }
 
   private async bumpCompany(companyId: string) {
-    // Your cache uses company versioning, so this is the invalidation hook
     await this.cache.bumpCompanyVersion(companyId);
+  }
+
+  private formatQuoteNumber(n: number) {
+    return `QT-${String(n).padStart(6, '0')}`;
+  }
+
+  private async getNextQuoteNumberTx(tx: db, companyId: string) {
+    const [existing] = await tx
+      .select()
+      .from(quoteCounters)
+      .where(eq(quoteCounters.companyId, companyId))
+      .for('update')
+      .execute();
+
+    if (!existing) {
+      const nextNumber = 1;
+
+      await tx.insert(quoteCounters).values({
+        companyId,
+        nextNumber: 2,
+        updatedAt: new Date(),
+      });
+
+      return this.formatQuoteNumber(nextNumber);
+    }
+
+    const nextNumber = existing.nextNumber;
+
+    await tx
+      .update(quoteCounters)
+      .set({
+        nextNumber: nextNumber + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(quoteCounters.companyId, companyId))
+      .execute();
+
+    return this.formatQuoteNumber(nextNumber);
   }
 
   // --------------------------------------------------------------------------
   // CRUD
   // --------------------------------------------------------------------------
 
-  /**
-   * CREATE QUOTE
-   *
-   * ✅ Uses variantId to look up price from productVariants
-   * ✅ Stores unitPriceSnapshot + currencySnapshot on quote_request_items
-   * ✅ Prefers salesPrice when present (>0); falls back to price
-   *
-   * NOTE: Ensure quote_request_items schema has:
-   *   - unitPriceSnapshot (number/numeric/int)
-   *   - currencySnapshot (string/text)
-   *
-   * ALSO: Adjust the productVariants import/path + column names to match your schema.
-   */
   async create(
     companyId: string,
     dto: CreateQuoteDto,
     user?: User,
     ip?: string,
   ) {
-    const { storeId, customerEmail, customerNote, meta, expiresAt, items } =
-      dto;
+    const { storeId, customerEmail, customerNote, meta, expiresAt } = dto;
+    const items = dto.items ?? [];
 
-    if (!items?.length) {
+    if (!items.length && !meta?.isAdmin) {
       throw new BadRequestException('At least one quote item is required.');
     }
 
     const created = await this.db.transaction(async (tx) => {
-      // -----------------------------
-      // Create quote header
-      // -----------------------------
+      const quoteNumber = await this.getNextQuoteNumberTx(tx, companyId);
+
       const [quote] = await tx
         .insert(quoteRequests)
         .values({
           companyId,
           storeId,
+          quoteNumber,
           customerEmail,
           customerNote,
           meta,
@@ -119,17 +145,14 @@ export class QuoteService {
         .returning()
         .execute();
 
-      // -----------------------------
-      // Bulk fetch variant pricing
-      // -----------------------------
+      if (!items.length) {
+        return quote;
+      }
+
       const variantIds = Array.from(
         new Set(items.map((i) => i.variantId).filter(Boolean) as string[]),
       );
 
-      // ✅ Adjust these fields to match your productVariants schema:
-      //    - price (regular price)
-      //    - salesPrice (optional sale price)
-      //    - currency
       const variants = variantIds.length
         ? await tx
             .select({
@@ -148,7 +171,6 @@ export class QuoteService {
         { unitPrice: number | null; currency: string | null }
       >(
         variants.map((v) => {
-          // ✅ salesPrice wins if it is set and > 0; otherwise fallback to price
           const hasSalesPrice =
             v.salesPrice !== null &&
             v.salesPrice !== undefined &&
@@ -160,22 +182,18 @@ export class QuoteService {
             v.id,
             {
               unitPrice: unitPrice === null ? null : Number(unitPrice),
-              currency: (v.currency as any) ?? null,
+              currency: v.currency ?? null,
             },
           ];
         }),
       );
 
-      // Optional but recommended: fail fast if variantId is provided but missing
       for (const it of items) {
         if (it.variantId && !variantById.has(it.variantId)) {
           throw new BadRequestException(`Variant not found: ${it.variantId}`);
         }
       }
 
-      // -----------------------------
-      // Insert quote items w/ price snapshot
-      // -----------------------------
       await tx
         .insert(quoteRequestItems)
         .values(
@@ -203,33 +221,29 @@ export class QuoteService {
       return quote;
     });
 
-    // -----------------------------
-    // Notify store
-    // -----------------------------
-    const [store] = await this.db
-      .select({ storeEmail: stores.storeEmail, name: stores.name })
-      .from(stores)
-      .where(eq(stores.id, dto.storeId))
-      .limit(1);
+    if (items.length) {
+      const [store] = await this.db
+        .select({ storeEmail: stores.storeEmail, name: stores.name })
+        .from(stores)
+        .where(eq(stores.id, dto.storeId))
+        .limit(1);
 
-    await this.quoteNotification.sendQuoteNotification({
-      to: store?.storeEmail ? [store.storeEmail] : [''],
-      fromName: store?.name || 'Quote Request',
-      storeName: store?.name,
-      quoteId: created.id,
-      customerEmail: created.customerEmail,
-      customerNote: created.customerNote ?? null,
-      items: items.map((it) => ({
-        name: it.name,
-        quantity: it.quantity,
-      })),
-    });
+      await this.quoteNotification.sendQuoteNotification({
+        to: store?.storeEmail ? [store.storeEmail] : [''],
+        fromName: store?.name || 'Quote Request',
+        storeName: store?.name,
+        quoteId: created.id,
+        customerEmail: created.customerEmail,
+        customerNote: created.customerNote ?? null,
+        items: items.map((it) => ({
+          name: it.name,
+          quantity: it.quantity,
+        })),
+      });
+    }
 
     await this.bumpCompany(companyId);
 
-    // -----------------------------
-    // Audit
-    // -----------------------------
     if (user && ip) {
       await this.auditService.logAction({
         action: 'create',
@@ -241,6 +255,7 @@ export class QuoteService {
         changes: {
           companyId,
           storeId: created.storeId,
+          quoteNumber: (created as any).quoteNumber ?? null,
           customerEmail: created.customerEmail,
           itemsCount: items.length,
         },
@@ -255,7 +270,6 @@ export class QuoteService {
     dto: CreateQuoteDto,
     ip?: string,
   ) {
-    // Resolve companyId from store
     const store = await this.db.query.stores.findFirst({
       where: eq(stores.id, storeId),
     });
@@ -268,11 +282,438 @@ export class QuoteService {
       store.companyId,
       {
         ...dto,
-        storeId, // enforce
+        storeId,
       },
       undefined,
       ip,
     );
+  }
+
+  async addItems(
+    companyId: string,
+    quoteId: string,
+    items: {
+      variantId?: string | null;
+      quantity?: number;
+    }[],
+    user?: User,
+    ip?: string,
+  ) {
+    if (!items?.length) {
+      throw new BadRequestException('No items provided');
+    }
+
+    const updated = await this.db.transaction(async (tx) => {
+      const [quote] = await tx
+        .select()
+        .from(quoteRequests)
+        .where(
+          and(
+            eq(quoteRequests.companyId, companyId),
+            eq(quoteRequests.id, quoteId),
+            isNull(quoteRequests.deletedAt),
+          ),
+        )
+        .execute();
+
+      if (!quote) throw new NotFoundException('Quote not found');
+
+      const normalizedItems = items
+        .filter((i) => i.variantId)
+        .map((i) => ({
+          variantId: i.variantId as string,
+          quantity: Math.max(1, Number(i.quantity ?? 1)),
+        }));
+
+      const variantIds = Array.from(
+        new Set(normalizedItems.map((i) => i.variantId)),
+      );
+
+      if (!variantIds.length) {
+        throw new BadRequestException(
+          'At least one valid variantId is required',
+        );
+      }
+
+      const variants = await tx
+        .select({
+          id: productVariants.id,
+          productId: productVariants.productId,
+          productName: products.name,
+          title: productVariants.title,
+          imageId: productVariants.imageId,
+          price: productVariants.regularPrice,
+          salesPrice: productVariants.salePrice,
+          currency: productVariants.currency,
+          imageUrl: productImages.url,
+        })
+        .from(productVariants)
+        .leftJoin(products, eq(products.id, productVariants.productId))
+        .leftJoin(productImages, eq(productImages.id, productVariants.imageId))
+        .where(inArray(productVariants.id, variantIds))
+        .execute();
+
+      const variantById = new Map<
+        string,
+        {
+          productId: string | null;
+          productName: string | null;
+          title: string | null;
+          imageUrl: string | null;
+          unitPrice: number | null;
+          currency: string | null;
+        }
+      >(
+        variants.map((v) => {
+          const hasSalesPrice =
+            v.salesPrice !== null &&
+            v.salesPrice !== undefined &&
+            Number(v.salesPrice) > 0;
+
+          const unitPrice = (hasSalesPrice ? v.salesPrice : v.price) ?? null;
+
+          return [
+            v.id,
+            {
+              productId: v.productId ?? null,
+              productName: v.productName ?? null,
+              title: v.title ?? null,
+              imageUrl: v.imageUrl ?? null,
+              unitPrice: unitPrice === null ? null : Number(unitPrice),
+              currency: v.currency ?? null,
+            },
+          ];
+        }),
+      );
+
+      for (const it of normalizedItems) {
+        if (!variantById.has(it.variantId)) {
+          throw new BadRequestException(`Variant not found: ${it.variantId}`);
+        }
+      }
+
+      // merge duplicate variantIds from request
+      const qtyByVariantId = new Map<string, number>();
+      for (const item of normalizedItems) {
+        qtyByVariantId.set(
+          item.variantId,
+          (qtyByVariantId.get(item.variantId) ?? 0) + item.quantity,
+        );
+      }
+
+      const existingRows = await tx
+        .select({
+          id: quoteRequestItems.id,
+          variantId: quoteRequestItems.variantId,
+          quantity: quoteRequestItems.quantity,
+        })
+        .from(quoteRequestItems)
+        .where(
+          and(
+            eq(quoteRequestItems.quoteRequestId, quoteId),
+            inArray(
+              quoteRequestItems.variantId,
+              Array.from(qtyByVariantId.keys()),
+            ),
+            isNull(quoteRequestItems.deletedAt),
+          ),
+        )
+        .execute();
+
+      const existingByVariantId = new Map(
+        existingRows.map((row) => [row.variantId, row]),
+      );
+
+      // update existing rows
+      for (const [variantId, addQty] of qtyByVariantId.entries()) {
+        const existing = existingByVariantId.get(variantId);
+        if (!existing) continue;
+
+        await tx
+          .update(quoteRequestItems)
+          .set({
+            quantity: Number(existing.quantity ?? 0) + addQty,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(quoteRequestItems.id, existing.id))
+          .execute();
+      }
+
+      // insert only new variants
+      const newVariantIds = Array.from(qtyByVariantId.keys()).filter(
+        (variantId) => !existingByVariantId.has(variantId),
+      );
+
+      if (newVariantIds.length) {
+        const [{ maxPosition }] = await tx
+          .select({
+            maxPosition: sql<number>`coalesce(max(${quoteRequestItems.position}), 0)`,
+          })
+          .from(quoteRequestItems)
+          .where(
+            and(
+              eq(quoteRequestItems.quoteRequestId, quoteId),
+              isNull(quoteRequestItems.deletedAt),
+            ),
+          )
+          .execute();
+
+        await tx
+          .insert(quoteRequestItems)
+          .values(
+            newVariantIds.map((variantId, index) => {
+              const variant = variantById.get(variantId)!;
+
+              const nameSnapshot = [variant.productName, variant.title]
+                .filter(Boolean)
+                .join(' - ');
+
+              if (!nameSnapshot) {
+                throw new BadRequestException(
+                  `Product name/title missing for variant: ${variantId}`,
+                );
+              }
+
+              return {
+                companyId,
+                quoteRequestId: quote.id,
+                productId: variant.productId,
+                variantId,
+                nameSnapshot,
+                variantSnapshot: variant.title ?? null,
+                attributes: null,
+                imageUrl: variant.imageUrl,
+                quantity: qtyByVariantId.get(variantId) ?? 1,
+                position: Number(maxPosition ?? 0) + index + 1,
+                unitPriceMinor: variant.unitPrice,
+              } as any;
+            }),
+          )
+          .execute();
+      }
+
+      return quote;
+    });
+
+    await this.bumpCompany(companyId);
+
+    if (user && ip) {
+      await this.auditService.logAction({
+        action: 'update',
+        entity: 'quote_request',
+        entityId: quoteId,
+        userId: user.id,
+        ipAddress: ip,
+        details: 'Added items to quote request',
+        changes: {
+          companyId,
+          quoteId,
+          itemsCount: items.length,
+        },
+      });
+    }
+
+    return updated;
+  }
+
+  async updateItems(
+    companyId: string,
+    quoteId: string,
+    items: {
+      itemId: string;
+      quantity: number;
+    }[],
+    user?: User,
+    ip?: string,
+  ) {
+    if (!items?.length) {
+      throw new BadRequestException('No items provided');
+    }
+
+    const updated = await this.db.transaction(async (tx) => {
+      const [quote] = await tx
+        .select()
+        .from(quoteRequests)
+        .where(
+          and(
+            eq(quoteRequests.companyId, companyId),
+            eq(quoteRequests.id, quoteId),
+            isNull(quoteRequests.deletedAt),
+          ),
+        )
+        .execute();
+
+      if (!quote) {
+        throw new NotFoundException('Quote not found');
+      }
+
+      const itemIds = Array.from(
+        new Set(items.map((i) => i.itemId).filter(Boolean)),
+      );
+
+      if (!itemIds.length) {
+        throw new BadRequestException('At least one valid itemId is required');
+      }
+
+      const existingItems = await tx
+        .select({
+          id: quoteRequestItems.id,
+        })
+        .from(quoteRequestItems)
+        .where(
+          and(
+            eq(quoteRequestItems.quoteRequestId, quoteId),
+            inArray(quoteRequestItems.id, itemIds),
+            isNull(quoteRequestItems.deletedAt),
+          ),
+        )
+        .execute();
+
+      const existingItemIds = new Set(existingItems.map((i) => i.id));
+
+      for (const item of items) {
+        if (!existingItemIds.has(item.itemId)) {
+          throw new NotFoundException(`Quote item not found: ${item.itemId}`);
+        }
+
+        const quantity = Number(item.quantity);
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+          throw new BadRequestException(
+            `Invalid quantity for item: ${item.itemId}`,
+          );
+        }
+      }
+
+      for (const item of items) {
+        await tx
+          .update(quoteRequestItems)
+          .set({
+            quantity: Number(item.quantity),
+            updatedAt: new Date(),
+          } as any)
+          .where(
+            and(
+              eq(quoteRequestItems.id, item.itemId),
+              eq(quoteRequestItems.quoteRequestId, quoteId),
+              isNull(quoteRequestItems.deletedAt),
+            ),
+          )
+          .execute();
+      }
+
+      return quote;
+    });
+
+    await this.bumpCompany(companyId);
+
+    if (user && ip) {
+      await this.auditService.logAction({
+        action: 'update',
+        entity: 'quote_request',
+        entityId: quoteId,
+        userId: user.id,
+        ipAddress: ip,
+        details: 'Updated quote request item quantities',
+        changes: {
+          companyId,
+          quoteId,
+          itemsCount: items.length,
+          items: items.map((i) => ({
+            itemId: i.itemId,
+            quantity: i.quantity,
+          })),
+        },
+      });
+    }
+
+    return updated;
+  }
+
+  async removeItems(
+    companyId: string,
+    quoteId: string,
+    itemIds: string[],
+    user?: User,
+    ip?: string,
+  ) {
+    if (!itemIds?.length) {
+      throw new BadRequestException('No itemIds provided');
+    }
+
+    const updated = await this.db.transaction(async (tx) => {
+      const [quote] = await tx
+        .select()
+        .from(quoteRequests)
+        .where(
+          and(
+            eq(quoteRequests.companyId, companyId),
+            eq(quoteRequests.id, quoteId),
+            isNull(quoteRequests.deletedAt),
+          ),
+        )
+        .execute();
+
+      if (!quote) {
+        throw new NotFoundException('Quote not found');
+      }
+
+      const uniqueItemIds = Array.from(new Set(itemIds.filter(Boolean)));
+
+      const existingItems = await tx
+        .select({
+          id: quoteRequestItems.id,
+        })
+        .from(quoteRequestItems)
+        .where(
+          and(
+            eq(quoteRequestItems.quoteRequestId, quoteId),
+            inArray(quoteRequestItems.id, uniqueItemIds),
+            isNull(quoteRequestItems.deletedAt),
+          ),
+        )
+        .execute();
+
+      const existingItemIds = new Set(existingItems.map((i) => i.id));
+
+      for (const itemId of uniqueItemIds) {
+        if (!existingItemIds.has(itemId)) {
+          throw new NotFoundException(`Quote item not found: ${itemId}`);
+        }
+      }
+
+      await tx
+        .delete(quoteRequestItems)
+        .where(
+          and(
+            eq(quoteRequestItems.quoteRequestId, quoteId),
+            inArray(quoteRequestItems.id, uniqueItemIds),
+          ),
+        )
+        .execute();
+
+      return quote;
+    });
+
+    await this.bumpCompany(companyId);
+
+    if (user && ip) {
+      await this.auditService.logAction({
+        action: 'update',
+        entity: 'quote_request',
+        entityId: quoteId,
+        userId: user.id,
+        ipAddress: ip,
+        details: 'Removed items from quote request',
+        changes: {
+          companyId,
+          quoteId,
+          itemIds,
+          itemsCount: itemIds.length,
+        },
+      });
+    }
+
+    return updated;
   }
 
   /**
@@ -284,22 +725,12 @@ export class QuoteService {
 
     const where = and(
       eq(quoteRequests.companyId, companyId),
-
-      // ✅ store scoped (from query, like your existing quotes list)
       eq(quoteRequests.storeId, query.storeId),
-
-      // ✅ never show deleted
       isNull(quoteRequests.deletedAt),
-
-      // ✅ filter by status (tabs)
       query.status ? eq(quoteRequests.status, query.status as any) : undefined,
-
-      // ✅ exclude archived unless includeArchived = true
       query.includeArchived
         ? undefined
         : ne(quoteRequests.status, 'archived' as any),
-
-      // ✅ search email/note
       query.search
         ? or(
             ilike(quoteRequests.id, `%${query.search}%`),
@@ -326,6 +757,7 @@ export class QuoteService {
 
     return { rows, count: Number(count ?? 0), limit, offset };
   }
+
   /**
    * Get a single quote with items (cached)
    */
@@ -363,8 +795,6 @@ export class QuoteService {
   ) {
     const existing = await this.findQuoteByIdOrThrow(companyId, quoteId);
 
-    console.log('Existing quote status:', existing.status);
-
     if (
       dto.status &&
       dto.status !== existing.status &&
@@ -373,17 +803,22 @@ export class QuoteService {
       throw new BadRequestException('Converted quotes cannot change status');
     }
 
+    const nextStatus = dto.status ?? existing.status;
+
     const [updated] = await this.db
       .update(quoteRequests)
       .set({
-        status: dto.status ?? existing.status,
+        status: nextStatus,
         customerEmail: dto.customerEmail ?? existing.customerEmail,
         customerNote:
           dto.customerNote === undefined
             ? existing.customerNote
             : dto.customerNote,
         meta: dto.meta ?? existing.meta,
-        archivedAt: new Date(),
+        archivedAt:
+          nextStatus === 'archived'
+            ? (existing.archivedAt ?? new Date())
+            : (existing.archivedAt ?? null),
         updatedAt: new Date(),
       })
       .where(
@@ -442,6 +877,7 @@ export class QuoteService {
       .update(quoteRequests)
       .set({
         deletedAt: new Date(),
+        archivedAt: existing.archivedAt ?? new Date(),
         status: 'archived',
         updatedAt: new Date(),
       })
@@ -508,7 +944,7 @@ export class QuoteService {
       .execute();
 
     if (!quote) throw new NotFoundException('Quote not found');
-    if ((quote as any).convertedOrderId) {
+    if (quote.convertedOrderId) {
       throw new BadRequestException('Quote already converted');
     }
 
@@ -536,6 +972,17 @@ export class QuoteService {
         shippingAddress: input.shippingAddress ?? null,
         billingAddress: input.billingAddress ?? null,
         originInventoryLocationId: input.originInventoryLocationId,
+
+        // source linkage
+        quoteRequestId: quote.id,
+        sourceType: 'quote',
+
+        // copy Zoho details from quote to order
+        zohoOrganizationId: quote.zohoOrganizationId ?? null,
+        zohoContactId: quote.zohoContactId ?? null,
+        zohoEstimateId: quote.zohoEstimateId ?? null,
+        zohoEstimateNumber: quote.zohoEstimateNumber ?? null,
+        zohoEstimateStatus: quote.zohoEstimateStatus ?? null,
       },
       actor,
       ip,
@@ -554,6 +1001,7 @@ export class QuoteService {
           name: it.nameSnapshot?.trim() ?? undefined,
           attributes: it.attributes ?? undefined,
         } as any,
+        true,
         actor,
         ip,
         { tx },
@@ -565,8 +1013,9 @@ export class QuoteService {
       .set({
         convertedOrderId: order.id,
         status: 'converted',
+        convertedAt: new Date(),
         updatedAt: new Date(),
-      } as any)
+      })
       .where(
         and(
           eq(quoteRequests.companyId, companyId),
@@ -593,88 +1042,18 @@ export class QuoteService {
     ip?: string,
   ) {
     return this.db.transaction(async (tx) => {
-      const [quote] = await tx
-        .select()
-        .from(quoteRequests)
-        .where(
-          and(
-            eq(quoteRequests.companyId, companyId),
-            eq(quoteRequests.id, quoteId),
-            isNull(quoteRequests.deletedAt),
-          ),
-        )
-        .execute();
-
-      if (!quote) throw new NotFoundException('Quote not found');
-
-      if ((quote as any).convertedOrderId) {
-        throw new BadRequestException('Quote already converted');
-      }
-
-      const items = await tx
-        .select()
-        .from(quoteRequestItems)
-        .where(
-          and(
-            eq(quoteRequestItems.quoteRequestId, quoteId),
-            isNull(quoteRequestItems.deletedAt),
-          ),
-        )
-        .orderBy(asc(quoteRequestItems.position))
-        .execute();
-
-      if (!items.length) throw new BadRequestException('Quote has no items');
-
-      const order = await this.manualOrdersService.createManualOrder(
+      const res = await this.convertToManualOrderTx(
+        tx,
         companyId,
-        {
-          storeId: quote.storeId,
-          currency: input.currency,
-          channel: input.channel ?? 'manual',
-          customerId: input.customerId ?? null,
-          shippingAddress: input.shippingAddress ?? null,
-          billingAddress: input.billingAddress ?? null,
-          originInventoryLocationId: input.originInventoryLocationId,
-        },
+        quoteId,
+        input,
         actor,
         ip,
-        { tx },
       );
 
-      for (const it of items) {
-        if (!it.variantId) continue;
+      await this.bumpCompany(companyId);
 
-        await this.manualOrdersService.addItem(
-          companyId,
-          {
-            orderId: order.id,
-            variantId: it.variantId,
-            quantity: it.quantity,
-            name: it.nameSnapshot?.trim() ?? undefined,
-            attributes: it.attributes ?? undefined,
-          } as any,
-          actor,
-          ip,
-          { tx },
-        );
-      }
-
-      await tx
-        .update(quoteRequests)
-        .set({
-          convertedOrderId: order.id,
-          status: 'converted',
-          updatedAt: new Date(),
-        } as any)
-        .where(
-          and(
-            eq(quoteRequests.companyId, companyId),
-            eq(quoteRequests.id, quoteId),
-          ),
-        )
-        .execute();
-
-      return { orderId: order.id };
+      return { orderId: res.orderId };
     });
   }
 
@@ -698,58 +1077,26 @@ export class QuoteService {
         .for('update')
         .execute();
 
-      if (!quote) throw new NotFoundException('Quote not found');
-
-      let orderId = quote.convertedOrderId as string | undefined;
-
-      if (!orderId) {
-        const [location] = await tx
-          .select()
-          .from(inventoryLocations)
-          .where(
-            and(
-              eq(inventoryLocations.companyId, companyId),
-              eq(inventoryLocations.storeId, quote.storeId),
-              eq(inventoryLocations.type, 'warehouse'),
-              eq(inventoryLocations.isActive, true),
-              isNull(inventoryLocations.deletedAt),
-            ),
-          )
-          .orderBy(desc(inventoryLocations.isDefault))
-          .limit(1)
-          .execute();
-
-        if (!location)
-          throw new BadRequestException(
-            'No warehouse inventory location found',
-          );
-
-        const currency = 'NGN';
-
-        const res = await this.convertToManualOrderTx(
-          tx,
-          companyId,
-          quoteId,
-          {
-            originInventoryLocationId: location.id,
-            currency,
-            channel: 'manual',
-          },
-          actor,
-          ip,
-        );
-
-        orderId = res.orderId;
+      if (!quote) {
+        throw new NotFoundException('Quote not found');
       }
 
-      const zohoResult = await this.zohoBooks.createEstimateFromOrder(
+      const zohoResult = await this.zohoBooks.upsertEstimateFromQuoteTx(
         tx,
         companyId,
         quoteId,
-        orderId!,
+        actor,
+        ip,
       );
 
-      return { orderId, ...zohoResult };
+      await this.bumpCompany(companyId);
+
+      return {
+        action: quote.zohoEstimateId ? 'synced' : 'created',
+        quoteId,
+        convertedOrderId: quote.convertedOrderId ?? null,
+        ...zohoResult,
+      };
     });
   }
 }

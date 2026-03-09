@@ -36,6 +36,9 @@ export class RegisterCustomerDto {
 }
 
 export class CreateCustomerDto {
+  @IsString()
+  storeId: string;
+
   @IsEmail()
   email: string;
 

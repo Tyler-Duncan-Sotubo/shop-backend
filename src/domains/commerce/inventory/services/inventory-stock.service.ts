@@ -620,6 +620,7 @@ export class InventoryStockService {
       .execute();
 
     if (updated.length === 0) {
+      console.log('this');
       throw new BadRequestException('Insufficient sellable stock to reserve.');
     }
 

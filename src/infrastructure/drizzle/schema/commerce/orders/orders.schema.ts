@@ -83,6 +83,7 @@ export const orders = pgTable(
       () => inventoryLocations.id,
       { onDelete: 'set null' },
     ),
+    sourceType: varchar('source_type', { length: 32 }).default('manual'),
 
     paymentMethodType: varchar('payment_method_type', { length: 32 }),
     paymentProvider: varchar('payment_provider', { length: 32 }),
@@ -97,7 +98,6 @@ export const orders = pgTable(
     zohoEstimateId: text('zoho_estimate_id'),
     zohoEstimateNumber: text('zoho_estimate_number'),
     zohoEstimateStatus: text('zoho_estimate_status'),
-
     zohoSalesOrderId: text('zoho_sales_order_id'),
     zohoInvoiceId: text('zoho_invoice_id'),
     zohoSyncedAt: timestamp('zoho_synced_at'),

@@ -18,10 +18,14 @@ import {
   invoices,
   payments,
   paymentFiles,
+  customers,
+  customerAddresses,
 } from 'src/infrastructure/drizzle/schema';
 import { ListOrdersDto } from './dto/list-orders.dto';
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
 import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
+import { ShippingZonesService } from 'src/domains/fulfillment/shipping/services/shipping-zones.service';
+import { ShippingRatesService } from 'src/domains/fulfillment/shipping/services/shipping-rates.service';
 
 @Injectable()
 export class OrdersService {
@@ -30,6 +34,8 @@ export class OrdersService {
     private readonly cache: CacheService,
     private readonly stock: InventoryStockService,
     private readonly zohoBooks: ZohoBooksService,
+    private readonly shippingZonesService: ShippingZonesService,
+    private readonly shippingRatesService: ShippingRatesService,
   ) {}
 
   // -----------------------
@@ -468,18 +474,349 @@ export class OrdersService {
     return result;
   }
 
-  // QuoteService (if you want to call it from quoteId)
-  async syncZohoChanges(
+  async updateCustomerAndShipping(
     companyId: string,
     orderId: string,
-    actor?: User,
+    payload: {
+      customerId?: string;
+      createCustomer?: {
+        email: string;
+        firstName?: string;
+        lastName?: string;
+        phone?: string;
+      };
+      shippingAddressId?: string;
+      billingAddressId?: string | null;
+      shippingRateId?: string | null;
+    },
+    user?: User,
     ip?: string,
   ) {
-    return this.zohoBooks.syncEstimateChangesFromOrder(
+    return this.db.transaction(async (tx) => {
+      const [order] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .for('update')
+        .execute();
+
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+
+      if (order.status === 'fulfilled' || order.status === 'cancelled') {
+        throw new BadRequestException(
+          'Customer/shipping cannot be changed for this order status',
+        );
+      }
+
+      let customerId = payload.customerId ?? null;
+
+      if (!customerId && payload.createCustomer) {
+        const email = payload.createCustomer.email.trim().toLowerCase();
+
+        const existingCustomer = await tx.query.customers.findFirst({
+          where: and(
+            eq(customers.companyId, companyId),
+            eq(customers.billingEmail, email),
+          ),
+        });
+
+        if (existingCustomer) {
+          customerId = existingCustomer.id;
+        } else {
+          const displayName = [
+            payload.createCustomer.firstName,
+            payload.createCustomer.lastName,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .trim();
+
+          const [createdCustomer] = await tx
+            .insert(customers)
+            .values({
+              companyId,
+              storeId: order.storeId,
+              billingEmail: email,
+              firstName: payload.createCustomer.firstName ?? null,
+              lastName: payload.createCustomer.lastName ?? null,
+              displayName: displayName || email,
+              phone: payload.createCustomer.phone ?? null,
+              isActive: true,
+            })
+            .returning()
+            .execute();
+
+          customerId = createdCustomer.id;
+        }
+      }
+
+      if (!customerId) {
+        throw new BadRequestException(
+          'customerId or createCustomer is required',
+        );
+      }
+
+      const customer = await tx.query.customers.findFirst({
+        where: and(
+          eq(customers.companyId, companyId),
+          eq(customers.id, customerId),
+        ),
+      });
+
+      if (!customer) {
+        throw new BadRequestException('Customer not found');
+      }
+
+      if (customer.storeId && customer.storeId !== order.storeId) {
+        throw new BadRequestException('Customer does not belong to this store');
+      }
+
+      const customerAddressRows = await tx
+        .select()
+        .from(customerAddresses)
+        .where(
+          and(
+            eq(customerAddresses.companyId, companyId),
+            eq(customerAddresses.customerId, customerId),
+          ),
+        )
+        .execute();
+
+      if (!customerAddressRows.length) {
+        throw new BadRequestException('Customer has no saved addresses');
+      }
+
+      let shippingAddress = payload.shippingAddressId
+        ? (customerAddressRows.find(
+            (a) => a.id === payload.shippingAddressId,
+          ) ?? null)
+        : (customerAddressRows.find((a) => a.isDefaultShipping) ??
+          customerAddressRows[0] ??
+          null);
+
+      if (!shippingAddress) {
+        throw new BadRequestException(
+          'Shipping address not found for customer',
+        );
+      }
+
+      let billingAddress = payload.billingAddressId
+        ? (customerAddressRows.find((a) => a.id === payload.billingAddressId) ??
+          null)
+        : (customerAddressRows.find((a) => a.isDefaultBilling) ??
+          shippingAddress);
+
+      if (!billingAddress) {
+        billingAddress = shippingAddress;
+      }
+
+      const orderItemsRows = await tx
+        .select({
+          quantity: orderItems.quantity,
+          weight: productVariants.weight,
+        })
+        .from(orderItems)
+        .leftJoin(
+          productVariants,
+          and(
+            eq(productVariants.companyId, orderItems.companyId),
+            eq(productVariants.id, orderItems.variantId),
+          ),
+        )
+        .where(
+          and(
+            eq(orderItems.companyId, companyId),
+            eq(orderItems.orderId, orderId),
+          ),
+        )
+        .execute();
+
+      const totalWeightGrams = orderItemsRows.reduce((sum, row) => {
+        const qty = Number(row.quantity ?? 0);
+        const weight = Number(row.weight ?? 0);
+        return sum + qty * weight;
+      }, 0);
+
+      const shippingQuote = await this.getShippingQuoteForOrder(companyId, {
+        storeId: order.storeId,
+        shippingAddress,
+        totalWeightGrams,
+        shippingRateId: payload.shippingRateId ?? null,
+      });
+
+      const subtotal = Number(order.subtotal ?? 0);
+      const taxTotal = Number(order.taxTotal ?? 0);
+      const discountTotal = Number(order.discountTotal ?? 0);
+      const shippingTotal = Number(shippingQuote.amount ?? 0);
+      const total = subtotal + taxTotal + shippingTotal - discountTotal;
+
+      const subtotalMinor = Number(order.subtotalMinor ?? 0);
+      const taxTotalMinor = Number(order.taxTotalMinor ?? 0);
+      const discountTotalMinor = Number(order.discountTotalMinor ?? 0);
+      const shippingTotalMinor = Math.round(shippingTotal * 100);
+      const totalMinor =
+        subtotalMinor + taxTotalMinor + shippingTotalMinor - discountTotalMinor;
+
+      const shippingSnapshot = {
+        customerAddressId: shippingAddress.id,
+        label: shippingAddress.label ?? null,
+        firstName: shippingAddress.firstName ?? null,
+        lastName: shippingAddress.lastName ?? null,
+        email: customer.billingEmail ?? null,
+        phone: shippingAddress.phone ?? customer.phone ?? null,
+        address1: shippingAddress.line1 ?? null,
+        address2: shippingAddress.line2 ?? null,
+        city: shippingAddress.city ?? null,
+        state: shippingAddress.state ?? null,
+        postalCode: shippingAddress.postalCode ?? null,
+        country: shippingAddress.country ?? null,
+        isDefaultShipping: shippingAddress.isDefaultShipping ?? false,
+      };
+
+      const billingSnapshot = {
+        customerAddressId: billingAddress.id,
+        label: billingAddress.label ?? null,
+        firstName: billingAddress.firstName ?? null,
+        lastName: billingAddress.lastName ?? null,
+        email: customer.billingEmail ?? null,
+        phone: billingAddress.phone ?? customer.phone ?? null,
+        address1: billingAddress.line1 ?? null,
+        address2: billingAddress.line2 ?? null,
+        city: billingAddress.city ?? null,
+        state: billingAddress.state ?? null,
+        postalCode: billingAddress.postalCode ?? null,
+        country: billingAddress.country ?? null,
+        isDefaultBilling: billingAddress.isDefaultBilling ?? false,
+      };
+
+      const shippingQuoteSnapshot = shippingQuote
+        ? {
+            zone: shippingQuote.zone
+              ? {
+                  id: shippingQuote.zone.id,
+                  name: shippingQuote.zone.name,
+                  priority: shippingQuote.zone.priority ?? null,
+                }
+              : null,
+            rate: shippingQuote.rate
+              ? {
+                  id: shippingQuote.rate.id,
+                  name: shippingQuote.rate.name,
+                  calc: shippingQuote.rate.calc ?? null,
+                  isDefault: shippingQuote.rate.isDefault ?? false,
+                  type: shippingQuote.rate.type ?? null,
+                }
+              : null,
+            amount: shippingQuote.amount ?? 0,
+            totalWeightGrams,
+          }
+        : null;
+
+      const [updated] = await tx
+        .update(orders)
+        .set({
+          customerId,
+          shippingZoneId: shippingQuote.zone?.id ?? null,
+          selectedShippingRateId: shippingQuote.rate?.id ?? null,
+          shippingAddress: shippingSnapshot as any,
+          billingAddress: billingSnapshot as any,
+          shippingMethodLabel: shippingQuote.rate?.name ?? null,
+          deliveryMethodType: 'shipping',
+          shippingQuote: shippingQuoteSnapshot as any,
+          shippingTotal: String(shippingTotal) as any,
+          total: String(total) as any,
+          shippingTotalMinor,
+          totalMinor,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .returning()
+        .execute();
+
+      await tx.insert(orderEvents).values({
+        companyId,
+        orderId,
+        type: 'shipping_updated',
+        actorUserId: user?.id ?? null,
+        ipAddress: ip ?? null,
+        message: 'Order customer/shipping details updated',
+      });
+
+      return updated;
+    });
+  }
+
+  private async getShippingQuoteForOrder(
+    companyId: string,
+    args: {
+      storeId: string;
+      shippingAddress: {
+        country?: string | null;
+        state?: string | null;
+        city?: string | null;
+      };
+      totalWeightGrams: number;
+      shippingRateId?: string | null;
+    },
+  ) {
+    const normalizeCountryCode = (value?: string | null) => {
+      const v = (value ?? '').trim().toUpperCase();
+
+      if (v === 'UNITED KINGDOM' || v === 'UK' || v === 'GB') return 'GB';
+      if (v === 'NIGERIA' || v === 'NG') return 'NG';
+      if (v === 'UNITED STATES' || v === 'USA' || v === 'US') return 'US';
+
+      return v;
+    };
+
+    const zone = await this.shippingZonesService.resolveZone(
       companyId,
-      orderId,
-      actor,
-      ip,
+      args.storeId,
+      normalizeCountryCode(args.shippingAddress.country ?? 'NG'),
+      args.shippingAddress.state ?? undefined,
+      args.shippingAddress.city ?? undefined,
     );
+
+    if (!zone) {
+      return {
+        zone: null,
+        rate: null,
+        amount: 0,
+      };
+    }
+
+    const allRates = await this.shippingRatesService.listRates(companyId, {
+      zoneId: zone.id,
+      storeId: args.storeId,
+    });
+
+    const activeRates = allRates.filter((r: any) => r.isActive);
+
+    let selectedRate = args.shippingRateId
+      ? activeRates.find((r: any) => r.id === args.shippingRateId)
+      : (activeRates.find((r: any) => r.isDefault) ?? activeRates[0]);
+
+    if (!selectedRate) {
+      return {
+        zone,
+        rate: null,
+        amount: 0,
+      };
+    }
+
+    const amount = await this.shippingRatesService.computeRateAmount(
+      companyId,
+      selectedRate.id,
+      selectedRate.calc,
+      args.totalWeightGrams,
+    );
+
+    return {
+      zone,
+      rate: selectedRate,
+      amount: Number(amount ?? 0),
+    };
   }
 }

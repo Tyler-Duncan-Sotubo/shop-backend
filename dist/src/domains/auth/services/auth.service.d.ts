@@ -10,7 +10,7 @@ import { PermissionsService } from '../../iam/permissions/permissions.service';
 import { CompanySettingsService } from 'src/domains/company-settings/company-settings.service';
 import { SessionsService } from './sessions.service';
 import { JwtType, User } from 'src/channels/admin/common/types/user.type';
-import { LoginInput, RefreshTokenInput } from '../inputs';
+import { LoginInput } from '../inputs';
 export declare class AuthService {
     private readonly db;
     private readonly userService;
@@ -74,9 +74,8 @@ export declare class AuthService {
         permissions: string[];
         onboardingCompleted: boolean;
     }>;
-    refreshToken(user: JwtType, dto: RefreshTokenInput): Promise<{
+    refreshToken(user: JwtType): Promise<{
         accessToken: string;
-        refreshToken: string;
         expiresIn: number;
     }>;
     private validateUser;

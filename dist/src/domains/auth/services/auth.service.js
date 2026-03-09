@@ -172,16 +172,14 @@ let AuthService = class AuthService {
             .execute();
         return this.completeLogin(user, ip);
     }
-    async refreshToken(user, dto) {
+    async refreshToken(user) {
         const payload = {
             email: user.email,
             sub: user.sub,
         };
         const { accessToken } = await this.tokenGeneratorService.generateToken(payload);
-        await this.session.findValidSessionByToken(dto.token);
         return {
             accessToken,
-            refreshToken: '',
             expiresIn: Date.now() + 1000 * 60 * 10,
         };
     }

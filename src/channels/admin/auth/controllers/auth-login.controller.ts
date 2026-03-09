@@ -85,8 +85,8 @@ export class AuthLoginController {
 
   @UseGuards(RefreshJwtGuard)
   @Post('refresh')
-  async refreshToken(@CurrentUser() user: JwtType, @Body() dto: TokenDto) {
-    return this.auth.refreshToken(user, dto);
+  async refreshToken(@CurrentUser() user: JwtType) {
+    return this.auth.refreshToken(user);
   }
 
   @HttpCode(HttpStatus.OK)

@@ -40,8 +40,8 @@ export declare class ZohoController extends BaseController {
         companyId: string;
         storeId: string;
         region: string;
-        lastSyncedAt: Date | null;
         zohoOrganizationId: string | null;
+        lastSyncedAt: Date | null;
         lastError: string | null;
         connectedAt: Date;
         refreshToken: string;
@@ -94,8 +94,8 @@ export declare class ZohoController extends BaseController {
         companyId: string;
         storeId: string;
         region: string;
-        lastSyncedAt: Date | null;
         zohoOrganizationId: string | null;
+        lastSyncedAt: Date | null;
         lastError: string | null;
         connectedAt: Date;
         refreshToken: string;

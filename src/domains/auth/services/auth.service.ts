@@ -241,7 +241,7 @@ export class AuthService {
   // -----------------------------
   // Refresh token
   // -----------------------------
-  async refreshToken(user: JwtType, dto: RefreshTokenInput) {
+  async refreshToken(user: JwtType) {
     const payload = {
       email: user.email,
       sub: user.sub,
@@ -250,11 +250,8 @@ export class AuthService {
     const { accessToken } =
       await this.tokenGeneratorService.generateToken(payload);
 
-    await this.session.findValidSessionByToken(dto.token);
-
     return {
       accessToken,
-      refreshToken: '',
       expiresIn: Date.now() + 1000 * 60 * 10,
     };
   }

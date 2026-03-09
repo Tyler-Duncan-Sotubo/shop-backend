@@ -22,7 +22,6 @@ const zoho_service_1 = require("./zoho.service");
 const zoho_oauth_1 = require("./zoho.oauth");
 const audit_service_1 = require("../../audit/audit.service");
 const cache_service_1 = require("../../../infrastructure/cache/cache.service");
-const schema_1 = require("../../../infrastructure/drizzle/schema");
 const zoho_common_helper_1 = require("./helpers/zoho-common.helper");
 let ZohoBooksService = class ZohoBooksService {
     constructor(db, zohoService, zohoHelper, auditService, cache) {
@@ -32,25 +31,18 @@ let ZohoBooksService = class ZohoBooksService {
         this.auditService = auditService;
         this.cache = cache;
     }
-    async createEstimateFromOrderTx(tx, companyId, quoteId, orderId) {
-        const [order] = await tx
-            .select()
-            .from(schema_1.orders)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
-            .for('update')
-            .execute();
-        if (!order)
-            throw new common_1.NotFoundException('Order not found');
-        if (order.zohoEstimateId) {
-            throw new common_1.BadRequestException('Order already synced to Zoho');
-        }
+    async createEstimateFromQuoteTx(tx, companyId, quoteId, actor, ip) {
         const [quote] = await tx
             .select()
             .from(quote_requests_schema_1.quoteRequests)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId), (0, drizzle_orm_1.isNull)(quote_requests_schema_1.quoteRequests.deletedAt)))
+            .for('update')
             .execute();
         if (!quote)
             throw new common_1.NotFoundException('Quote not found');
+        if (quote.zohoEstimateId) {
+            throw new common_1.BadRequestException('Quote already synced to Zoho');
+        }
         if (!quote.customerEmail) {
             throw new common_1.BadRequestException('Quote has no customer email');
         }
@@ -60,8 +52,9 @@ let ZohoBooksService = class ZohoBooksService {
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequestItems.quoteRequestId, quoteId), (0, drizzle_orm_1.isNull)(quote_requests_schema_1.quoteRequestItems.deletedAt)))
             .orderBy((0, drizzle_orm_1.asc)(quote_requests_schema_1.quoteRequestItems.position))
             .execute();
-        if (!items.length)
+        if (!items.length) {
             throw new common_1.BadRequestException('Quote has no items');
+        }
         const connection = await this.zohoService.findForStore(companyId, quote.storeId);
         if (!connection || !connection.isActive) {
             throw new common_1.BadRequestException('Zoho is not connected for this store');
@@ -70,7 +63,7 @@ let ZohoBooksService = class ZohoBooksService {
             throw new common_1.BadRequestException('Zoho organization_id not set for this store');
         }
         const accessToken = await this.zohoService.getValidAccessToken(companyId, quote.storeId);
-        let contactId = order.zohoContactId;
+        let contactId = quote.zohoContactId ?? undefined;
         if (!contactId) {
             contactId = await this.zohoHelper.ensureZohoContactIdByEmail({
                 region: connection.region,
@@ -80,145 +73,57 @@ let ZohoBooksService = class ZohoBooksService {
                 contactNameHint: null,
             });
             await tx
-                .update(schema_1.orders)
+                .update(quote_requests_schema_1.quoteRequests)
                 .set({
                 zohoContactId: contactId,
                 updatedAt: new Date(),
             })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId)))
                 .execute();
         }
-        const payload = {
-            customer_id: contactId,
-            reference_number: order.orderNumber,
-            notes: quote.customerNote ?? '',
-            line_items: items.map((it) => ({
-                name: it.nameSnapshot,
-                quantity: it.quantity ?? 1,
-                rate: it.unitPriceMinor ?? 0,
-            })),
-        };
+        const payload = this.buildEstimatePayload({
+            quote,
+            items,
+            contactId,
+        });
         try {
             const res = await axios_1.default.post(`${(0, zoho_oauth_1.getZohoApiBase)(connection.region)}/books/v3/estimates`, payload, {
-                headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
-                params: { organization_id: connection.zohoOrganizationId },
+                headers: {
+                    Authorization: `Zoho-oauthtoken ${accessToken}`,
+                },
+                params: {
+                    organization_id: connection.zohoOrganizationId,
+                },
             });
             const estimate = res.data?.estimate;
             if (!estimate?.estimate_id) {
                 throw new common_1.BadRequestException('Zoho did not return estimate_id');
             }
             await tx
-                .update(schema_1.orders)
+                .update(quote_requests_schema_1.quoteRequests)
                 .set({
                 zohoOrganizationId: connection.zohoOrganizationId,
                 zohoEstimateId: estimate.estimate_id,
-                zohoEstimateNumber: (estimate.estimate_number ?? null),
-                zohoEstimateStatus: (estimate.status ?? 'draft'),
-                zohoSyncedAt: new Date(),
-                zohoSyncError: null,
-                updatedAt: new Date(),
-            })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
-                .execute();
-            return {
-                zohoEstimateId: estimate.estimate_id,
                 zohoEstimateNumber: estimate.estimate_number ?? null,
-                zohoEstimateStatus: estimate.status ?? null,
-            };
-        }
-        catch (err) {
-            const msg = this.zohoHelper.formatZohoError(err);
-            await tx
-                .update(schema_1.orders)
-                .set({
-                zohoSyncError: msg,
+                zohoEstimateStatus: estimate.status ?? 'draft',
+                createdZohoAt: quote.createdZohoAt ?? new Date(),
+                lastSyncedAt: new Date(),
+                syncError: null,
                 updatedAt: new Date(),
             })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
-                .execute();
-            throw new common_1.BadRequestException(msg);
-        }
-    }
-    async createEstimateFromOrder(tx, companyId, quoteId, orderId) {
-        return this.createEstimateFromOrderTx(tx, companyId, quoteId, orderId);
-    }
-    async syncEstimateChangesFromOrderTx(tx, companyId, orderId, actor, ip) {
-        const [order] = await tx
-            .select()
-            .from(schema_1.orders)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
-            .for('update')
-            .execute();
-        if (!order)
-            throw new common_1.NotFoundException('Order not found');
-        if (!order.zohoEstimateId) {
-            throw new common_1.BadRequestException('Order has no Zoho estimate to sync');
-        }
-        const status = (order.zohoEstimateStatus ?? '').toLowerCase();
-        if (status && status !== 'draft') {
-            throw new common_1.BadRequestException(`Zoho estimate is not editable (status=${order.zohoEstimateStatus})`);
-        }
-        const items = await tx
-            .select()
-            .from(schema_1.orderItems)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
-            .execute();
-        if (!items.length)
-            throw new common_1.BadRequestException('Order has no items');
-        const connection = await this.zohoService.findForStore(companyId, order.storeId);
-        if (!connection || !connection.isActive) {
-            throw new common_1.BadRequestException('Zoho is not connected for this store');
-        }
-        if (!connection.zohoOrganizationId) {
-            throw new common_1.BadRequestException('Zoho organization_id not set for this store');
-        }
-        const accessToken = await this.zohoService.getValidAccessToken(companyId, order.storeId);
-        const contactId = order.zohoContactId;
-        if (!contactId) {
-            throw new common_1.BadRequestException('Order missing zohoContactId');
-        }
-        const payload = {
-            customer_id: contactId,
-            reference_number: order.orderNumber,
-            line_items: items.map((it) => ({
-                name: it.name,
-                quantity: it.quantity ?? 1,
-                rate: it.unitPrice ?? 0,
-            })),
-        };
-        try {
-            const res = await axios_1.default.put(`${(0, zoho_oauth_1.getZohoApiBase)(connection.region)}/books/v3/estimates/${order.zohoEstimateId}`, payload, {
-                headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
-                params: { organization_id: connection.zohoOrganizationId },
-            });
-            const estimate = res.data?.estimate;
-            if (!estimate?.estimate_id) {
-                throw new common_1.BadRequestException('Zoho did not return estimate_id');
-            }
-            await tx
-                .update(schema_1.orders)
-                .set({
-                zohoEstimateNumber: (estimate.estimate_number ?? null),
-                zohoEstimateStatus: (estimate.status ??
-                    order.zohoEstimateStatus ??
-                    'draft'),
-                zohoSyncedAt: new Date(),
-                zohoSyncError: null,
-                updatedAt: new Date(),
-            })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId)))
                 .execute();
             await this.cache.bumpCompanyVersion(companyId);
             if (actor && ip) {
                 await this.auditService.logAction({
                     action: 'sync',
-                    entity: 'order',
-                    entityId: orderId,
+                    entity: 'quote_request',
+                    entityId: quoteId,
                     userId: actor.id,
                     ipAddress: ip,
-                    details: 'Synced Zoho estimate changes from order',
+                    details: 'Created Zoho estimate from quote',
                     changes: {
-                        orderId,
+                        quoteId,
                         zohoEstimateId: estimate.estimate_id,
                         zohoEstimateNumber: estimate.estimate_number ?? null,
                         zohoEstimateStatus: estimate.status ?? null,
@@ -234,18 +139,163 @@ let ZohoBooksService = class ZohoBooksService {
         catch (err) {
             const msg = this.zohoHelper.formatZohoError(err);
             await tx
-                .update(schema_1.orders)
+                .update(quote_requests_schema_1.quoteRequests)
                 .set({
-                zohoSyncError: msg,
+                syncError: msg,
+                lastSyncedAt: new Date(),
                 updatedAt: new Date(),
             })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId)))
                 .execute();
             throw new common_1.BadRequestException(msg);
         }
     }
-    async syncEstimateChangesFromOrder(companyId, orderId, actor, ip) {
-        return this.db.transaction((tx) => this.syncEstimateChangesFromOrderTx(tx, companyId, orderId, actor, ip));
+    async createEstimateFromQuote(companyId, quoteId, actor, ip) {
+        return this.db.transaction((tx) => this.createEstimateFromQuoteTx(tx, companyId, quoteId, actor, ip));
+    }
+    async syncEstimateChangesFromQuoteTx(tx, companyId, quoteId, actor, ip) {
+        const [quote] = await tx
+            .select()
+            .from(quote_requests_schema_1.quoteRequests)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId), (0, drizzle_orm_1.isNull)(quote_requests_schema_1.quoteRequests.deletedAt)))
+            .for('update')
+            .execute();
+        if (!quote)
+            throw new common_1.NotFoundException('Quote not found');
+        if (!quote.zohoEstimateId) {
+            throw new common_1.BadRequestException('Quote has no Zoho estimate to sync');
+        }
+        const status = (quote.zohoEstimateStatus ?? '').toLowerCase();
+        if (status && status !== 'draft') {
+            throw new common_1.BadRequestException(`Zoho estimate is not editable (status=${quote.zohoEstimateStatus})`);
+        }
+        const items = await tx
+            .select()
+            .from(quote_requests_schema_1.quoteRequestItems)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequestItems.quoteRequestId, quoteId), (0, drizzle_orm_1.isNull)(quote_requests_schema_1.quoteRequestItems.deletedAt)))
+            .orderBy((0, drizzle_orm_1.asc)(quote_requests_schema_1.quoteRequestItems.position))
+            .execute();
+        if (!items.length) {
+            throw new common_1.BadRequestException('Quote has no items');
+        }
+        const connection = await this.zohoService.findForStore(companyId, quote.storeId);
+        if (!connection || !connection.isActive) {
+            throw new common_1.BadRequestException('Zoho is not connected for this store');
+        }
+        if (!connection.zohoOrganizationId) {
+            throw new common_1.BadRequestException('Zoho organization_id not set for this store');
+        }
+        const accessToken = await this.zohoService.getValidAccessToken(companyId, quote.storeId);
+        let contactId = quote.zohoContactId ?? undefined;
+        if (!contactId) {
+            if (!quote.customerEmail) {
+                throw new common_1.BadRequestException('Quote missing zohoContactId and customer email');
+            }
+            contactId = await this.zohoHelper.ensureZohoContactIdByEmail({
+                region: connection.region,
+                organizationId: connection.zohoOrganizationId,
+                accessToken,
+                email: quote.customerEmail,
+                contactNameHint: null,
+            });
+            await tx
+                .update(quote_requests_schema_1.quoteRequests)
+                .set({
+                zohoContactId: contactId,
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId)))
+                .execute();
+        }
+        const payload = this.buildEstimatePayload({
+            quote,
+            items,
+            contactId,
+        });
+        try {
+            const res = await axios_1.default.put(`${(0, zoho_oauth_1.getZohoApiBase)(connection.region)}/books/v3/estimates/${quote.zohoEstimateId}`, payload, {
+                headers: {
+                    Authorization: `Zoho-oauthtoken ${accessToken}`,
+                },
+                params: {
+                    organization_id: connection.zohoOrganizationId,
+                },
+            });
+            const estimate = res.data?.estimate;
+            if (!estimate?.estimate_id) {
+                throw new common_1.BadRequestException('Zoho did not return estimate_id');
+            }
+            await tx
+                .update(quote_requests_schema_1.quoteRequests)
+                .set({
+                zohoOrganizationId: connection.zohoOrganizationId,
+                zohoEstimateNumber: estimate.estimate_number ?? null,
+                zohoEstimateStatus: estimate.status ?? quote.zohoEstimateStatus ?? 'draft',
+                lastSyncedAt: new Date(),
+                syncError: null,
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId)))
+                .execute();
+            await this.cache.bumpCompanyVersion(companyId);
+            if (actor && ip) {
+                await this.auditService.logAction({
+                    action: 'sync',
+                    entity: 'quote_request',
+                    entityId: quoteId,
+                    userId: actor.id,
+                    ipAddress: ip,
+                    details: 'Synced Zoho estimate changes from quote',
+                    changes: {
+                        quoteId,
+                        zohoEstimateId: estimate.estimate_id,
+                        zohoEstimateNumber: estimate.estimate_number ?? null,
+                        zohoEstimateStatus: estimate.status ?? null,
+                    },
+                });
+            }
+            return {
+                zohoEstimateId: estimate.estimate_id,
+                zohoEstimateNumber: estimate.estimate_number ?? null,
+                zohoEstimateStatus: estimate.status ?? null,
+            };
+        }
+        catch (err) {
+            const msg = this.zohoHelper.formatZohoError(err);
+            await tx
+                .update(quote_requests_schema_1.quoteRequests)
+                .set({
+                syncError: msg,
+                lastSyncedAt: new Date(),
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId)))
+                .execute();
+            throw new common_1.BadRequestException(msg);
+        }
+    }
+    async syncEstimateChangesFromQuote(companyId, quoteId, actor, ip) {
+        return this.db.transaction((tx) => this.syncEstimateChangesFromQuoteTx(tx, companyId, quoteId, actor, ip));
+    }
+    async upsertEstimateFromQuoteTx(tx, companyId, quoteId, actor, ip) {
+        const [quote] = await tx
+            .select({
+            id: quote_requests_schema_1.quoteRequests.id,
+            zohoEstimateId: quote_requests_schema_1.quoteRequests.zohoEstimateId,
+        })
+            .from(quote_requests_schema_1.quoteRequests)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.id, quoteId), (0, drizzle_orm_1.isNull)(quote_requests_schema_1.quoteRequests.deletedAt)))
+            .for('update')
+            .execute();
+        if (!quote)
+            throw new common_1.NotFoundException('Quote not found');
+        if (quote.zohoEstimateId) {
+            return this.syncEstimateChangesFromQuoteTx(tx, companyId, quoteId, actor, ip);
+        }
+        return this.createEstimateFromQuoteTx(tx, companyId, quoteId, actor, ip);
+    }
+    async upsertEstimateFromQuote(companyId, quoteId, actor, ip) {
+        return this.db.transaction((tx) => this.upsertEstimateFromQuoteTx(tx, companyId, quoteId, actor, ip));
     }
     buildEstimatePayload(input) {
         const { quote, items, contactId } = input;
@@ -253,12 +303,12 @@ let ZohoBooksService = class ZohoBooksService {
             ...(contactId
                 ? { customer_id: contactId }
                 : { customer_name: quote.customerEmail }),
-            reference_number: quote.id,
+            reference_number: quote.quoteNumber ?? quote.id,
             notes: quote.customerNote ?? '',
             line_items: items.map((it) => ({
                 name: it.nameSnapshot,
                 quantity: it.quantity ?? 1,
-                rate: 0,
+                rate: it.unitPriceMinor ?? 0,
             })),
         };
     }

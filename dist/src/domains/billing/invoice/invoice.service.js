@@ -120,10 +120,9 @@ let InvoiceService = class InvoiceService {
                 },
             };
         });
-        const shippingTotalMajor = ord.shippingTotal ?? 0;
-        const shippingFeeMinor = toMinorFromMajor(shippingTotalMajor);
+        const shippingFeeMinor = Number(ord.shippingTotalMinor ?? 0);
         if (shippingFeeMinor > 0) {
-            const shippingName = ord.shippingMethodMeta?.rateSnapshot?.name ??
+            const shippingName = ord.shippingMethodMeta?.rate?.name ??
                 ord.shippingMethod ??
                 'Shipping';
             lineRows.push({
@@ -152,7 +151,6 @@ let InvoiceService = class InvoiceService {
                     fulfillmentType: ord.fulfillmentType ?? 'delivery',
                     method: ord.shippingMethod ?? null,
                     rateSnapshot: ord.shippingMethodMeta ?? null,
-                    shippingTotalMajor: shippingTotalMajor,
                 },
             });
         }

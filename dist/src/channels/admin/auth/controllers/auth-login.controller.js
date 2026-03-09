@@ -64,8 +64,8 @@ let AuthLoginController = class AuthLoginController {
             onboardingCompleted,
         };
     }
-    async refreshToken(user, dto) {
-        return this.auth.refreshToken(user, dto);
+    async refreshToken(user) {
+        return this.auth.refreshToken(user);
     }
     async logout(user, reply) {
         const result = await this.auth.logout(user);
@@ -98,9 +98,8 @@ __decorate([
     (0, common_1.UseGuards)(refresh_guard_1.RefreshJwtGuard),
     (0, common_1.Post)('refresh'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
-    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, token_dto_1.TokenDto]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthLoginController.prototype, "refreshToken", null);
 __decorate([

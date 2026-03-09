@@ -36,6 +36,15 @@ let QuoteController = class QuoteController extends base_controller_1.BaseContro
     createQuote(user, dto, ip) {
         return this.quoteService.create(user.companyId, dto, user, ip);
     }
+    addQuoteItems(user, quoteId, dto, ip) {
+        return this.quoteService.addItems(user.companyId, quoteId, dto.items, user, ip);
+    }
+    updateQuoteItems(user, quoteId, dto, ip) {
+        return this.quoteService.updateItems(user.companyId, quoteId, dto.items, user, ip);
+    }
+    removeQuoteItems(user, quoteId, dto, ip) {
+        return this.quoteService.removeItems(user.companyId, quoteId, dto.itemIds, user, ip);
+    }
     updateQuote(user, quoteId, dto, ip) {
         return this.quoteService.update(user.companyId, quoteId, dto, user, ip);
     }
@@ -78,6 +87,39 @@ __decorate([
     __metadata("design:paramtypes", [Object, create_quote_dto_1.CreateQuoteDto, String]),
     __metadata("design:returntype", void 0)
 ], QuoteController.prototype, "createQuote", null);
+__decorate([
+    (0, common_1.Post)(':quoteId/items'),
+    (0, common_1.SetMetadata)('permissions', ['quotes.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('quoteId')),
+    __param(2, (0, common_1.Body)()),
+    __param(3, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object, String]),
+    __metadata("design:returntype", void 0)
+], QuoteController.prototype, "addQuoteItems", null);
+__decorate([
+    (0, common_1.Patch)(':quoteId/items'),
+    (0, common_1.SetMetadata)('permissions', ['quotes.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('quoteId')),
+    __param(2, (0, common_1.Body)()),
+    __param(3, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object, String]),
+    __metadata("design:returntype", void 0)
+], QuoteController.prototype, "updateQuoteItems", null);
+__decorate([
+    (0, common_1.Delete)(':quoteId/items'),
+    (0, common_1.SetMetadata)('permissions', ['quotes.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('quoteId')),
+    __param(2, (0, common_1.Body)()),
+    __param(3, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object, String]),
+    __metadata("design:returntype", void 0)
+], QuoteController.prototype, "removeQuoteItems", null);
 __decorate([
     (0, common_1.Patch)(':quoteId'),
     (0, common_1.SetMetadata)('permissions', ['quotes.update']),

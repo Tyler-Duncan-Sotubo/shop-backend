@@ -16,6 +16,7 @@ export declare class DashboardCommerceAnalyticsService {
     private orderWhere;
     private customerWhere;
     private visitsWhere;
+    private paidInvoicesSubquery;
     private computeCards;
     private computeGrossSalesCards;
     grossSalesCards(args: DashboardRangeArgs): Promise<GrossSalesCardsResult>;

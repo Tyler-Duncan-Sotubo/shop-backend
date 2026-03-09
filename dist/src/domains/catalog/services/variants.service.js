@@ -221,8 +221,15 @@ let VariantsService = class VariantsService {
                 where.push((0, drizzle_orm_1.eq)(schema_1.productVariants.isActive, isActive));
             }
             if (normalizedSearch) {
-                const q = `%${normalizedSearch}%`;
-                where.push((0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.productVariants.sku, q), (0, drizzle_orm_1.ilike)(schema_1.productVariants.title, q)));
+                const tokens = normalizedSearch
+                    .split(/\s+/)
+                    .map((t) => t.trim())
+                    .filter(Boolean);
+                const tokenConditions = tokens.map((token) => {
+                    const q = `%${token}%`;
+                    return (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.productVariants.sku, q), (0, drizzle_orm_1.ilike)(schema_1.productVariants.title, q), (0, drizzle_orm_1.ilike)(schema_1.products.name, q), (0, drizzle_orm_1.sql) `concat_ws(' ', ${schema_1.products.name}, ${schema_1.productVariants.title}, ${schema_1.productVariants.sku}) ILIKE ${q}`);
+                });
+                where.push((0, drizzle_orm_1.and)(...tokenConditions));
             }
             const suggestedUnitPriceExpr = schema_1.productVariants.price
                 ? (0, drizzle_orm_1.sql) `COALESCE(${schema_1.productVariants.price}, 0)`

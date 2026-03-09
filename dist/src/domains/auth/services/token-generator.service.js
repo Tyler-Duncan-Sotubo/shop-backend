@@ -32,7 +32,7 @@ let TokenGeneratorService = class TokenGeneratorService {
         const payload = { sub: user.id, email: user.email };
         const accessSecret = this.mustGetString('JWT_SECRET');
         const refreshSecret = this.mustGetString('JWT_REFRESH_SECRET');
-        const accessExpSeconds = this.getNumberOrDefault('JWT_EXPIRATION', 3600);
+        const accessExpSeconds = this.getNumberOrDefault('JWT_EXPIRATION', 1200);
         const refreshExpSeconds = this.getNumberOrDefault('JWT_REFRESH_EXPIRATION', 60 * 60 * 24 * 7);
         const accessToken = this.jwtService.sign(payload, {
             secret: accessSecret,

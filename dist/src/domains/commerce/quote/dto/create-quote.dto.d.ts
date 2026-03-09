@@ -14,6 +14,6 @@ export declare class CreateQuoteDto {
     status?: string;
     meta?: Record<string, unknown>;
     expiresAt?: Date;
-    items: CreateQuoteItemDto[];
+    items?: CreateQuoteItemDto[];
 }
 export {};

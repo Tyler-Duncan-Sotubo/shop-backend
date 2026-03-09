@@ -71,5 +71,5 @@ export class CreateQuoteDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateQuoteItemDto)
-  items: CreateQuoteItemDto[];
+  items?: CreateQuoteItemDto[];
 }

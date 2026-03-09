@@ -229,7 +229,42 @@ export declare class CartService {
             cartItemId: string;
         })[];
     }>;
-    createCart(companyId: string, storeId: string, dto: CreateCartDto, user?: User, ip?: string): Promise<any>;
+    createCart(companyId: string, storeId: string, dto: CreateCartDto, user?: User, ip?: string): Promise<{
+        items: never[];
+        guestToken: string;
+        guestRefreshToken: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        status: "active" | "converted" | "abandoned" | "expired";
+        expiresAt: Date;
+        storeId: string;
+        customerId: string | null;
+        metadata: Record<string, any> | null;
+        cartId: number;
+        ownerType: "customer" | "guest";
+        guestRefreshTokenHash: string | null;
+        guestRefreshTokenExpiresAt: Date | null;
+        currency: string;
+        subtotal: string;
+        discountTotal: string;
+        taxTotal: string;
+        shippingTotal: string;
+        total: string;
+        totalsBreakdown: Record<string, any> | null;
+        selectedShippingRateId: string | null;
+        selectedShippingMethodLabel: string | null;
+        lastActivityAt: Date;
+        originInventoryLocationId: string | null;
+        channel: "online" | "pos";
+        fulfillmentMode: string;
+        fulfillmentBreakdown: {
+            originInventoryLocationId?: string | null;
+            mode: "pos_location" | "single_location" | "split";
+        } | null;
+        convertedOrderId: string | null;
+    }>;
     claimGuestCart(companyId: string, storeId: string, customerId: string, guestToken: string, user?: User, ip?: string): Promise<{
         items: ({
             availableQty: number;

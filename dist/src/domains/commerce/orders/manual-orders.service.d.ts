@@ -19,7 +19,7 @@ export declare class ManualOrdersService {
     createManualOrder(companyId: string, input: CreateManualOrderDto, actor?: User, ip?: string, ctx?: {
         tx?: TxOrDb;
     }): Promise<any>;
-    addItem(companyId: string, input: AddManualOrderItemDto, actor?: User, ip?: string, ctx?: {
+    addItem(companyId: string, input: AddManualOrderItemDto, isQuoteDerived?: boolean, actor?: User, ip?: string, ctx?: {
         tx?: TxOrDb;
     }): Promise<any>;
     updateItem(companyId: string, input: UpdateManualOrderItemDto, actor?: User, ip?: string, ctx?: {

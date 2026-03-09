@@ -63,10 +63,33 @@ export class OrdersController extends BaseController {
     return this.orders.fulfill(user.companyId, id, user, undefined);
   }
 
-  @Post(':id/sync-zoho')
+  @Patch(':orderId/customer-shipping')
   @SetMetadata('permissions', ['orders.update'])
-  syncZohoChanges(@CurrentUser() user: User, @Param('id') id: string) {
-    return this.orders.syncZohoChanges(user.companyId, id, user, undefined);
+  updateCustomerAndShipping(
+    @CurrentUser() user: User,
+    @Param('orderId') orderId: string,
+    @Body()
+    dto: {
+      customerId?: string;
+      createCustomer?: {
+        email: string;
+        firstName?: string;
+        lastName?: string;
+        phone?: string;
+      };
+      shippingAddressId?: string;
+      billingAddressId?: string | null;
+      shippingRateId?: string | null;
+    },
+    @Ip() ip: string,
+  ) {
+    return this.orders.updateCustomerAndShipping(
+      user.companyId,
+      orderId,
+      dto,
+      user,
+      ip,
+    );
   }
 
   // MANUAL ORDERS
@@ -92,7 +115,13 @@ export class OrdersController extends BaseController {
     @Body() dto: AddManualOrderItemDto,
     @Ip() ip: string,
   ) {
-    return this.manualOrdersService.addItem(user.companyId, dto, user, ip);
+    return this.manualOrdersService.addItem(
+      user.companyId,
+      dto,
+      false,
+      user,
+      ip,
+    );
   }
 
   @Patch('manual/items/:itemId')

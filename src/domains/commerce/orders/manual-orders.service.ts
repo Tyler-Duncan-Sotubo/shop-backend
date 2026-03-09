@@ -109,21 +109,21 @@ export class ManualOrdersService {
       if (!input.originInventoryLocationId) {
         throw new BadRequestException('originInventoryLocationId is required');
       }
-      if (!input.currency)
+
+      if (!input.currency) {
         throw new BadRequestException('currency is required');
+      }
 
-      // ✅ allocate sequential number from order_counters (locked in-tx)
       const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
-
-      // optional: prefix to match your existing format (adjust to your needs)
       const orderNo = `ORD-${String(nextNo).padStart(6, '0')}`;
+
+      const isFromQuote = !!input.quoteRequestId;
 
       const [created] = await tx
         .insert(orders)
         .values({
-          id: sql`gen_random_uuid()` as any,
           companyId,
-          orderNumber: orderNo, // ✅ no more random
+          orderNumber: orderNo,
           status: 'draft',
           channel: input.channel ?? 'manual',
           currency: input.currency,
@@ -133,6 +133,19 @@ export class ManualOrdersService {
           shippingAddress: input.shippingAddress ?? null,
           billingAddress: input.billingAddress ?? null,
           originInventoryLocationId: input.originInventoryLocationId,
+
+          ...(isFromQuote
+            ? {
+                quoteRequestId: input.quoteRequestId ?? null,
+                sourceType: 'quote',
+                zohoOrganizationId: input.zohoOrganizationId ?? null,
+                zohoContactId: input.zohoContactId ?? null,
+                zohoEstimateId: input.zohoEstimateId ?? null,
+                zohoEstimateNumber: input.zohoEstimateNumber ?? null,
+                zohoEstimateStatus: input.zohoEstimateStatus ?? null,
+              }
+            : {}),
+
           subtotal: '0.00',
           discountTotal: '0.00',
           taxTotal: '0.00',
@@ -147,12 +160,14 @@ export class ManualOrdersService {
       await tx.insert(orderEvents).values({
         companyId,
         orderId: created.id,
-        type: 'created_manual',
+        type: isFromQuote ? 'created_from_quote' : 'created_manual',
         fromStatus: null,
         toStatus: created.status,
         actorUserId: actor?.id ?? null,
         ipAddress: ip ?? null,
-        message: 'Manual order created',
+        message: isFromQuote
+          ? 'Order created from quote'
+          : 'Manual order created',
       });
 
       if (actor?.id) {
@@ -161,7 +176,9 @@ export class ManualOrdersService {
           entity: 'order',
           entityId: created.id,
           userId: actor.id,
-          details: 'Created manual order',
+          details: isFromQuote
+            ? 'Created order from quote'
+            : 'Created manual order',
           ipAddress: ip,
           changes: {
             companyId,
@@ -170,6 +187,8 @@ export class ManualOrdersService {
             status: created.status,
             currency: created.currency,
             orderNumber: created.orderNumber,
+            quoteRequestId: isFromQuote ? (input.quoteRequestId ?? null) : null,
+            sourceType: isFromQuote ? 'quote' : null,
           },
         });
       }
@@ -180,6 +199,7 @@ export class ManualOrdersService {
     const result = outerTx
       ? await run(outerTx)
       : await this.db.transaction(run);
+
     await this.cache.bumpCompanyVersion(companyId);
     return result;
   }
@@ -201,6 +221,7 @@ export class ManualOrdersService {
   async addItem(
     companyId: string,
     input: AddManualOrderItemDto,
+    isQuoteDerived?: boolean,
     actor?: User,
     ip?: string,
     ctx?: { tx?: TxOrDb },
@@ -336,14 +357,18 @@ export class ManualOrdersService {
       }
 
       // ✅ Reserve inventory
-      await this.stock.reserveForOrderInTx(
-        tx,
-        companyId,
-        input.orderId,
-        origin,
-        input.variantId,
-        qty,
-      );
+      const isQuoteDerivedOrder = isQuoteDerived === true;
+
+      if (!isQuoteDerivedOrder) {
+        await this.stock.reserveForOrderInTx(
+          tx,
+          companyId,
+          input.orderId,
+          origin,
+          input.variantId,
+          qty,
+        );
+      }
 
       const lineTotal = unitPrice * qty;
 
@@ -799,6 +824,17 @@ export class ManualOrdersService {
     companyId: string,
     orderId: string,
   ) {
+    const [ord] = await tx
+      .select({
+        shippingTotal: orders.shippingTotal,
+        shippingTotalMinor: (orders as any).shippingTotalMinor,
+      })
+      .from(orders)
+      .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+      .execute();
+
+    if (!ord) throw new NotFoundException('Order not found');
+
     const [{ subtotal }] = await tx
       .select({
         subtotal: sql<string>`COALESCE(SUM(${orderItems.lineTotal}), 0)::text`,
@@ -812,17 +848,18 @@ export class ManualOrdersService {
       )
       .execute();
 
-    // numeric fields stored as strings in drizzle sometimes; keep them as strings
-    const subtotalStr = (subtotal ?? '0.00').toString();
+    const subtotalNum = Number(subtotal ?? '0');
+    const shippingNum = Number(ord.shippingTotal ?? '0');
+    const totalNum = subtotalNum + shippingNum;
 
     await tx
       .update(orders)
       .set({
-        subtotal: subtotalStr,
+        subtotal: subtotalNum.toFixed(2),
         discountTotal: '0.00',
         taxTotal: '0.00',
-        shippingTotal: '0.00',
-        total: subtotalStr,
+        shippingTotal: (ord.shippingTotal ?? '0.00').toString(),
+        total: totalNum.toFixed(2),
         updatedAt: new Date(),
       } as any)
       .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))

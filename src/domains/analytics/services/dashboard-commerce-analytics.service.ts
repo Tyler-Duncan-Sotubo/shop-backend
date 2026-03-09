@@ -24,6 +24,7 @@ import {
   productImages,
   invoices,
   payments,
+  invoiceLines,
 } from 'src/infrastructure/drizzle/schema';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
 import {
@@ -110,25 +111,55 @@ export class DashboardCommerceAnalyticsService {
     return and(...clauses);
   }
 
+  private paidInvoicesSubquery(companyId: string) {
+    return this.db
+      .select({
+        invoiceId: payments.invoiceId,
+        invoicePaidAt: sql<Date>`
+        max(coalesce(${payments.confirmedAt}, ${payments.receivedAt}, ${payments.createdAt}))
+      `.as('invoice_paid_at'),
+      })
+      .from(payments)
+      .where(eq(payments.companyId, companyId))
+      .groupBy(payments.invoiceId)
+      .as('paid_invoices');
+  }
   private async computeCards(args: DashboardRangeArgs) {
-    // Total sales + orders
+    const paidInvoices = this.paidInvoicesSubquery(args.companyId);
+
+    // total sales from PAID invoices
+    const [sales] = await this.db
+      .select({
+        totalSalesMinor: sql<number>`coalesce(sum(${invoices.totalMinor}), 0) / 100.0`,
+      })
+      .from(invoices)
+      .innerJoin(paidInvoices, eq(paidInvoices.invoiceId, invoices.id))
+      .where(
+        and(
+          eq(invoices.companyId, args.companyId),
+          eq(invoices.status, 'paid'),
+          gte(paidInvoices.invoicePaidAt, args.from),
+          lt(paidInvoices.invoicePaidAt, args.to),
+          args.storeId ? eq(invoices.storeId, args.storeId) : undefined,
+        ),
+      )
+      .execute();
+
+    // order counts still from orders
     const [salesOrders] = await this.db
       .select({
-        totalSalesMinor: sql<number>`coalesce(sum(${orders.total}), 0)`,
         totalOrders: sql<number>`count(*)`,
       })
       .from(orders)
       .where(this.orderWhere(args))
       .execute();
 
-    // New customers
     const [cust] = await this.db
       .select({ newCustomers: sql<number>`count(*)` })
       .from(customers)
       .where(this.customerWhere(args))
       .execute();
 
-    // Web visits (distinct sessions)
     const [visits] = await this.db
       .select({
         webVisits: sql<number>`count(distinct ${storefrontEvents.sessionId})`,
@@ -138,7 +169,7 @@ export class DashboardCommerceAnalyticsService {
       .execute();
 
     return {
-      totalSalesMinor: Number(salesOrders?.totalSalesMinor ?? 0),
+      totalSalesMinor: Number(sales?.totalSalesMinor ?? 0),
       totalOrders: Number(salesOrders?.totalOrders ?? 0),
       newCustomers: Number(cust?.newCustomers ?? 0),
       webVisits: Number(visits?.webVisits ?? 0),
@@ -146,24 +177,26 @@ export class DashboardCommerceAnalyticsService {
   }
 
   private async computeGrossSalesCards(args: DashboardRangeArgs) {
-    // 1) gross sales from PAID invoices (and optional store filter via orders join if you have invoice->orderId)
+    const paidInvoices = this.paidInvoicesSubquery(args.companyId);
+
+    // gross sales from PAID invoices
     const [gross] = await this.db
       .select({
         grossSalesMinor: sql<number>`coalesce(sum(${invoices.subtotalMinor}), 0)`,
       })
       .from(invoices)
+      .innerJoin(paidInvoices, eq(paidInvoices.invoiceId, invoices.id))
       .where(
         and(
           eq(invoices.companyId, args.companyId),
           eq(invoices.status, 'paid'),
-          gte(invoices.createdAt, args.from),
-          lt(invoices.createdAt, args.to),
+          gte(paidInvoices.invoicePaidAt, args.from),
+          lt(paidInvoices.invoicePaidAt, args.to),
           args.storeId ? eq(invoices.storeId, args.storeId) : undefined,
         ),
       )
       .execute();
 
-    // 2) order counts
     const [counts] = await this.db
       .select({
         totalOrders: sql<number>`count(*)`,
@@ -338,38 +371,48 @@ export class DashboardCommerceAnalyticsService {
 
         const bucketExpr =
           bucket === 'month'
-            ? sql`date_trunc('month', ${orders.paidAt})`
+            ? sql`date_trunc('month', paid_invoices.paid_at)`
             : bucket === '15m'
-              ? sql`date_bin(interval '15 minutes', ${orders.paidAt}, date_trunc('day', ${args.from}::timestamptz))`
-              : sql`date_trunc('day', ${orders.paidAt})`;
+              ? sql`date_bin(interval '15 minutes', paid_invoices.paid_at, date_trunc('day', ${args.from}::timestamptz))`
+              : sql`date_trunc('day', paid_invoices.paid_at)`;
 
         const rows = await this.db.execute(sql`
-      with series as (
-        select generate_series(${seriesStart}, ${seriesEndInclusive}, ${interval}) as t
-      ),
-      agg as (
-        select
-          ${bucketExpr} as t,
-          count(*)::int as orders,
-          coalesce(sum(${orders.total}), 0)::bigint as sales_minor
-        from ${orders}
-        where
-          ${eq(orders.companyId, args.companyId)}
-          and ${orders.paidAt} is not null
-          and ${gte(orders.paidAt, args.from)}
-          and ${lt(orders.paidAt, args.to)}
-          and ${inArray(orders.status, [...this.SALE_STATUSES])}
-          and ${args.storeId ? eq(orders.storeId, args.storeId) : sql`true`}
-        group by 1
-      )
-      select
-        series.t as t,
-        coalesce(agg.orders, 0)::int as orders,
-        coalesce(agg.sales_minor, 0)::bigint as sales_minor
-      from series
-      left join agg using (t)
-      order by series.t asc;
-    `);
+          with paid_invoices as (
+            select
+              p.invoice_id,
+              max(coalesce(p.confirmed_at, p.received_at, p.created_at)) as paid_at
+            from ${payments} p
+            where p.company_id = ${args.companyId}
+            group by p.invoice_id
+          ),
+          series as (
+            select generate_series(${seriesStart}, ${seriesEndInclusive}, ${interval}) as t
+          ),
+          agg as (
+            select
+              ${bucketExpr} as t,
+              count(distinct coalesce(${invoices.orderId}::text, ${invoices.id}::text))::int as orders,
+              coalesce(sum(${invoices.totalMinor}), 0)::bigint as sales_minor
+            from ${invoices}
+            inner join paid_invoices
+              on paid_invoices.invoice_id = ${invoices.id}
+            where
+              ${invoices.companyId} = ${args.companyId}
+              and ${invoices.status} = 'paid'
+              and paid_invoices.paid_at is not null
+              and paid_invoices.paid_at >= ${args.from}
+              and paid_invoices.paid_at < ${args.to}
+              and ${args.storeId ? eq(invoices.storeId, args.storeId) : sql`true`}
+            group by 1
+          )
+          select
+            series.t as t,
+            coalesce(agg.orders, 0)::int as orders,
+            coalesce(agg.sales_minor, 0)::bigint as sales_minor
+          from series
+          left join agg using (t)
+          order by series.t asc;
+        `);
 
         const resultRows: any[] = Array.isArray((rows as any)?.rows)
           ? (rows as any).rows
@@ -378,7 +421,7 @@ export class DashboardCommerceAnalyticsService {
         return resultRows.map((r) => ({
           t: new Date(r.t).toISOString(),
           orders: Number(r.orders ?? 0),
-          salesMinor: Number(r.sales_minor ?? 0),
+          salesMinor: Number(r.sales_minor ?? 0) / 100.0,
         }));
       },
     );
@@ -399,10 +442,10 @@ export class DashboardCommerceAnalyticsService {
       this.keySuffix(args),
     ];
 
-    // aliases for fallback joins
     const dv = aliasedTable(productVariants, 'dv');
     const vi = aliasedTable(productImages, 'vi');
     const di = aliasedTable(productImages, 'di');
+    const paidInvoices = this.paidInvoicesSubquery(args.companyId);
 
     return this.cache.getOrSetVersioned(
       args.companyId,
@@ -410,62 +453,59 @@ export class DashboardCommerceAnalyticsService {
       async () => {
         const rows = await this.db
           .select({
-            productId: orderItems.productId,
-            variantId: orderItems.variantId,
+            productId: invoiceLines.productId,
+            variantId: invoiceLines.variantId,
 
             productName: products.name,
             variantTitle: productVariants.title,
 
-            // ✅ price + currency (prefer variant, else default variant)
             price: sql<string | null>`
-          coalesce(
-            ${productVariants.salePrice},
-            ${productVariants.regularPrice},
-            ${dv.salePrice},
-            ${dv.regularPrice}
-          )
-        `,
-            currency: sql<
-              string | null
-            >`coalesce(${productVariants.currency}, ${dv.currency})`,
+              coalesce(
+                ${productVariants.salePrice},
+                ${productVariants.regularPrice},
+                ${dv.salePrice},
+                ${dv.regularPrice}
+              )
+            `,
+            currency: sql<string | null>`
+              coalesce(${productVariants.currency}, ${dv.currency})
+            `,
 
-            // ✅ image (prefer variant image, else product default image)
             imageUrl: sql<string | null>`coalesce(${vi.url}, ${di.url})`,
 
-            // ✅ categories array
             categories: sql<string[]>`
-          coalesce(
-            array_remove(array_agg(distinct ${categories.name}), null),
-            '{}'
-          )
-        `,
+              coalesce(
+                array_remove(array_agg(distinct ${categories.name}), null),
+                '{}'
+              )
+            `,
 
-            quantity: sql<number>`coalesce(sum(${orderItems.quantity}), 0)`,
-            revenueMinor: sql<number>`coalesce(sum(${orderItems.lineTotal}), 0)`,
+            quantity: sql<number>`coalesce(sum(${invoiceLines.quantity}), 0)`,
+            revenueMinor: sql<number>`coalesce(sum(${invoiceLines.lineTotalMinor}), 0)  / 100.0`,
           })
-          .from(orderItems)
+          .from(invoiceLines)
           .innerJoin(
-            orders,
+            invoices,
             and(
-              eq(orders.id, orderItems.orderId),
-              eq(orders.companyId, orderItems.companyId),
+              eq(invoices.id, invoiceLines.invoiceId),
+              eq(invoices.companyId, invoiceLines.companyId),
             ),
           )
+          .innerJoin(paidInvoices, eq(paidInvoices.invoiceId, invoices.id))
           .leftJoin(
             products,
             and(
-              eq(products.id, orderItems.productId),
-              eq(products.companyId, orderItems.companyId),
+              eq(products.id, invoiceLines.productId),
+              eq(products.companyId, invoiceLines.companyId),
             ),
           )
           .leftJoin(
             productVariants,
             and(
-              eq(productVariants.id, orderItems.variantId),
-              eq(productVariants.companyId, orderItems.companyId),
+              eq(productVariants.id, invoiceLines.variantId),
+              eq(productVariants.companyId, invoiceLines.companyId),
             ),
           )
-          // default variant fallback (when orderItems.variantId is null)
           .leftJoin(
             dv,
             and(
@@ -473,7 +513,6 @@ export class DashboardCommerceAnalyticsService {
               eq(dv.companyId, products.companyId),
             ),
           )
-          // images
           .leftJoin(
             vi,
             and(
@@ -488,7 +527,6 @@ export class DashboardCommerceAnalyticsService {
               eq(di.companyId, products.companyId),
             ),
           )
-          // categories mapping
           .leftJoin(
             productCategories,
             and(
@@ -505,16 +543,16 @@ export class DashboardCommerceAnalyticsService {
           )
           .where(
             and(
-              eq(orders.companyId, args.companyId),
-              gte(orders.createdAt, args.from),
-              lt(orders.createdAt, args.to),
-              inArray(orders.status, [...this.SALE_STATUSES]),
-              args.storeId ? eq(orders.storeId, args.storeId) : sql`true`,
+              eq(invoices.companyId, args.companyId),
+              eq(invoices.status, 'paid'),
+              gte(paidInvoices.invoicePaidAt, args.from),
+              lt(paidInvoices.invoicePaidAt, args.to),
+              args.storeId ? eq(invoices.storeId, args.storeId) : sql`true`,
             ),
           )
           .groupBy(
-            orderItems.productId,
-            orderItems.variantId,
+            invoiceLines.productId,
+            invoiceLines.variantId,
             products.name,
             productVariants.title,
             productVariants.salePrice,
@@ -529,8 +567,8 @@ export class DashboardCommerceAnalyticsService {
           .orderBy(
             desc(
               by === 'units'
-                ? sql`sum(${orderItems.quantity})`
-                : sql`sum(${orderItems.lineTotalMinor})`,
+                ? sql`sum(${invoiceLines.quantity})`
+                : sql`sum(${invoiceLines.lineTotalMinor})`,
             ),
           )
           .limit(limit)
@@ -543,7 +581,7 @@ export class DashboardCommerceAnalyticsService {
           variantTitle: r.variantTitle ?? null,
           imageUrl: (r.imageUrl ?? null) as string | null,
           categories: (r.categories ?? []) as string[],
-          price: (r.price ?? null) as string | null, // numeric -> string
+          price: (r.price ?? null) as string | null,
           currency: (r.currency ?? null) as string | null,
           quantity: Number(r.quantity ?? 0),
           revenueMinor: Number(r.revenueMinor ?? 0),
@@ -770,15 +808,15 @@ export class DashboardCommerceAnalyticsService {
   async ordersByChannelPie(
     args: DashboardRangeArgs & {
       storeId?: string;
-      metric?: 'orders' | 'revenue'; // default "orders"
+      metric?: 'orders' | 'revenue';
     },
   ): Promise<
     {
-      channel: string; // "online" | "manual" | "pos" | "unknown"
-      label: string; // pretty label for UI
-      value: number; // count or revenueMinor depending on metric
-      ordersCount: number; // always included (handy for tooltips)
-      revenueMinor: number; // always included (handy for tooltips)
+      channel: string;
+      label: string;
+      value: number;
+      ordersCount: number;
+      revenueMinor: number;
     }[]
   > {
     const metric = args.metric ?? 'orders';
@@ -796,11 +834,12 @@ export class DashboardCommerceAnalyticsService {
       args.companyId,
       cacheKeyParts,
       async () => {
-        const rows = await this.db
+        const paidInvoices = this.paidInvoicesSubquery(args.companyId);
+
+        const orderRows = await this.db
           .select({
             channel: sql<string>`coalesce(${orders.channel}, 'unknown')`,
             ordersCount: sql<number>`count(*)`,
-            revenueMinor: sql<number>`coalesce(sum(${orders.total}), 0)`,
           })
           .from(orders)
           .where(
@@ -813,8 +852,58 @@ export class DashboardCommerceAnalyticsService {
             ),
           )
           .groupBy(sql`coalesce(${orders.channel}, 'unknown')`)
-          .orderBy(desc(sql`count(*)`))
           .execute();
+
+        const revenueRows = await this.db
+          .select({
+            channel: sql<string>`coalesce(${orders.channel}, 'unknown')`,
+            revenueMinor: sql<number>`coalesce(sum(${invoices.totalMinor}), 0) / 100.0`,
+          })
+          .from(invoices)
+          .innerJoin(paidInvoices, eq(paidInvoices.invoiceId, invoices.id))
+          .leftJoin(
+            orders,
+            and(
+              eq(orders.id, invoices.orderId),
+              eq(orders.companyId, invoices.companyId),
+            ),
+          )
+          .where(
+            and(
+              eq(invoices.companyId, args.companyId),
+              eq(invoices.status, 'paid'),
+              gte(paidInvoices.invoicePaidAt, args.from),
+              lt(paidInvoices.invoicePaidAt, args.to),
+              args.storeId ? eq(invoices.storeId, args.storeId) : sql`true`,
+            ),
+          )
+          .groupBy(sql`coalesce(${orders.channel}, 'unknown')`)
+          .execute();
+
+        const map = new Map<
+          string,
+          { channel: string; ordersCount: number; revenueMinor: number }
+        >();
+
+        for (const r of orderRows) {
+          const channel = String(r.channel ?? 'unknown');
+          map.set(channel, {
+            channel,
+            ordersCount: Number(r.ordersCount ?? 0),
+            revenueMinor: 0,
+          });
+        }
+
+        for (const r of revenueRows) {
+          const channel = String(r.channel ?? 'unknown');
+          const existing = map.get(channel) ?? {
+            channel,
+            ordersCount: 0,
+            revenueMinor: 0,
+          };
+          existing.revenueMinor = Number(r.revenueMinor ?? 0);
+          map.set(channel, existing);
+        }
 
         const labelFor = (c: string) => {
           if (c === 'online') return 'Online';
@@ -823,19 +912,15 @@ export class DashboardCommerceAnalyticsService {
           return 'Unknown';
         };
 
-        return rows.map((r) => {
-          const channel = String(r.channel ?? 'unknown');
-          const ordersCount = Number(r.ordersCount ?? 0);
-          const revenueMinor = Number(r.revenueMinor ?? 0);
-
-          return {
-            channel,
-            label: labelFor(channel),
-            value: metric === 'revenue' ? revenueMinor : ordersCount,
-            ordersCount,
-            revenueMinor,
-          };
-        });
+        return Array.from(map.values())
+          .map((r) => ({
+            channel: r.channel,
+            label: labelFor(r.channel),
+            value: metric === 'revenue' ? r.revenueMinor : r.ordersCount,
+            ordersCount: r.ordersCount,
+            revenueMinor: r.revenueMinor,
+          }))
+          .sort((a, b) => b.value - a.value);
       },
     );
   }

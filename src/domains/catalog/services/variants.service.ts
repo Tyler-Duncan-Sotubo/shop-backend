@@ -324,10 +324,23 @@ export class VariantsService {
       }
 
       if (normalizedSearch) {
-        const q = `%${normalizedSearch}%`;
-        where.push(
-          or(ilike(productVariants.sku, q), ilike(productVariants.title, q)),
-        );
+        const tokens = normalizedSearch
+          .split(/\s+/)
+          .map((t) => t.trim())
+          .filter(Boolean);
+
+        const tokenConditions = tokens.map((token) => {
+          const q = `%${token}%`;
+
+          return or(
+            ilike(productVariants.sku, q),
+            ilike(productVariants.title, q),
+            ilike(products.name, q),
+            sql`concat_ws(' ', ${products.name}, ${productVariants.title}, ${productVariants.sku}) ILIKE ${q}`,
+          );
+        });
+
+        where.push(and(...tokenConditions));
       }
 
       // Replace with real price column if you have one:
@@ -335,7 +348,7 @@ export class VariantsService {
         ? sql<number>`COALESCE(${(productVariants as any).price}, 0)`
         : sql<number | null>`NULL`;
 
-      // total available per variant (could be multiple inventory rows)
+      // total available per variant
       const availableExpr = sql<number>`COALESCE(SUM(${inventoryItems.available}), 0)`;
 
       const rows = await this.db
@@ -343,16 +356,12 @@ export class VariantsService {
           id: productVariants.id,
           title: productVariants.title,
           sku: productVariants.sku,
-
           productName: products.name,
           imageUrl: productImages.url,
-
           suggestedUnitPrice: suggestedUnitPriceExpr,
           available: availableExpr,
         })
         .from(productVariants)
-
-        // ✅ only variants that exist in inventoryItems
         .innerJoin(
           inventoryItems,
           and(
@@ -362,7 +371,6 @@ export class VariantsService {
             // eq(inventoryItems.storeId, storeId),
           ),
         )
-
         .leftJoin(
           products,
           and(
@@ -384,13 +392,8 @@ export class VariantsService {
           productVariants.sku,
           products.name,
           productImages.url,
-          // if suggestedUnitPriceExpr references a real column, groupBy may be needed depending on DB
-          // (if it’s a column, add it here)
         )
-
-        // ✅ only keep in-stock variants
         .having(gt(availableExpr, 0))
-
         .limit(limit)
         .offset(offset)
         .execute();

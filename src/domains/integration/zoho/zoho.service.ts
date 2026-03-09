@@ -120,24 +120,31 @@ export class ZohoService {
 
     const now = new Date();
 
-    if (
-      connection.accessToken &&
-      connection.accessTokenExpiresAt &&
-      connection.accessTokenExpiresAt > now
-    ) {
+    const expiresAt = connection.accessTokenExpiresAt
+      ? new Date(connection.accessTokenExpiresAt)
+      : null;
+
+    const hasValidExpiry =
+      expiresAt instanceof Date && !Number.isNaN(expiresAt.getTime());
+
+    if (connection.accessToken && hasValidExpiry && expiresAt > now) {
       return connection.accessToken;
     }
 
-    // 🔄 Refresh automatically
     const refreshed = await this.refreshAccessToken({
       region: connection.region,
       refreshToken: connection.refreshToken,
     });
 
-    // Save new token
+    const refreshedExpiresAt = new Date(refreshed.expiresAt);
+
+    if (Number.isNaN(refreshedExpiresAt.getTime())) {
+      throw new Error('Invalid expiry from Zoho');
+    }
+
     await this.updateForStore(companyId, storeId, {
       accessToken: refreshed.accessToken,
-      accessTokenExpiresAt: refreshed.expiresAt,
+      accessTokenExpiresAt: refreshedExpiresAt,
     } as any);
 
     return refreshed.accessToken;

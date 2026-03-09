@@ -646,7 +646,7 @@ export class ShippingRatesService {
     });
   }
 
-  private async computeRateAmount(
+  async computeRateAmount(
     companyId: string,
     rateId: string,
     calc: string,

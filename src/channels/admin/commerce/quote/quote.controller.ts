@@ -51,6 +51,78 @@ export class QuoteController extends BaseController {
     return this.quoteService.create(user.companyId, dto, user, ip);
   }
 
+  @Post(':quoteId/items')
+  @SetMetadata('permissions', ['quotes.update'])
+  addQuoteItems(
+    @CurrentUser() user: User,
+    @Param('quoteId') quoteId: string,
+    @Body()
+    dto: {
+      items: {
+        variantId?: string | null;
+        quantity?: number;
+      }[];
+    },
+    @Ip() ip: string,
+  ) {
+    return this.quoteService.addItems(
+      user.companyId,
+      quoteId,
+      dto.items,
+      user,
+      ip,
+    );
+  }
+
+  /**
+   * Update quantities of quote items
+   */
+  @Patch(':quoteId/items')
+  @SetMetadata('permissions', ['quotes.update'])
+  updateQuoteItems(
+    @CurrentUser() user: User,
+    @Param('quoteId') quoteId: string,
+    @Body()
+    dto: {
+      items: {
+        itemId: string;
+        quantity: number;
+      }[];
+    },
+    @Ip() ip: string,
+  ) {
+    return this.quoteService.updateItems(
+      user.companyId,
+      quoteId,
+      dto.items,
+      user,
+      ip,
+    );
+  }
+
+  /**
+   * Remove items from quote
+   */
+  @Delete(':quoteId/items')
+  @SetMetadata('permissions', ['quotes.update'])
+  removeQuoteItems(
+    @CurrentUser() user: User,
+    @Param('quoteId') quoteId: string,
+    @Body()
+    dto: {
+      itemIds: string[];
+    },
+    @Ip() ip: string,
+  ) {
+    return this.quoteService.removeItems(
+      user.companyId,
+      quoteId,
+      dto.itemIds,
+      user,
+      ip,
+    );
+  }
+
   @Patch(':quoteId')
   @SetMetadata('permissions', ['quotes.update'])
   updateQuote(

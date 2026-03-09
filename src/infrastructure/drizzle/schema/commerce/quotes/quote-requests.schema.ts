@@ -7,6 +7,7 @@ import {
   integer,
   jsonb,
   uniqueIndex,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import { companies } from '../../companies/companies.schema';
 import { stores } from '../stores/stores.schema'; // adjust path/name to your stores table
@@ -18,7 +19,7 @@ export const quoteRequests = pgTable(
   'quote_requests',
   {
     id: uuid('id').primaryKey().$defaultFn(defaultId),
-
+    quoteNumber: varchar('quote_number', { length: 32 }),
     companyId: uuid('company_id')
       .notNull()
       .references(() => companies.id, { onDelete: 'cascade' }),
@@ -40,7 +41,7 @@ export const quoteRequests = pgTable(
     expiresAt: timestamp('expires_at', { mode: 'date' }),
     archivedAt: timestamp('archived_at', { mode: 'date' }),
 
-    // Optional links to downstream objects (if you want)
+    // Optional links to downstream objects
     convertedInvoiceId: uuid('converted_invoice_id'),
     convertedOrderId: uuid('converted_order_id'),
 
@@ -48,13 +49,13 @@ export const quoteRequests = pgTable(
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { mode: 'date' }),
 
-    // 🕒 Lifecycle tracking
+    // Quote lifecycle
     createdZohoAt: timestamp('created_zoho_at', { mode: 'date' }),
     sentAt: timestamp('sent_at', { mode: 'date' }),
     acceptedAt: timestamp('accepted_at', { mode: 'date' }),
     convertedAt: timestamp('converted_at', { mode: 'date' }),
 
-    // 💰 Optional but recommended
+    // Money
     currency: text('currency').default('GBP'),
 
     totalsSnapshot: jsonb('totals_snapshot').$type<{
@@ -65,7 +66,14 @@ export const quoteRequests = pgTable(
       total?: number;
     }>(),
 
-    // 🔄 Sync health
+    // Zoho estimate ownership on quote (all nullable)
+    zohoContactId: text('zoho_contact_id'),
+    zohoOrganizationId: text('zoho_organization_id'),
+    zohoEstimateId: text('zoho_estimate_id'),
+    zohoEstimateNumber: text('zoho_estimate_number'),
+    zohoEstimateStatus: text('zoho_estimate_status'),
+
+    // Sync health
     lastSyncedAt: timestamp('last_synced_at', { mode: 'date' }),
     syncError: text('sync_error'),
   },
@@ -80,6 +88,11 @@ export const quoteRequests = pgTable(
       table.createdAt,
     ),
     index('idx_quote_requests_expires').on(table.expiresAt),
+    index('idx_quote_requests_zoho_estimate_id').on(table.zohoEstimateId),
+    uniqueIndex('quote_requests_company_quote_number_unique').on(
+      table.companyId,
+      table.quoteNumber,
+    ),
   ],
 );
 
@@ -134,4 +147,15 @@ export const quoteRequestItems = pgTable(
       table.nameSnapshot,
     ),
   ],
+);
+
+export const quoteCounters = pgTable(
+  'quote_counters',
+  {
+    id: uuid('id').primaryKey().$defaultFn(defaultId),
+    companyId: uuid('company_id').notNull(),
+    nextNumber: integer('next_number').notNull().default(1),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  },
+  (t) => [uniqueIndex('quote_counters_company_unique').on(t.companyId)],
 );

@@ -187,13 +187,14 @@ export class InvoiceService {
 
     // --- add shipping from orders.shippingTotal (major numeric) as a line ---
     // shippingTotal is NOT in order_items per your note
-    const shippingTotalMajor = (ord as any).shippingTotal ?? 0;
-    const shippingFeeMinor = toMinorFromMajor(shippingTotalMajor);
+    // --- add shipping as a line (amount stored as MAJOR string like "10000") ---
 
-    // only add if > 0
+    // --- add shipping as a line ---
+    const shippingFeeMinor = Number((ord as any).shippingTotalMinor ?? 0);
+
     if (shippingFeeMinor > 0) {
       const shippingName =
-        (ord as any).shippingMethodMeta?.rateSnapshot?.name ??
+        (ord as any).shippingMethodMeta?.rate?.name ??
         (ord as any).shippingMethod ??
         'Shipping';
 
@@ -230,7 +231,6 @@ export class InvoiceService {
           fulfillmentType: (ord as any).fulfillmentType ?? 'delivery',
           method: (ord as any).shippingMethod ?? null,
           rateSnapshot: (ord as any).shippingMethodMeta ?? null,
-          shippingTotalMajor: shippingTotalMajor,
         },
       });
     }

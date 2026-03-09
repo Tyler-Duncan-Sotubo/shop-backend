@@ -35,6 +35,11 @@ __decorate([
     __metadata("design:type", String)
 ], CreateManualOrderDto.prototype, "channel", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['manual', 'quote', 'pos', 'checkout']),
+    __metadata("design:type", String)
+], CreateManualOrderDto.prototype, "sourceType", void 0);
+__decorate([
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", String)
 ], CreateManualOrderDto.prototype, "originInventoryLocationId", void 0);
@@ -48,4 +53,34 @@ __decorate([
     (0, class_validator_1.IsObject)(),
     __metadata("design:type", Object)
 ], CreateManualOrderDto.prototype, "billingAddress", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", Object)
+], CreateManualOrderDto.prototype, "quoteRequestId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], CreateManualOrderDto.prototype, "zohoOrganizationId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], CreateManualOrderDto.prototype, "zohoContactId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], CreateManualOrderDto.prototype, "zohoEstimateId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], CreateManualOrderDto.prototype, "zohoEstimateNumber", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], CreateManualOrderDto.prototype, "zohoEstimateStatus", void 0);
 //# sourceMappingURL=create-manual-order.dto.js.map

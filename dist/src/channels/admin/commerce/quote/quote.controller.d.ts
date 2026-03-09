@@ -11,6 +11,7 @@ export declare class QuoteController extends BaseController {
     getQuotes(user: User, query: GetQuotesQueryDto): Promise<{
         rows: {
             id: string;
+            quoteNumber: string | null;
             companyId: string;
             storeId: string;
             status: string;
@@ -36,6 +37,11 @@ export declare class QuoteController extends BaseController {
                 discount?: number;
                 total?: number;
             } | null;
+            zohoContactId: string | null;
+            zohoOrganizationId: string | null;
+            zohoEstimateId: string | null;
+            zohoEstimateNumber: string | null;
+            zohoEstimateStatus: string | null;
             lastSyncedAt: Date | null;
             syncError: string | null;
         }[];
@@ -61,18 +67,18 @@ export declare class QuoteController extends BaseController {
             createdAt: Date;
             deletedAt: Date | null;
         }[];
-        status: string;
         id: string;
+        quoteNumber: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
-        currency: string | null;
-        meta: Record<string, unknown> | null;
+        status: string;
         customerEmail: string;
         customerNote: string | null;
+        meta: Record<string, unknown> | null;
+        expiresAt: Date | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
@@ -80,6 +86,7 @@ export declare class QuoteController extends BaseController {
         sentAt: Date | null;
         acceptedAt: Date | null;
         convertedAt: Date | null;
+        currency: string | null;
         totalsSnapshot: {
             subtotal?: number;
             tax?: number;
@@ -87,22 +94,27 @@ export declare class QuoteController extends BaseController {
             discount?: number;
             total?: number;
         } | null;
+        zohoContactId: string | null;
+        zohoOrganizationId: string | null;
+        zohoEstimateId: string | null;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
         lastSyncedAt: Date | null;
         syncError: string | null;
     }>;
     createQuote(user: User, dto: CreateQuoteDto, ip: string): Promise<{
-        status: string;
         id: string;
+        quoteNumber: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
-        currency: string | null;
-        meta: Record<string, unknown> | null;
+        status: string;
         customerEmail: string;
         customerNote: string | null;
+        meta: Record<string, unknown> | null;
+        expiresAt: Date | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
@@ -110,6 +122,7 @@ export declare class QuoteController extends BaseController {
         sentAt: Date | null;
         acceptedAt: Date | null;
         convertedAt: Date | null;
+        currency: string | null;
         totalsSnapshot: {
             subtotal?: number;
             tax?: number;
@@ -117,11 +130,137 @@ export declare class QuoteController extends BaseController {
             discount?: number;
             total?: number;
         } | null;
+        zohoContactId: string | null;
+        zohoOrganizationId: string | null;
+        zohoEstimateId: string | null;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
+        lastSyncedAt: Date | null;
+        syncError: string | null;
+    }>;
+    addQuoteItems(user: User, quoteId: string, dto: {
+        items: {
+            variantId?: string | null;
+            quantity?: number;
+        }[];
+    }, ip: string): Promise<{
+        id: string;
+        quoteNumber: string | null;
+        companyId: string;
+        storeId: string;
+        status: string;
+        customerEmail: string;
+        customerNote: string | null;
+        meta: Record<string, unknown> | null;
+        expiresAt: Date | null;
+        archivedAt: Date | null;
+        convertedInvoiceId: string | null;
+        convertedOrderId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        createdZohoAt: Date | null;
+        sentAt: Date | null;
+        acceptedAt: Date | null;
+        convertedAt: Date | null;
+        currency: string | null;
+        totalsSnapshot: {
+            subtotal?: number;
+            tax?: number;
+            shipping?: number;
+            discount?: number;
+            total?: number;
+        } | null;
+        zohoContactId: string | null;
+        zohoOrganizationId: string | null;
+        zohoEstimateId: string | null;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
+        lastSyncedAt: Date | null;
+        syncError: string | null;
+    }>;
+    updateQuoteItems(user: User, quoteId: string, dto: {
+        items: {
+            itemId: string;
+            quantity: number;
+        }[];
+    }, ip: string): Promise<{
+        id: string;
+        quoteNumber: string | null;
+        companyId: string;
+        storeId: string;
+        status: string;
+        customerEmail: string;
+        customerNote: string | null;
+        meta: Record<string, unknown> | null;
+        expiresAt: Date | null;
+        archivedAt: Date | null;
+        convertedInvoiceId: string | null;
+        convertedOrderId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        createdZohoAt: Date | null;
+        sentAt: Date | null;
+        acceptedAt: Date | null;
+        convertedAt: Date | null;
+        currency: string | null;
+        totalsSnapshot: {
+            subtotal?: number;
+            tax?: number;
+            shipping?: number;
+            discount?: number;
+            total?: number;
+        } | null;
+        zohoContactId: string | null;
+        zohoOrganizationId: string | null;
+        zohoEstimateId: string | null;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
+        lastSyncedAt: Date | null;
+        syncError: string | null;
+    }>;
+    removeQuoteItems(user: User, quoteId: string, dto: {
+        itemIds: string[];
+    }, ip: string): Promise<{
+        id: string;
+        quoteNumber: string | null;
+        companyId: string;
+        storeId: string;
+        status: string;
+        customerEmail: string;
+        customerNote: string | null;
+        meta: Record<string, unknown> | null;
+        expiresAt: Date | null;
+        archivedAt: Date | null;
+        convertedInvoiceId: string | null;
+        convertedOrderId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        createdZohoAt: Date | null;
+        sentAt: Date | null;
+        acceptedAt: Date | null;
+        convertedAt: Date | null;
+        currency: string | null;
+        totalsSnapshot: {
+            subtotal?: number;
+            tax?: number;
+            shipping?: number;
+            discount?: number;
+            total?: number;
+        } | null;
+        zohoContactId: string | null;
+        zohoOrganizationId: string | null;
+        zohoEstimateId: string | null;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
         lastSyncedAt: Date | null;
         syncError: string | null;
     }>;
     updateQuote(user: User, quoteId: string, dto: UpdateQuoteDto, ip: string): Promise<{
         id: string;
+        quoteNumber: string | null;
         companyId: string;
         storeId: string;
         status: string;
@@ -147,6 +286,11 @@ export declare class QuoteController extends BaseController {
             discount?: number;
             total?: number;
         } | null;
+        zohoContactId: string | null;
+        zohoOrganizationId: string | null;
+        zohoEstimateId: string | null;
+        zohoEstimateNumber: string | null;
+        zohoEstimateStatus: string | null;
         lastSyncedAt: Date | null;
         syncError: string | null;
     }>;
@@ -157,7 +301,9 @@ export declare class QuoteController extends BaseController {
         zohoEstimateId: string;
         zohoEstimateNumber: string | null;
         zohoEstimateStatus: string | null;
-        orderId: string | undefined;
+        action: string;
+        quoteId: string;
+        convertedOrderId: string | null;
     }>;
     deleteQuote(user: User, quoteId: string, ip: string): Promise<{
         success: boolean;

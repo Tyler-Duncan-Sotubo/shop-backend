@@ -354,6 +354,7 @@ let InventoryStockService = class InventoryStockService {
             .returning({ id: schema_1.inventoryItems.id })
             .execute();
         if (updated.length === 0) {
+            console.log('this');
             throw new common_1.BadRequestException('Insufficient sellable stock to reserve.');
         }
         await this.ledger.logInTx(tx, {

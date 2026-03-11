@@ -53,10 +53,8 @@ let PaymentMethodsService = class PaymentMethodsService {
             provider: r.provider,
             publicConfig: this.pickPublicGatewayConfig(r.provider, r.config),
         }));
-        console.log('Gateway methods at checkout:', gateway);
         const bankTransfer = rows.find((r) => r.method === 'bank_transfer');
         const cash = rows.find((r) => r.method === 'cash');
-        console.log('Bank transfer method at checkout:', bankTransfer);
         return {
             storeId,
             methods: [

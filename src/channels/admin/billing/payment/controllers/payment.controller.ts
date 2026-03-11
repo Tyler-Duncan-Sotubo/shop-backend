@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Query,
   SetMetadata,
@@ -49,6 +50,72 @@ export class PaymentController extends BaseController {
     return this.paymentsService.listPayments(user.companyId, query);
   }
 
+  @Get('admin/orders/bank-transfer/pending-review')
+  @SetMetadata('permissions', ['payments.write'])
+  async listPendingOrderPaymentsForReview(@CurrentUser() user: User) {
+    const result = await this.paymentsService.listPendingOrderPaymentsForReview(
+      user.companyId,
+    );
+
+    return { data: result };
+  }
+
+  @Get(':paymentId/review')
+  @SetMetadata('permissions', ['payments.write'])
+  async getPendingOrderPaymentById(
+    @CurrentUser() user: User,
+    @Param('paymentId') paymentId: string,
+  ) {
+    const result = await this.paymentsService.getPendingOrderPaymentById(
+      user.companyId,
+      paymentId,
+    );
+
+    return { data: result };
+  }
+
+  @Get(':paymentId/evidence')
+  @SetMetadata('permissions', ['payments.write'])
+  async getPaymentEvidence(
+    @CurrentUser() user: User,
+    @Param('paymentId') paymentId: string,
+  ) {
+    const result = await this.paymentsService.getPaymentEvidence(
+      user.companyId,
+      paymentId,
+    );
+
+    return { data: result };
+  }
+
+  @Post('admin/orders/bank-transfer/finalize')
+  @SetMetadata('permissions', ['payments.write'])
+  async finalizePendingOrderBankTransferPayment(
+    @CurrentUser() user: User,
+    @Body()
+    dto: {
+      paymentId: string;
+      reference?: string | null;
+      evidenceRequired?: boolean;
+    },
+  ) {
+    const result =
+      await this.paymentsService.finalizePendingOrderBankTransferPayment(
+        dto,
+        user.companyId,
+        user.id,
+      );
+
+    if (result?.receipt?.paymentId) {
+      await this.receipts.generateReceiptPdfUrl(
+        user.companyId,
+        result.receipt.paymentId,
+      );
+    }
+
+    return { data: result };
+  }
+
   @Post('admin/payments/bank-transfer/finalize')
   @SetMetadata('permissions', ['payments.write'])
   async finalizeBankTransfer(
@@ -62,7 +129,6 @@ export class PaymentController extends BaseController {
         user.id,
       );
 
-    // Side effects AFTER commit
     if (result?.receipt?.paymentId) {
       await this.receipts.generateReceiptPdfUrl(
         user.companyId,

@@ -24,10 +24,10 @@ export declare class PaymentController extends BaseController {
             id: string;
             createdAt: Date;
             companyId: string;
+            paymentId: string;
+            url: string;
             fileName: string;
             mimeType: string;
-            url: string;
-            paymentId: string;
             sizeBytes: number | null;
             kind: string;
             note: string | null;

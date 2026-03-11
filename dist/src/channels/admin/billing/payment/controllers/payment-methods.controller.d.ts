@@ -23,7 +23,6 @@ export declare class PaymentMethodsController extends BaseController {
     }>;
     toggleMethod(user: User, dto: ToggleStorePaymentMethodDto): Promise<{
         data: {
-            status: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
@@ -34,12 +33,12 @@ export declare class PaymentMethodsController extends BaseController {
             provider: string | null;
             isEnabled: boolean;
             config: unknown;
+            status: string;
             lastError: string | null;
         };
     }>;
     upsertGateway(user: User, dto: UpsertGatewayConfigDto): Promise<{
         data: {
-            status: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
@@ -50,12 +49,12 @@ export declare class PaymentMethodsController extends BaseController {
             provider: string | null;
             isEnabled: boolean;
             config: unknown;
+            status: string;
             lastError: string | null;
         };
     }>;
     upsertBankTransfer(user: User, dto: UpsertBankTransferConfigDto): Promise<{
         data: {
-            status: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
@@ -66,6 +65,7 @@ export declare class PaymentMethodsController extends BaseController {
             provider: string | null;
             isEnabled: boolean;
             config: unknown;
+            status: string;
             lastError: string | null;
         };
     }>;

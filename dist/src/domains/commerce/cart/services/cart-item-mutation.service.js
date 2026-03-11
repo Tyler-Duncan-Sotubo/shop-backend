@@ -37,7 +37,6 @@ let CartItemMutationService = class CartItemMutationService {
         if (!Number.isFinite(incomingQty) || incomingQty < 1) {
             throw new common_1.BadRequestException('Quantity must be >= 1');
         }
-        console.log('Adding item to cart:', { companyId, storeId, cartId, dto });
         const [product] = await this.db
             .select()
             .from(schema_1.products)

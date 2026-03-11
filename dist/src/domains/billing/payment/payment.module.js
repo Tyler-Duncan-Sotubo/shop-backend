@@ -16,11 +16,14 @@ const payment_receipt_service_1 = require("./services/payment-receipt.service");
 const api_keys_service_1 = require("../../iam/api-keys/api-keys.service");
 const stores_service_1 = require("../../commerce/stores/stores.service");
 const payment_methods_service_1 = require("./services/payment-methods.service");
+const paystack_service_1 = require("./services/paystack.service");
+const axios_1 = require("@nestjs/axios");
 let PaymentModule = class PaymentModule {
 };
 exports.PaymentModule = PaymentModule;
 exports.PaymentModule = PaymentModule = __decorate([
     (0, common_1.Module)({
+        imports: [axios_1.HttpModule],
         providers: [
             payment_service_1.PaymentService,
             invoice_service_1.InvoiceService,
@@ -30,8 +33,14 @@ exports.PaymentModule = PaymentModule = __decorate([
             api_keys_service_1.ApiKeysService,
             stores_service_1.StoresService,
             payment_methods_service_1.PaymentMethodsService,
+            paystack_service_1.PaystackService,
         ],
-        exports: [payment_service_1.PaymentService, payment_methods_service_1.PaymentMethodsService, payment_receipt_service_1.PaymentReceiptService],
+        exports: [
+            payment_service_1.PaymentService,
+            payment_methods_service_1.PaymentMethodsService,
+            payment_receipt_service_1.PaymentReceiptService,
+            paystack_service_1.PaystackService,
+        ],
     })
 ], PaymentModule);
 //# sourceMappingURL=payment.module.js.map

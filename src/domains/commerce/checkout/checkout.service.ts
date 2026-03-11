@@ -327,8 +327,6 @@ export class CheckoutService {
       .returning()
       .execute();
 
-    console.log('[checkout] created:', { checkout });
-
     await dbOrTx
       .insert(checkoutItems)
       .values(
@@ -555,7 +553,7 @@ export class CheckoutService {
 
     const items: CheckoutItemRow[] = rows.map((r) => ({
       ...(r.item as any),
-      image: (r.imageUrl as any) ?? null,
+      image: (r.item?.metadata?.image as any) ?? null,
     }));
 
     return { ...(checkout as CheckoutRow), items };
@@ -677,8 +675,9 @@ export class CheckoutService {
       dto.area,
     );
 
-    if (!zone)
-      throw new BadRequestException('No shipping zone matches destination');
+    if (!zone) {
+      return this.getCheckout(companyId, checkoutId);
+    }
 
     // pick a rate: explicit shippingRateId, else best rate (carrierId optional)
     let rate: any = null;
@@ -1133,16 +1132,14 @@ export class CheckoutService {
       // 6) Create order first (so we have orderId for reservations)
       let orderRow: any;
       let didCreateOrder = false;
-      // generate orderNumber (because orders.orderNumber is notNull in your schema)
       const orderNumber = await this.generateOrderNumber(tx, companyId);
 
-      // Try insert, else fetch existing by unique cartId/checkoutId
       try {
         const [order] = await tx
           .insert(orders)
           .values({
             companyId,
-            orderNumber: orderNumber,
+            orderNumber,
             storeId: co.storeId,
             checkoutId: co.id,
             cartId: co.cartId,
@@ -1182,7 +1179,6 @@ export class CheckoutService {
       } catch (err: any) {
         if (!this.isUniqueViolation(err)) throw err;
 
-        // fetch by checkoutId first (strongest)
         const [existingByCheckout] = await tx
           .select()
           .from(orders)
@@ -1197,7 +1193,6 @@ export class CheckoutService {
         if (existingByCheckout) {
           orderRow = existingByCheckout;
         } else {
-          // fallback: fetch by cartId
           const [existingByCart] = await tx
             .select()
             .from(orders)
@@ -1248,7 +1243,6 @@ export class CheckoutService {
         if (qty <= 0) continue;
 
         if (channel === 'online') {
-          // ✅ new signature includes orderId
           await this.stock.reserveInTx(
             tx,
             companyId,
@@ -1258,7 +1252,6 @@ export class CheckoutService {
             qty,
           );
         } else {
-          // POS: deduct immediately (no reservations)
           if ((this.stock as any).deductAvailableInTx) {
             await (this.stock as any).deductAvailableInTx(
               tx,
@@ -1268,7 +1261,6 @@ export class CheckoutService {
               qty,
             );
           } else {
-            // fallback
             await this.stock.fulfillFromReservationInTx(
               tx,
               companyId,
@@ -1314,22 +1306,23 @@ export class CheckoutService {
           .execute();
       }
 
+      // 8.5) Invoice is optional for online checkout
+      // Create/issue only for non-online channels (e.g. POS/offline)
       let invoice: any = null;
 
-      // 8.5) ✅ Create invoice draft from the order (idempotent)
-      invoice = await this.invoiceService.createDraftFromOrder(
-        {
-          orderId: orderRow.id,
-          storeId: (orderRow as any).storeId ?? null,
-          currency: orderRow.currency,
-          type: 'invoice',
-        } as any,
-        companyId,
-        { tx },
-      );
-
       if (channel !== 'online') {
-        const issued = await this.invoiceService.issueInvoice(
+        invoice = await this.invoiceService.createDraftFromOrder(
+          {
+            orderId: orderRow.id,
+            storeId: (orderRow as any).storeId ?? null,
+            currency: orderRow.currency,
+            type: 'invoice',
+          } as any,
+          companyId,
+          { tx },
+        );
+
+        invoice = await this.invoiceService.issueInvoice(
           invoice.id,
           {
             storeId: (orderRow as any).storeId ?? null,
@@ -1340,74 +1333,79 @@ export class CheckoutService {
           user?.id,
           { tx },
         );
-
-        invoice = issued;
       }
 
-      // 8.6) ✅ Create payment record for the order (idempotent)
-      // For online checkout:
-      // - bank_transfer => pending payment (customer uploads evidence later)
-      // - gateway => pending payment (until provider success callback updates to succeeded)
-      // For POS/offline (channel !== 'online'), you already mark order paid elsewhere.
-
+      // 8.6) Create payment record for the order (idempotent)
+      // Online:
+      // - gateway => pending
+      // - bank_transfer => pending
+      // - cash => pending/handled later if you allow online cash selection
+      //
+      // Non-online:
+      // - create a paid/succeeded record if needed for POS bookkeeping
       let paymentRow: any = null;
 
-      if (channel === 'online') {
-        // Check if payment already exists for this invoice/order (idempotency)
-        const [existingPayment] = await tx
-          .select({ id: payments.id, status: payments.status })
-          .from(payments)
-          .where(
-            and(
-              eq(payments.companyId, companyId),
-              eq(payments.invoiceId, invoice.id),
-            ),
-          )
-          .limit(1)
+      // idempotency should be anchored to orderId, not invoiceId
+      const [existingPayment] = await tx
+        .select()
+        .from(payments)
+        .where(
+          and(
+            eq(payments.companyId, companyId),
+            eq(payments.orderId, orderRow.id),
+          ),
+        )
+        .limit(1)
+        .execute();
+
+      if (!existingPayment) {
+        const amountMinor = Math.round(Number(orderRow.total ?? 0) * 100);
+
+        const method =
+          paymentMethodType === 'gateway'
+            ? 'gateway'
+            : (paymentMethodType as any);
+
+        const status = channel === 'online' ? 'pending' : 'succeeded';
+
+        const now = new Date();
+
+        const [p] = await tx
+          .insert(payments)
+          .values({
+            companyId,
+            storeId: (orderRow as any).storeId ?? null,
+            orderId: orderRow.id,
+            invoiceId: invoice?.id ?? null,
+            method,
+            provider: paymentProvider ?? null,
+            status,
+            currency: orderRow.currency,
+            amountMinor,
+            reference: orderRow.orderNumber ?? null,
+            providerRef: null,
+            providerEventId: null,
+            receivedAt: channel === 'online' ? null : now,
+            confirmedAt: channel === 'online' ? null : now,
+            createdByUserId: user?.id ?? null,
+            confirmedByUserId: channel === 'online' ? null : (user?.id ?? null),
+            meta: {
+              checkoutId,
+              orderId: orderRow.id,
+              orderNumber: orderRow.orderNumber,
+              channel,
+            },
+            createdAt: now,
+          } as any)
+          .returning()
           .execute();
 
-        if (!existingPayment) {
-          const amountMinor = Number(orderRow.total ?? 0) * 100;
-
-          const status =
-            paymentMethodType === 'bank_transfer' ? 'pending' : 'pending';
-
-          const method =
-            paymentMethodType === 'gateway'
-              ? 'gateway'
-              : (paymentMethodType as any);
-
-          const [p] = await tx
-            .insert(payments)
-            .values({
-              companyId,
-              orderId: orderRow.id,
-              invoiceId: invoice.id,
-              method, // 'gateway' | 'bank_transfer' | 'cash' etc.
-              provider: paymentProvider ?? null, // 'paystack' | 'stripe' | null
-              status, // 'pending' for both flows here
-              currency: orderRow.currency,
-              amountMinor,
-              reference: null,
-              meta: {
-                checkoutId,
-                orderNumber: orderRow.orderNumber,
-              },
-              receivedAt: null,
-              confirmedAt: null,
-              createdByUserId: user?.id ?? null,
-              confirmedByUserId: null,
-            } as any)
-            .returning()
-            .execute();
-
-          paymentRow = p;
-        } else {
-          paymentRow = existingPayment;
-        }
+        paymentRow = p;
+      } else {
+        paymentRow = existingPayment;
       }
 
-      // 9) Mark cart converted with pointer (key for idempotency)
+      // 9) Mark cart converted with pointer
       await tx
         .update(carts)
         .set({
@@ -1436,7 +1434,7 @@ export class CheckoutService {
       await this.audit.logAction({
         action: 'create',
         entity: 'order',
-        entityId: created,
+        entityId: created.id,
         userId: user.id,
         ipAddress: ip,
         details: 'Completed checkout -> created order',
@@ -1455,7 +1453,12 @@ export class CheckoutService {
       )
       .execute();
 
-    return { ...created, items, invoice: created.invoice };
+    return {
+      ...created,
+      items,
+      invoice: created.invoice ?? null,
+      payment: created.payment ?? null,
+    };
   }
 
   async refreshCheckout(

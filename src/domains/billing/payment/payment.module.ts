@@ -7,8 +7,11 @@ import { PaymentReceiptService } from './services/payment-receipt.service';
 import { ApiKeysService } from 'src/domains/iam/api-keys/api-keys.service';
 import { StoresService } from 'src/domains/commerce/stores/stores.service';
 import { PaymentMethodsService } from './services/payment-methods.service';
+import { PaystackService } from './services/paystack.service';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
+  imports: [HttpModule],
   providers: [
     PaymentService,
     InvoiceService,
@@ -18,7 +21,13 @@ import { PaymentMethodsService } from './services/payment-methods.service';
     ApiKeysService,
     StoresService,
     PaymentMethodsService,
+    PaystackService,
   ],
-  exports: [PaymentService, PaymentMethodsService, PaymentReceiptService],
+  exports: [
+    PaymentService,
+    PaymentMethodsService,
+    PaymentReceiptService,
+    PaystackService,
+  ],
 })
 export class PaymentModule {}

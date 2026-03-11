@@ -152,7 +152,6 @@ export class PaymentService {
 
       // 2) Convert major -> minor
       const requestedMinor = Math.round(Number(dto.amount) * 100);
-      console.log('Requested minor amount:', requestedMinor);
       if (!Number.isFinite(requestedMinor) || requestedMinor <= 0) {
         throw new BadRequestException('Amount must be > 0');
       }
@@ -740,9 +739,6 @@ export class PaymentService {
   }
 
   // in PaymentService
-
-  // PaymentService
-
   async finalizePendingBankTransferPayment(
     dto: FinalizeBankTransferPaymentInput,
     companyId: string,
@@ -929,6 +925,417 @@ export class PaymentService {
         alreadyConfirmed: false,
       };
     });
+  }
+
+  // For gateway payments (e.g. Paystack), after receiving provider webhook,
+  // call this to finalize payment, mark order paid, and create receipt.
+
+  async finalizeGatewayPaymentForOrder(params: {
+    companyId: string;
+    storeId?: string | null;
+    orderId: string;
+    provider: string; // e.g. 'paystack'
+    providerRef: string; // e.g. Paystack reference
+    providerEventId?: string | null;
+    amountMinor: number;
+    currency: string;
+    paidAt?: string | Date | null;
+    meta?: any;
+    confirmedByUserId?: string | null;
+  }) {
+    const {
+      companyId,
+      storeId,
+      orderId,
+      provider,
+      providerRef,
+      providerEventId = null,
+      amountMinor,
+      currency,
+      paidAt = null,
+      meta = null,
+      confirmedByUserId = null,
+    } = params;
+
+    return this.db.transaction(async (tx) => {
+      if (!orderId) throw new BadRequestException('orderId is required');
+      if (!provider) throw new BadRequestException('provider is required');
+      if (!providerRef)
+        throw new BadRequestException('providerRef is required');
+
+      const normalizedAmountMinor = Math.trunc(Number(amountMinor));
+      if (
+        !Number.isFinite(normalizedAmountMinor) ||
+        normalizedAmountMinor <= 0
+      ) {
+        throw new BadRequestException('amountMinor must be greater than 0');
+      }
+
+      // 1) lock order
+      const orderRes = await tx.execute(
+        sql`
+        SELECT * FROM orders
+        WHERE id = ${orderId} AND company_id = ${companyId}
+        FOR UPDATE
+      ` as any,
+      );
+      const order = (orderRes as any)?.rows?.[0] ?? null;
+
+      if (!order) throw new NotFoundException('Order not found');
+
+      // 2) lock/find payment row for this order
+      const paymentRes = await tx.execute(
+        sql`
+        SELECT * FROM payments
+        WHERE order_id = ${orderId} AND company_id = ${companyId}
+        LIMIT 1
+        FOR UPDATE
+      ` as any,
+      );
+      const payment = (paymentRes as any)?.rows?.[0] ?? null;
+
+      if (!payment) {
+        throw new NotFoundException('Payment record not found for order');
+      }
+
+      // 3) idempotency: already finalized with same provider ref
+      if (
+        payment.status === 'succeeded' &&
+        payment.provider === provider &&
+        payment.provider_ref === providerRef
+      ) {
+        const [existingReceipt] = await tx
+          .select()
+          .from(paymentReceipts)
+          .where(
+            and(
+              eq(paymentReceipts.companyId, companyId),
+              eq(paymentReceipts.paymentId, payment.id),
+            ),
+          )
+          .execute();
+
+        return {
+          paymentId: payment.id,
+          receipt: existingReceipt ?? null,
+          alreadyProcessed: true,
+        };
+      }
+
+      // 4) Optional extra idempotency guard:
+      // if some other payment row already used this providerRef, stop here
+      const [existingByProviderRef] = await tx
+        .select({
+          id: payments.id,
+          orderId: payments.orderId,
+          status: payments.status,
+        })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.companyId, companyId),
+            eq(payments.provider, provider),
+            eq(payments.providerRef, providerRef),
+          ),
+        )
+        .execute();
+
+      if (existingByProviderRef && existingByProviderRef.id !== payment.id) {
+        return {
+          paymentId: existingByProviderRef.id,
+          receipt: null,
+          alreadyProcessed: true,
+        };
+      }
+
+      const paidDate = paidAt ? new Date(paidAt) : new Date();
+
+      // 5) update payment row
+      await tx
+        .update(payments)
+        .set({
+          storeId: storeId ?? payment.store_id ?? null,
+          provider,
+          providerRef,
+          providerEventId: providerEventId ?? null,
+          status: 'succeeded',
+          currency,
+          amountMinor: normalizedAmountMinor,
+          reference: providerRef,
+          receivedAt: paidDate,
+          confirmedAt: new Date(),
+          confirmedByUserId: confirmedByUserId ?? null,
+          meta: {
+            ...(payment.meta ?? {}),
+            ...(meta ?? {}),
+          },
+        } as any)
+        .where(eq(payments.id, payment.id))
+        .execute();
+
+      // 6) mark order paid
+      await tx
+        .update(orders)
+        .set({
+          status: 'paid',
+          paidAt: paidDate,
+          updatedAt: new Date(),
+        } as any)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .execute();
+
+      // 7) create receipt (idempotent)
+      const receipt = await this.createReceiptForPaymentTx(tx, {
+        companyId,
+        paymentId: payment.id,
+
+        invoiceId: null,
+        orderId: order.id,
+
+        invoiceNumber: null,
+        orderNumber: order.order_number ?? order.orderNumber ?? null,
+
+        currency,
+        amountMinor: normalizedAmountMinor,
+        method: 'gateway',
+        reference: providerRef,
+
+        customerSnapshot: null,
+        storeSnapshot: null,
+        meta: meta ?? null,
+
+        createdByUserId: confirmedByUserId ?? null,
+      });
+
+      return {
+        paymentId: payment.id,
+        receipt,
+        receiptId: receipt.id,
+        alreadyProcessed: false,
+      };
+    });
+  }
+
+  // ----- Admin/Storefront: pending bank transfer review flow -----
+
+  async finalizePendingOrderBankTransferPayment(
+    dto: {
+      paymentId: string;
+      reference?: string | null;
+      evidenceRequired?: boolean;
+    },
+    companyId: string,
+    userId: string,
+  ) {
+    return this.db.transaction(async (tx) => {
+      // 1) lock payment
+      const payRes = await tx.execute(
+        sql`
+      SELECT * FROM payments
+      WHERE id = ${dto.paymentId} AND company_id = ${companyId}
+      FOR UPDATE
+    ` as any,
+      );
+
+      const p = (payRes as any)?.rows?.[0] ?? null;
+      if (!p) throw new NotFoundException('Payment not found');
+
+      if (p.method !== 'bank_transfer') {
+        throw new BadRequestException('Payment is not a bank transfer');
+      }
+
+      if (p.status === 'succeeded') {
+        const [existingReceipt] = await tx
+          .select()
+          .from(paymentReceipts)
+          .where(
+            and(
+              eq(paymentReceipts.companyId, companyId),
+              eq(paymentReceipts.paymentId, p.id),
+            ),
+          )
+          .execute();
+
+        return {
+          paymentId: p.id,
+          receipt: existingReceipt ?? null,
+          alreadyConfirmed: true,
+        };
+      }
+
+      if (p.status !== 'pending') {
+        throw new BadRequestException(
+          `Payment must be pending (got ${p.status})`,
+        );
+      }
+
+      if (!p.order_id) {
+        throw new BadRequestException('Payment is not linked to an order');
+      }
+
+      // 2) lock order
+      const orderRes = await tx.execute(
+        sql`
+      SELECT * FROM orders
+      WHERE id = ${p.order_id} AND company_id = ${companyId}
+      FOR UPDATE
+    ` as any,
+      );
+
+      const order = (orderRes as any)?.rows?.[0] ?? null;
+      if (!order) throw new NotFoundException('Order not found');
+
+      // 3) optionally require evidence
+      if (dto.evidenceRequired) {
+        const [file] = await tx
+          .select({ id: paymentFiles.id })
+          .from(paymentFiles)
+          .where(
+            and(
+              eq(paymentFiles.companyId, companyId),
+              eq(paymentFiles.paymentId, p.id),
+            ),
+          )
+          .execute();
+
+        if (!file) {
+          throw new BadRequestException('No payment proof uploaded');
+        }
+      }
+
+      // 4) mark payment succeeded
+      await tx
+        .update(payments)
+        .set({
+          status: 'succeeded',
+          reference:
+            dto.reference !== undefined ? dto.reference : (p.reference ?? null),
+          receivedAt: new Date(),
+          confirmedAt: new Date(),
+          confirmedByUserId: userId,
+          updatedAt: new Date(),
+        } as any)
+        .where(eq(payments.id, p.id))
+        .execute();
+
+      // 5) mark order paid
+      await tx
+        .update(orders)
+        .set({
+          status: 'paid',
+          paidAt: new Date(),
+          updatedAt: new Date(),
+        } as any)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, order.id)))
+        .execute();
+
+      // 6) create receipt
+      const receipt = await this.createReceiptForPaymentTx(tx, {
+        companyId,
+        paymentId: p.id,
+
+        invoiceId: null,
+        orderId: order.id,
+
+        invoiceNumber: null,
+        orderNumber: order.order_number ?? order.orderNumber ?? null,
+
+        currency: p.currency ?? order.currency ?? 'NGN',
+        amountMinor: Number(p.amount_minor ?? 0),
+        method: 'bank_transfer',
+        reference: dto.reference ?? p.reference ?? null,
+
+        customerSnapshot: null,
+        storeSnapshot: null,
+        meta: p.meta ?? null,
+
+        createdByUserId: userId,
+      });
+
+      return {
+        paymentId: p.id,
+        receiptId: receipt.id,
+        receipt,
+        alreadyConfirmed: false,
+      };
+    });
+  }
+
+  async listPendingOrderPaymentsForReview(companyId: string) {
+    return this.db
+      .select({
+        paymentId: payments.id,
+        orderId: payments.orderId,
+        amountMinor: payments.amountMinor,
+        currency: payments.currency,
+        method: payments.method,
+        status: payments.status,
+        reference: payments.reference,
+        createdAt: payments.createdAt,
+        orderNumber: orders.orderNumber,
+        orderStatus: orders.status,
+      })
+      .from(payments)
+      .innerJoin(
+        orders,
+        and(
+          eq(orders.id, payments.orderId),
+          eq(orders.companyId, payments.companyId),
+        ),
+      )
+      .where(
+        and(
+          eq(payments.companyId, companyId),
+          eq(payments.method, 'bank_transfer'),
+          eq(payments.status, 'pending'),
+        ),
+      )
+      .execute();
+  }
+
+  async getPendingOrderPaymentById(companyId: string, paymentId: string) {
+    const [row] = await this.db
+      .select({
+        paymentId: payments.id,
+        orderId: payments.orderId,
+        amountMinor: payments.amountMinor,
+        currency: payments.currency,
+        method: payments.method,
+        status: payments.status,
+        reference: payments.reference,
+        createdAt: payments.createdAt,
+        orderNumber: orders.orderNumber,
+        orderStatus: orders.status,
+      })
+      .from(payments)
+      .innerJoin(
+        orders,
+        and(
+          eq(orders.id, payments.orderId),
+          eq(orders.companyId, payments.companyId),
+        ),
+      )
+      .where(and(eq(payments.companyId, companyId), eq(payments.id, paymentId)))
+      .execute();
+
+    if (!row) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    return row;
+  }
+
+  async getPaymentEvidence(companyId: string, paymentId: string) {
+    return this.db
+      .select()
+      .from(paymentFiles)
+      .where(
+        and(
+          eq(paymentFiles.companyId, companyId),
+          eq(paymentFiles.paymentId, paymentId),
+        ),
+      )
+      .execute();
   }
 
   /**

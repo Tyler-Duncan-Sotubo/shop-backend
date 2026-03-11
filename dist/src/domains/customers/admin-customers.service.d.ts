@@ -33,12 +33,12 @@ export declare class AdminCustomersService {
     }>;
     createCustomerAddress(companyId: string, customerId: string, dto: CreateCustomerAddressAdminDto, actorUserId: string | null): Promise<{
         id: string;
-        firstName: string | null;
-        lastName: string | null;
+        country: string;
         createdAt: Date;
         updatedAt: Date;
-        country: string;
         companyId: string;
+        firstName: string | null;
+        lastName: string | null;
         phone: string | null;
         customerId: string;
         label: string | null;

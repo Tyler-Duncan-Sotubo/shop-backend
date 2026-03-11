@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const storefront_payment_controller_1 = require("./controllers/storefront-payment.controller");
 const storefront_payment_receipt_controller_1 = require("./controllers/storefront-payment-receipt.controller");
 const storefront_payment_methods_controller_1 = require("./controllers/storefront-payment-methods.controller");
+const paystack_storefront_controller_1 = require("./controllers/paystack-storefront.controller");
 let StorefrontPaymentModule = class StorefrontPaymentModule {
 };
 exports.StorefrontPaymentModule = StorefrontPaymentModule;
@@ -20,6 +21,7 @@ exports.StorefrontPaymentModule = StorefrontPaymentModule = __decorate([
             storefront_payment_controller_1.PaymentController,
             storefront_payment_receipt_controller_1.PaymentReceiptController,
             storefront_payment_methods_controller_1.PaymentMethodsController,
+            paystack_storefront_controller_1.PaystackStorefrontController,
         ],
     })
 ], StorefrontPaymentModule);

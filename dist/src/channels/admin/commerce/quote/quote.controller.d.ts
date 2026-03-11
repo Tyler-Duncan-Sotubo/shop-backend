@@ -67,18 +67,19 @@ export declare class QuoteController extends BaseController {
             createdAt: Date;
             deletedAt: Date | null;
         }[];
+        status: string;
         id: string;
-        quoteNumber: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
+        expiresAt: Date | null;
         storeId: string;
-        status: string;
+        currency: string | null;
+        meta: Record<string, unknown> | null;
+        quoteNumber: string | null;
         customerEmail: string;
         customerNote: string | null;
-        meta: Record<string, unknown> | null;
-        expiresAt: Date | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
@@ -86,7 +87,6 @@ export declare class QuoteController extends BaseController {
         sentAt: Date | null;
         acceptedAt: Date | null;
         convertedAt: Date | null;
-        currency: string | null;
         totalsSnapshot: {
             subtotal?: number;
             tax?: number;
@@ -103,18 +103,19 @@ export declare class QuoteController extends BaseController {
         syncError: string | null;
     }>;
     createQuote(user: User, dto: CreateQuoteDto, ip: string): Promise<{
+        status: string;
         id: string;
-        quoteNumber: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
+        expiresAt: Date | null;
         storeId: string;
-        status: string;
+        currency: string | null;
+        meta: Record<string, unknown> | null;
+        quoteNumber: string | null;
         customerEmail: string;
         customerNote: string | null;
-        meta: Record<string, unknown> | null;
-        expiresAt: Date | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
@@ -122,7 +123,6 @@ export declare class QuoteController extends BaseController {
         sentAt: Date | null;
         acceptedAt: Date | null;
         convertedAt: Date | null;
-        currency: string | null;
         totalsSnapshot: {
             subtotal?: number;
             tax?: number;

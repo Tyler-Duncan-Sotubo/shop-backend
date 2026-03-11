@@ -35,12 +35,55 @@ export declare class CheckoutService {
     private computeTotalWeightGrams;
     createFromCart(companyId: string, storeId: string, cartId: string, dto: CreateCheckoutFromCartDto, user?: User, ip?: string, opts?: {
         tx?: any;
-    }): Promise<any>;
-    syncFromCart(companyId: string, checkoutId: string, user?: User, ip?: string): Promise<any>;
+    }): Promise<CheckoutWithItems>;
+    syncFromCart(companyId: string, checkoutId: string, user?: User, ip?: string): Promise<CheckoutWithItems>;
     getCheckout(companyId: string, checkoutId: string): Promise<CheckoutWithItems>;
     listCheckouts(companyId: string, q: ListCheckoutsDto): Promise<{
         rows: {
-            [x: string]: any;
+            id: string;
+            companyId: string;
+            cartId: string;
+            storeId: string;
+            status: string;
+            channel: string;
+            currency: string;
+            email: string | null;
+            deliveryMethodType: string;
+            shippingAddress: Record<string, any> | null;
+            billingAddress: Record<string, any> | null;
+            pickupLocationId: string | null;
+            originInventoryLocationId: string | null;
+            shippingZoneId: string | null;
+            selectedShippingRateId: string | null;
+            shippingMethodLabel: string | null;
+            shippingQuote: {
+                countryCode?: string;
+                state?: string | null;
+                area?: string | null;
+                totalWeightGrams?: number;
+                calc?: "flat" | "weight";
+                tierId?: string | null;
+                carrierId?: string | null;
+                rateId?: string | null;
+                zoneId?: string | null;
+                computedAt?: string;
+                rateSnapshot?: {
+                    name?: string;
+                    minDeliveryDays?: number | null;
+                    maxDeliveryDays?: number | null;
+                };
+            } | null;
+            subtotal: string;
+            discountTotal: string;
+            taxTotal: string;
+            shippingTotal: string;
+            total: string;
+            paymentMethodType: string | null;
+            paymentProvider: string | null;
+            expiresAt: Date;
+            metadata: Record<string, any> | null;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         count: number;
         limit: number;
@@ -48,9 +91,9 @@ export declare class CheckoutService {
     }>;
     private assertNotExpiredOrThrow;
     private assertMutableStatusOrThrow;
-    setShipping(companyId: string, checkoutId: string, dto: SetCheckoutShippingDto, user?: User, ip?: string): Promise<any>;
-    setPickup(companyId: string, checkoutId: string, dto: SetCheckoutPickupDto, user?: User, ip?: string): Promise<any>;
-    lock(companyId: string, checkoutId: string, user?: User, ip?: string): Promise<any>;
+    setShipping(companyId: string, checkoutId: string, dto: SetCheckoutShippingDto, user?: User, ip?: string): Promise<CheckoutWithItems>;
+    setPickup(companyId: string, checkoutId: string, dto: SetCheckoutPickupDto, user?: User, ip?: string): Promise<CheckoutWithItems>;
+    lock(companyId: string, checkoutId: string, user?: User, ip?: string): Promise<CheckoutWithItems>;
     generateOrderNumber(tx: any, companyId: string): Promise<string>;
     expire(companyId: string, checkoutId: string): Promise<{
         ok: boolean;

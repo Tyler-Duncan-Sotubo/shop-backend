@@ -34,6 +34,25 @@ let PaymentController = class PaymentController extends base_controller_1.BaseCo
     listPayments(user, query) {
         return this.paymentsService.listPayments(user.companyId, query);
     }
+    async listPendingOrderPaymentsForReview(user) {
+        const result = await this.paymentsService.listPendingOrderPaymentsForReview(user.companyId);
+        return { data: result };
+    }
+    async getPendingOrderPaymentById(user, paymentId) {
+        const result = await this.paymentsService.getPendingOrderPaymentById(user.companyId, paymentId);
+        return { data: result };
+    }
+    async getPaymentEvidence(user, paymentId) {
+        const result = await this.paymentsService.getPaymentEvidence(user.companyId, paymentId);
+        return { data: result };
+    }
+    async finalizePendingOrderBankTransferPayment(user, dto) {
+        const result = await this.paymentsService.finalizePendingOrderBankTransferPayment(dto, user.companyId, user.id);
+        if (result?.receipt?.paymentId) {
+            await this.receipts.generateReceiptPdfUrl(user.companyId, result.receipt.paymentId);
+        }
+        return { data: result };
+    }
     async finalizeBankTransfer(user, dto) {
         const result = await this.paymentsService.finalizePendingBankTransferPayment(dto, user.companyId, user.id);
         if (result?.receipt?.paymentId) {
@@ -60,6 +79,41 @@ __decorate([
     __metadata("design:paramtypes", [Object, payment_list_dto_1.ListPaymentsQueryDto]),
     __metadata("design:returntype", void 0)
 ], PaymentController.prototype, "listPayments", null);
+__decorate([
+    (0, common_1.Get)('admin/orders/bank-transfer/pending-review'),
+    (0, common_1.SetMetadata)('permissions', ['payments.write']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], PaymentController.prototype, "listPendingOrderPaymentsForReview", null);
+__decorate([
+    (0, common_1.Get)(':paymentId/review'),
+    (0, common_1.SetMetadata)('permissions', ['payments.write']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('paymentId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], PaymentController.prototype, "getPendingOrderPaymentById", null);
+__decorate([
+    (0, common_1.Get)(':paymentId/evidence'),
+    (0, common_1.SetMetadata)('permissions', ['payments.write']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('paymentId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], PaymentController.prototype, "getPaymentEvidence", null);
+__decorate([
+    (0, common_1.Post)('admin/orders/bank-transfer/finalize'),
+    (0, common_1.SetMetadata)('permissions', ['payments.write']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], PaymentController.prototype, "finalizePendingOrderBankTransferPayment", null);
 __decorate([
     (0, common_1.Post)('admin/payments/bank-transfer/finalize'),
     (0, common_1.SetMetadata)('permissions', ['payments.write']),

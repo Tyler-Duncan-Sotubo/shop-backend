@@ -187,6 +187,154 @@ export declare class PaymentService {
         receipt: any;
         alreadyConfirmed: boolean;
     }>;
+    finalizeGatewayPaymentForOrder(params: {
+        companyId: string;
+        storeId?: string | null;
+        orderId: string;
+        provider: string;
+        providerRef: string;
+        providerEventId?: string | null;
+        amountMinor: number;
+        currency: string;
+        paidAt?: string | Date | null;
+        meta?: any;
+        confirmedByUserId?: string | null;
+    }): Promise<{
+        paymentId: any;
+        receipt: {
+            id: string;
+            companyId: string;
+            paymentId: string;
+            invoiceId: string | null;
+            orderId: string | null;
+            invoiceNumber: string | null;
+            orderNumber: string | null;
+            sequenceNumber: number;
+            receiptNumber: string;
+            currency: string;
+            amountMinor: number;
+            pdfUrl: string | null;
+            pdfStorageKey: string | null;
+            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            reference: string | null;
+            customerSnapshot: unknown;
+            storeSnapshot: unknown;
+            meta: unknown;
+            issuedAt: Date;
+            createdByUserId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+        alreadyProcessed: boolean;
+        receiptId?: undefined;
+    } | {
+        paymentId: string;
+        receipt: null;
+        alreadyProcessed: boolean;
+        receiptId?: undefined;
+    } | {
+        paymentId: any;
+        receipt: any;
+        receiptId: any;
+        alreadyProcessed: boolean;
+    }>;
+    finalizePendingOrderBankTransferPayment(dto: {
+        paymentId: string;
+        reference?: string | null;
+        evidenceRequired?: boolean;
+    }, companyId: string, userId: string): Promise<{
+        paymentId: any;
+        receipt: {
+            id: string;
+            companyId: string;
+            paymentId: string;
+            invoiceId: string | null;
+            orderId: string | null;
+            invoiceNumber: string | null;
+            orderNumber: string | null;
+            sequenceNumber: number;
+            receiptNumber: string;
+            currency: string;
+            amountMinor: number;
+            pdfUrl: string | null;
+            pdfStorageKey: string | null;
+            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            reference: string | null;
+            customerSnapshot: unknown;
+            storeSnapshot: unknown;
+            meta: unknown;
+            issuedAt: Date;
+            createdByUserId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+        alreadyConfirmed: boolean;
+        receiptId?: undefined;
+    } | {
+        paymentId: any;
+        receiptId: any;
+        receipt: any;
+        alreadyConfirmed: boolean;
+    }>;
+    listPendingOrderPaymentsForReview(companyId: string): Promise<({
+        paymentId: string;
+        orderId: string | null;
+        amountMinor: number;
+        currency: string;
+        method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+        status: "pending" | "succeeded" | "reversed";
+        reference: string | null;
+        createdAt: Date;
+        orderNumber: any;
+        orderStatus: any;
+    } | {
+        paymentId: string;
+        orderId: string | null;
+        amountMinor: number;
+        currency: string;
+        method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+        status: "pending" | "succeeded" | "reversed";
+        reference: string | null;
+        createdAt: Date;
+        orderNumber: any;
+        orderStatus: any;
+    })[]>;
+    getPendingOrderPaymentById(companyId: string, paymentId: string): Promise<{
+        paymentId: string;
+        orderId: string | null;
+        amountMinor: number;
+        currency: string;
+        method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+        status: "pending" | "succeeded" | "reversed";
+        reference: string | null;
+        createdAt: Date;
+        orderNumber: any;
+        orderStatus: any;
+    } | {
+        paymentId: string;
+        orderId: string | null;
+        amountMinor: number;
+        currency: string;
+        method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+        status: "pending" | "succeeded" | "reversed";
+        reference: string | null;
+        createdAt: Date;
+        orderNumber: any;
+        orderStatus: any;
+    }>;
+    getPaymentEvidence(companyId: string, paymentId: string): Promise<{
+        id: string;
+        companyId: string;
+        paymentId: string;
+        url: string;
+        fileName: string;
+        mimeType: string;
+        sizeBytes: number | null;
+        kind: string;
+        note: string | null;
+        uploadedByUserId: string | null;
+        createdAt: Date;
+    }[]>;
     presignPaymentEvidenceUpload(params: {
         companyId: string;
         paymentId: string;
@@ -218,10 +366,10 @@ export declare class PaymentService {
         id: string;
         createdAt: Date;
         companyId: string;
+        paymentId: string;
+        url: string;
         fileName: string;
         mimeType: string;
-        url: string;
-        paymentId: string;
         sizeBytes: number | null;
         kind: string;
         note: string | null;

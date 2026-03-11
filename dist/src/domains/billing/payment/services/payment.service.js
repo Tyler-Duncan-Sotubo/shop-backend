@@ -100,7 +100,6 @@ let PaymentService = class PaymentService {
             if (inv.status === 'draft')
                 throw new common_1.BadRequestException('Issue invoice before recording payment');
             const requestedMinor = Math.round(Number(dto.amount) * 100);
-            console.log('Requested minor amount:', requestedMinor);
             if (!Number.isFinite(requestedMinor) || requestedMinor <= 0) {
                 throw new common_1.BadRequestException('Amount must be > 0');
             }
@@ -614,6 +613,266 @@ let PaymentService = class PaymentService {
                 alreadyConfirmed: false,
             };
         });
+    }
+    async finalizeGatewayPaymentForOrder(params) {
+        const { companyId, storeId, orderId, provider, providerRef, providerEventId = null, amountMinor, currency, paidAt = null, meta = null, confirmedByUserId = null, } = params;
+        return this.db.transaction(async (tx) => {
+            if (!orderId)
+                throw new common_1.BadRequestException('orderId is required');
+            if (!provider)
+                throw new common_1.BadRequestException('provider is required');
+            if (!providerRef)
+                throw new common_1.BadRequestException('providerRef is required');
+            const normalizedAmountMinor = Math.trunc(Number(amountMinor));
+            if (!Number.isFinite(normalizedAmountMinor) ||
+                normalizedAmountMinor <= 0) {
+                throw new common_1.BadRequestException('amountMinor must be greater than 0');
+            }
+            const orderRes = await tx.execute((0, drizzle_orm_1.sql) `
+        SELECT * FROM orders
+        WHERE id = ${orderId} AND company_id = ${companyId}
+        FOR UPDATE
+      `);
+            const order = orderRes?.rows?.[0] ?? null;
+            if (!order)
+                throw new common_1.NotFoundException('Order not found');
+            const paymentRes = await tx.execute((0, drizzle_orm_1.sql) `
+        SELECT * FROM payments
+        WHERE order_id = ${orderId} AND company_id = ${companyId}
+        LIMIT 1
+        FOR UPDATE
+      `);
+            const payment = paymentRes?.rows?.[0] ?? null;
+            if (!payment) {
+                throw new common_1.NotFoundException('Payment record not found for order');
+            }
+            if (payment.status === 'succeeded' &&
+                payment.provider === provider &&
+                payment.provider_ref === providerRef) {
+                const [existingReceipt] = await tx
+                    .select()
+                    .from(schema_1.paymentReceipts)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.paymentReceipts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.paymentReceipts.paymentId, payment.id)))
+                    .execute();
+                return {
+                    paymentId: payment.id,
+                    receipt: existingReceipt ?? null,
+                    alreadyProcessed: true,
+                };
+            }
+            const [existingByProviderRef] = await tx
+                .select({
+                id: schema_1.payments.id,
+                orderId: schema_1.payments.orderId,
+                status: schema_1.payments.status,
+            })
+                .from(schema_1.payments)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.payments.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.payments.provider, provider), (0, drizzle_orm_1.eq)(schema_1.payments.providerRef, providerRef)))
+                .execute();
+            if (existingByProviderRef && existingByProviderRef.id !== payment.id) {
+                return {
+                    paymentId: existingByProviderRef.id,
+                    receipt: null,
+                    alreadyProcessed: true,
+                };
+            }
+            const paidDate = paidAt ? new Date(paidAt) : new Date();
+            await tx
+                .update(schema_1.payments)
+                .set({
+                storeId: storeId ?? payment.store_id ?? null,
+                provider,
+                providerRef,
+                providerEventId: providerEventId ?? null,
+                status: 'succeeded',
+                currency,
+                amountMinor: normalizedAmountMinor,
+                reference: providerRef,
+                receivedAt: paidDate,
+                confirmedAt: new Date(),
+                confirmedByUserId: confirmedByUserId ?? null,
+                meta: {
+                    ...(payment.meta ?? {}),
+                    ...(meta ?? {}),
+                },
+            })
+                .where((0, drizzle_orm_1.eq)(schema_1.payments.id, payment.id))
+                .execute();
+            await tx
+                .update(schema_1.orders)
+                .set({
+                status: 'paid',
+                paidAt: paidDate,
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .execute();
+            const receipt = await this.createReceiptForPaymentTx(tx, {
+                companyId,
+                paymentId: payment.id,
+                invoiceId: null,
+                orderId: order.id,
+                invoiceNumber: null,
+                orderNumber: order.order_number ?? order.orderNumber ?? null,
+                currency,
+                amountMinor: normalizedAmountMinor,
+                method: 'gateway',
+                reference: providerRef,
+                customerSnapshot: null,
+                storeSnapshot: null,
+                meta: meta ?? null,
+                createdByUserId: confirmedByUserId ?? null,
+            });
+            return {
+                paymentId: payment.id,
+                receipt,
+                receiptId: receipt.id,
+                alreadyProcessed: false,
+            };
+        });
+    }
+    async finalizePendingOrderBankTransferPayment(dto, companyId, userId) {
+        return this.db.transaction(async (tx) => {
+            const payRes = await tx.execute((0, drizzle_orm_1.sql) `
+      SELECT * FROM payments
+      WHERE id = ${dto.paymentId} AND company_id = ${companyId}
+      FOR UPDATE
+    `);
+            const p = payRes?.rows?.[0] ?? null;
+            if (!p)
+                throw new common_1.NotFoundException('Payment not found');
+            if (p.method !== 'bank_transfer') {
+                throw new common_1.BadRequestException('Payment is not a bank transfer');
+            }
+            if (p.status === 'succeeded') {
+                const [existingReceipt] = await tx
+                    .select()
+                    .from(schema_1.paymentReceipts)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.paymentReceipts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.paymentReceipts.paymentId, p.id)))
+                    .execute();
+                return {
+                    paymentId: p.id,
+                    receipt: existingReceipt ?? null,
+                    alreadyConfirmed: true,
+                };
+            }
+            if (p.status !== 'pending') {
+                throw new common_1.BadRequestException(`Payment must be pending (got ${p.status})`);
+            }
+            if (!p.order_id) {
+                throw new common_1.BadRequestException('Payment is not linked to an order');
+            }
+            const orderRes = await tx.execute((0, drizzle_orm_1.sql) `
+      SELECT * FROM orders
+      WHERE id = ${p.order_id} AND company_id = ${companyId}
+      FOR UPDATE
+    `);
+            const order = orderRes?.rows?.[0] ?? null;
+            if (!order)
+                throw new common_1.NotFoundException('Order not found');
+            if (dto.evidenceRequired) {
+                const [file] = await tx
+                    .select({ id: schema_1.paymentFiles.id })
+                    .from(schema_1.paymentFiles)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.paymentFiles.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.paymentFiles.paymentId, p.id)))
+                    .execute();
+                if (!file) {
+                    throw new common_1.BadRequestException('No payment proof uploaded');
+                }
+            }
+            await tx
+                .update(schema_1.payments)
+                .set({
+                status: 'succeeded',
+                reference: dto.reference !== undefined ? dto.reference : (p.reference ?? null),
+                receivedAt: new Date(),
+                confirmedAt: new Date(),
+                confirmedByUserId: userId,
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.eq)(schema_1.payments.id, p.id))
+                .execute();
+            await tx
+                .update(schema_1.orders)
+                .set({
+                status: 'paid',
+                paidAt: new Date(),
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, order.id)))
+                .execute();
+            const receipt = await this.createReceiptForPaymentTx(tx, {
+                companyId,
+                paymentId: p.id,
+                invoiceId: null,
+                orderId: order.id,
+                invoiceNumber: null,
+                orderNumber: order.order_number ?? order.orderNumber ?? null,
+                currency: p.currency ?? order.currency ?? 'NGN',
+                amountMinor: Number(p.amount_minor ?? 0),
+                method: 'bank_transfer',
+                reference: dto.reference ?? p.reference ?? null,
+                customerSnapshot: null,
+                storeSnapshot: null,
+                meta: p.meta ?? null,
+                createdByUserId: userId,
+            });
+            return {
+                paymentId: p.id,
+                receiptId: receipt.id,
+                receipt,
+                alreadyConfirmed: false,
+            };
+        });
+    }
+    async listPendingOrderPaymentsForReview(companyId) {
+        return this.db
+            .select({
+            paymentId: schema_1.payments.id,
+            orderId: schema_1.payments.orderId,
+            amountMinor: schema_1.payments.amountMinor,
+            currency: schema_1.payments.currency,
+            method: schema_1.payments.method,
+            status: schema_1.payments.status,
+            reference: schema_1.payments.reference,
+            createdAt: schema_1.payments.createdAt,
+            orderNumber: schema_1.orders.orderNumber,
+            orderStatus: schema_1.orders.status,
+        })
+            .from(schema_1.payments)
+            .innerJoin(schema_1.orders, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.id, schema_1.payments.orderId), (0, drizzle_orm_1.eq)(schema_1.orders.companyId, schema_1.payments.companyId)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.payments.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.payments.method, 'bank_transfer'), (0, drizzle_orm_1.eq)(schema_1.payments.status, 'pending')))
+            .execute();
+    }
+    async getPendingOrderPaymentById(companyId, paymentId) {
+        const [row] = await this.db
+            .select({
+            paymentId: schema_1.payments.id,
+            orderId: schema_1.payments.orderId,
+            amountMinor: schema_1.payments.amountMinor,
+            currency: schema_1.payments.currency,
+            method: schema_1.payments.method,
+            status: schema_1.payments.status,
+            reference: schema_1.payments.reference,
+            createdAt: schema_1.payments.createdAt,
+            orderNumber: schema_1.orders.orderNumber,
+            orderStatus: schema_1.orders.status,
+        })
+            .from(schema_1.payments)
+            .innerJoin(schema_1.orders, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.id, schema_1.payments.orderId), (0, drizzle_orm_1.eq)(schema_1.orders.companyId, schema_1.payments.companyId)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.payments.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.payments.id, paymentId)))
+            .execute();
+        if (!row) {
+            throw new common_1.NotFoundException('Payment not found');
+        }
+        return row;
+    }
+    async getPaymentEvidence(companyId, paymentId) {
+        return this.db
+            .select()
+            .from(schema_1.paymentFiles)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.paymentFiles.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.paymentFiles.paymentId, paymentId)))
+            .execute();
     }
     async presignPaymentEvidenceUpload(params) {
         const { companyId, paymentId, fileName, mimeType, expiresInSeconds = 300, publicRead = true, requirePendingBankTransfer = false, } = params;

@@ -70,12 +70,8 @@ export class PaymentMethodsService {
         publicConfig: this.pickPublicGatewayConfig(r.provider, r.config),
       }));
 
-    console.log('Gateway methods at checkout:', gateway);
-
     const bankTransfer = rows.find((r: any) => r.method === 'bank_transfer');
     const cash = rows.find((r: any) => r.method === 'cash'); // ✅ add this
-
-    console.log('Bank transfer method at checkout:', bankTransfer);
 
     return {
       storeId,

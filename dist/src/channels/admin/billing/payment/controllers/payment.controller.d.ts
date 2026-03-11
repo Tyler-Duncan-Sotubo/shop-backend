@@ -86,6 +86,111 @@ export declare class PaymentController extends BaseController {
         meta: unknown;
         createdAt: Date;
     }[]>;
+    listPendingOrderPaymentsForReview(user: User): Promise<{
+        data: ({
+            paymentId: string;
+            orderId: string | null;
+            amountMinor: number;
+            currency: string;
+            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            status: "pending" | "succeeded" | "reversed";
+            reference: string | null;
+            createdAt: Date;
+            orderNumber: any;
+            orderStatus: any;
+        } | {
+            paymentId: string;
+            orderId: string | null;
+            amountMinor: number;
+            currency: string;
+            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            status: "pending" | "succeeded" | "reversed";
+            reference: string | null;
+            createdAt: Date;
+            orderNumber: any;
+            orderStatus: any;
+        })[];
+    }>;
+    getPendingOrderPaymentById(user: User, paymentId: string): Promise<{
+        data: {
+            paymentId: string;
+            orderId: string | null;
+            amountMinor: number;
+            currency: string;
+            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            status: "pending" | "succeeded" | "reversed";
+            reference: string | null;
+            createdAt: Date;
+            orderNumber: any;
+            orderStatus: any;
+        } | {
+            paymentId: string;
+            orderId: string | null;
+            amountMinor: number;
+            currency: string;
+            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            status: "pending" | "succeeded" | "reversed";
+            reference: string | null;
+            createdAt: Date;
+            orderNumber: any;
+            orderStatus: any;
+        };
+    }>;
+    getPaymentEvidence(user: User, paymentId: string): Promise<{
+        data: {
+            id: string;
+            companyId: string;
+            paymentId: string;
+            url: string;
+            fileName: string;
+            mimeType: string;
+            sizeBytes: number | null;
+            kind: string;
+            note: string | null;
+            uploadedByUserId: string | null;
+            createdAt: Date;
+        }[];
+    }>;
+    finalizePendingOrderBankTransferPayment(user: User, dto: {
+        paymentId: string;
+        reference?: string | null;
+        evidenceRequired?: boolean;
+    }): Promise<{
+        data: {
+            paymentId: any;
+            receipt: {
+                id: string;
+                companyId: string;
+                paymentId: string;
+                invoiceId: string | null;
+                orderId: string | null;
+                invoiceNumber: string | null;
+                orderNumber: string | null;
+                sequenceNumber: number;
+                receiptNumber: string;
+                currency: string;
+                amountMinor: number;
+                pdfUrl: string | null;
+                pdfStorageKey: string | null;
+                method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+                reference: string | null;
+                customerSnapshot: unknown;
+                storeSnapshot: unknown;
+                meta: unknown;
+                issuedAt: Date;
+                createdByUserId: string | null;
+                createdAt: Date;
+                updatedAt: Date;
+            };
+            alreadyConfirmed: boolean;
+            receiptId?: undefined;
+        } | {
+            paymentId: any;
+            receiptId: any;
+            receipt: any;
+            alreadyConfirmed: boolean;
+        };
+    }>;
     finalizeBankTransfer(user: User, dto: FinalizeBankTransferPaymentDto): Promise<{
         data: {
             paymentId: any;

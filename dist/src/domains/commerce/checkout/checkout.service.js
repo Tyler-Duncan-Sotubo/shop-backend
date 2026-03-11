@@ -182,7 +182,6 @@ let CheckoutService = class CheckoutService {
         })
             .returning()
             .execute();
-        console.log('[checkout] created:', { checkout });
         await dbOrTx
             .insert(schema_1.checkoutItems)
             .values(items.map((it) => ({
@@ -325,7 +324,7 @@ let CheckoutService = class CheckoutService {
             .execute();
         const items = rows.map((r) => ({
             ...r.item,
-            image: r.imageUrl ?? null,
+            image: r.item?.metadata?.image ?? null,
         }));
         return { ...checkout, items };
     }
@@ -402,8 +401,9 @@ let CheckoutService = class CheckoutService {
                 weightKg: it.metadata?.weightKg ?? 0,
             })));
         const zone = await this.zones.resolveZone(companyId, checkout.storeId, dto.countryCode, dto.state, dto.area);
-        if (!zone)
-            throw new common_1.BadRequestException('No shipping zone matches destination');
+        if (!zone) {
+            return this.getCheckout(companyId, checkoutId);
+        }
         let rate = null;
         if (dto.shippingRateId) {
             rate = await this.db.query.shippingRates.findFirst({
@@ -727,7 +727,7 @@ let CheckoutService = class CheckoutService {
                     .insert(schema_1.orders)
                     .values({
                     companyId,
-                    orderNumber: orderNumber,
+                    orderNumber,
                     storeId: co.storeId,
                     checkoutId: co.id,
                     cartId: co.cartId,
@@ -844,62 +844,66 @@ let CheckoutService = class CheckoutService {
                     .execute();
             }
             let invoice = null;
-            invoice = await this.invoiceService.createDraftFromOrder({
-                orderId: orderRow.id,
-                storeId: orderRow.storeId ?? null,
-                currency: orderRow.currency,
-                type: 'invoice',
-            }, companyId, { tx });
             if (channel !== 'online') {
-                const issued = await this.invoiceService.issueInvoice(invoice.id, {
+                invoice = await this.invoiceService.createDraftFromOrder({
+                    orderId: orderRow.id,
+                    storeId: orderRow.storeId ?? null,
+                    currency: orderRow.currency,
+                    type: 'invoice',
+                }, companyId, { tx });
+                invoice = await this.invoiceService.issueInvoice(invoice.id, {
                     storeId: orderRow.storeId ?? null,
                     seriesName: 'POS',
                     dueAt: null,
                 }, companyId, user?.id, { tx });
-                invoice = issued;
             }
             let paymentRow = null;
-            if (channel === 'online') {
-                const [existingPayment] = await tx
-                    .select({ id: schema_1.payments.id, status: schema_1.payments.status })
-                    .from(schema_1.payments)
-                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.payments.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.payments.invoiceId, invoice.id)))
-                    .limit(1)
-                    .execute();
-                if (!existingPayment) {
-                    const amountMinor = Number(orderRow.total ?? 0) * 100;
-                    const status = paymentMethodType === 'bank_transfer' ? 'pending' : 'pending';
-                    const method = paymentMethodType === 'gateway'
-                        ? 'gateway'
-                        : paymentMethodType;
-                    const [p] = await tx
-                        .insert(schema_1.payments)
-                        .values({
-                        companyId,
+            const [existingPayment] = await tx
+                .select()
+                .from(schema_1.payments)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.payments.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.payments.orderId, orderRow.id)))
+                .limit(1)
+                .execute();
+            if (!existingPayment) {
+                const amountMinor = Math.round(Number(orderRow.total ?? 0) * 100);
+                const method = paymentMethodType === 'gateway'
+                    ? 'gateway'
+                    : paymentMethodType;
+                const status = channel === 'online' ? 'pending' : 'succeeded';
+                const now = new Date();
+                const [p] = await tx
+                    .insert(schema_1.payments)
+                    .values({
+                    companyId,
+                    storeId: orderRow.storeId ?? null,
+                    orderId: orderRow.id,
+                    invoiceId: invoice?.id ?? null,
+                    method,
+                    provider: paymentProvider ?? null,
+                    status,
+                    currency: orderRow.currency,
+                    amountMinor,
+                    reference: orderRow.orderNumber ?? null,
+                    providerRef: null,
+                    providerEventId: null,
+                    receivedAt: channel === 'online' ? null : now,
+                    confirmedAt: channel === 'online' ? null : now,
+                    createdByUserId: user?.id ?? null,
+                    confirmedByUserId: channel === 'online' ? null : (user?.id ?? null),
+                    meta: {
+                        checkoutId,
                         orderId: orderRow.id,
-                        invoiceId: invoice.id,
-                        method,
-                        provider: paymentProvider ?? null,
-                        status,
-                        currency: orderRow.currency,
-                        amountMinor,
-                        reference: null,
-                        meta: {
-                            checkoutId,
-                            orderNumber: orderRow.orderNumber,
-                        },
-                        receivedAt: null,
-                        confirmedAt: null,
-                        createdByUserId: user?.id ?? null,
-                        confirmedByUserId: null,
-                    })
-                        .returning()
-                        .execute();
-                    paymentRow = p;
-                }
-                else {
-                    paymentRow = existingPayment;
-                }
+                        orderNumber: orderRow.orderNumber,
+                        channel,
+                    },
+                    createdAt: now,
+                })
+                    .returning()
+                    .execute();
+                paymentRow = p;
+            }
+            else {
+                paymentRow = existingPayment;
             }
             await tx
                 .update(schema_1.carts)
@@ -922,7 +926,7 @@ let CheckoutService = class CheckoutService {
             await this.audit.logAction({
                 action: 'create',
                 entity: 'order',
-                entityId: created,
+                entityId: created.id,
                 userId: user.id,
                 ipAddress: ip,
                 details: 'Completed checkout -> created order',
@@ -934,7 +938,12 @@ let CheckoutService = class CheckoutService {
             .from(schema_1.orderItems)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, created.id)))
             .execute();
-        return { ...created, items, invoice: created.invoice };
+        return {
+            ...created,
+            items,
+            invoice: created.invoice ?? null,
+            payment: created.payment ?? null,
+        };
     }
     async refreshCheckout(companyId, checkoutId, storeId, dto) {
         const result = await this.db.transaction(async (tx) => {

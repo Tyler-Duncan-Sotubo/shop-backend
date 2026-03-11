@@ -53,8 +53,6 @@ export class CartItemMutationService {
       throw new BadRequestException('Quantity must be >= 1');
     }
 
-    console.log('Adding item to cart:', { companyId, storeId, cartId, dto });
-
     const [product] = await this.db
       .select()
       .from(products)

@@ -1,5 +1,12 @@
-import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 export class StoreVariantQueryDto {
   @IsUUID()
@@ -23,4 +30,13 @@ export class StoreVariantQueryDto {
 
   @IsOptional()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === 'false' || value === false || value === 0) return false;
+    if (value === 'true' || value === true || value === 1) return true;
+    return true; // default to true if unrecognised
+  })
+  requireStock?: boolean;
 }

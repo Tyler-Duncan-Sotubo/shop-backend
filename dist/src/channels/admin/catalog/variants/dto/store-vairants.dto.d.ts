@@ -4,4 +4,5 @@ export declare class StoreVariantQueryDto {
     limit?: number;
     offset?: number;
     isActive?: boolean;
+    requireStock?: boolean;
 }

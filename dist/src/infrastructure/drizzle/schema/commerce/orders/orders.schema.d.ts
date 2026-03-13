@@ -11,10 +11,10 @@ export declare const orderCounters: import("drizzle-orm/pg-core").PgTableWithCol
             data: string;
             driverParam: string;
             notNull: true;
-            hasDefault: false;
+            hasDefault: true;
             isPrimaryKey: true;
             isAutoincrement: false;
-            hasRuntimeDefault: false;
+            hasRuntimeDefault: true;
             enumValues: undefined;
             baseColumn: never;
             identity: undefined;

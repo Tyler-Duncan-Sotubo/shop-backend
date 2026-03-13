@@ -292,7 +292,15 @@ export class VariantsService {
     companyId: string,
     query: StoreVariantQueryDto,
   ) {
-    const { storeId, search, isActive, limit = 50, offset = 0 } = query;
+    const {
+      storeId,
+      search,
+      isActive,
+      limit = 50,
+      offset = 0,
+      requireStock = true,
+    } = query;
+
     const normalizedSearch = (search ?? '').trim();
 
     const cacheKey = [
@@ -301,8 +309,8 @@ export class VariantsService {
       'store-combobox',
       'store',
       storeId,
-      'inStock',
-      'true',
+      'requireStock',
+      String(requireStock),
       'active',
       typeof isActive === 'boolean' ? String(isActive) : 'any',
       'search',
@@ -331,7 +339,6 @@ export class VariantsService {
 
         const tokenConditions = tokens.map((token) => {
           const q = `%${token}%`;
-
           return or(
             ilike(productVariants.sku, q),
             ilike(productVariants.title, q),
@@ -343,12 +350,11 @@ export class VariantsService {
         where.push(and(...tokenConditions));
       }
 
-      // Replace with real price column if you have one:
       const suggestedUnitPriceExpr = (productVariants as any).price
         ? sql<number>`COALESCE(${(productVariants as any).price}, 0)`
         : sql<number | null>`NULL`;
 
-      // total available per variant
+      // use 0 as fallback so variants without inventory rows show available: 0
       const availableExpr = sql<number>`COALESCE(SUM(${inventoryItems.available}), 0)`;
 
       const rows = await this.db
@@ -362,13 +368,13 @@ export class VariantsService {
           available: availableExpr,
         })
         .from(productVariants)
-        .innerJoin(
+        // leftJoin so variants without inventory rows are still returned
+        // when requireStock is false
+        .leftJoin(
           inventoryItems,
           and(
             eq(inventoryItems.companyId, productVariants.companyId),
             eq(inventoryItems.productVariantId, productVariants.id),
-            // if inventoryItems has storeId, filter here too:
-            // eq(inventoryItems.storeId, storeId),
           ),
         )
         .leftJoin(
@@ -393,7 +399,9 @@ export class VariantsService {
           products.name,
           productImages.url,
         )
-        .having(gt(availableExpr, 0))
+        .$dynamic()
+        // only enforce stock filter when requireStock is true
+        .having(requireStock ? gt(availableExpr, 0) : sql`1=1`)
         .limit(limit)
         .offset(offset)
         .execute();
@@ -406,7 +414,8 @@ export class VariantsService {
         imageUrl: r.imageUrl ?? null,
         suggestedUnitPrice: r.suggestedUnitPrice ?? null,
         available: Number(r.available ?? 0),
-        label: `${r.productName ?? 'Product'} • ${r.title}${r.sku ? ` • ${r.sku}` : ''} • ${Number(r.available ?? 0)}`,
+        // show "0 in stock" label when requireStock is false so user knows
+        label: `${r.productName ?? 'Product'} • ${r.title}${r.sku ? ` • ${r.sku}` : ''} • ${Number(r.available ?? 0)} in stock`,
       }));
     });
   }

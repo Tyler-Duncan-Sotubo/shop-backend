@@ -622,6 +622,7 @@ let QuoteService = class QuoteService {
             shippingAddress: input.shippingAddress ?? null,
             billingAddress: input.billingAddress ?? null,
             originInventoryLocationId: input.originInventoryLocationId,
+            fulfillmentModel: input.fulfillmentModel ?? 'stock_first',
             quoteRequestId: quote.id,
             sourceType: 'quote',
             zohoOrganizationId: quote.zohoOrganizationId ?? null,

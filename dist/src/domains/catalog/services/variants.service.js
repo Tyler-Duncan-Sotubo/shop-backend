@@ -193,7 +193,7 @@ let VariantsService = class VariantsService {
         });
     }
     async listStoreVariantsForCombobox(companyId, query) {
-        const { storeId, search, isActive, limit = 50, offset = 0 } = query;
+        const { storeId, search, isActive, limit = 50, offset = 0, requireStock = true, } = query;
         const normalizedSearch = (search ?? '').trim();
         const cacheKey = [
             'products',
@@ -201,8 +201,8 @@ let VariantsService = class VariantsService {
             'store-combobox',
             'store',
             storeId,
-            'inStock',
-            'true',
+            'requireStock',
+            String(requireStock),
             'active',
             typeof isActive === 'boolean' ? String(isActive) : 'any',
             'search',
@@ -246,12 +246,13 @@ let VariantsService = class VariantsService {
                 available: availableExpr,
             })
                 .from(schema_1.productVariants)
-                .innerJoin(schema_1.inventoryItems, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, schema_1.productVariants.id)))
+                .leftJoin(schema_1.inventoryItems, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, schema_1.productVariants.id)))
                 .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productVariants.productId)))
                 .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.variantId, schema_1.productVariants.id)))
                 .where((0, drizzle_orm_1.and)(...where))
                 .groupBy(schema_1.productVariants.id, schema_1.productVariants.title, schema_1.productVariants.sku, schema_1.products.name, schema_1.productImages.url)
-                .having((0, drizzle_orm_1.gt)(availableExpr, 0))
+                .$dynamic()
+                .having(requireStock ? (0, drizzle_orm_1.gt)(availableExpr, 0) : (0, drizzle_orm_1.sql) `1=1`)
                 .limit(limit)
                 .offset(offset)
                 .execute();
@@ -263,7 +264,7 @@ let VariantsService = class VariantsService {
                 imageUrl: r.imageUrl ?? null,
                 suggestedUnitPrice: r.suggestedUnitPrice ?? null,
                 available: Number(r.available ?? 0),
-                label: `${r.productName ?? 'Product'} • ${r.title}${r.sku ? ` • ${r.sku}` : ''} • ${Number(r.available ?? 0)}`,
+                label: `${r.productName ?? 'Product'} • ${r.title}${r.sku ? ` • ${r.sku}` : ''} • ${Number(r.available ?? 0)} in stock`,
             }));
         });
     }

@@ -16,7 +16,6 @@ export declare class DashboardCommerceAnalyticsService {
     private orderWhere;
     private customerWhere;
     private visitsWhere;
-    private paidInvoicesSubquery;
     private computeCards;
     private computeGrossSalesCards;
     grossSalesCards(args: DashboardRangeArgs): Promise<GrossSalesCardsResult>;
@@ -38,7 +37,7 @@ export declare class DashboardCommerceAnalyticsService {
     }): Promise<{
         productId: string | null;
         variantId: string | null;
-        productName: any;
+        productName: string | null;
         variantTitle: any;
         imageUrl: string | null;
         categories: string[];
@@ -77,7 +76,7 @@ export declare class DashboardCommerceAnalyticsService {
         topProducts: {
             productId: string | null;
             variantId: string | null;
-            productName: any;
+            productName: string | null;
             variantTitle: any;
             imageUrl: string | null;
             categories: string[];

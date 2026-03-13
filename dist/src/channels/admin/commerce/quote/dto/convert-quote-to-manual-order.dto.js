@@ -23,6 +23,12 @@ __decorate([
     __metadata("design:type", String)
 ], ConvertQuoteToManualOrderDto.prototype, "currency", void 0);
 __decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['stock_first', 'payment_first']),
+    __metadata("design:type", String)
+], ConvertQuoteToManualOrderDto.prototype, "fulfillmentModel", void 0);
+__decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsIn)(['manual', 'pos']),
     __metadata("design:type", String)

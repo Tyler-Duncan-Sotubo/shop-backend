@@ -47,6 +47,9 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
     updateCustomerAndShipping(user, orderId, dto, ip) {
         return this.orders.updateCustomerAndShipping(user.companyId, orderId, dto, user, ip);
     }
+    async checkStock(orderId, user) {
+        return this.manualOrdersService.checkStockAvailability(user.companyId, orderId);
+    }
     createManualOrder(user, dto, ip) {
         return this.manualOrdersService.createManualOrder(user.companyId, dto, user, ip);
     }
@@ -121,6 +124,15 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "updateCustomerAndShipping", null);
 __decorate([
+    (0, common_1.Get)('manual/:orderId/stock-check'),
+    (0, common_1.SetMetadata)('permissions', ['orders.manual.create']),
+    __param(0, (0, common_1.Param)('orderId')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "checkStock", null);
+__decorate([
     (0, common_1.Post)('manual'),
     (0, common_1.SetMetadata)('permissions', ['orders.manual.create']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
@@ -162,7 +174,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "deleteManual", null);
 __decorate([
-    (0, common_1.Post)('manual/:orderId/submit-for-payment'),
+    (0, common_1.Patch)('manual/:orderId/submit-for-payment'),
     (0, common_1.SetMetadata)('permissions', ['orders.manual.edit']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('orderId')),

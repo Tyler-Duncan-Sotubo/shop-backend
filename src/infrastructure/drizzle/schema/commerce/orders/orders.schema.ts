@@ -54,7 +54,10 @@ export const orders = pgTable(
     currency: varchar('currency', { length: 8 }).notNull(),
 
     customerId: uuid('customer_id'),
-
+    fulfillmentModel: text('fulfillment_model')
+      .notNull()
+      .default('stock_first')
+      .$type<'stock_first' | 'payment_first'>(),
     deliveryMethodType: varchar('delivery_method_type', { length: 16 })
       .notNull()
       .default('shipping'),
@@ -166,7 +169,7 @@ export const orders = pgTable(
 export const orderCounters = pgTable(
   'order_counters',
   {
-    id: uuid('id').primaryKey(),
+    id: uuid('id').primaryKey().$defaultFn(defaultId),
     companyId: uuid('company_id').notNull(),
     nextNumber: integer('next_number').notNull().default(1),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),

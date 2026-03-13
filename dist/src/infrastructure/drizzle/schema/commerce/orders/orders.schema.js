@@ -32,6 +32,10 @@ exports.orders = (0, pg_core_1.pgTable)('orders', {
     channel: (0, pg_core_1.varchar)('channel', { length: 16 }).notNull(),
     currency: (0, pg_core_1.varchar)('currency', { length: 8 }).notNull(),
     customerId: (0, pg_core_1.uuid)('customer_id'),
+    fulfillmentModel: (0, pg_core_1.text)('fulfillment_model')
+        .notNull()
+        .default('stock_first')
+        .$type(),
     deliveryMethodType: (0, pg_core_1.varchar)('delivery_method_type', { length: 16 })
         .notNull()
         .default('shipping'),
@@ -94,7 +98,7 @@ exports.orders = (0, pg_core_1.pgTable)('orders', {
     (0, pg_core_1.index)('orders_company_status_created_idx').on(t.companyId, t.status, t.createdAt),
 ]);
 exports.orderCounters = (0, pg_core_1.pgTable)('order_counters', {
-    id: (0, pg_core_1.uuid)('id').primaryKey(),
+    id: (0, pg_core_1.uuid)('id').primaryKey().$defaultFn(id_1.defaultId),
     companyId: (0, pg_core_1.uuid)('company_id').notNull(),
     nextNumber: (0, pg_core_1.integer)('next_number').notNull().default(1),
     updatedAt: (0, pg_core_1.timestamp)('updated_at', { withTimezone: true }).defaultNow(),

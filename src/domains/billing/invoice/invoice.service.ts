@@ -244,6 +244,125 @@ export class InvoiceService {
     return inv;
   }
 
+  async syncFromOrder(
+    orderId: string,
+    companyId: string,
+    ctx?: { tx?: TxOrDb },
+  ) {
+    const tx = ctx?.tx ?? this.db;
+
+    const [invoice] = await tx
+      .select()
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.companyId, companyId),
+          eq(invoices.orderId, orderId),
+          eq(invoices.status, 'draft'),
+        ),
+      )
+      .execute();
+
+    if (!invoice) return null;
+
+    const items = await tx
+      .select()
+      .from(orderItems)
+      .where(
+        and(
+          eq(orderItems.companyId, companyId),
+          eq(orderItems.orderId, orderId),
+        ),
+      )
+      .execute();
+
+    // delete non-shipping lines
+    await tx
+      .delete(invoiceLines)
+      .where(
+        and(
+          eq(invoiceLines.companyId, companyId),
+          eq(invoiceLines.invoiceId, invoice.id),
+          sql`(${invoiceLines.meta}->>'kind') IS DISTINCT FROM 'shipping'`,
+        ),
+      )
+      .execute();
+
+    // re-position shipping line to end to avoid position conflicts
+    const shippingPosition = items.length + 1;
+    await tx
+      .update(invoiceLines)
+      .set({ position: shippingPosition })
+      .where(
+        and(
+          eq(invoiceLines.companyId, companyId),
+          eq(invoiceLines.invoiceId, invoice.id),
+          sql`(${invoiceLines.meta}->>'kind') = 'shipping'`,
+        ),
+      )
+      .execute();
+
+    if (items.length) {
+      const parseNumeric = (v: any) =>
+        Number(typeof v === 'string' ? v : (v ?? 0));
+
+      const toMinorFromMajor = (major: any) =>
+        Math.round(parseNumeric(major) * 100);
+
+      const pickMinor = (minor: any, major: any) => {
+        const m = Number(minor ?? 0);
+        if (m > 0) return m;
+        return toMinorFromMajor(major);
+      };
+
+      await tx
+        .insert(invoiceLines)
+        .values(
+          items.map((item: any, idx: number) => {
+            const quantity = Number(item.quantity ?? 1);
+            const unitPriceMinor = pickMinor(
+              item.unitPriceMinor,
+              item.unitPrice,
+            );
+            const lineNetMinor = unitPriceMinor * quantity;
+
+            return {
+              companyId,
+              invoiceId: invoice.id,
+              orderId,
+              position: idx + 1, // 1-based, shipping sits at items.length + 1
+              productId: item.productId ?? null,
+              variantId: item.variantId ?? null,
+              description: item.name ?? 'Item',
+              quantity,
+              unitPriceMinor,
+              discountMinor: 0,
+              lineNetMinor,
+              taxMinor: 0,
+              lineTotalMinor: lineNetMinor,
+              taxId: null,
+              taxName: null,
+              taxRateBps: 0,
+              taxInclusive: false,
+              taxExempt: false,
+              taxExemptReason: null,
+              meta: {
+                source: 'order',
+                orderItemId: item.id ?? null,
+                sku: item.sku ?? null,
+                attributes: item.attributes ?? null,
+              },
+            };
+          }) as any,
+        )
+        .execute();
+    }
+
+    await this.recalculateDraftTotals(companyId, invoice.id, { tx });
+
+    return invoice;
+  }
+
   /**
    * Draft-only recalc: uses current tax config for any selected taxId.
    * Issued invoices must never be recalculated from mutable config.

@@ -32,6 +32,19 @@ export declare class ManualOrdersService {
     }): Promise<{
         ok: boolean;
     }>;
+    checkStockAvailability(companyId: string, orderId: string): Promise<{
+        ready: boolean;
+        fulfillmentModel: any;
+        items: ({
+            itemId: string;
+            variantId: string;
+            name: string;
+            requested: number;
+            sellable: number;
+            sufficient: boolean;
+            shortfall: number;
+        } | null)[];
+    }>;
     submitForPayment(companyId: string, orderId: string, actor?: User, ip?: string, ctx?: {
         tx?: TxOrDb;
     }): Promise<{

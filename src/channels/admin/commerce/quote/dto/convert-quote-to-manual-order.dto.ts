@@ -8,6 +8,11 @@ export class ConvertQuoteToManualOrderDto {
   @IsString()
   currency: string;
 
+  @IsString()
+  @IsOptional()
+  @IsIn(['stock_first', 'payment_first'])
+  fulfillmentModel: 'stock_first' | 'payment_first';
+
   @IsOptional()
   @IsIn(['manual', 'pos'])
   channel?: 'manual' | 'pos';

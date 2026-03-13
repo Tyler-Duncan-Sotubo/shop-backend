@@ -2,6 +2,7 @@ export declare class CreateManualOrderDto {
     storeId?: string | null;
     customerId?: string | null;
     currency: string;
+    fulfillmentModel?: 'stock_first' | 'payment_first';
     channel?: 'manual' | 'pos';
     sourceType?: 'manual' | 'quote' | 'pos' | 'checkout';
     originInventoryLocationId: string;

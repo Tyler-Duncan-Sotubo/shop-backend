@@ -687,6 +687,7 @@ export class InventoryStockService {
       await this.releaseReservationInTx(
         tx,
         companyId,
+        orderId,
         r.locationId,
         r.productVariantId,
         qty,
@@ -711,6 +712,7 @@ export class InventoryStockService {
   async releaseReservationInTx(
     tx: db,
     companyId: string,
+    orderId: string,
     locationId: string,
     productVariantId: string,
     qty: number,
@@ -718,6 +720,7 @@ export class InventoryStockService {
     meta?: any,
   ) {
     if (!Number.isFinite(qty) || qty <= 0) return;
+
     const updated = await tx
       .update(inventoryItems)
       .set({
@@ -741,7 +744,6 @@ export class InventoryStockService {
       );
     }
 
-    // ✅ ledger: release decreases reserved
     await this.ledger.logInTx(tx, {
       companyId,
       locationId,
@@ -752,6 +754,19 @@ export class InventoryStockService {
       note: 'Released reserved stock',
       meta,
     });
+
+    // delete reservation row so reserveForOrderInTx doesn't read stale data
+    await tx
+      .delete(inventoryReservations)
+      .where(
+        and(
+          eq(inventoryReservations.companyId, companyId),
+          eq(inventoryReservations.orderId, orderId),
+          eq(inventoryReservations.locationId, locationId),
+          eq(inventoryReservations.productVariantId, productVariantId),
+        ),
+      )
+      .execute();
   }
 
   async fulfillOrderReservationsInTx(

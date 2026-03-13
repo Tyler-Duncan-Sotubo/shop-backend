@@ -302,9 +302,6 @@ export class OrdersService {
     return result;
   }
 
-  // -----------------------
-  // POST /orders/:id/cancel
-  // -----------------------
   async cancel(companyId: string, orderId: string, user?: User, ip?: string) {
     const result = await this.db.transaction(async (tx) => {
       const [before] = await tx
@@ -322,7 +319,6 @@ export class OrdersService {
         );
       }
 
-      // ✅ 1) Find invoice for this order
       const [inv] = await tx
         .select({ id: invoices.id, paidMinor: invoices.paidMinor })
         .from(invoices)
@@ -331,18 +327,15 @@ export class OrdersService {
         )
         .execute();
 
-      // If you always have an invoice, you can throw instead
       if (!inv) throw new BadRequestException('Order has no invoice');
 
       const paidMinor = Number(inv.paidMinor ?? 0);
-
       if (paidMinor > 0) {
         throw new BadRequestException(
           `Cannot cancel order with paid invoice amount: ${paidMinor}`,
         );
       }
 
-      // ... your existing reservation release logic
       const items = await tx
         .select()
         .from(orderItems)
@@ -361,18 +354,23 @@ export class OrdersService {
         );
       }
 
-      for (const it of items) {
-        if (!it.variantId) continue;
-        const qty = Number(it.quantity ?? 0);
-        if (qty <= 0) continue;
+      // only release reservations for stock_first orders
+      // payment_first orders never had reservations created
+      if ((before as any).fulfillmentModel === 'stock_first') {
+        for (const it of items) {
+          if (!it.variantId) continue;
+          const qty = Number(it.quantity ?? 0);
+          if (qty <= 0) continue;
 
-        await this.stock.releaseReservationInTx(
-          tx,
-          companyId,
-          origin,
-          it.variantId,
-          qty,
-        );
+          await this.stock.releaseReservationInTx(
+            tx,
+            companyId,
+            orderId,
+            origin,
+            it.variantId,
+            qty,
+          );
+        }
       }
 
       const [after] = await tx
@@ -400,9 +398,6 @@ export class OrdersService {
     return result;
   }
 
-  // -----------------------
-  // POST /orders/:id/fulfill
-  // -----------------------
   async fulfill(companyId: string, orderId: string, user?: User, ip?: string) {
     const result = await this.db.transaction(async (tx) => {
       const [before] = await tx
@@ -440,6 +435,21 @@ export class OrdersService {
         const qty = Number(it.quantity ?? 0);
         if (qty <= 0) continue;
 
+        if ((before as any).fulfillmentModel === 'payment_first') {
+          // no reservation exists — mandate stock availability now
+          // if stock is insufficient this throws and rolls back the transaction
+          await this.stock.reserveForOrderInTx(
+            tx,
+            companyId,
+            orderId,
+            origin,
+            it.variantId,
+            qty,
+          );
+        }
+
+        // for stock_first: reservation already exists, convert it to fulfilled
+        // for payment_first: reservation was just created above, now fulfil it
         await this.stock.fulfillFromReservationInTx(
           tx,
           companyId,

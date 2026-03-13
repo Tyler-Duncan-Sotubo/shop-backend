@@ -47,16 +47,14 @@ let ShippingRatesService = class ShippingRatesService {
         return this.cache.getOrSetVersioned(companyId, ['shipping', 'rates', 'v1', zoneId ?? 'all', storeId ?? 'all'], async () => {
             const base = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.shippingRates.companyId, companyId), ...(zoneId ? [(0, drizzle_orm_1.eq)(schema_1.shippingRates.zoneId, zoneId)] : []));
             if (!storeId) {
-                const rates = await this.db
+                return this.db
                     .select()
                     .from(schema_1.shippingRates)
                     .where(base)
                     .orderBy((0, drizzle_orm_1.desc)(schema_1.shippingRates.priority))
                     .execute();
-                console.log('Rates without storeId:', rates);
-                return rates;
             }
-            const rates = await this.db
+            return this.db
                 .select({
                 id: schema_1.shippingRates.id,
                 zoneId: schema_1.shippingRates.zoneId,
@@ -73,7 +71,6 @@ let ShippingRatesService = class ShippingRatesService {
                 .where((0, drizzle_orm_1.and)(base, (0, drizzle_orm_1.eq)(schema_1.shippingZones.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.shippingZones.storeId, storeId)))
                 .orderBy((0, drizzle_orm_1.desc)(schema_1.shippingRates.priority))
                 .execute();
-            return rates;
         });
     }
     async createRate(companyId, dto, user, ip) {
@@ -96,8 +93,9 @@ let ShippingRatesService = class ShippingRatesService {
                 throw new common_1.BadRequestException('Carrier not found');
         }
         if (dto.isDefault) {
-            if (dto.carrierId)
+            if (dto.carrierId) {
                 throw new common_1.BadRequestException('Default rate should not have a carrierId');
+            }
             await this.db
                 .update(schema_1.shippingRates)
                 .set({ isDefault: false, updatedAt: new Date() })
@@ -239,13 +237,21 @@ let ShippingRatesService = class ShippingRatesService {
                 throw new common_1.BadRequestException('Weight tiers require minWeightGrams and maxWeightGrams');
             }
         }
+        const minWeightGrams = this.kgToGrams(dto.minWeightGrams);
+        const maxWeightGrams = this.kgToGrams(dto.maxWeightGrams);
+        if (rate.calc === 'weight' &&
+            minWeightGrams != null &&
+            maxWeightGrams != null &&
+            minWeightGrams > maxWeightGrams) {
+            throw new common_1.BadRequestException('minWeightGrams must be <= maxWeightGrams');
+        }
         const [row] = await this.db
             .insert(schema_1.shippingRateTiers)
             .values({
             companyId,
             rateId: dto.rateId,
-            minWeightGrams: this.kgToGrams(dto.minWeightGrams),
-            maxWeightGrams: this.kgToGrams(dto.maxWeightGrams),
+            minWeightGrams,
+            maxWeightGrams,
             minSubtotal: dto.minSubtotal ?? null,
             maxSubtotal: dto.maxSubtotal ?? null,
             amount: dto.amount,
@@ -273,45 +279,33 @@ let ShippingRatesService = class ShippingRatesService {
         });
         if (!existing)
             throw new common_1.NotFoundException('Tier not found');
-        if (patch.rateId) {
-            const rate = await this.db.query.shippingRates.findFirst({
-                where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.shippingRates.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.shippingRates.id, patch.rateId)),
-            });
-            if (!rate)
-                throw new common_1.BadRequestException('Rate not found');
-            if (rate.calc !== 'weight') {
-                throw new common_1.BadRequestException('Tiers can only be used with weight rates');
-            }
-        }
-        else {
-            const rate = await this.db.query.shippingRates.findFirst({
-                where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.shippingRates.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.shippingRates.id, existing.rateId)),
-            });
-            if (!rate)
-                throw new common_1.BadRequestException('Rate not found');
-            if (rate.calc !== 'weight') {
-                throw new common_1.BadRequestException('Tiers can only be used with weight rates');
-            }
-        }
+        const rateId = patch.rateId ?? existing.rateId;
+        const rate = await this.db.query.shippingRates.findFirst({
+            where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.shippingRates.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.shippingRates.id, rateId)),
+        });
+        if (!rate)
+            throw new common_1.BadRequestException('Rate not found');
         const nextMin = patch.minWeightGrams === undefined
             ? existing.minWeightGrams
             : this.kgToGrams(patch.minWeightGrams);
         const nextMax = patch.maxWeightGrams === undefined
             ? existing.maxWeightGrams
             : this.kgToGrams(patch.maxWeightGrams);
-        if (nextMin == null || nextMax == null) {
-            throw new common_1.BadRequestException('Weight tiers require minWeightGrams and maxWeightGrams');
-        }
-        if (nextMin < 0 || nextMax < 0) {
-            throw new common_1.BadRequestException('Weights must not be less than 0');
-        }
-        if (nextMin > nextMax) {
-            throw new common_1.BadRequestException('minWeightGrams must be <= maxWeightGrams');
+        if (rate.calc === 'weight') {
+            if (nextMin == null || nextMax == null) {
+                throw new common_1.BadRequestException('Weight tiers require minWeightGrams and maxWeightGrams');
+            }
+            if (nextMin < 0 || nextMax < 0) {
+                throw new common_1.BadRequestException('Weights must not be less than 0');
+            }
+            if (nextMin > nextMax) {
+                throw new common_1.BadRequestException('minWeightGrams must be <= maxWeightGrams');
+            }
         }
         const [updated] = await this.db
             .update(schema_1.shippingRateTiers)
             .set({
-            rateId: patch.rateId ?? existing.rateId,
+            rateId,
             minWeightGrams: nextMin,
             maxWeightGrams: nextMax,
             minSubtotal: patch.minSubtotal === undefined
@@ -368,37 +362,52 @@ let ShippingRatesService = class ShippingRatesService {
         const zone = await this.zonesService.resolveZone(companyId, dto.storeId, dto.countryCode, dto.state, dto.area);
         if (!zone)
             return { zone: null, rate: null, amount: '0' };
-        const rate = await this.pickBestRate(companyId, zone.id, dto.carrierId ?? null);
-        if (!rate)
+        const result = await this.pickBestRateWithAmount(companyId, zone.id, dto.totalWeightGrams ?? 0, dto.carrierId ?? null);
+        if (!result)
             return { zone, rate: null, amount: '0' };
-        const amount = await this.computeRateAmount(companyId, rate.id, rate.calc, dto.totalWeightGrams ?? 0);
-        return { zone, rate, amount };
+        return { zone, rate: result.rate, amount: result.amount };
     }
-    async pickBestRate(companyId, zoneId, carrierId) {
+    async pickBestRateWithAmount(companyId, zoneId, totalWeightGrams, carrierId) {
         const baseWhere = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.shippingRates.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.shippingRates.zoneId, zoneId), (0, drizzle_orm_1.eq)(schema_1.shippingRates.isActive, true));
         if (carrierId) {
             const r = await this.db.query.shippingRates.findFirst({
                 where: (0, drizzle_orm_1.and)(baseWhere, (0, drizzle_orm_1.eq)(schema_1.shippingRates.carrierId, carrierId)),
             });
-            if (r)
-                return r;
+            if (r) {
+                const amount = await this.computeRateAmount(companyId, r.id, r.calc, totalWeightGrams, r.calc === 'flat' ? r.flatAmount : null);
+                if (amount !== null)
+                    return { rate: r, amount };
+            }
         }
-        const d = await this.db.query.shippingRates.findFirst({
+        const defaultRate = await this.db.query.shippingRates.findFirst({
             where: (0, drizzle_orm_1.and)(baseWhere, (0, drizzle_orm_1.isNull)(schema_1.shippingRates.carrierId), (0, drizzle_orm_1.eq)(schema_1.shippingRates.isDefault, true)),
         });
-        if (d)
-            return d;
-        return this.db.query.shippingRates.findFirst({
-            where: baseWhere,
-            orderBy: (t, { desc }) => [desc(t.priority)],
-        });
+        if (defaultRate) {
+            const amount = await this.computeRateAmount(companyId, defaultRate.id, defaultRate.calc, totalWeightGrams, defaultRate.calc === 'flat' ? defaultRate.flatAmount : null);
+            if (amount !== null)
+                return { rate: defaultRate, amount };
+        }
+        const allRates = await this.db
+            .select()
+            .from(schema_1.shippingRates)
+            .where(baseWhere)
+            .orderBy((0, drizzle_orm_1.desc)(schema_1.shippingRates.priority))
+            .execute();
+        for (const rate of allRates) {
+            const amount = await this.computeRateAmount(companyId, rate.id, rate.calc, totalWeightGrams, rate.calc === 'flat' ? rate.flatAmount : null);
+            if (amount !== null)
+                return { rate, amount };
+        }
+        return null;
     }
-    async computeRateAmount(companyId, rateId, calc, totalWeightGrams) {
+    async computeRateAmount(companyId, rateId, calc, totalWeightGrams, flatAmount) {
         if (calc === 'flat') {
+            if (flatAmount != null)
+                return flatAmount;
             const rate = await this.db.query.shippingRates.findFirst({
                 where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.shippingRates.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.shippingRates.id, rateId)),
             });
-            return rate?.flatAmount ?? '0';
+            return rate?.flatAmount ? rate.flatAmount : null;
         }
         if (calc === 'weight') {
             const tiers = await this.db
@@ -414,9 +423,9 @@ let ShippingRatesService = class ShippingRatesService {
                     return false;
                 return totalWeightGrams >= min && totalWeightGrams <= max;
             });
-            return tier?.amount ?? '0';
+            return tier ? tier.amount : null;
         }
-        return '0';
+        return null;
     }
 };
 exports.ShippingRatesService = ShippingRatesService;

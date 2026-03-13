@@ -10,7 +10,6 @@ import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
 import { AuditService } from 'src/domains/audit/audit.service';
 import { User } from 'src/channels/admin/common/types/user.type';
-
 import {
   shippingRates,
   shippingRateTiers,
@@ -64,23 +63,19 @@ export class ShippingRatesService {
       async () => {
         const base = and(
           eq(shippingRates.companyId, companyId),
-          // if zoneId provided, constrain rates to that zone
           ...(zoneId ? [eq(shippingRates.zoneId, zoneId)] : []),
         );
 
-        // If no storeId, keep existing behavior (no join needed)
         if (!storeId) {
-          const rates = await this.db
+          return this.db
             .select()
             .from(shippingRates)
             .where(base as any)
             .orderBy(desc(shippingRates.priority))
             .execute();
-          console.log('Rates without storeId:', rates);
-          return rates;
         }
 
-        const rates = await this.db
+        return this.db
           .select({
             id: shippingRates.id,
             zoneId: shippingRates.zoneId,
@@ -103,8 +98,6 @@ export class ShippingRatesService {
           )
           .orderBy(desc(shippingRates.priority))
           .execute();
-
-        return rates;
       },
     );
   }
@@ -115,7 +108,6 @@ export class ShippingRatesService {
     user?: User,
     ip?: string,
   ) {
-    // validate zone exists
     const zone = await this.db.query.shippingZones.findFirst({
       where: and(
         eq(shippingZones.companyId, companyId),
@@ -124,7 +116,6 @@ export class ShippingRatesService {
     });
     if (!zone) throw new BadRequestException('Zone not found');
 
-    // Duplicate name check within the same zone
     const existingRate = await this.db.query.shippingRates.findFirst({
       where: and(
         eq(shippingRates.companyId, companyId),
@@ -138,7 +129,6 @@ export class ShippingRatesService {
       );
     }
 
-    // validate carrier if provided
     if (dto.carrierId) {
       const c = await this.db.query.carriers.findFirst({
         where: and(
@@ -149,13 +139,12 @@ export class ShippingRatesService {
       if (!c) throw new BadRequestException('Carrier not found');
     }
 
-    // if setting as default, enforce one default per zone (carrierId must be null in our convention)
     if (dto.isDefault) {
-      if (dto.carrierId)
+      if (dto.carrierId) {
         throw new BadRequestException(
           'Default rate should not have a carrierId',
         );
-
+      }
       await this.db
         .update(shippingRates)
         .set({ isDefault: false, updatedAt: new Date() })
@@ -225,7 +214,6 @@ export class ShippingRatesService {
     });
     if (!existing) throw new NotFoundException('Rate not found');
 
-    // validate carrier if provided (or null allowed)
     if (dto.carrierId && typeof dto.carrierId === 'string') {
       const c = await this.db.query.carriers.findFirst({
         where: and(
@@ -236,7 +224,6 @@ export class ShippingRatesService {
       if (!c) throw new BadRequestException('Carrier not found');
     }
 
-    // enforce default semantics
     if (dto.isDefault === true) {
       if (dto.carrierId && dto.carrierId !== null) {
         throw new BadRequestException(
@@ -382,7 +369,6 @@ export class ShippingRatesService {
     });
     if (!rate) throw new BadRequestException('Rate not found');
 
-    // minimal validation: for weight calc, require min/max weight
     if ((rate.calc as string) === 'weight') {
       if (dto.minWeightGrams == null || dto.maxWeightGrams == null) {
         throw new BadRequestException(
@@ -391,13 +377,26 @@ export class ShippingRatesService {
       }
     }
 
+    // convert kg input to grams for storage
+    const minWeightGrams = this.kgToGrams(dto.minWeightGrams);
+    const maxWeightGrams = this.kgToGrams(dto.maxWeightGrams);
+
+    if (
+      (rate.calc as string) === 'weight' &&
+      minWeightGrams != null &&
+      maxWeightGrams != null &&
+      minWeightGrams > maxWeightGrams
+    ) {
+      throw new BadRequestException('minWeightGrams must be <= maxWeightGrams');
+    }
+
     const [row] = await this.db
       .insert(shippingRateTiers)
       .values({
         companyId,
         rateId: dto.rateId,
-        minWeightGrams: this.kgToGrams(dto.minWeightGrams),
-        maxWeightGrams: this.kgToGrams(dto.maxWeightGrams),
+        minWeightGrams,
+        maxWeightGrams,
         minSubtotal: dto.minSubtotal ?? null,
         maxSubtotal: dto.maxSubtotal ?? null,
         amount: dto.amount,
@@ -438,40 +437,15 @@ export class ShippingRatesService {
     });
     if (!existing) throw new NotFoundException('Tier not found');
 
-    // Optional but recommended: if patch includes rateId, validate it exists & belongs to company
-    if (patch.rateId) {
-      const rate = await this.db.query.shippingRates.findFirst({
-        where: and(
-          eq(shippingRates.companyId, companyId),
-          eq(shippingRates.id, patch.rateId),
-        ),
-      });
-      if (!rate) throw new BadRequestException('Rate not found');
+    const rateId = patch.rateId ?? existing.rateId;
+    const rate = await this.db.query.shippingRates.findFirst({
+      where: and(
+        eq(shippingRates.companyId, companyId),
+        eq(shippingRates.id, rateId),
+      ),
+    });
+    if (!rate) throw new BadRequestException('Rate not found');
 
-      // Optional: enforce this only for weight-based rates
-      if ((rate.calc as string) !== 'weight') {
-        throw new BadRequestException(
-          'Tiers can only be used with weight rates',
-        );
-      }
-    } else {
-      // If rateId not provided, still ensure the existing rate is weight-based (optional safety)
-      const rate = await this.db.query.shippingRates.findFirst({
-        where: and(
-          eq(shippingRates.companyId, companyId),
-          eq(shippingRates.id, existing.rateId),
-        ),
-      });
-      if (!rate) throw new BadRequestException('Rate not found');
-      if ((rate.calc as string) !== 'weight') {
-        throw new BadRequestException(
-          'Tiers can only be used with weight rates',
-        );
-      }
-    }
-
-    // Basic validation for weight tier fields
-    // (Keep this minimal; your DTO/class-validator should handle stricter rules if present)
     const nextMin =
       patch.minWeightGrams === undefined
         ? existing.minWeightGrams
@@ -482,27 +456,29 @@ export class ShippingRatesService {
         ? existing.maxWeightGrams
         : this.kgToGrams(patch.maxWeightGrams);
 
-    if (nextMin == null || nextMax == null) {
-      throw new BadRequestException(
-        'Weight tiers require minWeightGrams and maxWeightGrams',
-      );
-    }
-    if (nextMin < 0 || nextMax < 0) {
-      throw new BadRequestException('Weights must not be less than 0');
-    }
-    if (nextMin > nextMax) {
-      throw new BadRequestException('minWeightGrams must be <= maxWeightGrams');
+    // only enforce weight validation for weight-based rates
+    if ((rate.calc as string) === 'weight') {
+      if (nextMin == null || nextMax == null) {
+        throw new BadRequestException(
+          'Weight tiers require minWeightGrams and maxWeightGrams',
+        );
+      }
+      if (nextMin < 0 || nextMax < 0) {
+        throw new BadRequestException('Weights must not be less than 0');
+      }
+      if (nextMin > nextMax) {
+        throw new BadRequestException(
+          'minWeightGrams must be <= maxWeightGrams',
+        );
+      }
     }
 
     const [updated] = await this.db
       .update(shippingRateTiers)
       .set({
-        // allow moving tier to another rate (optional)
-        rateId: patch.rateId ?? existing.rateId,
-
+        rateId,
         minWeightGrams: nextMin,
         maxWeightGrams: nextMax,
-
         minSubtotal:
           patch.minSubtotal === undefined
             ? existing.minSubtotal
@@ -511,7 +487,6 @@ export class ShippingRatesService {
           patch.maxSubtotal === undefined
             ? existing.maxSubtotal
             : patch.maxSubtotal,
-
         amount: patch.amount ?? existing.amount,
         priority: patch.priority ?? existing.priority,
       })
@@ -583,7 +558,7 @@ export class ShippingRatesService {
   }
 
   // -----------------------
-  // Quoting (used by Cart totals engine)
+  // Quoting
   // -----------------------
   async quote(companyId: string, dto: QuoteShippingDto) {
     const zone = await this.zonesService.resolveZone(
@@ -595,71 +570,112 @@ export class ShippingRatesService {
     );
     if (!zone) return { zone: null, rate: null, amount: '0' as Money };
 
-    const rate = await this.pickBestRate(
+    const result = await this.pickBestRateWithAmount(
       companyId,
       zone.id,
+      dto.totalWeightGrams ?? 0,
       dto.carrierId ?? null,
     );
-    if (!rate) return { zone, rate: null, amount: '0' as Money };
 
-    const amount = await this.computeRateAmount(
-      companyId,
-      rate.id,
-      rate.calc as string,
-      dto.totalWeightGrams ?? 0,
-    );
-    return { zone, rate, amount };
+    if (!result) return { zone, rate: null, amount: '0' as Money };
+
+    return { zone, rate: result.rate, amount: result.amount };
   }
 
-  private async pickBestRate(
+  // picks the best rate that can actually produce a valid amount
+  // weight rates are only selected if a matching tier exists
+  // falls back to flat rate if weight rate has no matching tier
+  private async pickBestRateWithAmount(
     companyId: string,
     zoneId: string,
+    totalWeightGrams: number,
     carrierId: string | null,
-  ) {
+  ): Promise<{ rate: any; amount: Money } | null> {
     const baseWhere = and(
       eq(shippingRates.companyId, companyId),
       eq(shippingRates.zoneId, zoneId),
       eq(shippingRates.isActive, true),
     );
 
+    // carrier-specific rate requested
     if (carrierId) {
       const r = await this.db.query.shippingRates.findFirst({
         where: and(baseWhere, eq(shippingRates.carrierId, carrierId)),
       });
-      if (r) return r;
+      if (r) {
+        const amount = await this.computeRateAmount(
+          companyId,
+          r.id,
+          r.calc as string,
+          totalWeightGrams,
+          r.calc === 'flat' ? (r.flatAmount as string) : null,
+        );
+        if (amount !== null) return { rate: r, amount };
+      }
     }
 
-    // initial/default rate convention: carrierId NULL + isDefault true
-    const d = await this.db.query.shippingRates.findFirst({
+    // try default rate first
+    const defaultRate = await this.db.query.shippingRates.findFirst({
       where: and(
         baseWhere,
         isNull(shippingRates.carrierId),
         eq(shippingRates.isDefault, true),
       ),
     });
-    if (d) return d;
 
-    // fallback by priority
-    return this.db.query.shippingRates.findFirst({
-      where: baseWhere,
-      orderBy: (t, { desc }) => [desc(t.priority)],
-    });
+    if (defaultRate) {
+      const amount = await this.computeRateAmount(
+        companyId,
+        defaultRate.id,
+        defaultRate.calc as string,
+        totalWeightGrams,
+        defaultRate.calc === 'flat' ? (defaultRate.flatAmount as string) : null,
+      );
+      if (amount !== null) return { rate: defaultRate, amount };
+    }
+
+    // fallback: try all active rates by priority, return first that produces a valid amount
+    const allRates = await this.db
+      .select()
+      .from(shippingRates)
+      .where(baseWhere as any)
+      .orderBy(desc(shippingRates.priority))
+      .execute();
+
+    for (const rate of allRates) {
+      const amount = await this.computeRateAmount(
+        companyId,
+        rate.id,
+        rate.calc as string,
+        totalWeightGrams,
+        rate.calc === 'flat' ? (rate.flatAmount as string) : null,
+      );
+      if (amount !== null) return { rate, amount };
+    }
+
+    return null;
   }
 
+  // returns null if no tier matches (weight) or no flat amount set
+  // null lets callers decide to fall back rather than silently charging zero
   async computeRateAmount(
     companyId: string,
     rateId: string,
     calc: string,
     totalWeightGrams: number,
-  ): Promise<Money> {
+    flatAmount?: string | null, // pass through to avoid re-fetch
+  ): Promise<Money | null> {
     if (calc === 'flat') {
+      // use passed-through value if available
+      if (flatAmount != null) return flatAmount as Money;
+
       const rate = await this.db.query.shippingRates.findFirst({
         where: and(
           eq(shippingRates.companyId, companyId),
           eq(shippingRates.id, rateId),
         ),
       });
-      return (rate?.flatAmount as Money) ?? '0';
+      return rate?.flatAmount ? (rate.flatAmount as Money) : null;
     }
 
     if (calc === 'weight') {
@@ -679,13 +695,15 @@ export class ShippingRatesService {
         const min = t.minWeightGrams ?? null;
         const max = t.maxWeightGrams ?? null;
         if (min === null || max === null) return false;
+        // tiers stored in grams, totalWeightGrams is also in grams
         return totalWeightGrams >= min && totalWeightGrams <= max;
       });
 
-      return (tier?.amount as Money) ?? '0';
+      // null = no tier matched, caller should fall back
+      return tier ? (tier.amount as Money) : null;
     }
 
     // subtotal tiers (future)
-    return '0';
+    return null;
   }
 }

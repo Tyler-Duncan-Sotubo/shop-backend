@@ -20,6 +20,9 @@ export class CreateManualOrderDto {
   @IsNotEmpty()
   currency!: string;
 
+  @IsString()
+  @IsOptional()
+  fulfillmentModel?: 'stock_first' | 'payment_first';
   /**
    * Order channel
    * - manual (admin backoffice)

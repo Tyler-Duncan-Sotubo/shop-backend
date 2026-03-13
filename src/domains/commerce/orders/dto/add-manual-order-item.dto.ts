@@ -21,14 +21,11 @@ export class AddManualOrderItemDto {
   @IsPositive()
   quantity!: number;
 
-  /**
-   * Major currency unit (e.g. 1500.00)
-   * Converted internally to numeric(12,2)
-   */
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  unitPrice!: number;
+  unitPrice?: number; // ← optional, backend derives from variant if not provided
 
   @IsOptional()
   @IsString()

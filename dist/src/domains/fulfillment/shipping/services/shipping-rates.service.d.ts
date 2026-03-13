@@ -136,48 +136,10 @@ export declare class ShippingRatesService {
             metadata: Record<string, any> | null;
             priority: number;
         };
-        rate: null;
-        amount: Money;
-    } | {
-        zone: {
-            id: string;
-            name: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            description: string | null;
-            storeId: string;
-            metadata: Record<string, any> | null;
-            priority: number;
-        };
-        rate: {
-            id: string;
-            name: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            type: "flat" | "weight" | "price";
-            isDefault: boolean;
-            metadata: Record<string, any> | null;
-            priority: number;
-            zoneId: string;
-            flatAmount: string | null;
-            minOrderSubtotal: string | null;
-            maxOrderSubtotal: string | null;
-            minWeightGrams: number | null;
-            maxWeightGrams: number | null;
-            carrierId: string | null;
-            carrierServiceCode: string | null;
-            carrierServiceName: string | null;
-            minDeliveryDays: number | null;
-            maxDeliveryDays: number | null;
-            calc: "flat" | "weight";
-        };
+        rate: any;
         amount: string;
     }>;
-    private pickBestRate;
-    computeRateAmount(companyId: string, rateId: string, calc: string, totalWeightGrams: number): Promise<Money>;
+    private pickBestRateWithAmount;
+    computeRateAmount(companyId: string, rateId: string, calc: string, totalWeightGrams: number, flatAmount?: string | null): Promise<Money | null>;
 }
 export {};

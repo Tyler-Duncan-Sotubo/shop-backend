@@ -30,52 +30,25 @@ let ManualOrdersService = class ManualOrdersService {
         this.invoiceService = invoiceService;
     }
     async allocateOrderNumberInTx(tx, companyId) {
-        const existing = await tx
-            .select()
-            .from(schema_1.orderCounters)
-            .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
-            .for('update')
-            .limit(1)
-            .execute();
-        if (!existing.length) {
-            try {
-                await tx
-                    .insert(schema_1.orderCounters)
-                    .values({
-                    id: (0, drizzle_orm_1.sql) `gen_random_uuid()`,
-                    companyId,
-                    nextNumber: 1,
-                    updatedAt: new Date(),
-                })
-                    .execute();
-            }
-            catch {
-            }
-            const created = await tx
-                .select()
-                .from(schema_1.orderCounters)
-                .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
-                .for('update')
-                .limit(1)
-                .execute();
-            if (!created.length) {
-                throw new common_1.BadRequestException('Failed to initialize order counter');
-            }
-            const n = Number(created[0].nextNumber);
-            await tx
-                .update(schema_1.orderCounters)
-                .set({ nextNumber: n + 1, updatedAt: new Date() })
-                .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
-                .execute();
-            return n;
-        }
-        const n = Number(existing[0].nextNumber);
         await tx
-            .update(schema_1.orderCounters)
-            .set({ nextNumber: n + 1, updatedAt: new Date() })
-            .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
+            .insert(schema_1.orderCounters)
+            .values({
+            companyId,
+            nextNumber: 2,
+            updatedAt: new Date(),
+        })
+            .onConflictDoNothing()
             .execute();
-        return n;
+        const [row] = await tx
+            .update(schema_1.orderCounters)
+            .set({
+            nextNumber: (0, drizzle_orm_1.sql) `next_number + 1`,
+            updatedAt: new Date(),
+        })
+            .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
+            .returning({ n: schema_1.orderCounters.nextNumber })
+            .execute();
+        return Number(row.n) - 1;
     }
     async createManualOrder(companyId, input, actor, ip, ctx) {
         const outerTx = ctx?.tx;
@@ -103,6 +76,7 @@ let ManualOrdersService = class ManualOrdersService {
                 shippingAddress: input.shippingAddress ?? null,
                 billingAddress: input.billingAddress ?? null,
                 originInventoryLocationId: input.originInventoryLocationId,
+                fulfillmentModel: input.fulfillmentModel ?? 'stock_first',
                 ...(isFromQuote
                     ? {
                         quoteRequestId: input.quoteRequestId ?? null,
@@ -243,8 +217,7 @@ let ManualOrdersService = class ManualOrdersService {
             if (!Number.isFinite(unitPrice) || unitPrice < 0) {
                 throw new common_1.BadRequestException('unitPrice must be a non-negative number');
             }
-            const isQuoteDerivedOrder = isQuoteDerived === true;
-            if (!isQuoteDerivedOrder) {
+            if (ord.fulfillmentModel === 'stock_first') {
                 await this.stock.reserveForOrderInTx(tx, companyId, input.orderId, origin, input.variantId, qty);
             }
             const lineTotal = unitPrice * qty;
@@ -347,10 +320,10 @@ let ManualOrdersService = class ManualOrdersService {
                         throw new common_1.BadRequestException('Cannot adjust stock: item has no variantId');
                     }
                     if (delta > 0) {
-                        await this.stock.releaseReservationInTx(tx, companyId, origin, it.variantId, delta);
+                        await this.stock.releaseReservationInTx(tx, companyId, ord.id, origin, it.variantId, delta);
                     }
                     else {
-                        await this.stock.releaseReservationInTx(tx, companyId, origin, it.variantId, Math.abs(delta));
+                        await this.stock.releaseReservationInTx(tx, companyId, ord.id, origin, it.variantId, Math.abs(delta));
                     }
                 }
                 patch.quantity = newQty;
@@ -444,7 +417,7 @@ let ManualOrdersService = class ManualOrdersService {
             if (it.variantId) {
                 const qty = Math.trunc(Number(it.quantity ?? 0));
                 if (qty > 0) {
-                    await this.stock.releaseReservationInTx(tx, companyId, origin, it.variantId, qty);
+                    await this.stock.releaseReservationInTx(tx, companyId, orderId, origin, it.variantId, qty);
                 }
             }
             await tx.delete(schema_1.orderItems).where((0, drizzle_orm_1.eq)(schema_1.orderItems.id, itemId)).execute();
@@ -478,6 +451,57 @@ let ManualOrdersService = class ManualOrdersService {
         await this.cache.bumpCompanyVersion(companyId);
         return result;
     }
+    async checkStockAvailability(companyId, orderId) {
+        const [order] = await this.db
+            .select()
+            .from(schema_1.orders)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+            .execute();
+        if (!order)
+            throw new common_1.NotFoundException('Order not found');
+        const origin = order.originInventoryLocationId;
+        if (!origin)
+            throw new common_1.BadRequestException('Order missing originInventoryLocationId');
+        const items = await this.db
+            .select()
+            .from(schema_1.orderItems)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
+            .execute();
+        const results = await Promise.all(items.map(async (item) => {
+            if (!item.variantId)
+                return null;
+            const qty = Number(item.quantity ?? 0);
+            const [inv] = await this.db
+                .select({
+                available: schema_1.inventoryItems.available,
+                reserved: schema_1.inventoryItems.reserved,
+                safetyStock: schema_1.inventoryItems.safetyStock,
+            })
+                .from(schema_1.inventoryItems)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, origin), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, item.variantId)))
+                .execute();
+            const available = Number(inv?.available ?? 0);
+            const reserved = Number(inv?.reserved ?? 0);
+            const safetyStock = Number(inv?.safetyStock ?? 0);
+            const sellable = available - reserved - safetyStock;
+            return {
+                itemId: item.id,
+                variantId: item.variantId,
+                name: item.name,
+                requested: qty,
+                sellable,
+                sufficient: sellable >= qty,
+                shortfall: sellable < qty ? qty - sellable : 0,
+            };
+        }));
+        const filtered = results.filter(Boolean);
+        const allSufficient = filtered.every((r) => r?.sufficient);
+        return {
+            ready: allSufficient,
+            fulfillmentModel: order.fulfillmentModel,
+            items: filtered,
+        };
+    }
     async submitForPayment(companyId, orderId, actor, ip, ctx) {
         const outerTx = ctx?.tx;
         const run = async (tx) => {
@@ -489,17 +513,24 @@ let ManualOrdersService = class ManualOrdersService {
                 .execute();
             if (!before)
                 throw new common_1.NotFoundException('Order not found');
-            if (before.status !== 'draft') {
-                throw new common_1.BadRequestException('Only draft orders can be submitted');
+            const origin = before.originInventoryLocationId;
+            if (!origin) {
+                throw new common_1.BadRequestException('Order missing originInventoryLocationId');
             }
             const items = await tx
-                .select({ id: schema_1.orderItems.id })
+                .select()
                 .from(schema_1.orderItems)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
-                .limit(1)
                 .execute();
             if (!items.length)
                 throw new common_1.BadRequestException('Order has no items');
+            if (before.fulfillmentModel === 'stock_first') {
+                for (const item of items) {
+                    if (!item.variantId)
+                        continue;
+                    await this.stock.reserveForOrderInTx(tx, companyId, orderId, origin, item.variantId, Number(item.quantity));
+                }
+            }
             await this.recalculateTotalsInTx(tx, companyId, orderId);
             const [after] = await tx
                 .update(schema_1.orders)
@@ -530,15 +561,24 @@ let ManualOrdersService = class ManualOrdersService {
                         orderId,
                         fromStatus: before.status,
                         toStatus: after.status,
+                        fulfillmentModel: before.fulfillmentModel,
                     },
                 });
             }
-            const invoice = await this.invoiceService.createDraftFromOrder({
-                orderId,
-                storeId: before.storeId ?? null,
-                currency: before.currency,
-                type: 'invoice',
-            }, companyId, { tx });
+            const [existingInvoice] = await tx
+                .select({ id: schema_1.invoices.id })
+                .from(schema_1.invoices)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.orderId, orderId), (0, drizzle_orm_1.eq)(schema_1.invoices.status, 'draft')))
+                .limit(1)
+                .execute();
+            const invoice = existingInvoice
+                ? await this.invoiceService.syncFromOrder(orderId, companyId, { tx })
+                : await this.invoiceService.createDraftFromOrder({
+                    orderId,
+                    storeId: before.storeId ?? null,
+                    currency: before.currency,
+                    type: 'invoice',
+                }, companyId, { tx });
             return { order: after, invoice };
         };
         const result = outerTx
@@ -617,7 +657,7 @@ let ManualOrdersService = class ManualOrdersService {
                     const qty = Number(it.quantity ?? 0);
                     if (qty <= 0)
                         continue;
-                    await this.stock.releaseReservationInTx(tx, companyId, origin, it.variantId, qty);
+                    await this.stock.releaseReservationInTx(tx, companyId, order.id, origin, it.variantId, qty);
                 }
             }
             await tx.insert(schema_1.orderEvents).values({

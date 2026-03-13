@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "fulfillment_model" text DEFAULT 'stock_first' NOT NULL;

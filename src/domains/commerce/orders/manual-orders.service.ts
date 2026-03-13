@@ -11,6 +11,8 @@ import { CacheService } from 'src/infrastructure/cache/cache.service';
 import { AuditService } from 'src/domains/audit/audit.service';
 import { User } from 'src/channels/admin/common/types/user.type';
 import {
+  inventoryItems,
+  invoices,
   orderCounters,
   orderEvents,
   orderItems,
@@ -37,62 +39,30 @@ export class ManualOrdersService {
   ) {}
 
   private async allocateOrderNumberInTx(tx: TxOrDb, companyId: string) {
-    // lock counter row if exists
-    const existing = await tx
-      .select()
-      .from(orderCounters)
-      .where(eq(orderCounters.companyId, companyId))
-      .for('update')
-      .limit(1)
-      .execute();
-
-    // create counter row if missing (race-safe-ish, relies on unique index)
-    if (!existing.length) {
-      try {
-        await tx
-          .insert(orderCounters)
-          .values({
-            id: sql`gen_random_uuid()` as any,
-            companyId,
-            nextNumber: 1,
-            updatedAt: new Date(),
-          } as any)
-          .execute();
-      } catch {
-        // another tx likely inserted it; continue
-      }
-
-      const created = await tx
-        .select()
-        .from(orderCounters)
-        .where(eq(orderCounters.companyId, companyId))
-        .for('update')
-        .limit(1)
-        .execute();
-
-      if (!created.length) {
-        throw new BadRequestException('Failed to initialize order counter');
-      }
-
-      const n = Number(created[0].nextNumber);
-      await tx
-        .update(orderCounters)
-        .set({ nextNumber: n + 1, updatedAt: new Date() } as any)
-        .where(eq(orderCounters.companyId, companyId))
-        .execute();
-
-      return n;
-    }
-
-    const n = Number(existing[0].nextNumber);
-
+    // Ensure counter row exists (outside the tx ideally, at company creation time)
     await tx
-      .update(orderCounters)
-      .set({ nextNumber: n + 1, updatedAt: new Date() } as any)
-      .where(eq(orderCounters.companyId, companyId))
+      .insert(orderCounters)
+      .values({
+        companyId,
+        nextNumber: 2, // starts at 2 because we're returning 1
+        updatedAt: new Date(),
+      })
+      .onConflictDoNothing() // if row exists, skip
       .execute();
 
-    return n;
+    // Atomic increment — no read-modify-write, no race
+    const [row] = await tx
+      .update(orderCounters)
+      .set({
+        nextNumber: sql`next_number + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(orderCounters.companyId, companyId))
+      .returning({ n: orderCounters.nextNumber })
+      .execute();
+
+    // next_number was incremented, so the allocated number is n - 1
+    return Number(row.n) - 1;
   }
 
   // ✅ UPDATED createManualOrder() (only changed orderNumber part)
@@ -133,7 +103,7 @@ export class ManualOrdersService {
           shippingAddress: input.shippingAddress ?? null,
           billingAddress: input.billingAddress ?? null,
           originInventoryLocationId: input.originInventoryLocationId,
-
+          fulfillmentModel: input.fulfillmentModel ?? 'stock_first',
           ...(isFromQuote
             ? {
                 quoteRequestId: input.quoteRequestId ?? null,
@@ -356,10 +326,7 @@ export class ManualOrdersService {
         );
       }
 
-      // ✅ Reserve inventory
-      const isQuoteDerivedOrder = isQuoteDerived === true;
-
-      if (!isQuoteDerivedOrder) {
+      if (ord.fulfillmentModel === 'stock_first') {
         await this.stock.reserveForOrderInTx(
           tx,
           companyId,
@@ -513,6 +480,7 @@ export class ManualOrdersService {
             await this.stock.releaseReservationInTx(
               tx,
               companyId,
+              ord.id,
               origin,
               it.variantId,
               delta,
@@ -521,6 +489,7 @@ export class ManualOrdersService {
             await this.stock.releaseReservationInTx(
               tx,
               companyId,
+              ord.id,
               origin,
               it.variantId,
               Math.abs(delta),
@@ -662,6 +631,7 @@ export class ManualOrdersService {
           await this.stock.releaseReservationInTx(
             tx,
             companyId,
+            orderId,
             origin,
             it.variantId,
             qty,
@@ -706,6 +676,79 @@ export class ManualOrdersService {
     return result;
   }
 
+  async checkStockAvailability(companyId: string, orderId: string) {
+    const [order] = await this.db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+      .execute();
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    const origin = (order as any).originInventoryLocationId;
+    if (!origin)
+      throw new BadRequestException('Order missing originInventoryLocationId');
+
+    const items = await this.db
+      .select()
+      .from(orderItems)
+      .where(
+        and(
+          eq(orderItems.companyId, companyId),
+          eq(orderItems.orderId, orderId),
+        ),
+      )
+      .execute();
+
+    const results = await Promise.all(
+      items.map(async (item) => {
+        if (!item.variantId) return null;
+
+        const qty = Number(item.quantity ?? 0);
+
+        const [inv] = await this.db
+          .select({
+            available: inventoryItems.available,
+            reserved: inventoryItems.reserved,
+            safetyStock: inventoryItems.safetyStock,
+          })
+          .from(inventoryItems)
+          .where(
+            and(
+              eq(inventoryItems.companyId, companyId),
+              eq(inventoryItems.locationId, origin),
+              eq(inventoryItems.productVariantId, item.variantId),
+            ),
+          )
+          .execute();
+
+        const available = Number(inv?.available ?? 0);
+        const reserved = Number(inv?.reserved ?? 0);
+        const safetyStock = Number(inv?.safetyStock ?? 0);
+        const sellable = available - reserved - safetyStock;
+
+        return {
+          itemId: item.id,
+          variantId: item.variantId,
+          name: item.name,
+          requested: qty,
+          sellable,
+          sufficient: sellable >= qty,
+          shortfall: sellable < qty ? qty - sellable : 0,
+        };
+      }),
+    );
+
+    const filtered = results.filter(Boolean);
+    const allSufficient = filtered.every((r) => r?.sufficient);
+
+    return {
+      ready: allSufficient,
+      fulfillmentModel: (order as any).fulfillmentModel,
+      items: filtered,
+    };
+  }
+
   /**
    * Submit order for payment: draft -> pending_payment
    */
@@ -728,13 +771,15 @@ export class ManualOrdersService {
 
       if (!before) throw new NotFoundException('Order not found');
 
-      if (before.status !== 'draft') {
-        throw new BadRequestException('Only draft orders can be submitted');
+      const origin = (before as any).originInventoryLocationId;
+      if (!origin) {
+        throw new BadRequestException(
+          'Order missing originInventoryLocationId',
+        );
       }
 
-      // ensure it has at least one item
       const items = await tx
-        .select({ id: orderItems.id })
+        .select()
         .from(orderItems)
         .where(
           and(
@@ -742,12 +787,25 @@ export class ManualOrdersService {
             eq(orderItems.orderId, orderId),
           ),
         )
-        .limit(1)
         .execute();
 
       if (!items.length) throw new BadRequestException('Order has no items');
 
-      // totals already computed, but safe to refresh
+      // enforce stock reservation for stock_first orders only
+      if ((before as any).fulfillmentModel === 'stock_first') {
+        for (const item of items) {
+          if (!item.variantId) continue;
+          await this.stock.reserveForOrderInTx(
+            tx,
+            companyId,
+            orderId,
+            origin,
+            item.variantId,
+            Number(item.quantity),
+          );
+        }
+      }
+
       await this.recalculateTotalsInTx(tx, companyId, orderId);
 
       const [after] = await tx
@@ -781,21 +839,38 @@ export class ManualOrdersService {
             orderId,
             fromStatus: before.status,
             toStatus: after.status,
+            fulfillmentModel: (before as any).fulfillmentModel,
           },
         });
       }
 
-      // ✅ Create invoice as part of the submit flow
-      const invoice = await this.invoiceService.createDraftFromOrder(
-        {
-          orderId,
-          storeId: (before as any).storeId ?? null,
-          currency: (before as any).currency,
-          type: 'invoice',
-        } as any,
-        companyId,
-        { tx },
-      );
+      // check if a draft invoice already exists for this order
+      const [existingInvoice] = await tx
+        .select({ id: invoices.id })
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.companyId, companyId),
+            eq(invoices.orderId, orderId),
+            eq(invoices.status, 'draft'),
+          ),
+        )
+        .limit(1)
+        .execute();
+
+      // sync if exists, create if not
+      const invoice = existingInvoice
+        ? await this.invoiceService.syncFromOrder(orderId, companyId, { tx })
+        : await this.invoiceService.createDraftFromOrder(
+            {
+              orderId,
+              storeId: (before as any).storeId ?? null,
+              currency: (before as any).currency,
+              type: 'invoice',
+            } as any,
+            companyId,
+            { tx },
+          );
 
       return { order: after, invoice };
     };
@@ -929,6 +1004,7 @@ export class ManualOrdersService {
           await this.stock.releaseReservationInTx(
             tx,
             companyId,
+            order.id,
             origin,
             it.variantId,
             qty,

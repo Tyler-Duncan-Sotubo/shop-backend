@@ -402,7 +402,7 @@ let InventoryStockService = class InventoryStockService {
             const qty = Number(r.quantity ?? 0);
             if (qty <= 0)
                 continue;
-            await this.releaseReservationInTx(tx, companyId, r.locationId, r.productVariantId, qty, { refType: 'order', refId: orderId }, { reservationId: r.id });
+            await this.releaseReservationInTx(tx, companyId, orderId, r.locationId, r.productVariantId, qty, { refType: 'order', refId: orderId }, { reservationId: r.id });
             await tx
                 .update(schema_1.inventoryReservations)
                 .set({ status: 'released' })
@@ -410,7 +410,7 @@ let InventoryStockService = class InventoryStockService {
                 .execute();
         }
     }
-    async releaseReservationInTx(tx, companyId, locationId, productVariantId, qty, ref, meta) {
+    async releaseReservationInTx(tx, companyId, orderId, locationId, productVariantId, qty, ref, meta) {
         if (!Number.isFinite(qty) || qty <= 0)
             return;
         const updated = await tx
@@ -435,6 +435,10 @@ let InventoryStockService = class InventoryStockService {
             note: 'Released reserved stock',
             meta,
         });
+        await tx
+            .delete(schema_1.inventoryReservations)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryReservations.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryReservations.orderId, orderId), (0, drizzle_orm_1.eq)(schema_1.inventoryReservations.locationId, locationId), (0, drizzle_orm_1.eq)(schema_1.inventoryReservations.productVariantId, productVariantId)))
+            .execute();
     }
     async fulfillOrderReservationsInTx(tx, companyId, orderId) {
         const rows = await tx

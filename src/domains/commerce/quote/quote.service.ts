@@ -923,6 +923,7 @@ export class QuoteService {
       originInventoryLocationId: string;
       currency: string;
       channel?: 'manual' | 'pos';
+      fulfillmentModel?: 'stock_first' | 'payment_first'; // ← add this
       shippingAddress?: any;
       billingAddress?: any;
       customerId?: string | null;
@@ -972,6 +973,7 @@ export class QuoteService {
         shippingAddress: input.shippingAddress ?? null,
         billingAddress: input.billingAddress ?? null,
         originInventoryLocationId: input.originInventoryLocationId,
+        fulfillmentModel: input.fulfillmentModel ?? 'stock_first',
 
         // source linkage
         quoteRequestId: quote.id,
@@ -1033,6 +1035,7 @@ export class QuoteService {
     input: {
       originInventoryLocationId: string;
       currency: string;
+      fulfillmentModel?: 'stock_first' | 'payment_first'; // ← add this
       channel?: 'manual' | 'pos';
       shippingAddress?: any;
       billingAddress?: any;

@@ -42,4 +42,16 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Boolean)
 ], StoreVariantQueryDto.prototype, "isActive", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (value === 'false' || value === false || value === 0)
+            return false;
+        if (value === 'true' || value === true || value === 1)
+            return true;
+        return true;
+    }),
+    __metadata("design:type", Boolean)
+], StoreVariantQueryDto.prototype, "requireStock", void 0);
 //# sourceMappingURL=store-vairants.dto.js.map

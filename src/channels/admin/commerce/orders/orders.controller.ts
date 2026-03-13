@@ -93,6 +93,18 @@ export class OrdersController extends BaseController {
   }
 
   // MANUAL ORDERS
+  @Get('manual/:orderId/stock-check')
+  @SetMetadata('permissions', ['orders.manual.create'])
+  async checkStock(
+    @Param('orderId') orderId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.manualOrdersService.checkStockAvailability(
+      user.companyId,
+      orderId,
+    );
+  }
+
   @Post('manual')
   @SetMetadata('permissions', ['orders.manual.create'])
   createManualOrder(
@@ -155,7 +167,7 @@ export class OrdersController extends BaseController {
     );
   }
 
-  @Post('manual/:orderId/submit-for-payment')
+  @Patch('manual/:orderId/submit-for-payment')
   @SetMetadata('permissions', ['orders.manual.edit'])
   async submitForPayment(
     @CurrentUser() user: User,

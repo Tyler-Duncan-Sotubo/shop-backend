@@ -217,13 +217,15 @@ let OrdersService = class OrdersService {
             if (!origin) {
                 throw new common_1.BadRequestException('Order missing originInventoryLocationId');
             }
-            for (const it of items) {
-                if (!it.variantId)
-                    continue;
-                const qty = Number(it.quantity ?? 0);
-                if (qty <= 0)
-                    continue;
-                await this.stock.releaseReservationInTx(tx, companyId, origin, it.variantId, qty);
+            if (before.fulfillmentModel === 'stock_first') {
+                for (const it of items) {
+                    if (!it.variantId)
+                        continue;
+                    const qty = Number(it.quantity ?? 0);
+                    if (qty <= 0)
+                        continue;
+                    await this.stock.releaseReservationInTx(tx, companyId, orderId, origin, it.variantId, qty);
+                }
             }
             const [after] = await tx
                 .update(schema_1.orders)
@@ -274,6 +276,9 @@ let OrdersService = class OrdersService {
                 const qty = Number(it.quantity ?? 0);
                 if (qty <= 0)
                     continue;
+                if (before.fulfillmentModel === 'payment_first') {
+                    await this.stock.reserveForOrderInTx(tx, companyId, orderId, origin, it.variantId, qty);
+                }
                 await this.stock.fulfillFromReservationInTx(tx, companyId, origin, it.variantId, qty);
             }
             const [after] = await tx

@@ -77,31 +77,10 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
             clauses.push((0, drizzle_orm_1.eq)(schema_1.storefrontEvents.storeId, args.storeId));
         return (0, drizzle_orm_1.and)(...clauses);
     }
-    paidInvoicesSubquery(companyId) {
-        return this.db
-            .select({
-            invoiceId: schema_1.payments.invoiceId,
-            invoicePaidAt: (0, drizzle_orm_1.sql) `
-        max(coalesce(${schema_1.payments.confirmedAt}, ${schema_1.payments.receivedAt}, ${schema_1.payments.createdAt}))
-      `.as('invoice_paid_at'),
-        })
-            .from(schema_1.payments)
-            .where((0, drizzle_orm_1.eq)(schema_1.payments.companyId, companyId))
-            .groupBy(schema_1.payments.invoiceId)
-            .as('paid_invoices');
-    }
     async computeCards(args) {
-        const paidInvoices = this.paidInvoicesSubquery(args.companyId);
-        const [sales] = await this.db
-            .select({
-            totalSalesMinor: (0, drizzle_orm_1.sql) `coalesce(sum(${schema_1.invoices.totalMinor}), 0) / 100.0`,
-        })
-            .from(schema_1.invoices)
-            .innerJoin(paidInvoices, (0, drizzle_orm_1.eq)(paidInvoices.invoiceId, schema_1.invoices.id))
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, args.companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.status, 'paid'), (0, drizzle_orm_1.gte)(paidInvoices.invoicePaidAt, args.from), (0, drizzle_orm_1.lt)(paidInvoices.invoicePaidAt, args.to), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.invoices.storeId, args.storeId) : undefined))
-            .execute();
         const [salesOrders] = await this.db
             .select({
+            totalSalesMinor: (0, drizzle_orm_1.sql) `coalesce(sum(${schema_1.orders.total}), 0)`,
             totalOrders: (0, drizzle_orm_1.sql) `count(*)`,
         })
             .from(schema_1.orders)
@@ -120,21 +99,19 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
             .where(this.visitsWhere(args))
             .execute();
         return {
-            totalSalesMinor: Number(sales?.totalSalesMinor ?? 0),
+            totalSalesMinor: Number(salesOrders?.totalSalesMinor ?? 0),
             totalOrders: Number(salesOrders?.totalOrders ?? 0),
             newCustomers: Number(cust?.newCustomers ?? 0),
             webVisits: Number(visits?.webVisits ?? 0),
         };
     }
     async computeGrossSalesCards(args) {
-        const paidInvoices = this.paidInvoicesSubquery(args.companyId);
         const [gross] = await this.db
             .select({
             grossSalesMinor: (0, drizzle_orm_1.sql) `coalesce(sum(${schema_1.invoices.subtotalMinor}), 0)`,
         })
             .from(schema_1.invoices)
-            .innerJoin(paidInvoices, (0, drizzle_orm_1.eq)(paidInvoices.invoiceId, schema_1.invoices.id))
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, args.companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.status, 'paid'), (0, drizzle_orm_1.gte)(paidInvoices.invoicePaidAt, args.from), (0, drizzle_orm_1.lt)(paidInvoices.invoicePaidAt, args.to), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.invoices.storeId, args.storeId) : undefined))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, args.companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.status, 'paid'), (0, drizzle_orm_1.gte)(schema_1.invoices.createdAt, args.from), (0, drizzle_orm_1.lt)(schema_1.invoices.createdAt, args.to), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.invoices.storeId, args.storeId) : undefined))
             .execute();
         const [counts] = await this.db
             .select({
@@ -244,54 +221,44 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
                     ? (0, drizzle_orm_1.sql) `date_bin(interval '15 minutes', (${args.to}::timestamptz - interval '1 microsecond'), date_trunc('day', ${args.from}::timestamptz))`
                     : (0, drizzle_orm_1.sql) `date_trunc('day', (${args.to}::timestamptz - interval '1 microsecond'))`;
             const bucketExpr = bucket === 'month'
-                ? (0, drizzle_orm_1.sql) `date_trunc('month', paid_invoices.paid_at)`
+                ? (0, drizzle_orm_1.sql) `date_trunc('month', ${schema_1.orders.paidAt})`
                 : bucket === '15m'
-                    ? (0, drizzle_orm_1.sql) `date_bin(interval '15 minutes', paid_invoices.paid_at, date_trunc('day', ${args.from}::timestamptz))`
-                    : (0, drizzle_orm_1.sql) `date_trunc('day', paid_invoices.paid_at)`;
+                    ? (0, drizzle_orm_1.sql) `date_bin(interval '15 minutes', ${schema_1.orders.paidAt}, date_trunc('day', ${args.from}::timestamptz))`
+                    : (0, drizzle_orm_1.sql) `date_trunc('day', ${schema_1.orders.paidAt})`;
             const rows = await this.db.execute((0, drizzle_orm_1.sql) `
-          with paid_invoices as (
-            select
-              p.invoice_id,
-              max(coalesce(p.confirmed_at, p.received_at, p.created_at)) as paid_at
-            from ${schema_1.payments} p
-            where p.company_id = ${args.companyId}
-            group by p.invoice_id
-          ),
-          series as (
-            select generate_series(${seriesStart}, ${seriesEndInclusive}, ${interval}) as t
-          ),
-          agg as (
-            select
-              ${bucketExpr} as t,
-              count(distinct coalesce(${schema_1.invoices.orderId}::text, ${schema_1.invoices.id}::text))::int as orders,
-              coalesce(sum(${schema_1.invoices.totalMinor}), 0)::bigint as sales_minor
-            from ${schema_1.invoices}
-            inner join paid_invoices
-              on paid_invoices.invoice_id = ${schema_1.invoices.id}
-            where
-              ${schema_1.invoices.companyId} = ${args.companyId}
-              and ${schema_1.invoices.status} = 'paid'
-              and paid_invoices.paid_at is not null
-              and paid_invoices.paid_at >= ${args.from}
-              and paid_invoices.paid_at < ${args.to}
-              and ${args.storeId ? (0, drizzle_orm_1.eq)(schema_1.invoices.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`}
-            group by 1
-          )
-          select
-            series.t as t,
-            coalesce(agg.orders, 0)::int as orders,
-            coalesce(agg.sales_minor, 0)::bigint as sales_minor
-          from series
-          left join agg using (t)
-          order by series.t asc;
-        `);
+      with series as (
+        select generate_series(${seriesStart}, ${seriesEndInclusive}, ${interval}) as t
+      ),
+      agg as (
+        select
+          ${bucketExpr} as t,
+          count(*)::int as orders,
+          coalesce(sum(${schema_1.orders.total}), 0)::bigint as sales_minor
+        from ${schema_1.orders}
+        where
+          ${(0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId)}
+          and ${schema_1.orders.paidAt} is not null
+          and ${(0, drizzle_orm_1.gte)(schema_1.orders.paidAt, args.from)}
+          and ${(0, drizzle_orm_1.lt)(schema_1.orders.paidAt, args.to)}
+          and ${(0, drizzle_orm_1.inArray)(schema_1.orders.status, [...this.SALE_STATUSES])}
+          and ${args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`}
+        group by 1
+      )
+      select
+        series.t as t,
+        coalesce(agg.orders, 0)::int as orders,
+        coalesce(agg.sales_minor, 0)::bigint as sales_minor
+      from series
+      left join agg using (t)
+      order by series.t asc;
+    `);
             const resultRows = Array.isArray(rows?.rows)
                 ? rows.rows
                 : rows;
             return resultRows.map((r) => ({
                 t: new Date(r.t).toISOString(),
                 orders: Number(r.orders ?? 0),
-                salesMinor: Number(r.sales_minor ?? 0) / 100.0,
+                salesMinor: Number(r.sales_minor ?? 0),
             }));
         });
     }
@@ -309,50 +276,46 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
         const dv = (0, drizzle_orm_1.aliasedTable)(schema_1.productVariants, 'dv');
         const vi = (0, drizzle_orm_1.aliasedTable)(schema_1.productImages, 'vi');
         const di = (0, drizzle_orm_1.aliasedTable)(schema_1.productImages, 'di');
-        const paidInvoices = this.paidInvoicesSubquery(args.companyId);
         return this.cache.getOrSetVersioned(args.companyId, cacheKeyParts, async () => {
             const rows = await this.db
                 .select({
-                productId: schema_1.invoiceLines.productId,
-                variantId: schema_1.invoiceLines.variantId,
+                productId: schema_1.orderItems.productId,
+                variantId: schema_1.orderItems.variantId,
                 productName: schema_1.products.name,
                 variantTitle: schema_1.productVariants.title,
                 price: (0, drizzle_orm_1.sql) `
-              coalesce(
-                ${schema_1.productVariants.salePrice},
-                ${schema_1.productVariants.regularPrice},
-                ${dv.salePrice},
-                ${dv.regularPrice}
-              )
-            `,
-                currency: (0, drizzle_orm_1.sql) `
-              coalesce(${schema_1.productVariants.currency}, ${dv.currency})
-            `,
+          coalesce(
+            ${schema_1.productVariants.salePrice},
+            ${schema_1.productVariants.regularPrice},
+            ${dv.salePrice},
+            ${dv.regularPrice}
+          )
+        `,
+                currency: (0, drizzle_orm_1.sql) `coalesce(${schema_1.productVariants.currency}, ${dv.currency})`,
                 imageUrl: (0, drizzle_orm_1.sql) `coalesce(${vi.url}, ${di.url})`,
                 categories: (0, drizzle_orm_1.sql) `
-              coalesce(
-                array_remove(array_agg(distinct ${schema_1.categories.name}), null),
-                '{}'
-              )
-            `,
-                quantity: (0, drizzle_orm_1.sql) `coalesce(sum(${schema_1.invoiceLines.quantity}), 0)`,
-                revenueMinor: (0, drizzle_orm_1.sql) `coalesce(sum(${schema_1.invoiceLines.lineTotalMinor}), 0)  / 100.0`,
+          coalesce(
+            array_remove(array_agg(distinct ${schema_1.categories.name}), null),
+            '{}'
+          )
+        `,
+                quantity: (0, drizzle_orm_1.sql) `coalesce(sum(${schema_1.orderItems.quantity}), 0)`,
+                revenueMinor: (0, drizzle_orm_1.sql) `coalesce(sum(${schema_1.orderItems.lineTotal}), 0)`,
             })
-                .from(schema_1.invoiceLines)
-                .innerJoin(schema_1.invoices, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.id, schema_1.invoiceLines.invoiceId), (0, drizzle_orm_1.eq)(schema_1.invoices.companyId, schema_1.invoiceLines.companyId)))
-                .innerJoin(paidInvoices, (0, drizzle_orm_1.eq)(paidInvoices.invoiceId, schema_1.invoices.id))
-                .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.invoiceLines.productId), (0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.invoiceLines.companyId)))
-                .leftJoin(schema_1.productVariants, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.id, schema_1.invoiceLines.variantId), (0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, schema_1.invoiceLines.companyId)))
+                .from(schema_1.orderItems)
+                .innerJoin(schema_1.orders, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.id, schema_1.orderItems.orderId), (0, drizzle_orm_1.eq)(schema_1.orders.companyId, schema_1.orderItems.companyId)))
+                .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.orderItems.productId), (0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.orderItems.companyId)))
+                .leftJoin(schema_1.productVariants, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.id, schema_1.orderItems.variantId), (0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, schema_1.orderItems.companyId)))
                 .leftJoin(dv, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(dv.id, schema_1.products.defaultVariantId), (0, drizzle_orm_1.eq)(dv.companyId, schema_1.products.companyId)))
                 .leftJoin(vi, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(vi.id, schema_1.productVariants.imageId), (0, drizzle_orm_1.eq)(vi.companyId, schema_1.productVariants.companyId)))
                 .leftJoin(di, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(di.id, schema_1.products.defaultImageId), (0, drizzle_orm_1.eq)(di.companyId, schema_1.products.companyId)))
                 .leftJoin(schema_1.productCategories, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productCategories.productId, schema_1.products.id), (0, drizzle_orm_1.eq)(schema_1.productCategories.companyId, schema_1.products.companyId)))
                 .leftJoin(schema_1.categories, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.categories.id, schema_1.productCategories.categoryId), (0, drizzle_orm_1.eq)(schema_1.categories.companyId, schema_1.productCategories.companyId)))
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, args.companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.status, 'paid'), (0, drizzle_orm_1.gte)(paidInvoices.invoicePaidAt, args.from), (0, drizzle_orm_1.lt)(paidInvoices.invoicePaidAt, args.to), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.invoices.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`))
-                .groupBy(schema_1.invoiceLines.productId, schema_1.invoiceLines.variantId, schema_1.products.name, schema_1.productVariants.title, schema_1.productVariants.salePrice, schema_1.productVariants.regularPrice, schema_1.productVariants.currency, dv.salePrice, dv.regularPrice, dv.currency, vi.url, di.url)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId), (0, drizzle_orm_1.gte)(schema_1.orders.createdAt, args.from), (0, drizzle_orm_1.lt)(schema_1.orders.createdAt, args.to), (0, drizzle_orm_1.inArray)(schema_1.orders.status, [...this.SALE_STATUSES]), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`))
+                .groupBy(schema_1.orderItems.productId, schema_1.orderItems.variantId, schema_1.products.name, schema_1.productVariants.title, schema_1.productVariants.salePrice, schema_1.productVariants.regularPrice, schema_1.productVariants.currency, dv.salePrice, dv.regularPrice, dv.currency, vi.url, di.url)
                 .orderBy((0, drizzle_orm_1.desc)(by === 'units'
-                ? (0, drizzle_orm_1.sql) `sum(${schema_1.invoiceLines.quantity})`
-                : (0, drizzle_orm_1.sql) `sum(${schema_1.invoiceLines.lineTotalMinor})`))
+                ? (0, drizzle_orm_1.sql) `sum(${schema_1.orderItems.quantity})`
+                : (0, drizzle_orm_1.sql) `sum(${schema_1.orderItems.lineTotalMinor})`))
                 .limit(limit)
                 .execute();
             return rows.map((r) => ({
@@ -484,46 +447,17 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
             this.keySuffix(args),
         ];
         return this.cache.getOrSetVersioned(args.companyId, cacheKeyParts, async () => {
-            const paidInvoices = this.paidInvoicesSubquery(args.companyId);
-            const orderRows = await this.db
+            const rows = await this.db
                 .select({
                 channel: (0, drizzle_orm_1.sql) `coalesce(${schema_1.orders.channel}, 'unknown')`,
                 ordersCount: (0, drizzle_orm_1.sql) `count(*)`,
+                revenueMinor: (0, drizzle_orm_1.sql) `coalesce(sum(${schema_1.orders.total}), 0)`,
             })
                 .from(schema_1.orders)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId), (0, drizzle_orm_1.gte)(schema_1.orders.createdAt, args.from), (0, drizzle_orm_1.lt)(schema_1.orders.createdAt, args.to), (0, drizzle_orm_1.inArray)(schema_1.orders.status, ['paid', 'fulfilled']), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`))
                 .groupBy((0, drizzle_orm_1.sql) `coalesce(${schema_1.orders.channel}, 'unknown')`)
+                .orderBy((0, drizzle_orm_1.desc)((0, drizzle_orm_1.sql) `count(*)`))
                 .execute();
-            const revenueRows = await this.db
-                .select({
-                channel: (0, drizzle_orm_1.sql) `coalesce(${schema_1.orders.channel}, 'unknown')`,
-                revenueMinor: (0, drizzle_orm_1.sql) `coalesce(sum(${schema_1.invoices.totalMinor}), 0) / 100.0`,
-            })
-                .from(schema_1.invoices)
-                .innerJoin(paidInvoices, (0, drizzle_orm_1.eq)(paidInvoices.invoiceId, schema_1.invoices.id))
-                .leftJoin(schema_1.orders, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.id, schema_1.invoices.orderId), (0, drizzle_orm_1.eq)(schema_1.orders.companyId, schema_1.invoices.companyId)))
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, args.companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.status, 'paid'), (0, drizzle_orm_1.gte)(paidInvoices.invoicePaidAt, args.from), (0, drizzle_orm_1.lt)(paidInvoices.invoicePaidAt, args.to), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.invoices.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`))
-                .groupBy((0, drizzle_orm_1.sql) `coalesce(${schema_1.orders.channel}, 'unknown')`)
-                .execute();
-            const map = new Map();
-            for (const r of orderRows) {
-                const channel = String(r.channel ?? 'unknown');
-                map.set(channel, {
-                    channel,
-                    ordersCount: Number(r.ordersCount ?? 0),
-                    revenueMinor: 0,
-                });
-            }
-            for (const r of revenueRows) {
-                const channel = String(r.channel ?? 'unknown');
-                const existing = map.get(channel) ?? {
-                    channel,
-                    ordersCount: 0,
-                    revenueMinor: 0,
-                };
-                existing.revenueMinor = Number(r.revenueMinor ?? 0);
-                map.set(channel, existing);
-            }
             const labelFor = (c) => {
                 if (c === 'online')
                     return 'Online';
@@ -533,15 +467,18 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
                     return 'Manual';
                 return 'Unknown';
             };
-            return Array.from(map.values())
-                .map((r) => ({
-                channel: r.channel,
-                label: labelFor(r.channel),
-                value: metric === 'revenue' ? r.revenueMinor : r.ordersCount,
-                ordersCount: r.ordersCount,
-                revenueMinor: r.revenueMinor,
-            }))
-                .sort((a, b) => b.value - a.value);
+            return rows.map((r) => {
+                const channel = String(r.channel ?? 'unknown');
+                const ordersCount = Number(r.ordersCount ?? 0);
+                const revenueMinor = Number(r.revenueMinor ?? 0);
+                return {
+                    channel,
+                    label: labelFor(channel),
+                    value: metric === 'revenue' ? revenueMinor : ordersCount,
+                    ordersCount,
+                    revenueMinor,
+                };
+            });
         });
     }
     async latestPayments(args) {

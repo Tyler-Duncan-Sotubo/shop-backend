@@ -343,6 +343,7 @@ export declare class QuoteService {
     convertToManualOrder(companyId: string, quoteId: string, input: {
         originInventoryLocationId: string;
         currency: string;
+        fulfillmentModel?: 'stock_first' | 'payment_first';
         channel?: 'manual' | 'pos';
         shippingAddress?: any;
         billingAddress?: any;

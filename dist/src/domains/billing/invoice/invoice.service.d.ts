@@ -18,6 +18,9 @@ export declare class InvoiceService {
     createDraftFromOrder(params: CreateInvoiceFromOrderInput, companyId: string, ctx?: {
         tx?: TxOrDb;
     }): Promise<any>;
+    syncFromOrder(orderId: string, companyId: string, ctx?: {
+        tx?: TxOrDb;
+    }): Promise<any>;
     recalculateDraftTotals(companyId: string, invoiceId: string, ctx?: {
         tx?: TxOrDb;
     }): Promise<any>;

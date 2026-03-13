@@ -158,6 +158,78 @@ let InvoiceService = class InvoiceService {
         await this.recalculateDraftTotals(companyId, inv.id, { tx });
         return inv;
     }
+    async syncFromOrder(orderId, companyId, ctx) {
+        const tx = ctx?.tx ?? this.db;
+        const [invoice] = await tx
+            .select()
+            .from(schema_1.invoices)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.orderId, orderId), (0, drizzle_orm_1.eq)(schema_1.invoices.status, 'draft')))
+            .execute();
+        if (!invoice)
+            return null;
+        const items = await tx
+            .select()
+            .from(schema_1.orderItems)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
+            .execute();
+        await tx
+            .delete(schema_1.invoiceLines)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoice.id), (0, drizzle_orm_1.sql) `(${schema_1.invoiceLines.meta}->>'kind') IS DISTINCT FROM 'shipping'`))
+            .execute();
+        const shippingPosition = items.length + 1;
+        await tx
+            .update(schema_1.invoiceLines)
+            .set({ position: shippingPosition })
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoice.id), (0, drizzle_orm_1.sql) `(${schema_1.invoiceLines.meta}->>'kind') = 'shipping'`))
+            .execute();
+        if (items.length) {
+            const parseNumeric = (v) => Number(typeof v === 'string' ? v : (v ?? 0));
+            const toMinorFromMajor = (major) => Math.round(parseNumeric(major) * 100);
+            const pickMinor = (minor, major) => {
+                const m = Number(minor ?? 0);
+                if (m > 0)
+                    return m;
+                return toMinorFromMajor(major);
+            };
+            await tx
+                .insert(schema_1.invoiceLines)
+                .values(items.map((item, idx) => {
+                const quantity = Number(item.quantity ?? 1);
+                const unitPriceMinor = pickMinor(item.unitPriceMinor, item.unitPrice);
+                const lineNetMinor = unitPriceMinor * quantity;
+                return {
+                    companyId,
+                    invoiceId: invoice.id,
+                    orderId,
+                    position: idx + 1,
+                    productId: item.productId ?? null,
+                    variantId: item.variantId ?? null,
+                    description: item.name ?? 'Item',
+                    quantity,
+                    unitPriceMinor,
+                    discountMinor: 0,
+                    lineNetMinor,
+                    taxMinor: 0,
+                    lineTotalMinor: lineNetMinor,
+                    taxId: null,
+                    taxName: null,
+                    taxRateBps: 0,
+                    taxInclusive: false,
+                    taxExempt: false,
+                    taxExemptReason: null,
+                    meta: {
+                        source: 'order',
+                        orderItemId: item.id ?? null,
+                        sku: item.sku ?? null,
+                        attributes: item.attributes ?? null,
+                    },
+                };
+            }))
+                .execute();
+        }
+        await this.recalculateDraftTotals(companyId, invoice.id, { tx });
+        return invoice;
+    }
     async recalculateDraftTotals(companyId, invoiceId, ctx) {
         const tx = ctx?.tx ?? this.db;
         const [inv] = await tx

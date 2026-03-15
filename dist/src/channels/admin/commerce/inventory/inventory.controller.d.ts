@@ -36,14 +36,14 @@ export declare class InventoryController extends BaseController {
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
-        type: string;
-        city: string | null;
-        postalCode: string | null;
         code: string | null;
+        type: string;
         isDefault: boolean;
         addressLine1: string | null;
         addressLine2: string | null;
+        city: string | null;
         region: string | null;
+        postalCode: string | null;
     }>;
     updateLocation(user: User, locationId: string, dto: UpdateLocationDto, ip: string): Promise<{
         id: string;
@@ -181,7 +181,6 @@ export declare class InventoryController extends BaseController {
             productVariantId: string;
             quantity: number;
         }[];
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -190,6 +189,7 @@ export declare class InventoryController extends BaseController {
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
+        status: string;
         completedAt: Date | null;
     }>;
     createTransfer(user: User, dto: CreateTransferDto, ip: string): Promise<{
@@ -200,7 +200,6 @@ export declare class InventoryController extends BaseController {
             productVariantId: string;
             quantity: number;
         }[];
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -209,6 +208,7 @@ export declare class InventoryController extends BaseController {
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
+        status: string;
         completedAt: Date | null;
     }>;
     updateTransferStatus(user: User, transferId: string, dto: UpdateTransferStatusDto, ip: string): Promise<{
@@ -235,7 +235,7 @@ export declare class InventoryController extends BaseController {
         toLocationName: string | null;
         changes: {} | null;
     }[]>;
-    list(user: User, q: ListInventoryMovementsDto): Promise<{
+    list(user: User, q: ListInventoryMovementsDto, rawTypes?: string | string[]): Promise<{
         rows: {
             locationName: string | null;
             variantName: string;

@@ -27,7 +27,7 @@ const setup_module_1 = require("./setup/setup.module");
 const storefront_config_module_1 = require("./storefront-config/storefront-config.module");
 const reviews_module_1 = require("./reviews/reviews.module");
 const guards_module_1 = require("./common/guards/guards.module");
-const analytics_module_1 = require("./audit/analytics/analytics.module");
+const analytics_module_1 = require("./analytics/analytics.module");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;

@@ -31,6 +31,7 @@ import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { GetQuotesQueryDto } from './dto/get-quotes-query.dto';
 import {
+  inventoryItems,
   productImages,
   products,
   productVariants,
@@ -39,6 +40,7 @@ import {
 import { ManualOrdersService } from '../orders/manual-orders.service';
 import { QuoteNotificationService } from 'src/domains/notification/services/quote-notification.service';
 import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
+import { InventoryStockService } from '../inventory/services/inventory-stock.service';
 
 @Injectable()
 export class QuoteService {
@@ -49,6 +51,7 @@ export class QuoteService {
     private readonly manualOrdersService: ManualOrdersService,
     private readonly quoteNotification: QuoteNotificationService,
     private readonly zohoBooks: ZohoBooksService,
+    private readonly stock: InventoryStockService,
   ) {}
 
   // --------------------------------------------------------------------------
@@ -923,7 +926,7 @@ export class QuoteService {
       originInventoryLocationId: string;
       currency: string;
       channel?: 'manual' | 'pos';
-      fulfillmentModel?: 'stock_first' | 'payment_first'; // ← add this
+      fulfillmentModel?: 'stock_first' | 'payment_first';
       shippingAddress?: any;
       billingAddress?: any;
       customerId?: string | null;
@@ -963,6 +966,46 @@ export class QuoteService {
 
     if (!items.length) throw new BadRequestException('Quote has no items');
 
+    const fulfillmentModel = input.fulfillmentModel ?? 'stock_first';
+    const origin = input.originInventoryLocationId;
+
+    // ── stock_first: pre-check ALL items before creating anything ──
+    // addItem() reserves per item internally for stock_first, but we check
+    // upfront to fail fast and avoid partial order creation mid-loop.
+    if (fulfillmentModel === 'stock_first') {
+      for (const it of items) {
+        if (!it.variantId) continue;
+
+        const [inv] = await tx
+          .select({
+            available: inventoryItems.available,
+            reserved: inventoryItems.reserved,
+            safetyStock: inventoryItems.safetyStock,
+          })
+          .from(inventoryItems)
+          .where(
+            and(
+              eq(inventoryItems.companyId, companyId),
+              eq(inventoryItems.locationId, origin),
+              eq(inventoryItems.productVariantId, it.variantId),
+            ),
+          )
+          .execute();
+
+        const sellable =
+          Number(inv?.available ?? 0) -
+          Number(inv?.reserved ?? 0) -
+          Number(inv?.safetyStock ?? 0);
+
+        if (sellable < Number(it.quantity)) {
+          throw new BadRequestException(
+            `Insufficient stock for "${it.nameSnapshot ?? it.variantId}". ` +
+              `Required: ${it.quantity}, available: ${sellable}`,
+          );
+        }
+      }
+    }
+
     const order = await this.manualOrdersService.createManualOrder(
       companyId,
       {
@@ -972,8 +1015,8 @@ export class QuoteService {
         customerId: input.customerId ?? null,
         shippingAddress: input.shippingAddress ?? null,
         billingAddress: input.billingAddress ?? null,
-        originInventoryLocationId: input.originInventoryLocationId,
-        fulfillmentModel: input.fulfillmentModel ?? 'stock_first',
+        originInventoryLocationId: origin,
+        fulfillmentModel,
 
         // source linkage
         quoteRequestId: quote.id,
@@ -991,6 +1034,9 @@ export class QuoteService {
       { tx },
     );
 
+    // addItem() handles stock_first reservation internally per item.
+    // For payment_first it skips reservation — handled below after all items
+    // are added.
     for (const it of items) {
       if (!it.variantId) continue;
 
@@ -1008,6 +1054,50 @@ export class QuoteService {
         ip,
         { tx },
       );
+    }
+
+    // ── payment_first: reserve whatever is available now, wait for the rest ──
+    // addItem() skips reservation for payment_first so we handle it here.
+    // The shortfall (quantity - toReserve) is trackable via checkStockAvailability.
+    if (fulfillmentModel === 'payment_first') {
+      for (const it of items) {
+        if (!it.variantId) continue;
+
+        const [inv] = await tx
+          .select({
+            available: inventoryItems.available,
+            reserved: inventoryItems.reserved,
+            safetyStock: inventoryItems.safetyStock,
+          })
+          .from(inventoryItems)
+          .where(
+            and(
+              eq(inventoryItems.companyId, companyId),
+              eq(inventoryItems.locationId, origin),
+              eq(inventoryItems.productVariantId, it.variantId),
+            ),
+          )
+          .execute();
+
+        const sellable =
+          Number(inv?.available ?? 0) -
+          Number(inv?.reserved ?? 0) -
+          Number(inv?.safetyStock ?? 0);
+
+        const toReserve = Math.min(Number(it.quantity), Math.max(0, sellable));
+
+        if (toReserve > 0) {
+          await this.stock.reserveForOrderInTx(
+            tx,
+            companyId,
+            order.id,
+            origin,
+            it.variantId,
+            toReserve,
+            `Reserved stock for order ${order.orderNumber}`,
+          );
+        }
+      }
     }
 
     await tx

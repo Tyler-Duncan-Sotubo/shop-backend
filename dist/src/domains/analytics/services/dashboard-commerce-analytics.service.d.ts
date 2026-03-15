@@ -37,7 +37,7 @@ export declare class DashboardCommerceAnalyticsService {
     }): Promise<{
         productId: string | null;
         variantId: string | null;
-        productName: string | null;
+        productName: any;
         variantTitle: any;
         imageUrl: string | null;
         categories: string[];
@@ -76,7 +76,7 @@ export declare class DashboardCommerceAnalyticsService {
         topProducts: {
             productId: string | null;
             variantId: string | null;
-            productName: string | null;
+            productName: any;
             variantTitle: any;
             imageUrl: string | null;
             categories: string[];

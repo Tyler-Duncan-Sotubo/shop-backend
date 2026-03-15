@@ -277,9 +277,9 @@ let OrdersService = class OrdersService {
                 if (qty <= 0)
                     continue;
                 if (before.fulfillmentModel === 'payment_first') {
-                    await this.stock.reserveForOrderInTx(tx, companyId, orderId, origin, it.variantId, qty);
+                    await this.stock.reserveForOrderInTx(tx, companyId, orderId, origin, it.variantId, qty, `Reserved remaining stock for order ${before.orderNumber ?? orderId}`);
                 }
-                await this.stock.fulfillFromReservationInTx(tx, companyId, origin, it.variantId, qty);
+                await this.stock.fulfillFromReservationInTx(tx, companyId, origin, it.variantId, qty, { refType: 'order', refId: orderId }, { orderId, fulfillmentModel: before.fulfillmentModel });
             }
             const [after] = await tx
                 .update(schema_1.orders)

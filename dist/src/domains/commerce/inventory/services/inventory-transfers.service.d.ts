@@ -5,13 +5,15 @@ import { User } from 'src/channels/admin/common/types/user.type';
 import { CreateTransferDto, UpdateTransferStatusDto } from '../dto';
 import { InventoryLocationsService } from './inventory-locations.service';
 import { InventoryStockService } from './inventory-stock.service';
+import { InventoryLedgerService } from './inventory-ledger.service';
 export declare class InventoryTransfersService {
     private readonly db;
     private readonly cache;
     private readonly auditService;
     private readonly locationsService;
     private readonly stockService;
-    constructor(db: db, cache: CacheService, auditService: AuditService, locationsService: InventoryLocationsService, stockService: InventoryStockService);
+    private readonly ledger;
+    constructor(db: db, cache: CacheService, auditService: AuditService, locationsService: InventoryLocationsService, stockService: InventoryStockService, ledger: InventoryLedgerService);
     private computeSellable;
     private normalizeTransferItems;
     private assertEnoughStockForTransfer;
@@ -19,15 +21,15 @@ export declare class InventoryTransfersService {
         items: {
             id: string;
             createdAt: Date;
-            transferId: string;
             productVariantId: string;
+            transferId: string;
             quantity: number;
         }[];
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;
@@ -62,15 +64,15 @@ export declare class InventoryTransfersService {
         items: {
             id: string;
             createdAt: Date;
-            transferId: string;
             productVariantId: string;
+            transferId: string;
             quantity: number;
         }[];
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;

@@ -436,8 +436,9 @@ export class OrdersService {
         if (qty <= 0) continue;
 
         if ((before as any).fulfillmentModel === 'payment_first') {
-          // no reservation exists — mandate stock availability now
-          // if stock is insufficient this throws and rolls back the transaction
+          // Reserve any remaining shortfall — reserveForOrderInTx calculates
+          // delta = qty - alreadyReserved internally, so passing full qty is correct.
+          // If the remaining stock is insufficient this throws and rolls back.
           await this.stock.reserveForOrderInTx(
             tx,
             companyId,
@@ -445,17 +446,20 @@ export class OrdersService {
             origin,
             it.variantId,
             qty,
+            `Reserved remaining stock for order ${(before as any).orderNumber ?? orderId}`,
           );
         }
 
-        // for stock_first: reservation already exists, convert it to fulfilled
-        // for payment_first: reservation was just created above, now fulfil it
+        // stock_first: reservation already existed from conversion time
+        // payment_first: now fully reserved above — convert to fulfilled
         await this.stock.fulfillFromReservationInTx(
           tx,
           companyId,
           origin,
           it.variantId,
           qty,
+          { refType: 'order', refId: orderId },
+          { orderId, fulfillmentModel: (before as any).fulfillmentModel },
         );
       }
 

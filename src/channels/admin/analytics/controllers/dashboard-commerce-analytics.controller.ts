@@ -1,8 +1,8 @@
 import { Controller, Get, Query, SetMetadata, UseGuards } from '@nestjs/common';
 import { User } from 'src/channels/admin/common/types/user.type';
 import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../../../common/decorator/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorator/current-user.decorator';
 import { DashboardCommerceAnalyticsService } from 'src/domains/analytics/services/dashboard-commerce-analytics.service';
 import { Preset, resolvePreset } from 'src/common/utils/resolve-preset';
 

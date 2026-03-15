@@ -21,13 +21,15 @@ const cache_service_1 = require("../../../../infrastructure/cache/cache.service"
 const audit_service_1 = require("../../../audit/audit.service");
 const inventory_locations_service_1 = require("./inventory-locations.service");
 const inventory_stock_service_1 = require("./inventory-stock.service");
+const inventory_ledger_service_1 = require("./inventory-ledger.service");
 let InventoryTransfersService = class InventoryTransfersService {
-    constructor(db, cache, auditService, locationsService, stockService) {
+    constructor(db, cache, auditService, locationsService, stockService, ledger) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
         this.locationsService = locationsService;
         this.stockService = stockService;
+        this.ledger = ledger;
     }
     computeSellable(row) {
         const available = Number(row?.available ?? 0);
@@ -249,9 +251,41 @@ let InventoryTransfersService = class InventoryTransfersService {
                 const items = await tx.query.inventoryTransferItems.findMany({
                     where: (0, drizzle_orm_1.eq)(schema_1.inventoryTransferItems.transferId, transferId),
                 });
+                const locationRows = await tx
+                    .select({ id: schema_1.inventoryLocations.id, name: schema_1.inventoryLocations.name })
+                    .from(schema_1.inventoryLocations)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryLocations.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.inventoryLocations.id, [
+                    existing.fromLocationId,
+                    existing.toLocationId,
+                ])))
+                    .execute();
+                const locNameById = new Map(locationRows.map((l) => [l.id, l.name]));
+                const fromName = locNameById.get(existing.fromLocationId) ?? existing.fromLocationId;
+                const toName = locNameById.get(existing.toLocationId) ?? existing.toLocationId;
                 for (const item of items) {
-                    await this.stockService.adjustInventoryInTx(tx, companyId, item.productVariantId, existing.fromLocationId, -item.quantity);
-                    await this.stockService.adjustInventoryInTx(tx, companyId, item.productVariantId, existing.toLocationId, item.quantity);
+                    const qty = Number(item.quantity);
+                    await this.stockService.adjustInventoryInTx(tx, companyId, item.productVariantId, existing.fromLocationId, -qty);
+                    await this.ledger.logInTx(tx, {
+                        companyId,
+                        locationId: existing.fromLocationId,
+                        productVariantId: item.productVariantId,
+                        type: 'transfer_out',
+                        deltaAvailable: -qty,
+                        ref: { refType: 'transfer', refId: transferId },
+                        note: `Transfer out to ${toName}`,
+                        meta: { transferId },
+                    });
+                    await this.stockService.adjustInventoryInTx(tx, companyId, item.productVariantId, existing.toLocationId, qty);
+                    await this.ledger.logInTx(tx, {
+                        companyId,
+                        locationId: existing.toLocationId,
+                        productVariantId: item.productVariantId,
+                        type: 'transfer_in',
+                        deltaAvailable: +qty,
+                        ref: { refType: 'transfer', refId: transferId },
+                        note: `Transfer in from ${fromName}`,
+                        meta: { transferId },
+                    });
                 }
             }
             return { existing, updated };
@@ -352,6 +386,7 @@ exports.InventoryTransfersService = InventoryTransfersService = __decorate([
     __metadata("design:paramtypes", [Object, cache_service_1.CacheService,
         audit_service_1.AuditService,
         inventory_locations_service_1.InventoryLocationsService,
-        inventory_stock_service_1.InventoryStockService])
+        inventory_stock_service_1.InventoryStockService,
+        inventory_ledger_service_1.InventoryLedgerService])
 ], InventoryTransfersService);
 //# sourceMappingURL=inventory-transfers.service.js.map

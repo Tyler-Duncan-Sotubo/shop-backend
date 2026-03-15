@@ -86,8 +86,13 @@ let InventoryController = class InventoryController extends base_controller_1.Ba
     getStoreTransferHistory(user, storeId) {
         return this.transfersService.getStoreTransferHistory(user.companyId, storeId);
     }
-    list(user, q) {
-        return this.svc.list(user.companyId, q);
+    list(user, q, rawTypes) {
+        const types = rawTypes
+            ? Array.isArray(rawTypes)
+                ? rawTypes
+                : [rawTypes]
+            : undefined;
+        return this.svc.list(user.companyId, { ...q, types });
     }
 };
 exports.InventoryController = InventoryController;
@@ -262,8 +267,9 @@ __decorate([
     (0, common_1.SetMetadata)('permissions', ['inventory.transfers.read']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Query)()),
+    __param(2, (0, common_1.Query)('type[]')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, list_invertory_movements_dto_1.ListInventoryMovementsDto]),
+    __metadata("design:paramtypes", [Object, list_invertory_movements_dto_1.ListInventoryMovementsDto, Object]),
     __metadata("design:returntype", void 0)
 ], InventoryController.prototype, "list", null);
 exports.InventoryController = InventoryController = __decorate([

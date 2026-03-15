@@ -4,12 +4,14 @@ import { DashboardAnalyticsService } from './services/dashboard-analytics.servic
 import { DashboardCommerceAnalyticsService } from './services/dashboard-commerce-analytics.service';
 import { StoresService } from '../commerce/stores/stores.service';
 import { AwsService } from 'src/infrastructure/aws/aws.service';
+import { DashboardExtendedAnalyticsService } from './services/dashboard-extended-analytics.service';
 
 @Module({
   providers: [
     StorefrontAnalyticsService,
     DashboardAnalyticsService,
     DashboardCommerceAnalyticsService,
+    DashboardExtendedAnalyticsService,
     StoresService,
     AwsService,
   ],
@@ -17,6 +19,7 @@ import { AwsService } from 'src/infrastructure/aws/aws.service';
     StorefrontAnalyticsService,
     DashboardAnalyticsService,
     DashboardCommerceAnalyticsService,
+    DashboardExtendedAnalyticsService,
   ],
 })
 export class AnalyticsModule {}

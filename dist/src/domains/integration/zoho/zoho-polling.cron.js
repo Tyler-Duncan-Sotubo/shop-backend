@@ -227,7 +227,7 @@ let ZohoPollingCron = ZohoPollingCron_1 = class ZohoPollingCron {
 };
 exports.ZohoPollingCron = ZohoPollingCron;
 __decorate([
-    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_10_MINUTES),
+    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_5_SECONDS),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)

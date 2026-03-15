@@ -75,16 +75,24 @@ export declare class OrdersController extends BaseController {
     }>;
     checkStock(orderId: string, user: User): Promise<{
         ready: boolean;
+        fulfilled: boolean;
+        fulfillmentModel: any;
+        items: never[];
+    } | {
+        ready: boolean;
         fulfillmentModel: any;
         items: ({
             itemId: string;
             variantId: string;
             name: string;
             requested: number;
+            alreadyReserved: number;
+            stillNeeded: number;
             sellable: number;
             sufficient: boolean;
             shortfall: number;
         } | null)[];
+        fulfilled?: undefined;
     }>;
     createManualOrder(user: User, dto: CreateManualOrderDto, ip: string): Promise<any>;
     addItem(user: User, dto: AddManualOrderItemDto, ip: string): Promise<any>;

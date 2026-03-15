@@ -38,7 +38,7 @@ export class ZohoPollingCron {
     private readonly zohoService: ZohoService,
   ) {}
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(CronExpression.EVERY_5_SECONDS)
   async pollZohoInvoiceStatuses() {
     const candidates = await this.db
       .select({

@@ -24,6 +24,7 @@ import { User } from 'src/channels/admin/common/types/user.type';
 import { CreateTransferDto, UpdateTransferStatusDto } from '../dto';
 import { InventoryLocationsService } from './inventory-locations.service';
 import { InventoryStockService } from './inventory-stock.service';
+import { InventoryLedgerService } from './inventory-ledger.service';
 
 type QtyLine = { productVariantId: string; quantity: number };
 
@@ -35,6 +36,7 @@ export class InventoryTransfersService {
     private readonly auditService: AuditService,
     private readonly locationsService: InventoryLocationsService,
     private readonly stockService: InventoryStockService,
+    private readonly ledger: InventoryLedgerService,
   ) {}
 
   private computeSellable(row: any) {
@@ -383,30 +385,72 @@ export class InventoryTransfersService {
       const isNowCompleted = dto.status === 'completed';
       const wasCompleted = existing.status === 'completed';
 
-      // Only move stock the first time we reach "completed"
       if (isNowCompleted && !wasCompleted) {
         const items = await tx.query.inventoryTransferItems.findMany({
           where: eq(inventoryTransferItems.transferId, transferId),
         });
 
+        // fetch location names once before the loop
+        const locationRows = await tx
+          .select({ id: inventoryLocations.id, name: inventoryLocations.name })
+          .from(inventoryLocations)
+          .where(
+            and(
+              eq(inventoryLocations.companyId, companyId),
+              inArray(inventoryLocations.id, [
+                existing.fromLocationId,
+                existing.toLocationId,
+              ]),
+            ),
+          )
+          .execute();
+
+        const locNameById = new Map(locationRows.map((l) => [l.id, l.name]));
+        const fromName =
+          locNameById.get(existing.fromLocationId) ?? existing.fromLocationId;
+        const toName =
+          locNameById.get(existing.toLocationId) ?? existing.toLocationId;
+
         for (const item of items) {
-          // decrement from-location
+          const qty = Number(item.quantity);
+
           await this.stockService.adjustInventoryInTx(
             tx,
             companyId,
             item.productVariantId,
             existing.fromLocationId,
-            -item.quantity,
+            -qty,
           );
 
-          // increment to-location
+          await this.ledger.logInTx(tx, {
+            companyId,
+            locationId: existing.fromLocationId,
+            productVariantId: item.productVariantId,
+            type: 'transfer_out',
+            deltaAvailable: -qty,
+            ref: { refType: 'transfer', refId: transferId },
+            note: `Transfer out to ${toName}`,
+            meta: { transferId },
+          });
+
           await this.stockService.adjustInventoryInTx(
             tx,
             companyId,
             item.productVariantId,
             existing.toLocationId,
-            item.quantity,
+            qty,
           );
+
+          await this.ledger.logInTx(tx, {
+            companyId,
+            locationId: existing.toLocationId,
+            productVariantId: item.productVariantId,
+            type: 'transfer_in',
+            deltaAvailable: +qty,
+            ref: { refType: 'transfer', refId: transferId },
+            note: `Transfer in from ${fromName}`,
+            meta: { transferId },
+          });
         }
       }
 

@@ -269,7 +269,17 @@ export class InventoryController extends BaseController {
   @Get('movements')
   @UseGuards(JwtAuthGuard)
   @SetMetadata('permissions', ['inventory.transfers.read'])
-  list(@CurrentUser() user: User, @Query() q: ListInventoryMovementsDto) {
-    return this.svc.list(user.companyId, q);
+  list(
+    @CurrentUser() user: User,
+    @Query() q: ListInventoryMovementsDto,
+    @Query('type[]') rawTypes?: string | string[],
+  ) {
+    const types = rawTypes
+      ? Array.isArray(rawTypes)
+        ? rawTypes
+        : [rawTypes]
+      : undefined;
+
+    return this.svc.list(user.companyId, { ...q, types });
   }
 }

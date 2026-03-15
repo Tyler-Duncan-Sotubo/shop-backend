@@ -13,6 +13,7 @@ const dashboard_analytics_service_1 = require("./services/dashboard-analytics.se
 const dashboard_commerce_analytics_service_1 = require("./services/dashboard-commerce-analytics.service");
 const stores_service_1 = require("../commerce/stores/stores.service");
 const aws_service_1 = require("../../infrastructure/aws/aws.service");
+const dashboard_extended_analytics_service_1 = require("./services/dashboard-extended-analytics.service");
 let AnalyticsModule = class AnalyticsModule {
 };
 exports.AnalyticsModule = AnalyticsModule;
@@ -22,6 +23,7 @@ exports.AnalyticsModule = AnalyticsModule = __decorate([
             storefront_analytics_service_1.StorefrontAnalyticsService,
             dashboard_analytics_service_1.DashboardAnalyticsService,
             dashboard_commerce_analytics_service_1.DashboardCommerceAnalyticsService,
+            dashboard_extended_analytics_service_1.DashboardExtendedAnalyticsService,
             stores_service_1.StoresService,
             aws_service_1.AwsService,
         ],
@@ -29,6 +31,7 @@ exports.AnalyticsModule = AnalyticsModule = __decorate([
             storefront_analytics_service_1.StorefrontAnalyticsService,
             dashboard_analytics_service_1.DashboardAnalyticsService,
             dashboard_commerce_analytics_service_1.DashboardCommerceAnalyticsService,
+            dashboard_extended_analytics_service_1.DashboardExtendedAnalyticsService,
         ],
     })
 ], AnalyticsModule);

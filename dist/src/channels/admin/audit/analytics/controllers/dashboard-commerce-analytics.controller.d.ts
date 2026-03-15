@@ -16,7 +16,7 @@ export declare class DashboardCommerceAnalyticsController extends BaseController
     topProducts(user: User, from: string, to: string, storeId?: string, limit?: string, by?: 'revenue' | 'units'): Promise<{
         productId: string | null;
         variantId: string | null;
-        productName: string | null;
+        productName: any;
         variantTitle: any;
         imageUrl: string | null;
         categories: string[];
@@ -45,7 +45,7 @@ export declare class DashboardCommerceAnalyticsController extends BaseController
         topProducts: {
             productId: string | null;
             variantId: string | null;
-            productName: string | null;
+            productName: any;
             variantTitle: any;
             imageUrl: string | null;
             categories: string[];

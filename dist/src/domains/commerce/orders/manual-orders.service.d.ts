@@ -34,16 +34,24 @@ export declare class ManualOrdersService {
     }>;
     checkStockAvailability(companyId: string, orderId: string): Promise<{
         ready: boolean;
+        fulfilled: boolean;
+        fulfillmentModel: any;
+        items: never[];
+    } | {
+        ready: boolean;
         fulfillmentModel: any;
         items: ({
             itemId: string;
             variantId: string;
             name: string;
             requested: number;
+            alreadyReserved: number;
+            stillNeeded: number;
             sellable: number;
             sufficient: boolean;
             shortfall: number;
         } | null)[];
+        fulfilled?: undefined;
     }>;
     submitForPayment(companyId: string, orderId: string, actor?: User, ip?: string, ctx?: {
         tx?: TxOrDb;

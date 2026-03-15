@@ -8,7 +8,7 @@ import {
   products,
   productVariants,
 } from 'src/infrastructure/drizzle/schema';
-import { and, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from 'drizzle-orm';
 
 type Ref =
   | { refType: 'order'; refId: string }
@@ -20,23 +20,17 @@ type Ref =
 export type ListInventoryMovementsDto = {
   limit?: number;
   offset?: number;
-
-  // ✅ store scope (optional if you want company-wide views)
   storeId?: string;
-
-  // filters
   locationId?: string;
-  orderId?: string; // sugar => refType='order' & refId=orderId
+  orderId?: string;
   refType?: string;
   refId?: string;
-
   productVariantId?: string;
-
-  type?: string; // reserve/release/fulfill/pos_deduct/...
-  q?: string; // search in note or meta text + joined names
-
-  from?: string; // ISO date string
-  to?: string; // ISO date string
+  type?: string;
+  types?: string[]; // ← add this
+  q?: string;
+  from?: string;
+  to?: string;
 };
 
 @Injectable()
@@ -131,7 +125,6 @@ export class InventoryLedgerService {
     const fromDate = q.from ? new Date(q.from) : undefined;
     const toDate = q.to ? new Date(q.to) : undefined;
 
-    // Optional: Validate dates quickly
     if (q.from && Number.isNaN(fromDate?.getTime())) {
       throw new BadRequestException('Invalid from date');
     }
@@ -139,8 +132,6 @@ export class InventoryLedgerService {
       throw new BadRequestException('Invalid to date');
     }
 
-    // Optional but helpful: if storeId is provided, ensure locationId (if provided) belongs to store.
-    // This prevents confusing "no results" when someone passes mismatched store+location.
     if (q.storeId && q.locationId) {
       const loc = await this.db.query.inventoryLocations.findFirst({
         columns: { id: true },
@@ -158,10 +149,17 @@ export class InventoryLedgerService {
       }
     }
 
+    // normalise types: prefer types[] array, fall back to single type string
+    const types: string[] | undefined =
+      q['type[]'] && q['type[]'].length > 0
+        ? q['type[]']
+        : q.type
+          ? [q.type]
+          : undefined;
+
     const where = and(
       eq(inventoryMovements.companyId, companyId),
 
-      // ✅ store scope
       q.storeId ? eq(inventoryMovements.storeId, q.storeId) : undefined,
 
       q.locationId
@@ -172,7 +170,6 @@ export class InventoryLedgerService {
         ? eq(inventoryMovements.productVariantId, q.productVariantId)
         : undefined,
 
-      // sugar: orderId => refType=order AND refId=orderId
       q.orderId
         ? and(
             eq(inventoryMovements.refType, 'order'),
@@ -183,7 +180,12 @@ export class InventoryLedgerService {
       q.refType ? eq(inventoryMovements.refType, q.refType) : undefined,
       q.refId ? eq(inventoryMovements.refId, q.refId) : undefined,
 
-      q.type ? eq(inventoryMovements.type, q.type) : undefined,
+      // ✅ unified type filter: handles both single and array
+      types && types.length > 1
+        ? inArray(inventoryMovements.type, types)
+        : types && types.length === 1
+          ? eq(inventoryMovements.type, types[0])
+          : undefined,
 
       fromDate ? gte(inventoryMovements.createdAt, fromDate) : undefined,
       toDate ? lte(inventoryMovements.createdAt, toDate) : undefined,
@@ -192,8 +194,6 @@ export class InventoryLedgerService {
         ? or(
             ilike(inventoryMovements.note, `%${q.q}%`),
             ilike(sql`${inventoryMovements.meta}::text`, `%${q.q}%`),
-
-            // searchable “names”
             ilike(inventoryLocations.name, `%${q.q}%`),
             ilike(products.name, `%${q.q}%`),
             ilike(productVariants.title, `%${q.q}%`),
@@ -202,21 +202,17 @@ export class InventoryLedgerService {
         : undefined,
     );
 
-    // ✅ ROWS query (includes joins needed for q.q search)
     const rows = await this.db
       .select({
         movement: inventoryMovements,
-
         locationName: inventoryLocations.name,
-
         variantName: sql<string>`
-          CASE
-            WHEN ${productVariants.title} IS NULL OR ${productVariants.title} = ''
-              THEN ${products.name}
-            ELSE ${products.name} || ' - ' || ${productVariants.title}
-          END
-        `.as('variant_name'),
-
+        CASE
+          WHEN ${productVariants.title} IS NULL OR ${productVariants.title} = ''
+            THEN ${products.name}
+          ELSE ${products.name} || ' - ' || ${productVariants.title}
+        END
+      `.as('variant_name'),
         sku: productVariants.sku,
       })
       .from(inventoryMovements)
@@ -225,7 +221,6 @@ export class InventoryLedgerService {
         and(
           eq(inventoryLocations.companyId, companyId),
           eq(inventoryLocations.id, inventoryMovements.locationId),
-          // defensive store filter (keeps joins consistent even if legacy rows exist)
           q.storeId ? eq(inventoryLocations.storeId, q.storeId) : undefined,
         ),
       )
@@ -234,8 +229,6 @@ export class InventoryLedgerService {
         and(
           eq(productVariants.companyId, companyId),
           eq(productVariants.id, inventoryMovements.productVariantId),
-          // If variants have storeId in your schema, enforce it here:
-          // q.storeId ? eq(productVariants.storeId, q.storeId) : undefined,
         ),
       )
       .leftJoin(
@@ -252,7 +245,6 @@ export class InventoryLedgerService {
       .offset(offset)
       .execute();
 
-    // ✅ COUNT query MUST include same joins because `where` references those tables for q.q
     const [{ count }] = await this.db
       .select({ count: sql<number>`count(distinct ${inventoryMovements.id})` })
       .from(inventoryMovements)

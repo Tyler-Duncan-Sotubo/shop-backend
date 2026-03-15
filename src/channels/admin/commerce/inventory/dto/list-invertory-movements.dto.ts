@@ -1,5 +1,12 @@
-import { IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 export class ListInventoryMovementsDto {
   @IsOptional()
@@ -14,12 +21,10 @@ export class ListInventoryMovementsDto {
   @Min(0)
   offset?: number;
 
-  // store scope
   @IsOptional()
   @IsUUID()
   storeId?: string;
 
-  // filters
   @IsOptional()
   @IsUUID()
   locationId?: string;
@@ -44,15 +49,22 @@ export class ListInventoryMovementsDto {
   @IsString()
   type?: string;
 
+  // array form: ?type[]=fulfill&type[]=pos_deduct
+  @IsOptional()
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @IsArray()
+  @IsString({ each: true })
+  'type[]'?: string[];
+
   @IsOptional()
   @IsString()
   q?: string;
 
   @IsOptional()
   @IsString()
-  from?: string; // ISO date
+  from?: string;
 
   @IsOptional()
   @IsString()
-  to?: string; // ISO date
+  to?: string;
 }

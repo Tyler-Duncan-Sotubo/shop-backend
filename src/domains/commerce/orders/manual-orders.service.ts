@@ -12,6 +12,7 @@ import { AuditService } from 'src/domains/audit/audit.service';
 import { User } from 'src/channels/admin/common/types/user.type';
 import {
   inventoryItems,
+  inventoryReservations,
   invoices,
   orderCounters,
   orderEvents,
@@ -685,6 +686,21 @@ export class ManualOrdersService {
 
     if (!order) throw new NotFoundException('Order not found');
 
+    const terminalStatuses = [
+      'fulfilled',
+      'completed',
+      'cancelled',
+      'refunded',
+    ];
+    if (terminalStatuses.includes(order.status as string)) {
+      return {
+        ready: true,
+        fulfilled: true,
+        fulfillmentModel: (order as any).fulfillmentModel,
+        items: [],
+      };
+    }
+
     const origin = (order as any).originInventoryLocationId;
     if (!origin)
       throw new BadRequestException('Order missing originInventoryLocationId');
@@ -722,19 +738,46 @@ export class ManualOrdersService {
           )
           .execute();
 
+        // How much is already reserved specifically for THIS order
+        const [existingReservation] = await this.db
+          .select({ quantity: inventoryReservations.quantity })
+          .from(inventoryReservations)
+          .where(
+            and(
+              eq(inventoryReservations.companyId, companyId),
+              eq(inventoryReservations.orderId, orderId),
+              eq(inventoryReservations.locationId, origin),
+              eq(inventoryReservations.productVariantId, item.variantId),
+              eq(inventoryReservations.status, 'reserved' as any),
+            ),
+          )
+          .limit(1)
+          .execute();
+
         const available = Number(inv?.available ?? 0);
         const reserved = Number(inv?.reserved ?? 0);
         const safetyStock = Number(inv?.safetyStock ?? 0);
-        const sellable = available - reserved - safetyStock;
+        const alreadyReservedForThisOrder = Number(
+          existingReservation?.quantity ?? 0,
+        );
+
+        // Add back this order's own reservation to avoid double counting
+        const sellable =
+          available - reserved - safetyStock + alreadyReservedForThisOrder;
+
+        // What's still needed beyond what's already reserved for this order
+        const stillNeeded = Math.max(0, qty - alreadyReservedForThisOrder);
 
         return {
           itemId: item.id,
           variantId: item.variantId,
           name: item.name,
           requested: qty,
+          alreadyReserved: alreadyReservedForThisOrder,
+          stillNeeded,
           sellable,
           sufficient: sellable >= qty,
-          shortfall: sellable < qty ? qty - sellable : 0,
+          shortfall: stillNeeded > 0 ? stillNeeded : 0,
         };
       }),
     );
@@ -790,21 +833,6 @@ export class ManualOrdersService {
         .execute();
 
       if (!items.length) throw new BadRequestException('Order has no items');
-
-      // enforce stock reservation for stock_first orders only
-      if ((before as any).fulfillmentModel === 'stock_first') {
-        for (const item of items) {
-          if (!item.variantId) continue;
-          await this.stock.reserveForOrderInTx(
-            tx,
-            companyId,
-            orderId,
-            origin,
-            item.variantId,
-            Number(item.quantity),
-          );
-        }
-      }
 
       await this.recalculateTotalsInTx(tx, companyId, orderId);
 

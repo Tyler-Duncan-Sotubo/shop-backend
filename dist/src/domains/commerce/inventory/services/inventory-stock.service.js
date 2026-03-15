@@ -116,6 +116,20 @@ let InventoryStockService = class InventoryStockService {
                 .returning()
                 .execute();
             after = inserted;
+            if (!opts?.skipCacheBump) {
+                await this.ledger.logInTx(tx, {
+                    companyId,
+                    locationId,
+                    productVariantId,
+                    type: 'adjustment',
+                    deltaAvailable: quantity,
+                    ref: null,
+                    note: `Initial stock set (${quantity} units)`,
+                    actorUserId: user?.id ?? null,
+                    ipAddress: ip ?? null,
+                    meta: { quantity, safetyStock, reason: 'initial_stock_set' },
+                });
+            }
         }
         else {
             before = existing;
@@ -131,6 +145,27 @@ let InventoryStockService = class InventoryStockService {
                 .returning()
                 .execute();
             after = updated;
+            const delta = quantity - Number(existing.available);
+            if (delta !== 0 && !opts?.skipCacheBump) {
+                await this.ledger.logInTx(tx, {
+                    companyId,
+                    locationId,
+                    productVariantId,
+                    type: 'adjustment',
+                    deltaAvailable: delta,
+                    ref: null,
+                    note: `Stock level set to ${quantity} (${delta > 0 ? `+${delta}` : delta})`,
+                    actorUserId: user?.id ?? null,
+                    ipAddress: ip ?? null,
+                    meta: {
+                        before: existing.available,
+                        after: quantity,
+                        delta,
+                        safetyStock,
+                        reason: 'stock_level_set',
+                    },
+                });
+            }
         }
         if (!opts?.skipCacheBump)
             await this.cache.bumpCompanyVersion(companyId);
@@ -151,6 +186,18 @@ let InventoryStockService = class InventoryStockService {
         await this.locationsService.findLocationByIdOrThrow(companyId, locationId);
         const result = await this.db.transaction(async (tx) => {
             await this.adjustInventoryInTx(tx, companyId, productVariantId, locationId, delta);
+            await this.ledger.logInTx(tx, {
+                companyId,
+                locationId,
+                productVariantId,
+                type: 'adjustment',
+                deltaAvailable: delta,
+                ref: null,
+                note: delta > 0 ? `Stock added (+${delta})` : `Stock removed (${delta})`,
+                actorUserId: user?.id ?? null,
+                ipAddress: ip ?? null,
+                meta: { delta },
+            });
             const updated = await tx.query.inventoryItems.findFirst({
                 where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, productVariantId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, locationId)),
             });
@@ -331,7 +378,7 @@ let InventoryStockService = class InventoryStockService {
         })
             .execute();
     }
-    async reserveForOrderInTx(tx, companyId, orderId, locationId, productVariantId, qty) {
+    async reserveForOrderInTx(tx, companyId, orderId, locationId, productVariantId, qty, note) {
         if (!Number.isFinite(qty) || qty <= 0)
             return;
         const existing = await tx
@@ -354,8 +401,22 @@ let InventoryStockService = class InventoryStockService {
             .returning({ id: schema_1.inventoryItems.id })
             .execute();
         if (updated.length === 0) {
-            console.log('this');
-            throw new common_1.BadRequestException('Insufficient sellable stock to reserve.');
+            const [inv] = await tx
+                .select({
+                available: schema_1.inventoryItems.available,
+                reserved: schema_1.inventoryItems.reserved,
+                safetyStock: schema_1.inventoryItems.safetyStock,
+            })
+                .from(schema_1.inventoryItems)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, locationId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, productVariantId)))
+                .execute();
+            const available = Number(inv?.available ?? 0);
+            const reserved = Number(inv?.reserved ?? 0);
+            const safetyStock = Number(inv?.safetyStock ?? 0);
+            const sellable = available - reserved - safetyStock;
+            throw new common_1.BadRequestException(`Insufficient sellable stock to reserve. ` +
+                `only ${sellable} sellable unit(s) available ` +
+                `(${available} on hand, ${reserved} reserved, ${safetyStock} safety stock).`);
         }
         await this.ledger.logInTx(tx, {
             companyId,
@@ -364,7 +425,7 @@ let InventoryStockService = class InventoryStockService {
             type: 'reserve',
             deltaReserved: +delta,
             ref: { refType: 'order', refId: orderId },
-            note: 'Reserved stock for order (reserveForOrderInTx)',
+            note: note ?? `Reserved stock for order ${orderId}`,
             meta: { requestedQty: qty, alreadyReserved: already, delta },
         });
         await tx

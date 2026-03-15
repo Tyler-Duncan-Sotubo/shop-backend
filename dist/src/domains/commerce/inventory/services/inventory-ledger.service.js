@@ -76,13 +76,22 @@ let InventoryLedgerService = class InventoryLedgerService {
                 throw new common_1.BadRequestException('locationId does not belong to the provided storeId');
             }
         }
+        const types = q['type[]'] && q['type[]'].length > 0
+            ? q['type[]']
+            : q.type
+                ? [q.type]
+                : undefined;
         const where = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryMovements.companyId, companyId), q.storeId ? (0, drizzle_orm_1.eq)(schema_1.inventoryMovements.storeId, q.storeId) : undefined, q.locationId
             ? (0, drizzle_orm_1.eq)(schema_1.inventoryMovements.locationId, q.locationId)
             : undefined, q.productVariantId
             ? (0, drizzle_orm_1.eq)(schema_1.inventoryMovements.productVariantId, q.productVariantId)
             : undefined, q.orderId
             ? (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryMovements.refType, 'order'), (0, drizzle_orm_1.eq)(schema_1.inventoryMovements.refId, q.orderId))
-            : undefined, q.refType ? (0, drizzle_orm_1.eq)(schema_1.inventoryMovements.refType, q.refType) : undefined, q.refId ? (0, drizzle_orm_1.eq)(schema_1.inventoryMovements.refId, q.refId) : undefined, q.type ? (0, drizzle_orm_1.eq)(schema_1.inventoryMovements.type, q.type) : undefined, fromDate ? (0, drizzle_orm_1.gte)(schema_1.inventoryMovements.createdAt, fromDate) : undefined, toDate ? (0, drizzle_orm_1.lte)(schema_1.inventoryMovements.createdAt, toDate) : undefined, q.q
+            : undefined, q.refType ? (0, drizzle_orm_1.eq)(schema_1.inventoryMovements.refType, q.refType) : undefined, q.refId ? (0, drizzle_orm_1.eq)(schema_1.inventoryMovements.refId, q.refId) : undefined, types && types.length > 1
+            ? (0, drizzle_orm_1.inArray)(schema_1.inventoryMovements.type, types)
+            : types && types.length === 1
+                ? (0, drizzle_orm_1.eq)(schema_1.inventoryMovements.type, types[0])
+                : undefined, fromDate ? (0, drizzle_orm_1.gte)(schema_1.inventoryMovements.createdAt, fromDate) : undefined, toDate ? (0, drizzle_orm_1.lte)(schema_1.inventoryMovements.createdAt, toDate) : undefined, q.q
             ? (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.inventoryMovements.note, `%${q.q}%`), (0, drizzle_orm_1.ilike)((0, drizzle_orm_1.sql) `${schema_1.inventoryMovements.meta}::text`, `%${q.q}%`), (0, drizzle_orm_1.ilike)(schema_1.inventoryLocations.name, `%${q.q}%`), (0, drizzle_orm_1.ilike)(schema_1.products.name, `%${q.q}%`), (0, drizzle_orm_1.ilike)(schema_1.productVariants.title, `%${q.q}%`), (0, drizzle_orm_1.ilike)(schema_1.productVariants.sku, `%${q.q}%`))
             : undefined);
         const rows = await this.db
@@ -90,12 +99,12 @@ let InventoryLedgerService = class InventoryLedgerService {
             movement: schema_1.inventoryMovements,
             locationName: schema_1.inventoryLocations.name,
             variantName: (0, drizzle_orm_1.sql) `
-          CASE
-            WHEN ${schema_1.productVariants.title} IS NULL OR ${schema_1.productVariants.title} = ''
-              THEN ${schema_1.products.name}
-            ELSE ${schema_1.products.name} || ' - ' || ${schema_1.productVariants.title}
-          END
-        `.as('variant_name'),
+        CASE
+          WHEN ${schema_1.productVariants.title} IS NULL OR ${schema_1.productVariants.title} = ''
+            THEN ${schema_1.products.name}
+          ELSE ${schema_1.products.name} || ' - ' || ${schema_1.productVariants.title}
+        END
+      `.as('variant_name'),
             sku: schema_1.productVariants.sku,
         })
             .from(schema_1.inventoryMovements)

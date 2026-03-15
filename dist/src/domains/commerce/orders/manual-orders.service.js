@@ -459,6 +459,20 @@ let ManualOrdersService = class ManualOrdersService {
             .execute();
         if (!order)
             throw new common_1.NotFoundException('Order not found');
+        const terminalStatuses = [
+            'fulfilled',
+            'completed',
+            'cancelled',
+            'refunded',
+        ];
+        if (terminalStatuses.includes(order.status)) {
+            return {
+                ready: true,
+                fulfilled: true,
+                fulfillmentModel: order.fulfillmentModel,
+                items: [],
+            };
+        }
         const origin = order.originInventoryLocationId;
         if (!origin)
             throw new common_1.BadRequestException('Order missing originInventoryLocationId');
@@ -480,18 +494,28 @@ let ManualOrdersService = class ManualOrdersService {
                 .from(schema_1.inventoryItems)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, origin), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, item.variantId)))
                 .execute();
+            const [existingReservation] = await this.db
+                .select({ quantity: schema_1.inventoryReservations.quantity })
+                .from(schema_1.inventoryReservations)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryReservations.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryReservations.orderId, orderId), (0, drizzle_orm_1.eq)(schema_1.inventoryReservations.locationId, origin), (0, drizzle_orm_1.eq)(schema_1.inventoryReservations.productVariantId, item.variantId), (0, drizzle_orm_1.eq)(schema_1.inventoryReservations.status, 'reserved')))
+                .limit(1)
+                .execute();
             const available = Number(inv?.available ?? 0);
             const reserved = Number(inv?.reserved ?? 0);
             const safetyStock = Number(inv?.safetyStock ?? 0);
-            const sellable = available - reserved - safetyStock;
+            const alreadyReservedForThisOrder = Number(existingReservation?.quantity ?? 0);
+            const sellable = available - reserved - safetyStock + alreadyReservedForThisOrder;
+            const stillNeeded = Math.max(0, qty - alreadyReservedForThisOrder);
             return {
                 itemId: item.id,
                 variantId: item.variantId,
                 name: item.name,
                 requested: qty,
+                alreadyReserved: alreadyReservedForThisOrder,
+                stillNeeded,
                 sellable,
                 sufficient: sellable >= qty,
-                shortfall: sellable < qty ? qty - sellable : 0,
+                shortfall: stillNeeded > 0 ? stillNeeded : 0,
             };
         }));
         const filtered = results.filter(Boolean);
@@ -524,13 +548,6 @@ let ManualOrdersService = class ManualOrdersService {
                 .execute();
             if (!items.length)
                 throw new common_1.BadRequestException('Order has no items');
-            if (before.fulfillmentModel === 'stock_first') {
-                for (const item of items) {
-                    if (!item.variantId)
-                        continue;
-                    await this.stock.reserveForOrderInTx(tx, companyId, orderId, origin, item.variantId, Number(item.quantity));
-                }
-            }
             await this.recalculateTotalsInTx(tx, companyId, orderId);
             const [after] = await tx
                 .update(schema_1.orders)

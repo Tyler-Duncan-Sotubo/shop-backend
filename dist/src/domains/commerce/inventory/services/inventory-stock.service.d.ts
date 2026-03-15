@@ -92,7 +92,7 @@ export declare class InventoryStockService {
         updatedAt: Date;
     })[]>;
     reserveInTx(tx: db, companyId: string, orderId: string, locationId: string, productVariantId: string, qty: number): Promise<void>;
-    reserveForOrderInTx(tx: db, companyId: string, orderId: string, locationId: string, productVariantId: string, qty: number): Promise<void>;
+    reserveForOrderInTx(tx: db, companyId: string, orderId: string, locationId: string, productVariantId: string, qty: number, note?: string): Promise<void>;
     releaseOrderReservationsInTx(tx: db, companyId: string, orderId: string): Promise<void>;
     releaseReservationInTx(tx: db, companyId: string, orderId: string, locationId: string, productVariantId: string, qty: number, ref?: Ref, meta?: any): Promise<void>;
     fulfillOrderReservationsInTx(tx: db, companyId: string, orderId: string): Promise<void>;

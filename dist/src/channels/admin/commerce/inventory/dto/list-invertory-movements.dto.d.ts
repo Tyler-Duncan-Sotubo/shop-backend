@@ -8,6 +8,7 @@ export declare class ListInventoryMovementsDto {
     refId?: string;
     productVariantId?: string;
     type?: string;
+    'type[]'?: string[];
     q?: string;
     from?: string;
     to?: string;

@@ -22,6 +22,7 @@ export type ListInventoryMovementsDto = {
     refId?: string;
     productVariantId?: string;
     type?: string;
+    types?: string[];
     q?: string;
     from?: string;
     to?: string;

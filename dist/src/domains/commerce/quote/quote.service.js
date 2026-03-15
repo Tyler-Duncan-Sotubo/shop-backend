@@ -23,14 +23,16 @@ const schema_1 = require("../../../infrastructure/drizzle/schema");
 const manual_orders_service_1 = require("../orders/manual-orders.service");
 const quote_notification_service_1 = require("../../notification/services/quote-notification.service");
 const zoho_books_service_1 = require("../../integration/zoho/zoho-books.service");
+const inventory_stock_service_1 = require("../inventory/services/inventory-stock.service");
 let QuoteService = class QuoteService {
-    constructor(db, cache, auditService, manualOrdersService, quoteNotification, zohoBooks) {
+    constructor(db, cache, auditService, manualOrdersService, quoteNotification, zohoBooks, stock) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
         this.manualOrdersService = manualOrdersService;
         this.quoteNotification = quoteNotification;
         this.zohoBooks = zohoBooks;
+        this.stock = stock;
     }
     async findQuoteByIdOrThrow(companyId, quoteId) {
         const row = await this.db.query.quoteRequests.findFirst({
@@ -614,6 +616,30 @@ let QuoteService = class QuoteService {
             .execute();
         if (!items.length)
             throw new common_1.BadRequestException('Quote has no items');
+        const fulfillmentModel = input.fulfillmentModel ?? 'stock_first';
+        const origin = input.originInventoryLocationId;
+        if (fulfillmentModel === 'stock_first') {
+            for (const it of items) {
+                if (!it.variantId)
+                    continue;
+                const [inv] = await tx
+                    .select({
+                    available: schema_1.inventoryItems.available,
+                    reserved: schema_1.inventoryItems.reserved,
+                    safetyStock: schema_1.inventoryItems.safetyStock,
+                })
+                    .from(schema_1.inventoryItems)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, origin), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, it.variantId)))
+                    .execute();
+                const sellable = Number(inv?.available ?? 0) -
+                    Number(inv?.reserved ?? 0) -
+                    Number(inv?.safetyStock ?? 0);
+                if (sellable < Number(it.quantity)) {
+                    throw new common_1.BadRequestException(`Insufficient stock for "${it.nameSnapshot ?? it.variantId}". ` +
+                        `Required: ${it.quantity}, available: ${sellable}`);
+                }
+            }
+        }
         const order = await this.manualOrdersService.createManualOrder(companyId, {
             storeId: quote.storeId,
             currency: input.currency,
@@ -621,8 +647,8 @@ let QuoteService = class QuoteService {
             customerId: input.customerId ?? null,
             shippingAddress: input.shippingAddress ?? null,
             billingAddress: input.billingAddress ?? null,
-            originInventoryLocationId: input.originInventoryLocationId,
-            fulfillmentModel: input.fulfillmentModel ?? 'stock_first',
+            originInventoryLocationId: origin,
+            fulfillmentModel,
             quoteRequestId: quote.id,
             sourceType: 'quote',
             zohoOrganizationId: quote.zohoOrganizationId ?? null,
@@ -641,6 +667,28 @@ let QuoteService = class QuoteService {
                 name: it.nameSnapshot?.trim() ?? undefined,
                 attributes: it.attributes ?? undefined,
             }, true, actor, ip, { tx });
+        }
+        if (fulfillmentModel === 'payment_first') {
+            for (const it of items) {
+                if (!it.variantId)
+                    continue;
+                const [inv] = await tx
+                    .select({
+                    available: schema_1.inventoryItems.available,
+                    reserved: schema_1.inventoryItems.reserved,
+                    safetyStock: schema_1.inventoryItems.safetyStock,
+                })
+                    .from(schema_1.inventoryItems)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, origin), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, it.variantId)))
+                    .execute();
+                const sellable = Number(inv?.available ?? 0) -
+                    Number(inv?.reserved ?? 0) -
+                    Number(inv?.safetyStock ?? 0);
+                const toReserve = Math.min(Number(it.quantity), Math.max(0, sellable));
+                if (toReserve > 0) {
+                    await this.stock.reserveForOrderInTx(tx, companyId, order.id, origin, it.variantId, toReserve, `Reserved stock for order ${order.orderNumber}`);
+                }
+            }
         }
         await tx
             .update(quote_requests_schema_1.quoteRequests)
@@ -691,6 +739,7 @@ exports.QuoteService = QuoteService = __decorate([
         audit_service_1.AuditService,
         manual_orders_service_1.ManualOrdersService,
         quote_notification_service_1.QuoteNotificationService,
-        zoho_books_service_1.ZohoBooksService])
+        zoho_books_service_1.ZohoBooksService,
+        inventory_stock_service_1.InventoryStockService])
 ], QuoteService);
 //# sourceMappingURL=quote.service.js.map

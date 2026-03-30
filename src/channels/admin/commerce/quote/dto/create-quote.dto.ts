@@ -56,6 +56,10 @@ export class CreateQuoteDto {
 
   @IsOptional()
   @IsString()
+  customerName?: string;
+
+  @IsOptional()
+  @IsString()
   status?: string;
 
   // Optional metadata (utm, referrer, user-agent, etc.)

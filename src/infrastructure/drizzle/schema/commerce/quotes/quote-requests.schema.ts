@@ -33,6 +33,7 @@ export const quoteRequests = pgTable(
     // Customer input
     customerEmail: text('customer_email').notNull(),
     customerNote: text('customer_note'),
+    customerName: text('customer_name'),
 
     // Optional metadata (utm, referrer, device, etc.)
     meta: jsonb('meta').$type<Record<string, unknown>>(),

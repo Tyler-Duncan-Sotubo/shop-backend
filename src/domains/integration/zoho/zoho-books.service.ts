@@ -114,7 +114,7 @@ export class ZohoBooksService {
         organizationId: connection.zohoOrganizationId,
         accessToken,
         email: quote.customerEmail,
-        contactNameHint: null,
+        contactNameHint: quote.customerName ?? null,
       });
 
       await tx
@@ -318,7 +318,7 @@ export class ZohoBooksService {
         organizationId: connection.zohoOrganizationId,
         accessToken,
         email: quote.customerEmail,
-        contactNameHint: null,
+        contactNameHint: quote.customerName ?? null,
       });
 
       await tx
@@ -496,7 +496,7 @@ export class ZohoBooksService {
     return {
       ...(contactId
         ? { customer_id: contactId }
-        : { customer_name: quote.customerEmail }),
+        : { customer_name: quote.customerName ?? quote.customerEmail }), // ← was just customerEmail
       reference_number: quote.quoteNumber ?? quote.id,
       notes: quote.customerNote ?? '',
       line_items: items.map((it) => ({

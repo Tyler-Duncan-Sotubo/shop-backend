@@ -40,29 +40,23 @@ export class ManualOrdersService {
   ) {}
 
   private async allocateOrderNumberInTx(tx: TxOrDb, companyId: string) {
-    // Ensure counter row exists (outside the tx ideally, at company creation time)
-    await tx
+    const [row] = await tx
       .insert(orderCounters)
       .values({
         companyId,
-        nextNumber: 2, // starts at 2 because we're returning 1
+        nextNumber: 2, // if this is the very first order, return 1
         updatedAt: new Date(),
       })
-      .onConflictDoNothing() // if row exists, skip
-      .execute();
-
-    // Atomic increment — no read-modify-write, no race
-    const [row] = await tx
-      .update(orderCounters)
-      .set({
-        nextNumber: sql`next_number + 1`,
-        updatedAt: new Date(),
+      .onConflictDoUpdate({
+        target: orderCounters.companyId, // your unique column
+        set: {
+          nextNumber: sql`order_counters.next_number + 1`,
+          updatedAt: new Date(),
+        },
       })
-      .where(eq(orderCounters.companyId, companyId))
       .returning({ n: orderCounters.nextNumber })
       .execute();
 
-    // next_number was incremented, so the allocated number is n - 1
     return Number(row.n) - 1;
   }
 

@@ -19,6 +19,7 @@ exports.quoteRequests = (0, pg_core_1.pgTable)('quote_requests', {
     status: (0, pg_core_1.text)('status').notNull().default('new'),
     customerEmail: (0, pg_core_1.text)('customer_email').notNull(),
     customerNote: (0, pg_core_1.text)('customer_note'),
+    customerName: (0, pg_core_1.text)('customer_name'),
     meta: (0, pg_core_1.jsonb)('meta').$type(),
     expiresAt: (0, pg_core_1.timestamp)('expires_at', { mode: 'date' }),
     archivedAt: (0, pg_core_1.timestamp)('archived_at', { mode: 'date' }),

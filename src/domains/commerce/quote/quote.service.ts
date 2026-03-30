@@ -123,7 +123,14 @@ export class QuoteService {
     user?: User,
     ip?: string,
   ) {
-    const { storeId, customerEmail, customerNote, meta, expiresAt } = dto;
+    const {
+      storeId,
+      customerEmail,
+      customerNote,
+      meta,
+      expiresAt,
+      customerName,
+    } = dto;
     const items = dto.items ?? [];
 
     if (!items.length && !meta?.isAdmin) {
@@ -141,6 +148,7 @@ export class QuoteService {
           quoteNumber,
           customerEmail,
           customerNote,
+          customerName,
           meta,
           expiresAt,
           status: 'new',
@@ -813,6 +821,7 @@ export class QuoteService {
       .set({
         status: nextStatus,
         customerEmail: dto.customerEmail ?? existing.customerEmail,
+        customerName: dto.customerName ?? existing.customerName,
         customerNote:
           dto.customerNote === undefined
             ? existing.customerNote

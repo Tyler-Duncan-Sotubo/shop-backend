@@ -10,14 +10,15 @@ export declare class QuoteController extends BaseController {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
+        expiresAt: Date | null;
         storeId: string;
         status: string;
         currency: string | null;
         meta: Record<string, unknown> | null;
-        expiresAt: Date | null;
         quoteNumber: string | null;
         customerEmail: string;
         customerNote: string | null;
+        customerName: string | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;

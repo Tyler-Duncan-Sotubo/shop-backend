@@ -11,6 +11,7 @@ export declare class CreateQuoteDto {
     storeId: string;
     customerEmail: string;
     customerNote?: string;
+    customerName?: string;
     status?: string;
     meta?: Record<string, unknown>;
     expiresAt?: Date;

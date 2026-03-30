@@ -94,18 +94,26 @@ let ZohoService = class ZohoService {
         return row;
     }
     async getValidAccessToken(companyId, storeId) {
-        const connection = await this.findForStore(companyId, storeId);
-        if (!connection) {
+        const rows = await this.db
+            .select()
+            .from(schema_1.zohoConnections)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.zohoConnections.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.zohoConnections.storeId, storeId)))
+            .limit(1)
+            .execute();
+        const connection = rows[0];
+        if (!connection)
             throw new Error('Zoho not connected');
-        }
         const now = new Date();
         const expiresAt = connection.accessTokenExpiresAt
             ? new Date(connection.accessTokenExpiresAt)
             : null;
-        const hasValidExpiry = expiresAt instanceof Date && !Number.isNaN(expiresAt.getTime());
-        if (connection.accessToken && hasValidExpiry && expiresAt > now) {
+        const bufferMs = 60 * 1000;
+        const isValid = connection.accessToken &&
+            expiresAt instanceof Date &&
+            !Number.isNaN(expiresAt.getTime()) &&
+            expiresAt.getTime() - now.getTime() > bufferMs;
+        if (isValid)
             return connection.accessToken;
-        }
         const refreshed = await this.refreshAccessToken({
             region: connection.region,
             refreshToken: connection.refreshToken,
@@ -114,10 +122,16 @@ let ZohoService = class ZohoService {
         if (Number.isNaN(refreshedExpiresAt.getTime())) {
             throw new Error('Invalid expiry from Zoho');
         }
-        await this.updateForStore(companyId, storeId, {
+        await this.db
+            .update(schema_1.zohoConnections)
+            .set({
             accessToken: refreshed.accessToken,
             accessTokenExpiresAt: refreshedExpiresAt,
-        });
+            updatedAt: new Date(),
+        })
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.zohoConnections.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.zohoConnections.storeId, storeId)))
+            .execute();
+        await this.cache.bumpCompanyVersion(companyId);
         return refreshed.accessToken;
     }
     async findAllForStore(companyId, storeId) {

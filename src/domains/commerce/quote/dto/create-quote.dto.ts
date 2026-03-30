@@ -52,6 +52,10 @@ export class CreateQuoteDto {
 
   @IsOptional()
   @IsString()
+  customerName?: string;
+
+  @IsOptional()
+  @IsString()
   customerNote?: string;
 
   @IsOptional()

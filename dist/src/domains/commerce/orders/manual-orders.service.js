@@ -30,22 +30,20 @@ let ManualOrdersService = class ManualOrdersService {
         this.invoiceService = invoiceService;
     }
     async allocateOrderNumberInTx(tx, companyId) {
-        await tx
+        const [row] = await tx
             .insert(schema_1.orderCounters)
             .values({
             companyId,
             nextNumber: 2,
             updatedAt: new Date(),
         })
-            .onConflictDoNothing()
-            .execute();
-        const [row] = await tx
-            .update(schema_1.orderCounters)
-            .set({
-            nextNumber: (0, drizzle_orm_1.sql) `next_number + 1`,
-            updatedAt: new Date(),
+            .onConflictDoUpdate({
+            target: schema_1.orderCounters.companyId,
+            set: {
+                nextNumber: (0, drizzle_orm_1.sql) `order_counters.next_number + 1`,
+                updatedAt: new Date(),
+            },
         })
-            .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
             .returning({ n: schema_1.orderCounters.nextNumber })
             .execute();
         return Number(row.n) - 1;

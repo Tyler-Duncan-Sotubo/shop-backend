@@ -70,7 +70,7 @@ let ZohoBooksService = class ZohoBooksService {
                 organizationId: connection.zohoOrganizationId,
                 accessToken,
                 email: quote.customerEmail,
-                contactNameHint: null,
+                contactNameHint: quote.customerName ?? null,
             });
             await tx
                 .update(quote_requests_schema_1.quoteRequests)
@@ -196,7 +196,7 @@ let ZohoBooksService = class ZohoBooksService {
                 organizationId: connection.zohoOrganizationId,
                 accessToken,
                 email: quote.customerEmail,
-                contactNameHint: null,
+                contactNameHint: quote.customerName ?? null,
             });
             await tx
                 .update(quote_requests_schema_1.quoteRequests)
@@ -302,7 +302,7 @@ let ZohoBooksService = class ZohoBooksService {
         return {
             ...(contactId
                 ? { customer_id: contactId }
-                : { customer_name: quote.customerEmail }),
+                : { customer_name: quote.customerName ?? quote.customerEmail }),
             reference_number: quote.quoteNumber ?? quote.id,
             notes: quote.customerNote ?? '',
             line_items: items.map((it) => ({

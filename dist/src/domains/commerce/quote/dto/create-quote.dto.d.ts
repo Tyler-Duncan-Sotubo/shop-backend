@@ -10,6 +10,7 @@ declare class CreateQuoteItemDto {
 export declare class CreateQuoteDto {
     storeId: string;
     customerEmail: string;
+    customerName?: string;
     customerNote?: string;
     status?: string;
     meta?: Record<string, unknown>;

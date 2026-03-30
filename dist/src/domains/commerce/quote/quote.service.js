@@ -76,7 +76,7 @@ let QuoteService = class QuoteService {
         return this.formatQuoteNumber(nextNumber);
     }
     async create(companyId, dto, user, ip) {
-        const { storeId, customerEmail, customerNote, meta, expiresAt } = dto;
+        const { storeId, customerEmail, customerNote, meta, expiresAt, customerName, } = dto;
         const items = dto.items ?? [];
         if (!items.length && !meta?.isAdmin) {
             throw new common_1.BadRequestException('At least one quote item is required.');
@@ -91,6 +91,7 @@ let QuoteService = class QuoteService {
                 quoteNumber,
                 customerEmail,
                 customerNote,
+                customerName,
                 meta,
                 expiresAt,
                 status: 'new',
@@ -516,6 +517,7 @@ let QuoteService = class QuoteService {
             .set({
             status: nextStatus,
             customerEmail: dto.customerEmail ?? existing.customerEmail,
+            customerName: dto.customerName ?? existing.customerName,
             customerNote: dto.customerNote === undefined
                 ? existing.customerNote
                 : dto.customerNote,

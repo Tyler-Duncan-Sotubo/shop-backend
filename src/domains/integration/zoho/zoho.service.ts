@@ -112,40 +112,65 @@ export class ZohoService {
   /* ---------------------------------- */
 
   async getValidAccessToken(companyId: string, storeId: string) {
-    const connection = await this.findForStore(companyId, storeId);
+    // ← bypass cache, always read fresh from DB
+    const rows = await this.db
+      .select()
+      .from(zohoConnections)
+      .where(
+        and(
+          eq(zohoConnections.companyId, companyId),
+          eq(zohoConnections.storeId, storeId),
+        ),
+      )
+      .limit(1)
+      .execute();
 
-    if (!connection) {
-      throw new Error('Zoho not connected');
-    }
+    const connection = rows[0];
+    if (!connection) throw new Error('Zoho not connected');
 
     const now = new Date();
-
     const expiresAt = connection.accessTokenExpiresAt
       ? new Date(connection.accessTokenExpiresAt)
       : null;
 
-    const hasValidExpiry =
-      expiresAt instanceof Date && !Number.isNaN(expiresAt.getTime());
+    // Add 60s buffer so we refresh before it actually expires
+    const bufferMs = 60 * 1000;
+    const isValid =
+      connection.accessToken &&
+      expiresAt instanceof Date &&
+      !Number.isNaN(expiresAt.getTime()) &&
+      expiresAt.getTime() - now.getTime() > bufferMs;
 
-    if (connection.accessToken && hasValidExpiry && expiresAt > now) {
-      return connection.accessToken;
-    }
+    if (isValid) return connection.accessToken;
 
+    // Refresh
     const refreshed = await this.refreshAccessToken({
       region: connection.region,
       refreshToken: connection.refreshToken,
     });
 
     const refreshedExpiresAt = new Date(refreshed.expiresAt);
-
     if (Number.isNaN(refreshedExpiresAt.getTime())) {
       throw new Error('Invalid expiry from Zoho');
     }
 
-    await this.updateForStore(companyId, storeId, {
-      accessToken: refreshed.accessToken,
-      accessTokenExpiresAt: refreshedExpiresAt,
-    } as any);
+    // Save new token directly (no cache interference)
+    await this.db
+      .update(zohoConnections)
+      .set({
+        accessToken: refreshed.accessToken,
+        accessTokenExpiresAt: refreshedExpiresAt,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(zohoConnections.companyId, companyId),
+          eq(zohoConnections.storeId, storeId),
+        ),
+      )
+      .execute();
+
+    await this.cache.bumpCompanyVersion(companyId);
 
     return refreshed.accessToken;
   }

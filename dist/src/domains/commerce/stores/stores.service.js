@@ -389,9 +389,15 @@ let StoresService = class StoresService {
         });
     }
     normalizeHost(hostRaw) {
-        const host = (hostRaw || '').toLowerCase().trim();
-        const noPort = host.split(':')[0];
-        const noDot = noPort.endsWith('.') ? noPort.slice(0, -1) : noPort;
+        if (!hostRaw)
+            return '';
+        const host = String(hostRaw)
+            .toLowerCase()
+            .trim()
+            .replace(/^https?:\/\//, '')
+            .split('/')[0]
+            .split(':')[0];
+        const noDot = host.endsWith('.') ? host.slice(0, -1) : host;
         return noDot.startsWith('www.') ? noDot.slice(4) : noDot;
     }
     async resolveStoreByHost(hostRaw) {
@@ -417,7 +423,7 @@ let StoresService = class StoresService {
                 .execute();
             return row ?? null;
         }
-        const cacheKey = ['store-domain', host];
+        const cacheKey = ['store-domain', 'host', host, 'v1'];
         return this.cache.getOrSetVersioned('global', cacheKey, async () => {
             const [row] = await this.db
                 .select({

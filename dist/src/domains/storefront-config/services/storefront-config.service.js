@@ -40,13 +40,75 @@ let StorefrontConfigService = StorefrontConfigService_1 = class StorefrontConfig
         this.cache = cache;
         this.logger = new common_1.Logger(StorefrontConfigService_1.name);
     }
+    normalizeHost(host) {
+        return (host ?? '')
+            .trim()
+            .toLowerCase()
+            .replace(/^https?:\/\//, '')
+            .split('/')[0]
+            .split(':')[0];
+    }
+    isBlockedLocalhost(host) {
+        return (host === 'localhost' ||
+            host === '127.0.0.1' ||
+            host === '0.0.0.0' ||
+            host.endsWith('.localhost'));
+    }
+    async findStoreByHost(host) {
+        const normalizedHost = this.normalizeHost(host);
+        if (!normalizedHost) {
+            throw new common_1.NotFoundException({
+                code: 'DOMAIN_NOT_FOUND',
+                message: 'Missing store host',
+            });
+        }
+        if (this.isBlockedLocalhost(normalizedHost)) {
+            throw new common_1.ForbiddenException({
+                code: 'LOCALHOST_BLOCKED',
+                message: 'Localhost is not allowed for storefront resolution',
+            });
+        }
+        const domainRow = await this.db.query.storeDomains.findFirst({
+            where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storeDomains.host, normalizedHost), (0, drizzle_orm_1.eq)(schema_1.storeDomains.isActive, true)),
+        });
+        if (!domainRow) {
+            throw new common_1.NotFoundException({
+                code: 'DOMAIN_NOT_FOUND',
+                message: `No store domain found for host ${normalizedHost}`,
+            });
+        }
+        const store = await this.db.query.stores.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema_1.stores.id, domainRow.storeId),
+        });
+        if (!store) {
+            throw new common_1.NotFoundException({
+                code: 'DOMAIN_NOT_FOUND',
+                message: `No store found for host ${normalizedHost}`,
+            });
+        }
+        return { store, domainRow, normalizedHost };
+    }
     async getResolvedByStoreId(storeId, options) {
         const store = await this.db.query.stores.findFirst({
             where: (0, drizzle_orm_1.eq)(schema_1.stores.id, storeId),
         });
-        if (!store)
-            throw new common_1.NotFoundException('Store not found');
-        const cacheKey = ['storefront', 'config', 'resolved', 'store', storeId];
+        if (!store) {
+            throw new common_1.NotFoundException({
+                code: 'DOMAIN_NOT_FOUND',
+                message: 'Store not found',
+            });
+        }
+        const cacheKey = [
+            'storefront',
+            'config',
+            'resolved',
+            'store',
+            storeId,
+            'host',
+            options?.host ?? 'none',
+            'override-status',
+            options?.overrideStatus ?? 'published',
+        ];
         return this.cache.getOrSetCompanyAndGlobalVersioned(store.companyId, cacheKey, async () => {
             const resolved = await this.resolveForStore(storeId, undefined, options);
             const parsed = schema_2.StorefrontConfigV1Schema.safeParse(resolved);
@@ -56,12 +118,46 @@ let StorefrontConfigService = StorefrontConfigService_1 = class StorefrontConfig
             return resolved;
         }, { ttlSeconds: 300 });
     }
+    async getResolvedByHost(host, options) {
+        const { store, domainRow, normalizedHost } = await this.findStoreByHost(host);
+        const cacheKey = [
+            'storefront',
+            'config',
+            'resolved',
+            'host',
+            normalizedHost,
+            'store',
+            store.id,
+            'override-status',
+            options?.overrideStatus ?? 'published',
+        ];
+        return this.cache.getOrSetCompanyAndGlobalVersioned(store.companyId, cacheKey, async () => {
+            const resolved = await this.resolveForStore(store.id, undefined, options);
+            const withDomainMeta = {
+                ...resolved,
+                store: {
+                    ...resolved.store,
+                    host: normalizedHost,
+                    domainId: domainRow.id ?? undefined,
+                },
+            };
+            const parsed = schema_2.StorefrontConfigV1Schema.safeParse(withDomainMeta);
+            if (!parsed.success) {
+                this.logger.warn(`Resolved storefront config failed zod validation for host=${normalizedHost}, store=${store.id}: ${parsed.error.message}`);
+            }
+            return withDomainMeta;
+        }, { ttlSeconds: 300 });
+    }
     async resolveForStore(storeId, candidateOverride, options) {
         const store = await this.db.query.stores.findFirst({
             where: (0, drizzle_orm_1.eq)(schema_1.stores.id, storeId),
         });
-        if (!store)
-            throw new common_1.NotFoundException('Store not found');
+        if (!store) {
+            throw new common_1.NotFoundException({
+                code: 'DOMAIN_NOT_FOUND',
+                message: 'Store not found',
+            });
+        }
         const overrideStatus = options?.overrideStatus ?? 'published';
         const publishedOverride = await this.db.query.storefrontOverrides.findFirst({
             where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storefrontOverrides.storeId, storeId), (0, drizzle_orm_1.eq)(schema_1.storefrontOverrides.status, 'published')),
@@ -93,11 +189,15 @@ let StorefrontConfigService = StorefrontConfigService_1 = class StorefrontConfig
             : await this.db.query.storefrontBases.findFirst({
                 where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.storefrontBases.key, 'default-v1'), (0, drizzle_orm_1.eq)(schema_1.storefrontBases.isActive, true)),
             });
-        if (!base)
-            throw new common_1.NotFoundException('Storefront base not found');
-        if (requireTheme && !effectiveOverride?.themeId) {
+        if (!base) {
             throw new common_1.NotFoundException({
-                code: 'THEME_NOT_SET',
+                code: 'CONFIG_NOT_PUBLISHED',
+                message: 'Storefront base not found',
+            });
+        }
+        if (requireTheme && !effectiveOverride?.themeId) {
+            throw new common_1.ConflictException({
+                code: 'THEME_NOT_READY',
                 message: 'Theme is required but not set for this store',
             });
         }

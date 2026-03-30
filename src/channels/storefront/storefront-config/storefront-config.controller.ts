@@ -1,4 +1,5 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import { FastifyReply } from 'fastify';
 import { BaseController } from 'src/infrastructure/interceptor/base.controller';
 import { StorefrontGuard } from '../common/guard/storefront.guard';
 import { CurrentStoreId } from '../common/decorators/current-store.decorator';
@@ -9,10 +10,24 @@ export class StorefrontConfigController extends BaseController {
   constructor(private readonly runtime: StorefrontConfigService) {
     super();
   }
-  /** Storefront runtime: returns resolved StorefrontConfigV1 for the current store */
+
   @Get('config')
   @UseGuards(StorefrontGuard)
-  async getMyResolvedConfig(@CurrentStoreId() storeId: string) {
-    return this.runtime.getResolvedByStoreId(storeId);
+  async getMyResolvedConfig(
+    @CurrentStoreId() storeId: string,
+    @Req() req: any,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    reply.header(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, proxy-revalidate',
+    );
+    reply.header('Pragma', 'no-cache');
+    reply.header('Expires', '0');
+    reply.header('Vary', 'Host, X-Forwarded-Host, X-Store-Host');
+
+    return this.runtime.getResolvedByStoreId(storeId, {
+      host: req.storefront?.host, // 👈 pass host
+    });
   }
 }

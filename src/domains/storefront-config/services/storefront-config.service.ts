@@ -5,6 +5,7 @@ import {
   NotFoundException,
   Logger,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
@@ -12,6 +13,7 @@ import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
 import {
   stores,
+  storeDomains, // <-- add this import; rename if your table is named differently
   storefrontBases,
   storefrontThemes,
   storefrontOverrides,
@@ -33,6 +35,7 @@ function deepMerge(a: any, b: any): any {
   }
   return b === undefined ? a : b;
 }
+
 function isObj(x: any) {
   return x && typeof x === 'object' && !Array.isArray(x);
 }
@@ -57,22 +60,109 @@ export class StorefrontConfigService {
     private readonly cache: CacheService,
   ) {}
 
+  private normalizeHost(host?: string | null): string {
+    return (host ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .split('/')[0]
+      .split(':')[0];
+  }
+
+  private isBlockedLocalhost(host: string): boolean {
+    return (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0' ||
+      host.endsWith('.localhost')
+    );
+  }
+
+  /**
+   * Resolve store by incoming host through the storeDomains table.
+   *
+   * Assumed schema:
+   * - storeDomains.host
+   * - storeDomains.storeId
+   * - storeDomains.isActive
+   *
+   * If your column names differ, change only this method.
+   */
+  private async findStoreByHost(host: string) {
+    const normalizedHost = this.normalizeHost(host);
+
+    if (!normalizedHost) {
+      throw new NotFoundException({
+        code: 'DOMAIN_NOT_FOUND',
+        message: 'Missing store host',
+      });
+    }
+
+    if (this.isBlockedLocalhost(normalizedHost)) {
+      throw new ForbiddenException({
+        code: 'LOCALHOST_BLOCKED',
+        message: 'Localhost is not allowed for storefront resolution',
+      });
+    }
+
+    const domainRow = await this.db.query.storeDomains.findFirst({
+      where: and(
+        eq((storeDomains as any).host, normalizedHost),
+        eq((storeDomains as any).isActive, true),
+      ),
+    });
+
+    if (!domainRow) {
+      throw new NotFoundException({
+        code: 'DOMAIN_NOT_FOUND',
+        message: `No store domain found for host ${normalizedHost}`,
+      });
+    }
+
+    const store = await this.db.query.stores.findFirst({
+      where: eq(stores.id, (domainRow as any).storeId),
+    });
+
+    if (!store) {
+      throw new NotFoundException({
+        code: 'DOMAIN_NOT_FOUND',
+        message: `No store found for host ${normalizedHost}`,
+      });
+    }
+
+    return { store, domainRow, normalizedHost };
+  }
+
   /* ------------------------------------------------------------------ */
-  /* Public runtime: resolved config (cached)                             */
+  /* Public runtime: resolved config by storeId (cached)                */
   /* ------------------------------------------------------------------ */
   async getResolvedByStoreId(
     storeId: string,
-    options?: { overrideStatus?: 'published' | 'draft' },
+    options?: { overrideStatus?: 'published' | 'draft'; host?: string },
   ) {
     const store = await this.db.query.stores.findFirst({
       where: eq(stores.id, storeId),
     });
 
-    if (!store) throw new NotFoundException('Store not found');
+    if (!store) {
+      throw new NotFoundException({
+        code: 'DOMAIN_NOT_FOUND',
+        message: 'Store not found',
+      });
+    }
 
-    const cacheKey = ['storefront', 'config', 'resolved', 'store', storeId];
+    const cacheKey = [
+      'storefront',
+      'config',
+      'resolved',
+      'store',
+      storeId,
+      'host',
+      options?.host ?? 'none',
+      'override-status',
+      options?.overrideStatus ?? 'published',
+    ];
 
-    // ✅ Use combined company+global versioning so base changes invalidate caches
     return this.cache.getOrSetCompanyAndGlobalVersioned(
       store.companyId,
       cacheKey,
@@ -83,7 +173,6 @@ export class StorefrontConfigService {
           options,
         );
 
-        // Optional runtime safety: don't break storefront if invalid, just log.
         const parsed = StorefrontConfigV1Schema.safeParse(resolved);
         if (!parsed.success) {
           this.logger.warn(
@@ -98,7 +187,61 @@ export class StorefrontConfigService {
   }
 
   /* ------------------------------------------------------------------ */
-  /* Shared resolver: used by runtime + publish validation                */
+  /* Public runtime: resolved config by host/domain (cached)            */
+  /* ------------------------------------------------------------------ */
+  async getResolvedByHost(
+    host: string,
+    options?: { overrideStatus?: 'published' | 'draft' },
+  ) {
+    const { store, domainRow, normalizedHost } =
+      await this.findStoreByHost(host);
+
+    const cacheKey = [
+      'storefront',
+      'config',
+      'resolved',
+      'host',
+      normalizedHost,
+      'store',
+      store.id,
+      'override-status',
+      options?.overrideStatus ?? 'published',
+    ];
+
+    return this.cache.getOrSetCompanyAndGlobalVersioned(
+      store.companyId,
+      cacheKey,
+      async () => {
+        const resolved = await this.resolveForStore(
+          store.id,
+          undefined,
+          options,
+        );
+
+        const withDomainMeta = {
+          ...resolved,
+          store: {
+            ...resolved.store,
+            host: normalizedHost,
+            domainId: (domainRow as any).id ?? undefined,
+          },
+        };
+
+        const parsed = StorefrontConfigV1Schema.safeParse(withDomainMeta);
+        if (!parsed.success) {
+          this.logger.warn(
+            `Resolved storefront config failed zod validation for host=${normalizedHost}, store=${store.id}: ${parsed.error.message}`,
+          );
+        }
+
+        return withDomainMeta;
+      },
+      { ttlSeconds: 300 },
+    );
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Shared resolver: used by runtime + publish validation              */
   /* ------------------------------------------------------------------ */
   async resolveForStore(
     storeId: string,
@@ -108,11 +251,16 @@ export class StorefrontConfigService {
     const store = await this.db.query.stores.findFirst({
       where: eq(stores.id, storeId),
     });
-    if (!store) throw new NotFoundException('Store not found');
+
+    if (!store) {
+      throw new NotFoundException({
+        code: 'DOMAIN_NOT_FOUND',
+        message: 'Store not found',
+      });
+    }
 
     const overrideStatus = options?.overrideStatus ?? 'published';
 
-    // Always load published override (used by requireThemeMode === "published")
     const publishedOverride = await this.db.query.storefrontOverrides.findFirst(
       {
         where: and(
@@ -122,8 +270,6 @@ export class StorefrontConfigService {
       },
     );
 
-    // Load stored override based on requested status (draft/published)
-    // If overrideStatus is "published", this will be same as publishedOverride
     const draftOverride =
       overrideStatus === 'published'
         ? undefined
@@ -144,21 +290,9 @@ export class StorefrontConfigService {
         ? publishedOverride
         : (draftOverride ?? publishedOverride);
 
-    // Candidate override takes precedence (admin preview), otherwise use stored row
     const effectiveOverride: OverrideCandidate | undefined =
       candidateOverride ?? (storedOverride as any) ?? undefined;
 
-    // ------------------------------------------------------------------
-    // ✅ Require-theme flag (env-controlled)
-    //
-    // Modes:
-    // - "never": never require a theme (current old behavior)
-    // - "published": require theme only if there is a published override
-    // - "override": require theme if ANY override candidate exists (published or preview)
-    // - "always": always require theme for every store
-    //
-    // Default = "published" (safe for rollout)
-    // ------------------------------------------------------------------
     const requireThemeMode = (
       process.env.STOREFRONT_REQUIRE_THEME_MODE ?? 'published'
     ).toLowerCase();
@@ -170,9 +304,8 @@ export class StorefrontConfigService {
           ? !!effectiveOverride
           : requireThemeMode === 'published'
             ? !!publishedOverride
-            : false; // "never"
+            : false;
 
-    // 1) base
     const base = effectiveOverride?.baseId
       ? await this.db.query.storefrontBases.findFirst({
           where: and(
@@ -187,76 +320,65 @@ export class StorefrontConfigService {
           ),
         });
 
-    if (!base) throw new NotFoundException('Storefront base not found');
-
-    // ✅ If theme is required, and themeId is missing/undefined/null: DO NOT RESOLVE
-    if (requireTheme && !effectiveOverride?.themeId) {
+    if (!base) {
       throw new NotFoundException({
-        code: 'THEME_NOT_SET',
+        code: 'CONFIG_NOT_PUBLISHED',
+        message: 'Storefront base not found',
+      });
+    }
+
+    if (requireTheme && !effectiveOverride?.themeId) {
+      throw new ConflictException({
+        code: 'THEME_NOT_READY',
         message: 'Theme is required but not set for this store',
       });
     }
 
-    // 2) theme preset (full preset)
-    // Requirement: "company and theme should return the same error"
-    // => If themeId is provided but not found OR not allowed for company, throw the SAME error shape.
     const themePreset = effectiveOverride?.themeId
       ? await this.db.query.storefrontThemes.findFirst({
           where: and(
             eq(storefrontThemes.id, effectiveOverride.themeId as any),
             eq(storefrontThemes.isActive, true),
-            // allow global OR company-scoped presets
             sql`(${storefrontThemes.companyId} IS NULL OR ${storefrontThemes.companyId} = ${store.companyId})`,
           ),
         })
       : null;
 
-    // ✅ If themeId was specified (or required), do NOT fall back to base if invalid
     if ((requireTheme || effectiveOverride?.themeId) && !themePreset) {
-      // same error whether: theme doesn't exist, inactive, or belongs to another company
       throw new ConflictException({
         code: 'THEME_NOT_READY',
         message: 'Theme preset not found or not accessible for this store',
       });
-
-      // If you truly want 404 instead, swap to:
-      // throw new NotFoundException('Storefront theme preset not found');
     }
 
-    // theme
     let resolvedTheme = base.theme ?? {};
     if (themePreset?.theme)
       resolvedTheme = deepMerge(resolvedTheme, themePreset.theme);
     if (effectiveOverride?.theme)
       resolvedTheme = deepMerge(resolvedTheme, effectiveOverride.theme);
 
-    // ui
     let resolvedUi = base.ui ?? {};
     if (themePreset?.ui) resolvedUi = deepMerge(resolvedUi, themePreset.ui);
     if (effectiveOverride?.ui)
       resolvedUi = deepMerge(resolvedUi, effectiveOverride.ui);
 
-    // seo
     let resolvedSeo = base.seo ?? {};
     if (themePreset?.seo) resolvedSeo = deepMerge(resolvedSeo, themePreset.seo);
     if (effectiveOverride?.seo)
       resolvedSeo = deepMerge(resolvedSeo, effectiveOverride.seo);
 
-    // header
     let resolvedHeader = base.header ?? {};
     if (themePreset?.header)
       resolvedHeader = deepMerge(resolvedHeader, themePreset.header);
     if (effectiveOverride?.header)
       resolvedHeader = deepMerge(resolvedHeader, effectiveOverride.header);
 
-    // footer
     let resolvedFooter = base.footer ?? {};
     if (themePreset?.footer)
       resolvedFooter = deepMerge(resolvedFooter, themePreset.footer);
     if (effectiveOverride?.footer)
       resolvedFooter = deepMerge(resolvedFooter, effectiveOverride.footer);
 
-    // pages
     let resolvedPages = base.pages ?? {};
     if (themePreset?.pages)
       resolvedPages = deepMerge(resolvedPages, themePreset.pages);

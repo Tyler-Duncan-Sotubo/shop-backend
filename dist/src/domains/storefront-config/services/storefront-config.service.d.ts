@@ -15,8 +15,12 @@ export declare class StorefrontConfigService {
     private readonly cache;
     private readonly logger;
     constructor(db: db, cache: CacheService);
+    private normalizeHost;
+    private isBlockedLocalhost;
+    private findStoreByHost;
     getResolvedByStoreId(storeId: string, options?: {
         overrideStatus?: 'published' | 'draft';
+        host?: string;
     }): Promise<{
         version: number;
         store: {
@@ -25,6 +29,25 @@ export declare class StorefrontConfigService {
             locale: any;
             currency: any;
         };
+        theme: {};
+        ui: {};
+        seo: {};
+        header: {};
+        footer: {};
+        pages: {};
+    }>;
+    getResolvedByHost(host: string, options?: {
+        overrideStatus?: 'published' | 'draft';
+    }): Promise<{
+        store: {
+            host: string;
+            domainId: any;
+            id: string;
+            name: string;
+            locale: any;
+            currency: any;
+        };
+        version: number;
         theme: {};
         ui: {};
         seo: {};

@@ -23,8 +23,14 @@ let StorefrontConfigController = class StorefrontConfigController extends base_c
         super();
         this.runtime = runtime;
     }
-    async getMyResolvedConfig(storeId) {
-        return this.runtime.getResolvedByStoreId(storeId);
+    async getMyResolvedConfig(storeId, req, reply) {
+        reply.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        reply.header('Pragma', 'no-cache');
+        reply.header('Expires', '0');
+        reply.header('Vary', 'Host, X-Forwarded-Host, X-Store-Host');
+        return this.runtime.getResolvedByStoreId(storeId, {
+            host: req.storefront?.host,
+        });
     }
 };
 exports.StorefrontConfigController = StorefrontConfigController;
@@ -32,8 +38,10 @@ __decorate([
     (0, common_1.Get)('config'),
     (0, common_1.UseGuards)(storefront_guard_1.StorefrontGuard),
     __param(0, (0, current_store_decorator_1.CurrentStoreId)()),
+    __param(1, (0, common_1.Req)()),
+    __param(2, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], StorefrontConfigController.prototype, "getMyResolvedConfig", null);
 exports.StorefrontConfigController = StorefrontConfigController = __decorate([

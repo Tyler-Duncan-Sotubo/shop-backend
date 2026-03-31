@@ -313,9 +313,9 @@ export class OrdersService {
 
       if (!before) throw new NotFoundException('Order not found');
 
-      if (before.status !== 'pending_payment') {
+      if (before.status !== 'pending_payment' && before.status !== 'lay_buy') {
         throw new BadRequestException(
-          'Only pending_payment orders can be cancelled',
+          'Only pending_payment or lay-buy orders can be cancelled',
         );
       }
 
@@ -398,6 +398,54 @@ export class OrdersService {
     return result;
   }
 
+  // In orders.service.ts — add this method
+
+  async convertToLayBuy(
+    companyId: string,
+    orderId: string,
+    user?: User,
+    ip?: string,
+  ) {
+    const result = await this.db.transaction(async (tx) => {
+      const [before] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .for('update')
+        .execute();
+
+      if (!before) throw new NotFoundException('Order not found');
+      if (before.status !== 'pending_payment' && before.status !== 'draft') {
+        throw new BadRequestException(
+          'Only pending_payment or draft orders can be converted to lay-buy',
+        );
+      }
+
+      const [after] = await tx
+        .update(orders)
+        .set({ status: 'lay_buy', updatedAt: new Date() })
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .returning()
+        .execute();
+
+      await tx.insert(orderEvents).values({
+        companyId,
+        orderId,
+        type: 'converted_to_lay_buy',
+        fromStatus: before.status,
+        toStatus: after.status,
+        actorUserId: user?.id ?? null,
+        ipAddress: ip ?? null,
+        message: 'Order converted to lay-buy — fulfillment before payment',
+      });
+
+      return after;
+    });
+
+    await this.cache.bumpCompanyVersion(companyId);
+    return result;
+  }
+
   async fulfill(companyId: string, orderId: string, user?: User, ip?: string) {
     const result = await this.db.transaction(async (tx) => {
       const [before] = await tx
@@ -408,8 +456,10 @@ export class OrdersService {
         .execute();
 
       if (!before) throw new NotFoundException('Order not found');
-      if (before.status !== 'paid') {
-        throw new BadRequestException('Only paid orders can be fulfilled');
+      if (before.status !== 'paid' && before.status !== 'lay_buy') {
+        throw new BadRequestException(
+          'Only paid or lay-buy orders can be fulfilled',
+        );
       }
 
       const items = await tx

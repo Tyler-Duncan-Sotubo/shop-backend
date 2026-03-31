@@ -4,6 +4,7 @@ export declare class CreateManualOrderDto {
     currency: string;
     fulfillmentModel?: 'stock_first' | 'payment_first';
     channel?: 'manual' | 'pos';
+    skipDraft?: boolean;
     sourceType?: 'manual' | 'quote' | 'pos' | 'checkout';
     originInventoryLocationId: string;
     shippingAddress?: Record<string, any> | null;

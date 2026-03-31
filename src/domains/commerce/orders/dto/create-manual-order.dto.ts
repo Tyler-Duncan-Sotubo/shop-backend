@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsIn,
   IsObject,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateManualOrderDto {
@@ -31,6 +32,10 @@ export class CreateManualOrderDto {
   @IsOptional()
   @IsIn(['manual', 'pos'])
   channel?: 'manual' | 'pos';
+
+  @IsOptional()
+  @IsBoolean()
+  skipDraft?: boolean;
 
   /**
    * Order source

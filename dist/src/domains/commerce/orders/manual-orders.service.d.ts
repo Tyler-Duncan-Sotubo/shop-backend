@@ -55,10 +55,14 @@ export declare class ManualOrdersService {
     }>;
     submitForPayment(companyId: string, orderId: string, actor?: User, ip?: string, ctx?: {
         tx?: TxOrDb;
+        skipInvoice?: boolean;
     }): Promise<{
         order: any;
         invoice: any;
     }>;
+    syncInvoiceAfterItems(companyId: string, orderId: string, ctx?: {
+        tx?: TxOrDb;
+    }): Promise<any>;
     private isEditableStatus;
     private recalculateTotalsInTx;
     deleteManualOrder(companyId: string, orderId: string, actor?: User, ip?: string): Promise<{

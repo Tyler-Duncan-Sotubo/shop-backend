@@ -130,6 +130,12 @@ let ManualOrdersService = class ManualOrdersService {
                     },
                 });
             }
+            if (input.skipDraft) {
+                await this.submitForPayment(companyId, created.id, actor, ip, {
+                    tx,
+                    skipInvoice: true,
+                });
+            }
             return created;
         };
         const result = outerTx
@@ -544,8 +550,9 @@ let ManualOrdersService = class ManualOrdersService {
                 .from(schema_1.orderItems)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
                 .execute();
-            if (!items.length)
+            if (!items.length && !ctx?.skipInvoice) {
                 throw new common_1.BadRequestException('Order has no items');
+            }
             await this.recalculateTotalsInTx(tx, companyId, orderId);
             const [after] = await tx
                 .update(schema_1.orders)
@@ -580,6 +587,9 @@ let ManualOrdersService = class ManualOrdersService {
                     },
                 });
             }
+            if (ctx?.skipInvoice) {
+                return { order: after, invoice: null };
+            }
             const [existingInvoice] = await tx
                 .select({ id: schema_1.invoices.id })
                 .from(schema_1.invoices)
@@ -601,6 +611,31 @@ let ManualOrdersService = class ManualOrdersService {
             : await this.db.transaction(run);
         await this.cache.bumpCompanyVersion(companyId);
         return result;
+    }
+    async syncInvoiceAfterItems(companyId, orderId, ctx) {
+        const tx = ctx?.tx ?? this.db;
+        const [existingInvoice] = await tx
+            .select({ id: schema_1.invoices.id })
+            .from(schema_1.invoices)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.orderId, orderId), (0, drizzle_orm_1.eq)(schema_1.invoices.status, 'draft')))
+            .limit(1)
+            .execute();
+        if (existingInvoice) {
+            return this.invoiceService.syncFromOrder(orderId, companyId, { tx });
+        }
+        const [order] = await tx
+            .select()
+            .from(schema_1.orders)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+            .execute();
+        if (!order)
+            throw new common_1.NotFoundException('Order not found');
+        return this.invoiceService.createDraftFromOrder({
+            orderId,
+            storeId: order.storeId ?? null,
+            currency: order.currency,
+            type: 'invoice',
+        }, companyId, { tx });
     }
     isEditableStatus(status) {
         return status === 'draft' || status === 'pending_payment';

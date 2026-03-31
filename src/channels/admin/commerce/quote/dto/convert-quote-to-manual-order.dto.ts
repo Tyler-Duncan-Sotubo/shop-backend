@@ -1,5 +1,5 @@
 // src/features/quote/dto/convert-quote-to-manual-order.dto.ts
-import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class ConvertQuoteToManualOrderDto {
   @IsUUID()
@@ -12,6 +12,11 @@ export class ConvertQuoteToManualOrderDto {
   @IsOptional()
   @IsIn(['stock_first', 'payment_first'])
   fulfillmentModel: 'stock_first' | 'payment_first';
+
+  // add to CreateManualOrderDto:
+  @IsOptional()
+  @IsBoolean()
+  skipDraft?: boolean;
 
   @IsOptional()
   @IsIn(['manual', 'pos'])

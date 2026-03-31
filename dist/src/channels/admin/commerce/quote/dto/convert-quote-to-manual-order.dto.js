@@ -30,6 +30,11 @@ __decorate([
 ], ConvertQuoteToManualOrderDto.prototype, "fulfillmentModel", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], ConvertQuoteToManualOrderDto.prototype, "skipDraft", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsIn)(['manual', 'pos']),
     __metadata("design:type", String)
 ], ConvertQuoteToManualOrderDto.prototype, "channel", void 0);

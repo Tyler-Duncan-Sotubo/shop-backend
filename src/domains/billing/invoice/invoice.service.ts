@@ -47,7 +47,7 @@ export class InvoiceService {
   async createDraftFromOrder(
     params: CreateInvoiceFromOrderInput,
     companyId: string,
-    ctx?: { tx?: TxOrDb },
+    ctx?: { tx?: TxOrDb; skipItemsCheck?: boolean },
   ) {
     const tx = ctx?.tx ?? this.db;
     const { orderId } = params;
@@ -77,7 +77,9 @@ export class InvoiceService {
       )
       .execute();
 
-    if (!items.length) throw new BadRequestException('Order has no items');
+    if (!items.length && !ctx?.skipItemsCheck) {
+      throw new BadRequestException('Order has no items');
+    }
 
     // Idempotency: return existing invoice if already created for this order/type
     const [existing] = await tx

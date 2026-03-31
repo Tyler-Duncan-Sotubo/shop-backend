@@ -30,6 +30,15 @@ __decorate([
     __metadata("design:type", String)
 ], CreateManualOrderDto.prototype, "currency", void 0);
 __decorate([
+    (0, class_validator_1.IsIn)(['payment_first', 'stock_first']),
+    __metadata("design:type", String)
+], CreateManualOrderDto.prototype, "fulfillmentModel", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], CreateManualOrderDto.prototype, "skipDraft", void 0);
+__decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsIn)(['manual', 'pos']),
     __metadata("design:type", String)

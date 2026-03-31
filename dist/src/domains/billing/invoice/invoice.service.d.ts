@@ -17,6 +17,7 @@ export declare class InvoiceService {
     constructor(db: DbType, totals: InvoiceTotalsService, auditService: AuditService, cache: CacheService, zohoInvoices: ZohoInvoicesService);
     createDraftFromOrder(params: CreateInvoiceFromOrderInput, companyId: string, ctx?: {
         tx?: TxOrDb;
+        skipItemsCheck?: boolean;
     }): Promise<any>;
     syncFromOrder(orderId: string, companyId: string, ctx?: {
         tx?: TxOrDb;

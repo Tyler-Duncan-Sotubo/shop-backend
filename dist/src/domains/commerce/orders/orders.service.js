@@ -194,8 +194,8 @@ let OrdersService = class OrdersService {
                 .execute();
             if (!before)
                 throw new common_1.NotFoundException('Order not found');
-            if (before.status !== 'pending_payment') {
-                throw new common_1.BadRequestException('Only pending_payment orders can be cancelled');
+            if (before.status !== 'pending_payment' && before.status !== 'lay_buy') {
+                throw new common_1.BadRequestException('Only pending_payment or lay-buy orders can be cancelled');
             }
             const [inv] = await tx
                 .select({ id: schema_1.invoices.id, paidMinor: schema_1.invoices.paidMinor })
@@ -248,6 +248,40 @@ let OrdersService = class OrdersService {
         await this.cache.bumpCompanyVersion(companyId);
         return result;
     }
+    async convertToLayBuy(companyId, orderId, user, ip) {
+        const result = await this.db.transaction(async (tx) => {
+            const [before] = await tx
+                .select()
+                .from(schema_1.orders)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .for('update')
+                .execute();
+            if (!before)
+                throw new common_1.NotFoundException('Order not found');
+            if (before.status !== 'pending_payment' && before.status !== 'draft') {
+                throw new common_1.BadRequestException('Only pending_payment or draft orders can be converted to lay-buy');
+            }
+            const [after] = await tx
+                .update(schema_1.orders)
+                .set({ status: 'lay_buy', updatedAt: new Date() })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .returning()
+                .execute();
+            await tx.insert(schema_1.orderEvents).values({
+                companyId,
+                orderId,
+                type: 'converted_to_lay_buy',
+                fromStatus: before.status,
+                toStatus: after.status,
+                actorUserId: user?.id ?? null,
+                ipAddress: ip ?? null,
+                message: 'Order converted to lay-buy — fulfillment before payment',
+            });
+            return after;
+        });
+        await this.cache.bumpCompanyVersion(companyId);
+        return result;
+    }
     async fulfill(companyId, orderId, user, ip) {
         const result = await this.db.transaction(async (tx) => {
             const [before] = await tx
@@ -258,8 +292,8 @@ let OrdersService = class OrdersService {
                 .execute();
             if (!before)
                 throw new common_1.NotFoundException('Order not found');
-            if (before.status !== 'paid') {
-                throw new common_1.BadRequestException('Only paid orders can be fulfilled');
+            if (before.status !== 'paid' && before.status !== 'lay_buy') {
+                throw new common_1.BadRequestException('Only paid or lay-buy orders can be fulfilled');
             }
             const items = await tx
                 .select()

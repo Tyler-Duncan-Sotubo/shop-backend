@@ -45,8 +45,9 @@ let InvoiceService = class InvoiceService {
             .from(schema_1.orderItems)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId), (0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId)))
             .execute();
-        if (!items.length)
+        if (!items.length && !ctx?.skipItemsCheck) {
             throw new common_1.BadRequestException('Order has no items');
+        }
         const [existing] = await tx
             .select()
             .from(schema_1.invoices)

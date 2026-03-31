@@ -41,6 +41,11 @@ __decorate([
 ], CreateManualOrderDto.prototype, "channel", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], CreateManualOrderDto.prototype, "skipDraft", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsIn)(['manual', 'quote', 'pos', 'checkout']),
     __metadata("design:type", String)
 ], CreateManualOrderDto.prototype, "sourceType", void 0);

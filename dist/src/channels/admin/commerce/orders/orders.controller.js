@@ -44,6 +44,9 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
     fulfill(user, id) {
         return this.orders.fulfill(user.companyId, id, user, undefined);
     }
+    convertToLayBuy(user, id, ip) {
+        return this.orders.convertToLayBuy(user.companyId, id, user, ip);
+    }
     updateCustomerAndShipping(user, orderId, dto, ip) {
         return this.orders.updateCustomerAndShipping(user.companyId, orderId, dto, user, ip);
     }
@@ -53,8 +56,10 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
     createManualOrder(user, dto, ip) {
         return this.manualOrdersService.createManualOrder(user.companyId, dto, user, ip);
     }
-    addItem(user, dto, ip) {
-        return this.manualOrdersService.addItem(user.companyId, dto, false, user, ip);
+    async addItem(user, dto, ip) {
+        const item = await this.manualOrdersService.addItem(user.companyId, dto, false, user, ip);
+        await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, dto.orderId);
+        return item;
     }
     updateItem(user, itemId, dto, ip) {
         return this.manualOrdersService.updateItem(user.companyId, { ...dto, itemId }, user, ip);
@@ -113,6 +118,16 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "fulfill", null);
 __decorate([
+    (0, common_1.Patch)(':id/lay-buy'),
+    (0, common_1.SetMetadata)('permissions', ['orders.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "convertToLayBuy", null);
+__decorate([
     (0, common_1.Patch)(':orderId/customer-shipping'),
     (0, common_1.SetMetadata)('permissions', ['orders.update']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
@@ -150,7 +165,7 @@ __decorate([
     __param(2, (0, common_1.Ip)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, add_manual_order_item_dto_1.AddManualOrderItemDto, String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "addItem", null);
 __decorate([
     (0, common_1.Patch)('manual/items/:itemId'),

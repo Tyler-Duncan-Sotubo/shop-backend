@@ -110,7 +110,6 @@ export class ManualOrdersService {
                 zohoEstimateStatus: input.zohoEstimateStatus ?? null,
               }
             : {}),
-
           subtotal: '0.00',
           discountTotal: '0.00',
           taxTotal: '0.00',
@@ -155,6 +154,14 @@ export class ManualOrdersService {
             quoteRequestId: isFromQuote ? (input.quoteRequestId ?? null) : null,
             sourceType: isFromQuote ? 'quote' : null,
           },
+        });
+      }
+
+      // 👇 only flip to pending_payment — invoice sync happens after items are added
+      if (input.skipDraft) {
+        await this.submitForPayment(companyId, created.id, actor, ip, {
+          tx,
+          skipInvoice: true, // defer invoice until items exist
         });
       }
 
@@ -794,7 +801,7 @@ export class ManualOrdersService {
     orderId: string,
     actor?: User,
     ip?: string,
-    ctx?: { tx?: TxOrDb },
+    ctx?: { tx?: TxOrDb; skipInvoice?: boolean },
   ) {
     const outerTx = ctx?.tx;
 
@@ -826,7 +833,10 @@ export class ManualOrdersService {
         )
         .execute();
 
-      if (!items.length) throw new BadRequestException('Order has no items');
+      // only enforce items check when not deferring invoice
+      if (!items.length && !ctx?.skipInvoice) {
+        throw new BadRequestException('Order has no items');
+      }
 
       await this.recalculateTotalsInTx(tx, companyId, orderId);
 
@@ -866,7 +876,12 @@ export class ManualOrdersService {
         });
       }
 
-      // check if a draft invoice already exists for this order
+      // skip invoice creation here — caller will call syncInvoiceAfterItems()
+      // once items have been added
+      if (ctx?.skipInvoice) {
+        return { order: after, invoice: null };
+      }
+
       const [existingInvoice] = await tx
         .select({ id: invoices.id })
         .from(invoices)
@@ -880,7 +895,6 @@ export class ManualOrdersService {
         .limit(1)
         .execute();
 
-      // sync if exists, create if not
       const invoice = existingInvoice
         ? await this.invoiceService.syncFromOrder(orderId, companyId, { tx })
         : await this.invoiceService.createDraftFromOrder(
@@ -902,6 +916,52 @@ export class ManualOrdersService {
       : await this.db.transaction(run);
     await this.cache.bumpCompanyVersion(companyId);
     return result;
+  }
+
+  // Called by quote.service.ts (or any caller) after items have been added
+  // to sync the invoice lines correctly
+  async syncInvoiceAfterItems(
+    companyId: string,
+    orderId: string,
+    ctx?: { tx?: TxOrDb },
+  ) {
+    const tx = ctx?.tx ?? this.db;
+
+    const [existingInvoice] = await tx
+      .select({ id: invoices.id })
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.companyId, companyId),
+          eq(invoices.orderId, orderId),
+          eq(invoices.status, 'draft'),
+        ),
+      )
+      .limit(1)
+      .execute();
+
+    if (existingInvoice) {
+      return this.invoiceService.syncFromOrder(orderId, companyId, { tx });
+    }
+
+    const [order] = await tx
+      .select()
+      .from(orders)
+      .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+      .execute();
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    return this.invoiceService.createDraftFromOrder(
+      {
+        orderId,
+        storeId: (order as any).storeId ?? null,
+        currency: (order as any).currency,
+        type: 'invoice',
+      } as any,
+      companyId,
+      { tx },
+    );
   }
 
   // -------------------------

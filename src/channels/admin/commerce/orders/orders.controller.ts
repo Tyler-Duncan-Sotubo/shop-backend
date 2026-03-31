@@ -63,6 +63,16 @@ export class OrdersController extends BaseController {
     return this.orders.fulfill(user.companyId, id, user, undefined);
   }
 
+  @Patch(':id/lay-buy')
+  @SetMetadata('permissions', ['orders.update'])
+  convertToLayBuy(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Ip() ip: string,
+  ) {
+    return this.orders.convertToLayBuy(user.companyId, id, user, ip);
+  }
+
   @Patch(':orderId/customer-shipping')
   @SetMetadata('permissions', ['orders.update'])
   updateCustomerAndShipping(
@@ -122,18 +132,27 @@ export class OrdersController extends BaseController {
 
   @Post('manual/items')
   @SetMetadata('permissions', ['orders.manual.edit'])
-  addItem(
+  async addItem(
     @CurrentUser() user: User,
     @Body() dto: AddManualOrderItemDto,
     @Ip() ip: string,
   ) {
-    return this.manualOrdersService.addItem(
+    const item = await this.manualOrdersService.addItem(
       user.companyId,
       dto,
       false,
       user,
       ip,
     );
+
+    // sync invoice after item added — only fires if order is pending_payment
+    // (i.e. skipDraft was used). Safe to call unconditionally — idempotent.
+    await this.manualOrdersService.syncInvoiceAfterItems(
+      user.companyId,
+      dto.orderId,
+    );
+
+    return item;
   }
 
   @Patch('manual/items/:itemId')

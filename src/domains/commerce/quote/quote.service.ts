@@ -939,6 +939,7 @@ export class QuoteService {
       shippingAddress?: any;
       billingAddress?: any;
       customerId?: string | null;
+      skipDraft?: boolean;
     },
     actor?: User,
     ip?: string,
@@ -979,8 +980,6 @@ export class QuoteService {
     const origin = input.originInventoryLocationId;
 
     // ── stock_first: pre-check ALL items before creating anything ──
-    // addItem() reserves per item internally for stock_first, but we check
-    // upfront to fail fast and avoid partial order creation mid-loop.
     if (fulfillmentModel === 'stock_first') {
       for (const it of items) {
         if (!it.variantId) continue;
@@ -1026,6 +1025,7 @@ export class QuoteService {
         billingAddress: input.billingAddress ?? null,
         originInventoryLocationId: origin,
         fulfillmentModel,
+        skipDraft: input.skipDraft,
 
         // source linkage
         quoteRequestId: quote.id,
@@ -1044,8 +1044,7 @@ export class QuoteService {
     );
 
     // addItem() handles stock_first reservation internally per item.
-    // For payment_first it skips reservation — handled below after all items
-    // are added.
+    // For payment_first it skips reservation — handled below after all items added.
     for (const it of items) {
       if (!it.variantId) continue;
 
@@ -1065,9 +1064,7 @@ export class QuoteService {
       );
     }
 
-    // ── payment_first: reserve whatever is available now, wait for the rest ──
-    // addItem() skips reservation for payment_first so we handle it here.
-    // The shortfall (quantity - toReserve) is trackable via checkStockAvailability.
+    // ── payment_first: reserve whatever is available now ──
     if (fulfillmentModel === 'payment_first') {
       for (const it of items) {
         if (!it.variantId) continue;
@@ -1109,6 +1106,15 @@ export class QuoteService {
       }
     }
 
+    // ── skipDraft: now that items exist, create the invoice with lines ──
+    if (input.skipDraft) {
+      await this.manualOrdersService.syncInvoiceAfterItems(
+        companyId,
+        order.id,
+        { tx },
+      );
+    }
+
     await tx
       .update(quoteRequests)
       .set({
@@ -1139,6 +1145,7 @@ export class QuoteService {
       shippingAddress?: any;
       billingAddress?: any;
       customerId?: string | null;
+      skipDraft?: boolean;
     },
     actor?: User,
     ip?: string,

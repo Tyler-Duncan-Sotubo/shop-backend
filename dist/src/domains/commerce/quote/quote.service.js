@@ -651,6 +651,7 @@ let QuoteService = class QuoteService {
             billingAddress: input.billingAddress ?? null,
             originInventoryLocationId: origin,
             fulfillmentModel,
+            skipDraft: input.skipDraft,
             quoteRequestId: quote.id,
             sourceType: 'quote',
             zohoOrganizationId: quote.zohoOrganizationId ?? null,
@@ -691,6 +692,9 @@ let QuoteService = class QuoteService {
                     await this.stock.reserveForOrderInTx(tx, companyId, order.id, origin, it.variantId, toReserve, `Reserved stock for order ${order.orderNumber}`);
                 }
             }
+        }
+        if (input.skipDraft) {
+            await this.manualOrdersService.syncInvoiceAfterItems(companyId, order.id, { tx });
         }
         await tx
             .update(quote_requests_schema_1.quoteRequests)

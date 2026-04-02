@@ -845,7 +845,6 @@ export class InvoiceService {
       whereClauses.push(eq(invoices.status, opts.status as any));
     if (opts?.type) whereClauses.push(eq(invoices.type, opts.type as any));
 
-    // simple search across number + meta.orderNumber + customer snapshot name (adjust fields you have)
     if (opts?.q && opts.q.trim()) {
       const q = `%${opts.q.trim()}%`;
       whereClauses.push(
@@ -857,36 +856,46 @@ export class InvoiceService {
       );
     }
 
-    // Pick only what the UI table needs
-    const rows = await this.db
-      .select({
-        id: invoices.id,
-        type: invoices.type,
-        number: invoices.number,
-        status: invoices.status,
-        currency: invoices.currency,
-        subtotalMinor: invoices.subtotalMinor,
-        taxMinor: invoices.taxMinor,
-        totalMinor: invoices.totalMinor,
-        paidMinor: invoices.paidMinor,
-        balanceMinor: invoices.balanceMinor,
-        orderId: invoices.orderId,
-        storeId: invoices.storeId,
-        issuedAt: invoices.issuedAt,
-        dueAt: invoices.dueAt,
-        createdAt: invoices.createdAt,
-        updatedAt: invoices.updatedAt,
-        meta: invoices.meta,
-        customerSnapshot: invoices.customerSnapshot,
-      })
-      .from(invoices)
-      .where(and(...whereClauses))
-      .orderBy(sql`${invoices.createdAt} DESC` as any)
-      .limit(limit)
-      .offset(offset)
-      .execute();
+    const where = and(...whereClauses);
 
-    return rows;
+    // Run rows + count in parallel
+    const [rows, [{ count }]] = await Promise.all([
+      this.db
+        .select({
+          id: invoices.id,
+          type: invoices.type,
+          number: invoices.number,
+          status: invoices.status,
+          currency: invoices.currency,
+          subtotalMinor: invoices.subtotalMinor,
+          taxMinor: invoices.taxMinor,
+          totalMinor: invoices.totalMinor,
+          paidMinor: invoices.paidMinor,
+          balanceMinor: invoices.balanceMinor,
+          orderId: invoices.orderId,
+          storeId: invoices.storeId,
+          issuedAt: invoices.issuedAt,
+          dueAt: invoices.dueAt,
+          createdAt: invoices.createdAt,
+          updatedAt: invoices.updatedAt,
+          meta: invoices.meta,
+          customerSnapshot: invoices.customerSnapshot,
+        })
+        .from(invoices)
+        .where(where)
+        .orderBy(sql`${invoices.createdAt} DESC` as any)
+        .limit(limit)
+        .offset(offset)
+        .execute(),
+
+      this.db
+        .select({ count: sql<number>`cast(count(*) as int)` })
+        .from(invoices)
+        .where(where)
+        .execute(),
+    ]);
+
+    return { rows, count, limit, offset };
   }
 
   async updateDraftLineAndRecalculate(

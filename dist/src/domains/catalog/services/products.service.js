@@ -757,6 +757,25 @@ let ProductsService = class ProductsService {
                 else if (t === 'cross_sell')
                     links.cross_sell.push(r.linkedProductId);
             }
+            const [defaultVariant] = await this.db
+                .select({
+                id: schema_1.productVariants.id,
+                sku: schema_1.productVariants.sku,
+                barcode: schema_1.productVariants.barcode,
+                regularPrice: schema_1.productVariants.regularPrice,
+                stockQuantity: schema_1.inventoryItems.available,
+                lowStockThreshold: schema_1.inventoryItems.safetyStock,
+                salePrice: schema_1.productVariants.salePrice,
+                weight: schema_1.productVariants.weight,
+                length: schema_1.productVariants.length,
+                width: schema_1.productVariants.width,
+                height: schema_1.productVariants.height,
+            })
+                .from(schema_1.productVariants)
+                .leftJoin(schema_1.inventoryItems, (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, schema_1.productVariants.id))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.productId, productId), (0, drizzle_orm_1.eq)(schema_1.productVariants.title, 'Default')))
+                .limit(1)
+                .execute();
             return {
                 id: product.id,
                 name: product.name,
@@ -776,6 +795,16 @@ let ProductsService = class ProductsService {
                 links,
                 createdAt: product.createdAt,
                 updatedAt: product.updatedAt,
+                sku: defaultVariant?.sku ?? null,
+                barcode: defaultVariant?.barcode ?? null,
+                regularPrice: defaultVariant?.regularPrice ?? null,
+                salePrice: defaultVariant?.salePrice ?? null,
+                stockQuantity: defaultVariant?.stockQuantity ?? null,
+                lowStockThreshold: defaultVariant?.lowStockThreshold ?? null,
+                weight: defaultVariant?.weight ?? null,
+                length: defaultVariant?.length ?? null,
+                width: defaultVariant?.width ?? null,
+                height: defaultVariant?.height ?? null,
             };
         });
     }

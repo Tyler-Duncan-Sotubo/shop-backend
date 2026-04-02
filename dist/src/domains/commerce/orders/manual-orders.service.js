@@ -29,6 +29,13 @@ let ManualOrdersService = class ManualOrdersService {
         this.stock = stock;
         this.invoiceService = invoiceService;
     }
+    async seedOrderCounterForCompany(companyId) {
+        await this.db
+            .insert(schema_1.orderCounters)
+            .values({ companyId, nextNumber: 1, updatedAt: new Date() })
+            .onConflictDoNothing()
+            .execute();
+    }
     async allocateOrderNumberInTx(tx, companyId) {
         const [row] = await tx
             .insert(schema_1.orderCounters)

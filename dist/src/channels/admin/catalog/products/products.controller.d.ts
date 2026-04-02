@@ -59,6 +59,16 @@ export declare class ProductsController extends BaseController {
         links: Partial<Record<"related" | "upsell" | "cross_sell" | "accessory", string[]>>;
         createdAt: any;
         updatedAt: any;
+        sku: any;
+        barcode: any;
+        regularPrice: any;
+        salePrice: any;
+        stockQuantity: number | null;
+        lowStockThreshold: number | null;
+        weight: any;
+        length: any;
+        width: any;
+        height: any;
     }>;
     createProduct(user: User, dto: CreateProductDto, ip: string): Promise<import("src/domains/catalog/mappers/product.mapper").ProductDetailResponse>;
     updateProduct(user: User, productId: string, dto: UpdateProductDto, ip: string): Promise<import("src/domains/catalog/mappers/product.mapper").ProductDetailResponse>;

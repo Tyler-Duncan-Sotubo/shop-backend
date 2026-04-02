@@ -5,13 +5,15 @@ import { VerificationService } from '../auth/services';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { InvoiceService } from '../billing/invoice/invoice.service';
+import { ManualOrdersService } from '../commerce/orders/manual-orders.service';
 export declare class CompaniesService {
     private readonly db;
     private readonly verificationService;
     private readonly permissionService;
     private readonly companySettingsService;
     private readonly invoiceService;
-    constructor(db: db, verificationService: VerificationService, permissionService: PermissionsService, companySettingsService: CompanySettingsService, invoiceService: InvoiceService);
+    private readonly manualOrdersService;
+    constructor(db: db, verificationService: VerificationService, permissionService: PermissionsService, companySettingsService: CompanySettingsService, invoiceService: InvoiceService, manualOrdersService: ManualOrdersService);
     private checkCompanySlugAvailable;
     private checkUserNotExists;
     private createCompany;

@@ -15,6 +15,7 @@ import { VerificationService } from '../auth/services';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { InvoiceService } from '../billing/invoice/invoice.service';
+import { ManualOrdersService } from '../commerce/orders/manual-orders.service';
 
 @Injectable()
 export class CompaniesService {
@@ -24,6 +25,7 @@ export class CompaniesService {
     private readonly permissionService: PermissionsService,
     private readonly companySettingsService: CompanySettingsService,
     private readonly invoiceService: InvoiceService,
+    private readonly manualOrdersService: ManualOrdersService,
   ) {}
 
   // ------ helpers ------
@@ -139,6 +141,7 @@ export class CompaniesService {
     await this.permissionService.seedDefaultPermissionsForCompany(company.id);
 
     await this.invoiceService.seedDefaultInvoiceSeriesForCompany(company.id);
+    await this.manualOrdersService.seedOrderCounterForCompany(company.id);
   }
 
   // ------ public: registration ------

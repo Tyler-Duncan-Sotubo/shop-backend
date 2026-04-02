@@ -19,6 +19,7 @@ import { AdminStorefrontConfigModule } from './storefront-config/storefront-conf
 import { AdminReviewsModule } from './reviews/reviews.module';
 import { GuardsModule } from './common/guards/guards.module';
 import { AdminAnalyticsModule } from './analytics/analytics.module';
+import { SearchController } from './search/search.controller';
 
 @Module({
   imports: [
@@ -44,5 +45,6 @@ import { AdminAnalyticsModule } from './analytics/analytics.module';
   ],
   providers: [AwsService],
   exports: [AwsService],
+  controllers: [SearchController],
 })
 export class AdminModule {}

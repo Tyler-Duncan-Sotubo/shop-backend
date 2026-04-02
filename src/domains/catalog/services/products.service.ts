@@ -1184,6 +1184,36 @@ export class ProductsService {
             links.cross_sell!.push(r.linkedProductId);
         }
 
+        // ✅ fetch default variant for simple products
+        const [defaultVariant] = await this.db
+          .select({
+            id: productVariants.id,
+            sku: productVariants.sku,
+            barcode: productVariants.barcode,
+            regularPrice: productVariants.regularPrice,
+            stockQuantity: inventoryItems.available,
+            lowStockThreshold: inventoryItems.safetyStock,
+            salePrice: productVariants.salePrice,
+            weight: productVariants.weight,
+            length: productVariants.length,
+            width: productVariants.width,
+            height: productVariants.height,
+          })
+          .from(productVariants)
+          .leftJoin(
+            inventoryItems,
+            eq(inventoryItems.productVariantId, productVariants.id),
+          )
+          .where(
+            and(
+              eq(productVariants.companyId, companyId),
+              eq(productVariants.productId, productId),
+              eq(productVariants.title, 'Default'),
+            ),
+          )
+          .limit(1)
+          .execute();
+
         return {
           id: product.id,
           name: product.name,
@@ -1203,6 +1233,18 @@ export class ProductsService {
           links,
           createdAt: product.createdAt,
           updatedAt: product.updatedAt,
+
+          // Simple product fields (from default variant)
+          sku: defaultVariant?.sku ?? null,
+          barcode: defaultVariant?.barcode ?? null,
+          regularPrice: defaultVariant?.regularPrice ?? null,
+          salePrice: defaultVariant?.salePrice ?? null,
+          stockQuantity: defaultVariant?.stockQuantity ?? null,
+          lowStockThreshold: defaultVariant?.lowStockThreshold ?? null,
+          weight: defaultVariant?.weight ?? null,
+          length: defaultVariant?.length ?? null,
+          width: defaultVariant?.width ?? null,
+          height: defaultVariant?.height ?? null,
         };
       },
     );

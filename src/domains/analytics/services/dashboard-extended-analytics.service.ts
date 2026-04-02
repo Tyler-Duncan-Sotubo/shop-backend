@@ -163,47 +163,52 @@ export class DashboardExtendedAnalyticsService {
   ) {
     const storeClause = storeId ? eq(orders.storeId, storeId) : undefined;
 
-    const [result] = await this.db
-      .select({
-        grossSalesMinor: sql<number>`
-        coalesce(
-          nullif(sum(${orders.subtotalMinor}), 0),
-          sum(${orders.subtotal})
-        )
-      `,
-        discountTotalMinor: sql<number>`
-        coalesce(
-          nullif(sum(${orders.discountTotalMinor}), 0),
-          sum(${orders.discountTotal})
-        )
-      `,
-        totalMinor: sql<number>`
-        coalesce(
-          nullif(sum(${orders.totalMinor}), 0),
-          sum(${orders.total})
-        )
-      `,
-        orderCount: sql<number>`count(*)`,
-        refundedCount: sql<number>`
-        sum(case when ${orders.status} = 'refunded' then 1 else 0 end)
-      `,
-      })
-      .from(orders)
-      .where(
-        and(
-          eq(orders.companyId, companyId),
-          gte(orders.createdAt, range.from),
-          lt(orders.createdAt, range.to),
-          storeClause,
-        ),
-      )
-      .execute();
+    const baseWhere = and(
+      eq(orders.companyId, companyId),
+      gte(orders.createdAt, range.from),
+      lt(orders.createdAt, range.to),
+      storeClause,
+    );
 
-    const grossSalesMinor = Number(result?.grossSalesMinor ?? 0);
-    const discountTotalMinor = Number(result?.discountTotalMinor ?? 0);
-    const totalMinor = Number(result?.totalMinor ?? 0);
-    const orderCount = Number(result?.orderCount ?? 0);
-    const refundedCount = Number(result?.refundedCount ?? 0);
+    // Run both in parallel
+    const [[salesResult], [refundResult]] = await Promise.all([
+      // Only paid/fulfilled orders for revenue metrics
+      this.db
+        .select({
+          grossSalesMinor: sql<number>`
+          coalesce(nullif(sum(${orders.subtotalMinor}), 0), sum(${orders.subtotal}))
+        `,
+          discountTotalMinor: sql<number>`
+          coalesce(nullif(sum(${orders.discountTotalMinor}), 0), sum(${orders.discountTotal}))
+        `,
+          totalMinor: sql<number>`
+          coalesce(nullif(sum(${orders.totalMinor}), 0), sum(${orders.total}))
+        `,
+          orderCount: sql<number>`count(*)`,
+        })
+        .from(orders)
+        .where(and(baseWhere, inArray(orders.status, [...this.SALE_STATUSES])))
+        .execute(),
+
+      // All orders for refund rate
+      this.db
+        .select({
+          totalCount: sql<number>`count(*)`,
+          refundedCount: sql<number>`
+          sum(case when ${orders.status} = 'refunded' then 1 else 0 end)
+        `,
+        })
+        .from(orders)
+        .where(baseWhere)
+        .execute(),
+    ]);
+
+    const grossSalesMinor = Number(salesResult?.grossSalesMinor ?? 0);
+    const discountTotalMinor = Number(salesResult?.discountTotalMinor ?? 0);
+    const totalMinor = Number(salesResult?.totalMinor ?? 0);
+    const orderCount = Number(salesResult?.orderCount ?? 0);
+    const refundedCount = Number(refundResult?.refundedCount ?? 0);
+    const totalCount = Number(refundResult?.totalCount ?? 0);
 
     return {
       grossSalesMinor,
@@ -211,7 +216,7 @@ export class DashboardExtendedAnalyticsService {
       netSalesMinor: grossSalesMinor - discountTotalMinor,
       aov: orderCount > 0 ? totalMinor / orderCount : 0,
       refundedOrdersCount: refundedCount,
-      refundRate: orderCount > 0 ? refundedCount / orderCount : 0,
+      refundRate: totalCount > 0 ? refundedCount / totalCount : 0,
     };
   }
 

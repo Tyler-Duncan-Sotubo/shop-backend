@@ -557,34 +557,42 @@ let InvoiceService = class InvoiceService {
         OR ${schema_1.invoices.customerSnapshot}->>'name' ILIKE ${q}
       )`);
         }
-        const rows = await this.db
-            .select({
-            id: schema_1.invoices.id,
-            type: schema_1.invoices.type,
-            number: schema_1.invoices.number,
-            status: schema_1.invoices.status,
-            currency: schema_1.invoices.currency,
-            subtotalMinor: schema_1.invoices.subtotalMinor,
-            taxMinor: schema_1.invoices.taxMinor,
-            totalMinor: schema_1.invoices.totalMinor,
-            paidMinor: schema_1.invoices.paidMinor,
-            balanceMinor: schema_1.invoices.balanceMinor,
-            orderId: schema_1.invoices.orderId,
-            storeId: schema_1.invoices.storeId,
-            issuedAt: schema_1.invoices.issuedAt,
-            dueAt: schema_1.invoices.dueAt,
-            createdAt: schema_1.invoices.createdAt,
-            updatedAt: schema_1.invoices.updatedAt,
-            meta: schema_1.invoices.meta,
-            customerSnapshot: schema_1.invoices.customerSnapshot,
-        })
-            .from(schema_1.invoices)
-            .where((0, drizzle_orm_1.and)(...whereClauses))
-            .orderBy((0, drizzle_orm_1.sql) `${schema_1.invoices.createdAt} DESC`)
-            .limit(limit)
-            .offset(offset)
-            .execute();
-        return rows;
+        const where = (0, drizzle_orm_1.and)(...whereClauses);
+        const [rows, [{ count }]] = await Promise.all([
+            this.db
+                .select({
+                id: schema_1.invoices.id,
+                type: schema_1.invoices.type,
+                number: schema_1.invoices.number,
+                status: schema_1.invoices.status,
+                currency: schema_1.invoices.currency,
+                subtotalMinor: schema_1.invoices.subtotalMinor,
+                taxMinor: schema_1.invoices.taxMinor,
+                totalMinor: schema_1.invoices.totalMinor,
+                paidMinor: schema_1.invoices.paidMinor,
+                balanceMinor: schema_1.invoices.balanceMinor,
+                orderId: schema_1.invoices.orderId,
+                storeId: schema_1.invoices.storeId,
+                issuedAt: schema_1.invoices.issuedAt,
+                dueAt: schema_1.invoices.dueAt,
+                createdAt: schema_1.invoices.createdAt,
+                updatedAt: schema_1.invoices.updatedAt,
+                meta: schema_1.invoices.meta,
+                customerSnapshot: schema_1.invoices.customerSnapshot,
+            })
+                .from(schema_1.invoices)
+                .where(where)
+                .orderBy((0, drizzle_orm_1.sql) `${schema_1.invoices.createdAt} DESC`)
+                .limit(limit)
+                .offset(offset)
+                .execute(),
+            this.db
+                .select({ count: (0, drizzle_orm_1.sql) `cast(count(*) as int)` })
+                .from(schema_1.invoices)
+                .where(where)
+                .execute(),
+        ]);
+        return { rows, count, limit, offset };
     }
     async updateDraftLineAndRecalculate(companyId, invoiceId, lineId, dto, audit) {
         return this.db.transaction(async (tx) => {

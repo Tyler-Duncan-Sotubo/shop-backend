@@ -135,7 +135,6 @@ export class AdminCustomersService {
   }
 
   async bulkCreateCustomers(
-    this: any,
     companyId: string,
     storeId: string | null,
     rows: any[],
@@ -146,126 +145,129 @@ export class AdminCustomersService {
     const dtos: BulkCustomerRowDto[] = new Array(rows.length);
     const derived: Derived[] = new Array(rows.length);
 
-    // In-file duplicate detection in one pass
-    const seenEmail = new Map<string, number>(); // email -> first row index
-    const seenPhone = new Map<string, number>(); // phone -> first row index
+    const seenEmail = new Map<string, number>();
+    const seenPhone = new Map<string, number>();
     const dupEmails: string[] = [];
     const dupPhones: string[] = [];
 
-    // 1) Parse + validate + derive + dedupe (single pass)
-    // Validation is async; do it concurrently with a sensible cap.
-    // If you expect huge files, increase cap modestly (e.g., 50-200) depending on your env.
-    const indices = rows.map((_, i) => i);
+    // ─── 1) Validate + derive (parallel, capped) ──────────────────────────────
+    await this.mapLimit(
+      rows.map((_, i) => i),
+      100,
+      async (idx) => {
+        const row = rows[idx];
 
-    await this.mapLimit(indices, 50, async (idx) => {
-      const row = rows[idx];
+        const dto = plainToInstance(BulkCustomerRowDto, {
+          firstName: row.firstName ?? null,
+          lastName: row.lastName ?? null,
+          email: row.email ?? null,
+          phone: row.phone ?? null,
+          address: row.address ?? null,
+        });
 
-      const dto = plainToInstance(BulkCustomerRowDto, {
-        firstName: row['First Name'] ?? row['firstName'] ?? row['first_name'],
-        lastName: row['Last Name'] ?? row['lastName'] ?? row['last_name'],
-        email: row['Email'] ?? row['email'],
-        phone: row['Phone'] ?? row['phone'],
-        address: row['Address'] ?? row['address'],
-      });
+        const errors = await validate(dto, { skipMissingProperties: true });
+        if (errors.length) {
+          throw new BadRequestException(
+            `Row ${idx + 1}: ${errors.map((e) => Object.values(e.constraints ?? {}).join(', ')).join('; ')}`,
+          );
+        }
 
-      const errors = await validate(dto);
-      if (errors.length) {
-        // include row index for faster debugging
-        throw new BadRequestException(
-          `Invalid data in bulk upload (row ${idx + 1}): ` +
-            JSON.stringify(errors),
-        );
-      }
+        const rawEmail = (dto.email ?? '').trim();
+        const rawPhone = (dto.phone ?? '').trim();
+        const normalizedPhone = rawPhone ? this.normalizePhone(rawPhone) : null;
+        const canLogin = Boolean(rawEmail || normalizedPhone);
+        const loginEmail = !canLogin
+          ? null
+          : rawEmail
+            ? this.normalizeEmail(rawEmail)
+            : this.makeTempEmailFromPhone(companyId, normalizedPhone!);
 
-      const rawEmail = (dto.email ?? '').trim();
-      const rawPhone = (dto.phone ?? '').trim();
-      const normalizedPhone = rawPhone ? this.normalizePhone(rawPhone) : null;
+        dto.email = loginEmail ?? undefined;
+        dtos[idx] = dto;
+        derived[idx] = {
+          canLogin,
+          loginEmail,
+          isTempEmail: canLogin && !rawEmail && !!normalizedPhone,
+          tempPassword: canLogin ? this.generateTempPassword() : null,
+          normalizedPhone,
+          rawEmail: rawEmail ? this.normalizeEmail(rawEmail) : null,
+        };
 
-      const canLogin = Boolean(rawEmail || normalizedPhone);
-
-      const loginEmail = !canLogin
-        ? null
-        : rawEmail
-          ? this.normalizeEmail(rawEmail)
-          : this.makeTempEmailFromPhone(companyId, normalizedPhone!);
-
-      const isTempEmail = canLogin && !rawEmail && !!normalizedPhone;
-      const tempPassword = canLogin ? this.generateTempPassword() : null;
-
-      // Keep dto.email as the loginEmail ONLY when we can login; otherwise undefined
-      dto.email = loginEmail ?? undefined;
-
-      dtos[idx] = dto;
-      derived[idx] = {
-        canLogin,
-        loginEmail,
-        isTempEmail,
-        tempPassword,
-        normalizedPhone,
-        rawEmail: rawEmail ? this.normalizeEmail(rawEmail) : null,
-      };
-
-      // dedupe by loginEmail (only when loginEmail exists)
-      if (loginEmail) {
-        const first = seenEmail.get(loginEmail);
-        if (first !== undefined) dupEmails.push(loginEmail);
-        else seenEmail.set(loginEmail, idx);
-      }
-
-      // dedupe by normalizedPhone (optional but recommended)
-      if (normalizedPhone) {
-        const first = seenPhone.get(normalizedPhone);
-        if (first !== undefined) dupPhones.push(normalizedPhone);
-        else seenPhone.set(normalizedPhone, idx);
-      }
-    });
+        if (loginEmail) {
+          if (seenEmail.has(loginEmail)) dupEmails.push(loginEmail);
+          else seenEmail.set(loginEmail, idx);
+        }
+        if (normalizedPhone) {
+          if (seenPhone.has(normalizedPhone)) dupPhones.push(normalizedPhone);
+          else seenPhone.set(normalizedPhone, idx);
+        }
+      },
+    );
 
     if (dupEmails.length) {
-      // unique duplicates for cleaner error
-      const unique = [...new Set(dupEmails)];
       throw new BadRequestException(
-        `Duplicate login emails in file: ${unique.join(', ')}`,
+        `Duplicate emails in file: ${[...new Set(dupEmails)].join(', ')}`,
       );
     }
     if (dupPhones.length) {
-      const unique = [...new Set(dupPhones)];
       throw new BadRequestException(
-        `Duplicate phone numbers in file: ${unique.join(', ')}`,
+        `Duplicate phones in file: ${[...new Set(dupPhones)].join(', ')}`,
       );
     }
 
-    // 2) DB duplicate check (credentials are canonical for login)
+    // ─── 2) DB duplicate check — all chunks in parallel ───────────────────────
     const loginEmails = derived
       .filter((d) => d.loginEmail)
-      .map((d) => d.loginEmail!) as string[];
-
-    // For very large imports, chunk the IN-list to avoid query limits
-    const EMAIL_CHUNK = 5000;
+      .map((d) => d.loginEmail!);
 
     if (loginEmails.length) {
-      for (const part of this.chunk(loginEmails, EMAIL_CHUNK)) {
-        const existing = await this.db
-          .select({ email: customerCredentials.email })
-          .from(customerCredentials)
-          .where(
-            and(
-              eq(customerCredentials.companyId, companyId),
-              inArray(customerCredentials.email, part),
-            ),
-          )
-          .execute();
+      const EMAIL_CHUNK = 5000;
+      const chunks = this.chunk(loginEmails, EMAIL_CHUNK);
 
-        if (existing.length) {
-          throw new BadRequestException(
-            `Customers already exist for emails: ${existing.map((r) => r.email).join(', ')}`,
-          );
-        }
+      // Run all chunks in parallel instead of sequentially
+      const results = await Promise.all(
+        chunks.map((part) =>
+          this.db
+            .select({ email: customerCredentials.email })
+            .from(customerCredentials)
+            .where(
+              and(
+                eq(customerCredentials.companyId, companyId),
+                inArray(customerCredentials.email, part),
+              ),
+            )
+            .execute(),
+        ),
+      );
+
+      const existing = results.flat();
+      if (existing.length) {
+        throw new BadRequestException(
+          `Already exist: ${existing.map((r) => r.email).join(', ')}`,
+        );
       }
     }
 
-    // 3) Transaction: batch insert customers + creds + addresses + audit logs
+    // ─── 3) bcrypt all passwords in parallel upfront ──────────────────────────
+    // Do this BEFORE the transaction so the tx isn't held open during CPU work
+    const canLoginDerived = derived
+      .map((d, i) => ({ d, i }))
+      .filter(({ d }) => d.canLogin && d.loginEmail && d.tempPassword);
+
+    const passwordHashes = await this.mapLimit(
+      canLoginDerived,
+      32, // higher concurrency — bcrypt is CPU-bound not IO-bound
+      async ({ d }) => bcrypt.hash(d.tempPassword!, 10),
+    );
+
+    // Build a map: index → hash for quick lookup inside transaction
+    const hashByIndex = new Map<number, string>(
+      canLoginDerived.map(({ i }, pos) => [i, passwordHashes[pos]]),
+    );
+
+    // ─── 4) Transaction — pure DB work, no CPU blocking ───────────────────────
     const inserted = await this.db.transaction(async (trx) => {
-      // 3a) customers
+      // 4a) Bulk insert customers
       const customerRows = await trx
         .insert(customers)
         .values(
@@ -275,8 +277,8 @@ export class AdminCustomersService {
             displayName: this.buildDisplayName({
               firstName: d.firstName,
               lastName: d.lastName,
-              // display fallback: use real email if any, else phone, else fallback word
               email: derived[i].rawEmail ?? d.phone ?? 'customer',
+              storeId: '',
             }),
             type: 'individual' as const,
             firstName: d.firstName ?? null,
@@ -297,30 +299,16 @@ export class AdminCustomersService {
         })
         .execute();
 
-      // 3b) credentials (concurrency-limit bcrypt; don’t do it sequentially)
-      const credInputs = derived
-        .map((d, i) => ({ d, i }))
-        .filter(({ d }) => d.canLogin && d.loginEmail && d.tempPassword);
-
-      // tune based on CPU cores; 8–32 is common
-      const BCRYPT_CONCURRENCY = 16;
-
-      const credentialValues = await this.mapLimit(
-        credInputs,
-        BCRYPT_CONCURRENCY,
-        async ({ d, i }) => {
-          const passwordHash = await bcrypt.hash(d.tempPassword!, 10);
-          return {
-            companyId,
-            customerId: customerRows[i].id,
-            email: d.loginEmail!,
-            passwordHash,
-            isVerified: true,
-            inviteTokenHash: null,
-            inviteExpiresAt: null,
-          };
-        },
-      );
+      // 4b) Bulk insert credentials — single insert, no loops
+      const credentialValues = canLoginDerived.map(({ d, i }) => ({
+        companyId,
+        customerId: customerRows[i].id,
+        email: d.loginEmail!,
+        passwordHash: hashByIndex.get(i)!,
+        isVerified: true,
+        inviteTokenHash: null,
+        inviteExpiresAt: null,
+      }));
 
       if (credentialValues.length) {
         await trx
@@ -329,7 +317,7 @@ export class AdminCustomersService {
           .execute();
       }
 
-      // 3c) addresses (only where present)
+      // 4c) Bulk insert addresses — single insert
       const addressValues = dtos
         .map((d, i) => ({ d, i }))
         .filter(({ d }) => d.address?.trim())
@@ -341,7 +329,7 @@ export class AdminCustomersService {
           lastName: d.lastName ?? null,
           line1: d.address!.trim(),
           line2: null,
-          city: 'city',
+          city: 'Unknown',
           state: null,
           postalCode: null,
           country: 'Nigeria',
@@ -354,49 +342,31 @@ export class AdminCustomersService {
         await trx.insert(customerAddresses).values(addressValues).execute();
       }
 
-      // 3d) audit logs: batch insert instead of per-row awaits
-      // If your this.log() writes to DB, replace it with a bulk insert here.
-      // Example assumes an auditLogs table; adapt to your implementation.
-      const auditValues = customerRows.map((c, i) => ({
-        companyId,
-        actorUserId,
-        entity: 'customer',
-        entityId: c.id,
-        action: 'admin_bulk_created',
-        changes: {
-          loginEmail: derived[i].loginEmail ?? null,
-          canLogin: derived[i].canLogin,
-          isTempEmail: derived[i].isTempEmail,
-          displayName: c.displayName,
-        },
-        // createdAt: new Date(), etc
-      }));
+      // 4d) Bulk insert audit logs — single insert
+      await trx
+        .insert(auditLogs)
+        .values(
+          customerRows.map((c, i) => ({
+            entity: 'customer',
+            entityId: c.id,
+            action: 'admin_bulk_created',
+            userId: actorUserId,
+            timestamp: new Date(),
+            changes: {
+              loginEmail: derived[i].loginEmail ?? null,
+              canLogin: derived[i].canLogin,
+              isTempEmail: derived[i].isTempEmail,
+              displayName: c.displayName,
+            },
+          })),
+        )
+        .execute();
 
-      // If you *must* use this.log(), at least run them concurrently:
-      // await Promise.all(customerRows.map((c, i) => this.log(companyId, actorUserId, {...})));
-      // But DB bulk insert is best:
-      if (trx.insert && this.auditLogs) {
-        await trx.insert(this.auditLogs).values(auditValues).execute();
-      } else {
-        // fallback if you only have this.log()
-        await Promise.all(
-          customerRows.map((c, i) =>
-            this.log(companyId, actorUserId, {
-              entity: 'customer',
-              entityId: c.id,
-              action: 'admin_bulk_created',
-              changes: auditValues[i].changes,
-            }),
-          ),
-        );
-      }
-
-      // 3e) return aligned results
       return customerRows.map((c, i) => ({
         customer: c,
         canLogin: derived[i].canLogin,
         loginEmail: derived[i].loginEmail,
-        tempPassword: derived[i].tempPassword, // return so caller can show/send it
+        tempPassword: derived[i].tempPassword,
         isTempEmail: derived[i].isTempEmail,
       }));
     });

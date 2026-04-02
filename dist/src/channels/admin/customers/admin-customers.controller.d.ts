@@ -18,8 +18,21 @@ export declare class AdminCustomersController extends BaseController {
         inviteToken: string;
     }>;
     bulkCreateCustomers(rows: any[], user: User, storeId: string | null): Promise<{
-        insertedCount: any;
-        items: any;
+        insertedCount: number;
+        items: {
+            customer: {
+                id: string;
+                displayName: string;
+                billingEmail: string | null;
+                firstName: string | null;
+                lastName: string | null;
+                phone: string | null;
+            };
+            canLogin: boolean;
+            loginEmail: string | null;
+            tempPassword: string | null;
+            isTempEmail: boolean;
+        }[];
     }>;
     createAddress(user: User, customerId: string, dto: CreateCustomerAddressAdminDto): Promise<{
         id: string;

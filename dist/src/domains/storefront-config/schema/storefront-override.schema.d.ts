@@ -169,14 +169,14 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 quote: z.ZodOptional<z.ZodBoolean>;
             }, "strict", z.ZodTypeAny, {
                 search?: boolean | undefined;
-                cart?: boolean | undefined;
                 quote?: boolean | undefined;
+                cart?: boolean | undefined;
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             }, {
                 search?: boolean | undefined;
-                cart?: boolean | undefined;
                 quote?: boolean | undefined;
+                cart?: boolean | undefined;
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             }>>;
@@ -188,8 +188,8 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }[] | undefined;
             icons?: {
                 search?: boolean | undefined;
-                cart?: boolean | undefined;
                 quote?: boolean | undefined;
+                cart?: boolean | undefined;
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             } | undefined;
@@ -201,8 +201,8 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }[] | undefined;
             icons?: {
                 search?: boolean | undefined;
-                cart?: boolean | undefined;
                 quote?: boolean | undefined;
+                cart?: boolean | undefined;
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             } | undefined;
@@ -226,8 +226,8 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }[] | undefined;
             icons?: {
                 search?: boolean | undefined;
-                cart?: boolean | undefined;
                 quote?: boolean | undefined;
+                cart?: boolean | undefined;
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             } | undefined;
@@ -251,8 +251,8 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }[] | undefined;
             icons?: {
                 search?: boolean | undefined;
-                cart?: boolean | undefined;
                 quote?: boolean | undefined;
+                cart?: boolean | undefined;
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             } | undefined;
@@ -651,8 +651,8 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }[] | undefined;
             icons?: {
                 search?: boolean | undefined;
-                cart?: boolean | undefined;
                 quote?: boolean | undefined;
+                cart?: boolean | undefined;
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             } | undefined;
@@ -768,8 +768,8 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             }[] | undefined;
             icons?: {
                 search?: boolean | undefined;
-                cart?: boolean | undefined;
                 quote?: boolean | undefined;
+                cart?: boolean | undefined;
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             } | undefined;

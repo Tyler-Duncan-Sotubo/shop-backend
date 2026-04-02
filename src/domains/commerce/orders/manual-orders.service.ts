@@ -39,16 +39,26 @@ export class ManualOrdersService {
     private readonly invoiceService: InvoiceService,
   ) {}
 
+  // 1. Seed on company creation (your existing pattern is fine here)
+  async seedOrderCounterForCompany(companyId: string) {
+    await this.db
+      .insert(orderCounters)
+      .values({ companyId, nextNumber: 1, updatedAt: new Date() })
+      .onConflictDoNothing() // ← safer than check-then-insert
+      .execute();
+  }
+
+  // 2. Allocate atomically on every order (your existing counter approach)
   private async allocateOrderNumberInTx(tx: TxOrDb, companyId: string) {
     const [row] = await tx
       .insert(orderCounters)
       .values({
         companyId,
-        nextNumber: 2, // if this is the very first order, return 1
+        nextNumber: 2,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
-        target: orderCounters.companyId, // your unique column
+        target: orderCounters.companyId,
         set: {
           nextNumber: sql`order_counters.next_number + 1`,
           updatedAt: new Date(),

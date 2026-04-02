@@ -27,6 +27,7 @@ import { QuoteModule } from './commerce/quote/quote.module';
 import { MailModule } from './mail/mail.module';
 import { IntegrationModule } from './integration/integration.module';
 import { SetupModule } from './setup/setup.module';
+import { SearchModule } from './search/search.module';
 
 @Global()
 @Module({
@@ -59,6 +60,7 @@ import { SetupModule } from './setup/setup.module';
     MailModule,
     IntegrationModule,
     SetupModule,
+    SearchModule,
   ],
   exports: [
     AuditModule,
@@ -88,6 +90,7 @@ import { SetupModule } from './setup/setup.module';
     MailModule,
     IntegrationModule,
     SetupModule,
+    SearchModule,
   ],
 })
 export class DomainsModule {}

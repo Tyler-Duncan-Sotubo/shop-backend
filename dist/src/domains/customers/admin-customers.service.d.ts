@@ -16,9 +16,22 @@ export declare class AdminCustomersService {
     private makeTempEmailFromPhone;
     private mapLimit;
     private chunk;
-    bulkCreateCustomers(this: any, companyId: string, storeId: string | null, rows: any[], actorUserId: string | null): Promise<{
-        insertedCount: any;
-        items: any;
+    bulkCreateCustomers(companyId: string, storeId: string | null, rows: any[], actorUserId: string | null): Promise<{
+        insertedCount: number;
+        items: {
+            customer: {
+                id: string;
+                displayName: string;
+                billingEmail: string | null;
+                firstName: string | null;
+                lastName: string | null;
+                phone: string | null;
+            };
+            canLogin: boolean;
+            loginEmail: string | null;
+            tempPassword: string | null;
+            isTempEmail: boolean;
+        }[];
     }>;
     adminCreateCustomer(companyId: string, dto: CreateCustomerDto, actorUserId: string | null): Promise<{
         customer: {

@@ -22,13 +22,15 @@ const permissions_service_1 = require("../iam/permissions/permissions.service");
 const company_settings_service_1 = require("../company-settings/company-settings.service");
 const services_1 = require("../auth/services");
 const invoice_service_1 = require("../billing/invoice/invoice.service");
+const manual_orders_service_1 = require("../commerce/orders/manual-orders.service");
 let CompaniesService = class CompaniesService {
-    constructor(db, verificationService, permissionService, companySettingsService, invoiceService) {
+    constructor(db, verificationService, permissionService, companySettingsService, invoiceService, manualOrdersService) {
         this.db = db;
         this.verificationService = verificationService;
         this.permissionService = permissionService;
         this.companySettingsService = companySettingsService;
         this.invoiceService = invoiceService;
+        this.manualOrdersService = manualOrdersService;
     }
     async checkCompanySlugAvailable(slug, companyIdToIgnore) {
         const existing = await this.db
@@ -103,6 +105,7 @@ let CompaniesService = class CompaniesService {
         await this.verificationService.generateVerificationToken(user.id, company.name);
         await this.permissionService.seedDefaultPermissionsForCompany(company.id);
         await this.invoiceService.seedDefaultInvoiceSeriesForCompany(company.id);
+        await this.manualOrdersService.seedOrderCounterForCompany(company.id);
     }
     async register(dto) {
         await this.checkCompanySlugAvailable(dto.slug);
@@ -170,6 +173,7 @@ exports.CompaniesService = CompaniesService = __decorate([
     __metadata("design:paramtypes", [Object, services_1.VerificationService,
         permissions_service_1.PermissionsService,
         company_settings_service_1.CompanySettingsService,
-        invoice_service_1.InvoiceService])
+        invoice_service_1.InvoiceService,
+        manual_orders_service_1.ManualOrdersService])
 ], CompaniesService);
 //# sourceMappingURL=companies.service.js.map

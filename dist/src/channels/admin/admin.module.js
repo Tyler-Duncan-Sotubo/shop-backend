@@ -28,6 +28,7 @@ const storefront_config_module_1 = require("./storefront-config/storefront-confi
 const reviews_module_1 = require("./reviews/reviews.module");
 const guards_module_1 = require("./common/guards/guards.module");
 const analytics_module_1 = require("./analytics/analytics.module");
+const search_controller_1 = require("./search/search.controller");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
@@ -56,6 +57,7 @@ exports.AdminModule = AdminModule = __decorate([
         ],
         providers: [aws_service_1.AwsService],
         exports: [aws_service_1.AwsService],
+        controllers: [search_controller_1.SearchController],
     })
 ], AdminModule);
 //# sourceMappingURL=admin.module.js.map

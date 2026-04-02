@@ -131,6 +131,16 @@ export declare class ProductsService {
         links: Partial<Record<"related" | "upsell" | "cross_sell" | "accessory", string[]>>;
         createdAt: any;
         updatedAt: any;
+        sku: any;
+        barcode: any;
+        regularPrice: any;
+        salePrice: any;
+        stockQuantity: number | null;
+        lowStockThreshold: number | null;
+        weight: any;
+        length: any;
+        width: any;
+        height: any;
     }>;
     updateProduct(companyId: string, productId: string, dto: UpdateProductDto, user?: User, ip?: string): Promise<{
         [x: string]: any;

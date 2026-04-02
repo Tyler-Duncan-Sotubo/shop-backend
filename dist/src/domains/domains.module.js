@@ -36,6 +36,7 @@ const quote_module_1 = require("./commerce/quote/quote.module");
 const mail_module_1 = require("./mail/mail.module");
 const integration_module_1 = require("./integration/integration.module");
 const setup_module_1 = require("./setup/setup.module");
+const search_module_1 = require("./search/search.module");
 let DomainsModule = class DomainsModule {
 };
 exports.DomainsModule = DomainsModule;
@@ -71,6 +72,7 @@ exports.DomainsModule = DomainsModule = __decorate([
             mail_module_1.MailModule,
             integration_module_1.IntegrationModule,
             setup_module_1.SetupModule,
+            search_module_1.SearchModule,
         ],
         exports: [
             audit_module_1.AuditModule,
@@ -100,6 +102,7 @@ exports.DomainsModule = DomainsModule = __decorate([
             mail_module_1.MailModule,
             integration_module_1.IntegrationModule,
             setup_module_1.SetupModule,
+            search_module_1.SearchModule,
         ],
     })
 ], DomainsModule);

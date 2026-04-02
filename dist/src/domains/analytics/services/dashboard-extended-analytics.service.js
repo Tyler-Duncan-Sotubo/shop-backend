@@ -64,46 +64,48 @@ let DashboardExtendedAnalyticsService = class DashboardExtendedAnalyticsService 
     }
     async computeSalesCards(companyId, storeId, range) {
         const storeClause = storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, storeId) : undefined;
-        const [result] = await this.db
-            .select({
-            grossSalesMinor: (0, drizzle_orm_1.sql) `
-        coalesce(
-          nullif(sum(${schema_1.orders.subtotalMinor}), 0),
-          sum(${schema_1.orders.subtotal})
-        )
-      `,
-            discountTotalMinor: (0, drizzle_orm_1.sql) `
-        coalesce(
-          nullif(sum(${schema_1.orders.discountTotalMinor}), 0),
-          sum(${schema_1.orders.discountTotal})
-        )
-      `,
-            totalMinor: (0, drizzle_orm_1.sql) `
-        coalesce(
-          nullif(sum(${schema_1.orders.totalMinor}), 0),
-          sum(${schema_1.orders.total})
-        )
-      `,
-            orderCount: (0, drizzle_orm_1.sql) `count(*)`,
-            refundedCount: (0, drizzle_orm_1.sql) `
-        sum(case when ${schema_1.orders.status} = 'refunded' then 1 else 0 end)
-      `,
-        })
-            .from(schema_1.orders)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.gte)(schema_1.orders.createdAt, range.from), (0, drizzle_orm_1.lt)(schema_1.orders.createdAt, range.to), storeClause))
-            .execute();
-        const grossSalesMinor = Number(result?.grossSalesMinor ?? 0);
-        const discountTotalMinor = Number(result?.discountTotalMinor ?? 0);
-        const totalMinor = Number(result?.totalMinor ?? 0);
-        const orderCount = Number(result?.orderCount ?? 0);
-        const refundedCount = Number(result?.refundedCount ?? 0);
+        const baseWhere = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.gte)(schema_1.orders.createdAt, range.from), (0, drizzle_orm_1.lt)(schema_1.orders.createdAt, range.to), storeClause);
+        const [[salesResult], [refundResult]] = await Promise.all([
+            this.db
+                .select({
+                grossSalesMinor: (0, drizzle_orm_1.sql) `
+          coalesce(nullif(sum(${schema_1.orders.subtotalMinor}), 0), sum(${schema_1.orders.subtotal}))
+        `,
+                discountTotalMinor: (0, drizzle_orm_1.sql) `
+          coalesce(nullif(sum(${schema_1.orders.discountTotalMinor}), 0), sum(${schema_1.orders.discountTotal}))
+        `,
+                totalMinor: (0, drizzle_orm_1.sql) `
+          coalesce(nullif(sum(${schema_1.orders.totalMinor}), 0), sum(${schema_1.orders.total}))
+        `,
+                orderCount: (0, drizzle_orm_1.sql) `count(*)`,
+            })
+                .from(schema_1.orders)
+                .where((0, drizzle_orm_1.and)(baseWhere, (0, drizzle_orm_1.inArray)(schema_1.orders.status, [...this.SALE_STATUSES])))
+                .execute(),
+            this.db
+                .select({
+                totalCount: (0, drizzle_orm_1.sql) `count(*)`,
+                refundedCount: (0, drizzle_orm_1.sql) `
+          sum(case when ${schema_1.orders.status} = 'refunded' then 1 else 0 end)
+        `,
+            })
+                .from(schema_1.orders)
+                .where(baseWhere)
+                .execute(),
+        ]);
+        const grossSalesMinor = Number(salesResult?.grossSalesMinor ?? 0);
+        const discountTotalMinor = Number(salesResult?.discountTotalMinor ?? 0);
+        const totalMinor = Number(salesResult?.totalMinor ?? 0);
+        const orderCount = Number(salesResult?.orderCount ?? 0);
+        const refundedCount = Number(refundResult?.refundedCount ?? 0);
+        const totalCount = Number(refundResult?.totalCount ?? 0);
         return {
             grossSalesMinor,
             discountTotalMinor,
             netSalesMinor: grossSalesMinor - discountTotalMinor,
             aov: orderCount > 0 ? totalMinor / orderCount : 0,
             refundedOrdersCount: refundedCount,
-            refundRate: orderCount > 0 ? refundedCount / orderCount : 0,
+            refundRate: totalCount > 0 ? refundedCount / totalCount : 0,
         };
     }
     async extendedSalesCards(args) {

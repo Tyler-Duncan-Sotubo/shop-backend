@@ -60,13 +60,10 @@ export class AuthEmailController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @Post('invite-password-reset/:token')
+  @Post('invite-password-reset')
   @UseInterceptors(ResponseInterceptor)
-  async resetInvitationPassword(
-    @Param('token') token: string,
-    @Body() dto: PasswordResetDto,
-  ) {
-    return this.password.invitationPasswordReset(token, dto.password);
+  async resetInvitationPassword(@Body() dto: PasswordResetDto) {
+    return this.password.invitationPasswordReset(dto.token, dto.password);
   }
 
   @HttpCode(HttpStatus.OK)

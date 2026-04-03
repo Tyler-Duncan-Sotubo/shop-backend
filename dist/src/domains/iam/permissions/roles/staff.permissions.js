@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StaffPermissions = void 0;
+const constant_1 = require("./constant");
 exports.StaffPermissions = [
+    ...constant_1.BASE,
     'products.read',
     'products.update',
     'products.manage_media',
@@ -9,12 +11,12 @@ exports.StaffPermissions = [
     'attributes.read',
     'inventory.read',
     'inventory.items.read',
+    'inventory.items.update',
     'inventory.adjust',
     'inventory.adjustments.read',
     'inventory.adjustments.create',
     'inventory.transfers.read',
     'inventory.transfers.update',
-    'inventory.items.update',
     'locations.read',
     'orders.read',
     'orders.create',

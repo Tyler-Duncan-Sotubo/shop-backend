@@ -45,11 +45,11 @@ export declare class AdminCustomersService {
         inviteToken: string;
     }>;
     createCustomerAddress(companyId: string, customerId: string, dto: CreateCustomerAddressAdminDto, actorUserId: string | null): Promise<{
+        companyId: string;
         id: string;
         country: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         firstName: string | null;
         lastName: string | null;
         phone: string | null;

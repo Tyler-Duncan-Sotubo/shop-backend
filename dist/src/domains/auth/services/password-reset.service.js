@@ -50,7 +50,7 @@ let PasswordResetService = class PasswordResetService {
         if (!user || user.length === 0) {
             throw new common_1.BadRequestException('User does not exist.');
         }
-        const inviteLink = `${this.configService.get('CLIENT_URL')}/auth/reset-password/${token}`;
+        const inviteLink = `${this.configService.get('CLIENT_URL')}/reset-password/${token}`;
         await this.passwordResetEmailService.sendPasswordResetEmail(email, user[0].firstName || 'User', inviteLink);
         const existingToken = await this.db
             .select()

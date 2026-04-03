@@ -23,9 +23,9 @@ let InvitationService = class InvitationService {
             to: email,
             from: {
                 name: `Invitation to Join as ${role}`,
-                email: 'noreply@centahr.com',
+                email: 'noreply@mycenta.com',
             },
-            templateId: this.config.get('INVITE_TEMPLATE_ID'),
+            templateId: this.config.get('USER_INVITE_TEMPLATE_ID'),
             dynamicTemplateData: {
                 name: name,
                 verifyLink: url,

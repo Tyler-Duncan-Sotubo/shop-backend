@@ -4,6 +4,7 @@ import {
   invoices,
   orders,
   quoteRequests,
+  customers, // add this
 } from 'src/infrastructure/drizzle/schema';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
@@ -12,78 +13,136 @@ import { db } from 'src/infrastructure/drizzle/types/drizzle';
 export class SearchService {
   constructor(@Inject(DRIZZLE) private readonly db: db) {}
 
-  async globalSearch(companyId: string, q: string) {
+  async globalSearch(
+    companyId: string,
+    q: string,
+    type: 'all' | 'orders' | 'invoices' | 'quotes' | 'customers' = 'all',
+  ) {
     const pattern = `%${q}%`;
 
-    const [orderRows, invoiceRows, quoteRows] = await Promise.all([
-      // Orders — only orderNumber is searchable directly on the table
-      this.db
-        .select({
-          id: orders.id,
-          number: orders.orderNumber,
-          customer: sql<string>`null`.as('customer'), // no name col on orders
-          status: orders.status,
-        })
-        .from(orders)
-        .where(
-          and(
-            eq(orders.companyId, companyId),
-            ilike(orders.orderNumber, pattern),
-          ),
-        )
-        .limit(5),
+    const ordersQuery = this.db
+      .select({
+        id: orders.id,
+        number: orders.orderNumber,
+        customer: sql<string>`null`.as('customer'),
+        status: orders.status,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.companyId, companyId),
+          ilike(orders.orderNumber, pattern),
+        ),
+      )
+      .limit(5);
 
-      // Invoices — number is only set after issuance; search on number + customerSnapshot jsonb
-      this.db
-        .select({
-          id: invoices.id,
-          number: invoices.number,
-          // pull name out of the jsonb snapshot
-          customer: sql<string>`${invoices.customerSnapshot}->>'name'`.as(
-            'customer',
+    const invoicesQuery = this.db
+      .select({
+        id: invoices.id,
+        number: invoices.number,
+        customer: sql<string>`${invoices.customerSnapshot}->>'name'`.as(
+          'customer',
+        ),
+        status: invoices.status,
+      })
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.companyId, companyId),
+          or(
+            ilike(invoices.number, pattern),
+            sql`${invoices.customerSnapshot}->>'name' ilike ${pattern}`,
+            sql`${invoices.customerSnapshot}->>'email' ilike ${pattern}`,
           ),
-          status: invoices.status,
-        })
-        .from(invoices)
-        .where(
-          and(
-            eq(invoices.companyId, companyId),
-            or(
-              ilike(invoices.number, pattern),
-              // search inside the jsonb snapshot for name/email
-              sql`${invoices.customerSnapshot}->>'name' ilike ${pattern}`,
-              sql`${invoices.customerSnapshot}->>'email' ilike ${pattern}`,
-            ),
-          ),
-        )
-        .limit(5),
+        ),
+      )
+      .limit(5);
 
-      // Quotes (quoteRequests) — has customerName + customerEmail directly
-      this.db
-        .select({
-          id: quoteRequests.id,
-          number: quoteRequests.quoteNumber,
-          customer: quoteRequests.customerName,
-          status: quoteRequests.status,
-        })
-        .from(quoteRequests)
-        .where(
-          and(
-            eq(quoteRequests.companyId, companyId),
-            or(
-              ilike(quoteRequests.quoteNumber, pattern),
-              ilike(quoteRequests.customerName, pattern),
-              ilike(quoteRequests.customerEmail, pattern),
-            ),
+    const quotesQuery = this.db
+      .select({
+        id: quoteRequests.id,
+        number: quoteRequests.quoteNumber,
+        customer: quoteRequests.customerName,
+        status: quoteRequests.status,
+      })
+      .from(quoteRequests)
+      .where(
+        and(
+          eq(quoteRequests.companyId, companyId),
+          or(
+            ilike(quoteRequests.quoteNumber, pattern),
+            ilike(quoteRequests.customerName, pattern),
+            ilike(quoteRequests.customerEmail, pattern),
           ),
-        )
-        .limit(5),
-    ]);
+        ),
+      )
+      .limit(5);
+
+    const customersQuery = this.db
+      .select({
+        id: customers.id,
+        number: sql<string>`null`.as('number'),
+        customer: customers.firstName,
+        status: sql<string>`null`.as('status'),
+        email: customers.billingEmail,
+      })
+      .from(customers)
+      .where(
+        and(
+          eq(customers.companyId, companyId),
+          or(
+            ilike(customers.firstName, pattern),
+            ilike(customers.billingEmail, pattern),
+          ),
+        ),
+      )
+      .limit(5);
+
+    if (type === 'orders') {
+      return {
+        orders: await ordersQuery,
+        invoices: [],
+        quotes: [],
+        customers: [],
+      };
+    }
+
+    if (type === 'invoices') {
+      return {
+        orders: [],
+        invoices: await invoicesQuery,
+        quotes: [],
+        customers: [],
+      };
+    }
+
+    if (type === 'quotes') {
+      return {
+        orders: [],
+        invoices: [],
+        quotes: await quotesQuery,
+        customers: [],
+      };
+    }
+
+    if (type === 'customers') {
+      return {
+        orders: [],
+        invoices: [],
+        quotes: [],
+        customers: await customersQuery,
+      };
+    }
+
+    const [orderRows, invoiceRows, quoteRows, customerRows] = await Promise.all(
+      [ordersQuery, invoicesQuery, quotesQuery, customersQuery],
+    );
 
     return {
       orders: orderRows,
       invoices: invoiceRows,
       quotes: quoteRows,
+      customers: customerRows,
     };
   }
 }

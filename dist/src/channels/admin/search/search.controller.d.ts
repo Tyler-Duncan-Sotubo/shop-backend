@@ -5,12 +5,23 @@ export declare class SearchController {
     constructor(searchService: SearchService);
     globalSearch(q: string, user: User): Promise<{
         data: {
-            orders: {
-                id: string;
-                number: string;
+            orders: never[];
+            invoices: never[];
+            quotes: never[];
+        };
+    } | {
+        data: {
+            orders: ({
+                id: any;
+                number: any;
                 customer: string;
-                status: string;
-            }[];
+                status: any;
+            } | {
+                id: any;
+                number: any;
+                customer: string;
+                status: any;
+            })[];
             invoices: {
                 id: string;
                 number: string | null;
@@ -22,6 +33,13 @@ export declare class SearchController {
                 number: string | null;
                 customer: string | null;
                 status: string;
+            }[];
+            customers: {
+                id: string;
+                number: string;
+                customer: string | null;
+                status: string;
+                email: string | null;
             }[];
         };
     }>;

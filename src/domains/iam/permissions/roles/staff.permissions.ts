@@ -1,26 +1,28 @@
+import { BASE } from './constant';
+
 export const StaffPermissions = [
+  ...BASE,
+
   // Products
   'products.read',
-  'products.update', // can edit details
+  'products.update',
   'products.manage_media',
 
-  // Categories
+  // Categories & attributes
   'categories.read',
-
-  // Attributes
   'attributes.read',
 
-  // Inventory (operational)
+  // Inventory — operational
   'inventory.read',
   'inventory.items.read',
-  'inventory.adjust', // basic adjustments allowed
-  'inventory.adjustments.read', // view adjustment logs
-  'inventory.adjustments.create', // create corrections (no approval)
-  'inventory.transfers.read', // can see transfers
-  'inventory.transfers.update', // allow marking transfer as received
-  'inventory.items.update', // adjust stock directly
+  'inventory.items.update',
+  'inventory.adjust',
+  'inventory.adjustments.read',
+  'inventory.adjustments.create',
+  'inventory.transfers.read',
+  'inventory.transfers.update',
 
-  // Locations (read-only)
+  // Locations — read only
   'locations.read',
 
   // Orders
@@ -36,12 +38,12 @@ export const StaffPermissions = [
   'customers.create',
   'customers.update',
 
-  // Discounts (view only)
+  // Discounts — view only
   'discounts.read',
 
-  // Storefront (basic)
+  // Storefront — limited
   'storefront.manage_menus',
 
-  // Users (read-only own company user list)
+  // Users — read own company list
   'users.read',
 ];

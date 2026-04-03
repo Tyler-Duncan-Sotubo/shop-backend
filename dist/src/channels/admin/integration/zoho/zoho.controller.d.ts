@@ -33,11 +33,11 @@ export declare class ZohoController extends BaseController {
         updatedAt: Date;
     }>;
     upsertAdmin(user: User, storeId: string, dto: CreateZohoDto, ip: string): Promise<{
+        companyId: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         storeId: string;
         region: string;
         zohoOrganizationId: string | null;
@@ -87,11 +87,11 @@ export declare class ZohoController extends BaseController {
         updatedAt: Date;
     }>;
     removeAdmin(user: User, storeId: string, ip: string): Promise<{
+        companyId: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         storeId: string;
         region: string;
         zohoOrganizationId: string | null;

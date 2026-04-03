@@ -49,7 +49,7 @@ export class PasswordResetService {
 
     const inviteLink = `${this.configService.get(
       'CLIENT_URL',
-    )}/auth/reset-password/${token}`;
+    )}/reset-password/${token}`;
 
     await this.passwordResetEmailService.sendPasswordResetEmail(
       email,

@@ -19,6 +19,8 @@ import { CacheService } from 'src/infrastructure/cache/cache.service';
 import { AuditService } from 'src/domains/audit/audit.service';
 import { DefaultRolePermissions } from './roles';
 import { User } from 'src/channels/admin/common/types/user.type';
+import { WarehouseStaffPermissions } from './roles/warehouse-staff.permissions';
+import { InventoryManagerPermissions } from './roles/inventory-manager.permission';
 
 @Injectable()
 export class CompanyAccessService {
@@ -496,5 +498,99 @@ export class CompanyAccessService {
       )
       .onConflictDoNothing()
       .execute();
+  }
+
+  async seedNewSystemRolesForAllCompanies() {
+    const allCompanies = await this.db.select().from(companies);
+
+    for (const company of allCompanies) {
+      await this.seedMissingSystemRolesForCompany(company.id);
+    }
+
+    return { success: true };
+  }
+
+  async seedMissingSystemRolesForCompany(companyId: string) {
+    const systemRolesToEnsure = [
+      {
+        name: 'warehouse_staff',
+        displayName: 'Warehouse Staff',
+        permissions: WarehouseStaffPermissions,
+      },
+      {
+        name: 'inventory_manager',
+        displayName: 'Inventory Manager',
+        permissions: InventoryManagerPermissions,
+      },
+    ];
+
+    for (const roleDef of systemRolesToEnsure) {
+      await this.ensureSystemRoleWithPermissions(companyId, roleDef);
+    }
+  }
+
+  async ensureSystemRoleWithPermissions(
+    companyId: string,
+    roleDef: {
+      name: string;
+      displayName: string;
+      permissions: string[];
+    },
+  ) {
+    await this.db.transaction(async (tx) => {
+      // 1) find existing role by company + system role name
+      let role = await tx.query.companyRoles.findFirst({
+        where: (companyRoles, { and, eq }) =>
+          and(
+            eq(companyRoles.companyId, companyId),
+            eq(companyRoles.name, roleDef.name),
+          ),
+      });
+
+      // 2) create if missing
+      if (!role) {
+        const inserted = await tx
+          .insert(companyRoles)
+          .values({
+            companyId,
+            name: roleDef.name,
+            displayName: roleDef.displayName,
+            isSystem: true,
+          })
+          .returning();
+
+        role = inserted[0];
+      }
+
+      // 3) load permission IDs from permission keys
+      const permissionRows = await tx
+        .select()
+        .from(permissions)
+        .where(inArray(permissions.key, roleDef.permissions));
+
+      const permissionIds = permissionRows.map((p) => p.id);
+
+      // 4) find existing mappings
+      const existingMappings = await tx
+        .select()
+        .from(companyRolePermissions)
+        .where(eq(companyRolePermissions.companyRoleId, role.id));
+
+      const existingPermissionIds = new Set(
+        existingMappings.map((rp) => rp.permissionId),
+      );
+
+      // 5) insert only missing mappings
+      const missingMappings = permissionIds
+        .filter((permissionId) => !existingPermissionIds.has(permissionId))
+        .map((permissionId) => ({
+          companyRoleId: role.id,
+          permissionId,
+        }));
+
+      if (missingMappings.length > 0) {
+        await tx.insert(companyRolePermissions).values(missingMappings);
+      }
+    });
   }
 }

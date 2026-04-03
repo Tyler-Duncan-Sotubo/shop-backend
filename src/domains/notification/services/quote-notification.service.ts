@@ -51,7 +51,7 @@ export class QuoteNotificationService {
     const msg = {
       to,
       from: {
-        email: 'noreply@centahr.com',
+        email: 'noreply@mycenta.com',
         name: fromName ?? safeStore ?? 'Quote Request',
       },
       replyTo: {

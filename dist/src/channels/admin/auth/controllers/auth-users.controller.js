@@ -57,8 +57,8 @@ __decorate([
 __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     (0, common_1.UseInterceptors)(error_interceptor_1.ResponseInterceptor),
-    (0, common_1.Post)('invite/:token'),
-    __param(0, (0, common_1.Param)('token')),
+    (0, common_1.Post)('invite-user'),
+    __param(0, (0, common_1.Body)('token')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)

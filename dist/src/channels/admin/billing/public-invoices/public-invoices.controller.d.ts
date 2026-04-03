@@ -5,10 +5,10 @@ export declare class PublicInvoicesController {
     constructor(links: PublicInvoicesService);
     createOrGet(user: User, invoiceId: string): Promise<{
         data: {
+            companyId: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            companyId: string;
             token: string;
             expiresAt: Date | null;
             meta: unknown;

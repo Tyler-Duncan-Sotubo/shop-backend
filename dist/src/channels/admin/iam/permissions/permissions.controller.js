@@ -116,8 +116,6 @@ __decorate([
 ], PermissionsController.prototype, "findCompanyRoleById", null);
 __decorate([
     (0, common_1.Post)('company/sync'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    (0, common_1.SetMetadata)('permissions', ['permissions.manage']),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)

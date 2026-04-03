@@ -1,29 +1,30 @@
+import { BASE } from './constant';
+
 export const SupportPermissions = [
-  // Products
+  ...BASE,
+
+  // Products — read only
   'products.read',
-
-  // Categories
   'categories.read',
-
-  // Attributes
   'attributes.read',
+  'reviews.read',
 
-  // Inventory (read-only)
+  // Inventory — read only
   'inventory.read',
   'inventory.items.read',
   'inventory.adjustments.read',
   'inventory.transfers.read',
   'locations.read',
 
-  // Orders
+  // Orders — read only
   'orders.read',
 
-  // Customers
+  // Customers — read only
   'customers.read',
 
-  // Discounts (read-only)
+  // Discounts — read only
   'discounts.read',
 
-  // Storefront (very limited)
-  'storefront.manage_pages', // optional safe action
+  // Storefront — safe read-only actions
+  'storefront.manage_pages',
 ];

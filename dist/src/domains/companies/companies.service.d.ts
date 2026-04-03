@@ -26,8 +26,8 @@ export declare class CompaniesService {
             companyId: string;
         };
         company: {
-            id: string;
             name: string;
+            id: string;
             slug: string;
             legalName: string | null;
             country: string | null;

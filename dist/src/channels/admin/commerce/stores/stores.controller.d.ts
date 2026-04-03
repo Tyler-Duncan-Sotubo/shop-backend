@@ -58,8 +58,9 @@ export declare class StoresController extends BaseController {
         deletedAt: Date | null;
     }[]>;
     createStore(user: User, dto: CreateStoreDto, ip: string): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         slug: string;
         defaultCurrency: string;
         defaultLocale: string;
@@ -67,15 +68,15 @@ export declare class StoresController extends BaseController {
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        companyId: string;
         imageUrl: string | null;
         imageAltText: string | null;
         storeEmail: string | null;
         supportedCurrencies: string[] | null;
     }>;
     getStoreById(user: User, storeId: string): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         slug: string;
         defaultCurrency: string;
         defaultLocale: string;
@@ -83,7 +84,6 @@ export declare class StoresController extends BaseController {
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
-        companyId: string;
         imageUrl: string | null;
         imageAltText: string | null;
         storeEmail: string | null;

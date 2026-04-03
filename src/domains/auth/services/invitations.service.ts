@@ -117,7 +117,7 @@ export class InvitationsService {
       throw new Error('CLIENT_URL is not configured');
     }
 
-    const inviteLink = `${clientUrl}/auth/invite/${token}`;
+    const inviteLink = `${clientUrl}/invite/${token}`;
 
     const role = await this.permissionsService.getRoleById(roleId);
     const roleLabel = role.displayName ?? role.name;

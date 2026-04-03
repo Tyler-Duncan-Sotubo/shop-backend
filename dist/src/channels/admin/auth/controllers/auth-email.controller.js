@@ -40,8 +40,8 @@ let AuthEmailController = class AuthEmailController {
     async resetPassword(dto, ip) {
         return this.password.resetPassword(dto.token, dto.password, ip);
     }
-    async resetInvitationPassword(token, dto) {
-        return this.password.invitationPasswordReset(token, dto.password);
+    async resetInvitationPassword(dto) {
+        return this.password.invitationPasswordReset(dto.token, dto.password);
     }
     async resendCode(token) {
         return this.loginVerification.regenerateVerificationToken(token);
@@ -87,12 +87,11 @@ __decorate([
 ], AuthEmailController.prototype, "resetPassword", null);
 __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, common_1.Post)('invite-password-reset/:token'),
+    (0, common_1.Post)('invite-password-reset'),
     (0, common_1.UseInterceptors)(error_interceptor_1.ResponseInterceptor),
-    __param(0, (0, common_1.Param)('token')),
-    __param(1, (0, common_1.Body)()),
+    __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, user_email_dto_1.PasswordResetDto]),
+    __metadata("design:paramtypes", [user_email_dto_1.PasswordResetDto]),
     __metadata("design:returntype", Promise)
 ], AuthEmailController.prototype, "resetInvitationPassword", null);
 __decorate([

@@ -1,5 +1,5 @@
 export const ManagerPermissions = [
-  // Products
+  // Products / Catalog
   'products.read',
   'products.create',
   'products.update',
@@ -8,48 +8,55 @@ export const ManagerPermissions = [
   'products.manage_media',
   'products.manage_seo',
 
-  // Categories
   'categories.read',
   'categories.create',
   'categories.update',
   'categories.delete',
 
-  // Attributes / Options
   'attributes.read',
   'attributes.manage',
 
-  // Reviews
   'reviews.read',
   'reviews.moderate',
 
-  // Inventory / Warehouses
-  'inventory.read',
-  'inventory.items.read',
-  'inventory.items.update',
-  'inventory.adjust',
-  'inventory.adjustments.read',
-  'inventory.adjustments.create',
-  'inventory.transfer',
-  'inventory.transfers.read',
-  'inventory.transfers.create',
-  'inventory.transfers.update',
-  'inventory.transfers.delete',
-  'inventory.locations.assign',
-  'inventory.manage_rules',
+  // Inventory / Locations & Stock
+  'inventory.read', // View combined inventory state
+  'inventory.items.read', // View stock per variant/location
+  'inventory.items.update', // Manually change stock
+  'inventory.adjust', // Can adjust inventory generally
+  'inventory.manage_rules', // Allocation rules, safety stock rules
 
+  // Inventory Locations
   'locations.read',
   'locations.create',
   'locations.update',
   'locations.delete',
+  'inventory.locations.assign', // Assign locations to stores
 
-  // Orders
+  // Inventory Transfers
+  'inventory.transfer', // Global permission for transfers
+  'inventory.transfers.read',
+  'inventory.transfers.create',
+  'inventory.transfers.update',
+  'inventory.transfers.delete',
+
+  // Inventory Adjustments
+  'inventory.adjustments.read',
+  'inventory.adjustments.create',
+  'inventory.adjustments.approve',
+
+  // Orders & Fulfillment
   'orders.read',
   'orders.create',
   'orders.update',
   'orders.refund',
   'orders.cancel',
 
-  // Fulfillment
+  // Manual Orders
+  'orders.manual.create',
+  'orders.manual.edit',
+  'orders.manual.delete',
+
   'fulfillment.manage',
   'fulfillment.manage_returns',
 
@@ -59,7 +66,7 @@ export const ManagerPermissions = [
   'customers.update',
   'customers.delete',
 
-  // Discounts
+  // Discounts / Promotions
   'discounts.read',
   'discounts.create',
   'discounts.update',
@@ -67,33 +74,126 @@ export const ManagerPermissions = [
 
   'promotions.manage',
 
-  // Payments (limited)
+  // Payments
   'payments.read',
+  'payments.manage_providers',
   'payments.capture',
   'payments.refund',
+  'payments.write',
 
-  // Settings (restricted)
+  // Settings
   'settings.read',
   'settings.manage_general',
   'settings.manage_checkout',
+  'settings.manage_payments',
   'settings.manage_tax',
+  'settings.manage_security',
   'settings.manage_storefront',
 
-  // Storefront
-  'storefront.manage_theme',
-  'storefront.manage_menus',
-  'storefront.manage_pages',
-  'storefront.manage_banners',
+  // Stores / Channels
+  'stores.read',
+  'stores.create',
+  'stores.update',
+  'stores.delete',
 
-  // Users (limited)
+  // IAM / Users
   'users.read',
   'users.invite',
+  'users.update_roles',
+  'users.delete',
 
-  // API Keys
-  'apikeys.read',
-  'apikeys.create',
-
-  // Roles (read-only)
-  'roles.read',
+  // Permissions
   'permissions.read',
+  'permissions.manage',
+  'roles.read',
+  'roles.manage',
+
+  // Cart
+  'carts.create',
+  'carts.read',
+  'carts.update',
+  'carts.items.create',
+  'carts.items.update',
+  'carts.items.delete',
+
+  // Shipping – Zones
+  'shipping.zones.read',
+  'shipping.zones.create',
+  'shipping.zones.update',
+  'shipping.zones.delete',
+
+  // Shipping – Carriers
+  'shipping.carriers.read',
+  'shipping.carriers.create',
+  'shipping.carriers.update',
+  'shipping.carriers.delete',
+
+  // Shipping – Rates
+  'shipping.rates.read',
+  'shipping.rates.create',
+  'shipping.rates.update',
+  'shipping.rates.delete',
+
+  // Invoice Templates (system templates)
+  'billing.invoiceTemplates.read',
+  'billing.invoiceTemplates.preview', // preview html/pdf
+  'billing.invoiceTemplates.seed', // seed system templates (admin only)
+
+  // Branding (company/store selection)
+  'billing.invoiceBranding.read',
+  'billing.invoiceBranding.update',
+
+  // Invoices
+  'billing.invoices.read', // list + view invoice + lines
+  'billing.invoices.create', // create draft (manual)
+  'billing.invoices.createFromOrder', // create draft from order (if you keep endpoint)
+  'billing.invoices.updateDraft', // edit draft invoice + lines (qty/price/tax/discount, etc)
+  'billing.invoices.recalculate', // explicitly recalc totals (if you expose endpoint)
+  'billing.invoices.issue', // issue/finalize invoice
+  'billing.invoices.void', // void/cancel issued invoice (accounting action)
+
+  // Documents / PDF
+  'billing.invoices.pdf.preview', // preview templates as pdf/html using sample data
+  'billing.invoices.pdf.generate', // generate PDF for a real invoice (upload + persist doc)
+  'billing.invoices.documents.read', // list invoice documents history (optional)
+
+  // Payments
+  'billing.payments.read', // list + view payment + allocations
+  'billing.payments.create', // record manual payment / create pending bank transfer
+  'billing.payments.confirm', // confirm pending payment (bank transfer)
+  'billing.payments.allocate', // allocate a payment to invoice(s) (if separate endpoint)
+  'billing.payments.refund', // refund logic (future)
+
+  // Taxes
+  'billing.taxes.read',
+  'billing.taxes.create',
+  'billing.taxes.update',
+  'billing.taxes.delete',
+
+  // Blogs
+  'blog.posts.read',
+  'blog.posts.create',
+  'blog.posts.update',
+  'blog.posts.publish',
+  'blog.posts.delete',
+
+  // Media
+  'media.upload',
+  'media.delete',
+
+  // Analytics
+  'analytics.write',
+  'analytics.read',
+
+  // Quotes
+  'quotes.read',
+  'quotes.create',
+  'quotes.update',
+  'quotes.delete',
+
+  // Mails
+  'mail.subscribers.read',
+  'mail.subscribers.update',
+  'mail.messages.read',
+  'mail.messages.update',
 ];

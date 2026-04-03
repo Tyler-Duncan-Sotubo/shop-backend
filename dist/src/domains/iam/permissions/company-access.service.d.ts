@@ -13,21 +13,21 @@ export declare class CompanyAccessService {
         displayName: string;
         isSystem?: boolean;
     }): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         displayName: string | null;
         description: string | null;
         isSystem: boolean;
     }>;
     createDefaultRoles(companyId: string): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         displayName: string | null;
         description: string | null;
         isSystem: boolean;
@@ -48,11 +48,11 @@ export declare class CompanyAccessService {
         updatedAt: Date;
     }>;
     getRoleById(roleId: string): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         displayName: string | null;
         description: string | null;
         isSystem: boolean;
@@ -95,14 +95,23 @@ export declare class CompanyAccessService {
         baseRoleId?: string;
         permissionIds: string[];
     }): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         displayName: string | null;
         description: string | null;
         isSystem: boolean;
     }>;
     private cloneRolePermissions;
+    seedNewSystemRolesForAllCompanies(): Promise<{
+        success: boolean;
+    }>;
+    seedMissingSystemRolesForCompany(companyId: string): Promise<void>;
+    ensureSystemRoleWithPermissions(companyId: string, roleDef: {
+        name: string;
+        displayName: string;
+        permissions: string[];
+    }): Promise<void>;
 }

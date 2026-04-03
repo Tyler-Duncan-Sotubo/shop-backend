@@ -30,6 +30,11 @@ export class PermissionsController extends BaseController {
     return this.permissionsService.create();
   }
 
+  // @Post('seed-new-roles')
+  // seedNewSystemRolesForAllCompanies() {
+  //   return this.permissionsService.seedNewSystemRolesForAllCompanies();
+  // }
+
   @Post('sync')
   syncAllCompanyPermissions() {
     return this.permissionsService.syncAllCompanyPermissions();
@@ -79,9 +84,9 @@ export class PermissionsController extends BaseController {
 
   // Company Permissions
   @Post('company/sync')
-  // if exposed, protect with permissions.manage
-  @UseGuards(JwtAuthGuard)
-  @SetMetadata('permissions', ['permissions.manage'])
+  // // if exposed, protect with permissions.manage
+  // @UseGuards(JwtAuthGuard)
+  // @SetMetadata('permissions', ['permissions.manage'])
   async syncCompanyPermissions() {
     return this.permissionsService.syncAllCompanyPermissions();
   }

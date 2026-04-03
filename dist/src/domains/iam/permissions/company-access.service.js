@@ -20,6 +20,8 @@ const schema_1 = require("../../../infrastructure/drizzle/schema");
 const cache_service_1 = require("../../../infrastructure/cache/cache.service");
 const audit_service_1 = require("../../audit/audit.service");
 const roles_1 = require("./roles");
+const warehouse_staff_permissions_1 = require("./roles/warehouse-staff.permissions");
+const inventory_manager_permission_1 = require("./roles/inventory-manager.permission");
 let CompanyAccessService = class CompanyAccessService {
     constructor(db, cache, auditService) {
         this.db = db;
@@ -337,6 +339,68 @@ let CompanyAccessService = class CompanyAccessService {
         })))
             .onConflictDoNothing()
             .execute();
+    }
+    async seedNewSystemRolesForAllCompanies() {
+        const allCompanies = await this.db.select().from(schema_1.companies);
+        for (const company of allCompanies) {
+            await this.seedMissingSystemRolesForCompany(company.id);
+        }
+        return { success: true };
+    }
+    async seedMissingSystemRolesForCompany(companyId) {
+        const systemRolesToEnsure = [
+            {
+                name: 'warehouse_staff',
+                displayName: 'Warehouse Staff',
+                permissions: warehouse_staff_permissions_1.WarehouseStaffPermissions,
+            },
+            {
+                name: 'inventory_manager',
+                displayName: 'Inventory Manager',
+                permissions: inventory_manager_permission_1.InventoryManagerPermissions,
+            },
+        ];
+        for (const roleDef of systemRolesToEnsure) {
+            await this.ensureSystemRoleWithPermissions(companyId, roleDef);
+        }
+    }
+    async ensureSystemRoleWithPermissions(companyId, roleDef) {
+        await this.db.transaction(async (tx) => {
+            let role = await tx.query.companyRoles.findFirst({
+                where: (companyRoles, { and, eq }) => and(eq(companyRoles.companyId, companyId), eq(companyRoles.name, roleDef.name)),
+            });
+            if (!role) {
+                const inserted = await tx
+                    .insert(schema_1.companyRoles)
+                    .values({
+                    companyId,
+                    name: roleDef.name,
+                    displayName: roleDef.displayName,
+                    isSystem: true,
+                })
+                    .returning();
+                role = inserted[0];
+            }
+            const permissionRows = await tx
+                .select()
+                .from(schema_1.permissions)
+                .where((0, drizzle_orm_1.inArray)(schema_1.permissions.key, roleDef.permissions));
+            const permissionIds = permissionRows.map((p) => p.id);
+            const existingMappings = await tx
+                .select()
+                .from(schema_1.companyRolePermissions)
+                .where((0, drizzle_orm_1.eq)(schema_1.companyRolePermissions.companyRoleId, role.id));
+            const existingPermissionIds = new Set(existingMappings.map((rp) => rp.permissionId));
+            const missingMappings = permissionIds
+                .filter((permissionId) => !existingPermissionIds.has(permissionId))
+                .map((permissionId) => ({
+                companyRoleId: role.id,
+                permissionId,
+            }));
+            if (missingMappings.length > 0) {
+                await tx.insert(schema_1.companyRolePermissions).values(missingMappings);
+            }
+        });
     }
 };
 exports.CompanyAccessService = CompanyAccessService;

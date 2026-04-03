@@ -42,8 +42,8 @@ export class AuthUsersController {
 
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(ResponseInterceptor)
-  @Post('invite/:token')
-  async acceptInvite(@Param('token') token: string) {
+  @Post('invite-user')
+  async acceptInvite(@Body('token') token: string) {
     return this.invitations.verifyInvite(token);
   }
 

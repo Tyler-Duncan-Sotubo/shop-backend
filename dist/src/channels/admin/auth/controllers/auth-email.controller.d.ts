@@ -14,7 +14,7 @@ export declare class AuthEmailController {
     resetPassword(dto: PasswordResetDto, ip: string): Promise<{
         message: string;
     }>;
-    resetInvitationPassword(token: string, dto: PasswordResetDto): Promise<{
+    resetInvitationPassword(dto: PasswordResetDto): Promise<{
         message: string;
     }>;
     resendCode(token: string): Promise<string>;

@@ -128,4 +128,8 @@ export class PermissionsService {
       permissionIds,
     });
   }
+
+  seedNewSystemRolesForAllCompanies() {
+    return this.access.seedNewSystemRolesForAllCompanies();
+  }
 }

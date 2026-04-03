@@ -24,21 +24,21 @@ export declare class PermissionsService {
         displayName: string;
         isSystem?: boolean;
     }): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         displayName: string | null;
         description: string | null;
         isSystem: boolean;
     }>;
     createDefaultRoles(companyId: string): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         displayName: string | null;
         description: string | null;
         isSystem: boolean;
@@ -59,11 +59,11 @@ export declare class PermissionsService {
         updatedAt: Date;
     }>;
     getRoleById(roleId: string): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         displayName: string | null;
         description: string | null;
         isSystem: boolean;
@@ -105,13 +105,16 @@ export declare class PermissionsService {
         displayName: string;
         permissionIds: string[];
     }): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         displayName: string | null;
         description: string | null;
         isSystem: boolean;
+    }>;
+    seedNewSystemRolesForAllCompanies(): Promise<{
+        success: boolean;
     }>;
 }

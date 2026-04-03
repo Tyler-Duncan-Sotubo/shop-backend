@@ -2,7 +2,7 @@ import { db } from 'src/infrastructure/drizzle/types/drizzle';
 export declare class SearchService {
     private readonly db;
     constructor(db: db);
-    globalSearch(companyId: string, q: string): Promise<{
+    globalSearch(companyId: string, q: string, type?: 'all' | 'orders' | 'invoices' | 'quotes' | 'customers'): Promise<{
         orders: ({
             id: any;
             number: any;
@@ -25,6 +25,13 @@ export declare class SearchService {
             number: string | null;
             customer: string | null;
             status: string;
+        }[];
+        customers: {
+            id: string;
+            number: string;
+            customer: string | null;
+            status: string;
+            email: string | null;
         }[];
     }>;
 }

@@ -22,12 +22,12 @@ export declare class ShippingController extends BaseController {
         updatedAt: Date;
     }[]>;
     createZone(user: User, dto: CreateZoneDto, ip: string): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         description: string | null;
         storeId: string;
         metadata: Record<string, any> | null;
@@ -56,9 +56,9 @@ export declare class ShippingController extends BaseController {
         zoneName: string;
     }[]>;
     upsertZoneLocation(user: User, dto: UpsertZoneLocationDto, ip: string): Promise<{
+        companyId: string;
         id: string;
         createdAt: Date;
-        companyId: string;
         zoneId: string;
         countryCode: string;
         regionCode: string | null;
@@ -89,12 +89,12 @@ export declare class ShippingController extends BaseController {
         updatedAt: Date;
     }[]>;
     createCarrier(user: User, dto: CreateCarrierDto, ip: string): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         providerKey: string;
         settings: Record<string, any> | null;
     }>;
@@ -116,20 +116,20 @@ export declare class ShippingController extends BaseController {
         zoneId: string;
         name: string;
         flatAmount: string | null;
-        calc: "flat" | "weight";
+        calc: "weight" | "flat";
         isDefault: boolean;
         isActive: boolean;
         priority: number;
-        type: "flat" | "weight" | "price";
+        type: "weight" | "flat" | "price";
     }[]>;
     createRate(user: User, dto: CreateRateDto, ip: string): Promise<{
-        id: string;
+        companyId: string;
         name: string;
+        id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
-        type: "flat" | "weight" | "price";
+        type: "weight" | "flat" | "price";
         isDefault: boolean;
         metadata: Record<string, any> | null;
         priority: number;
@@ -144,7 +144,7 @@ export declare class ShippingController extends BaseController {
         carrierServiceName: string | null;
         minDeliveryDays: number | null;
         maxDeliveryDays: number | null;
-        calc: "flat" | "weight";
+        calc: "weight" | "flat";
     }>;
     updateRate(user: User, rateId: string, dto: UpdateRateDto, ip: string): Promise<{
         id: string;
@@ -153,7 +153,7 @@ export declare class ShippingController extends BaseController {
         zoneId: string;
         name: string;
         isActive: boolean;
-        type: "flat" | "weight" | "price";
+        type: "weight" | "flat" | "price";
         flatAmount: string | null;
         minOrderSubtotal: string | null;
         maxOrderSubtotal: string | null;
@@ -165,7 +165,7 @@ export declare class ShippingController extends BaseController {
         minDeliveryDays: number | null;
         maxDeliveryDays: number | null;
         priority: number;
-        calc: "flat" | "weight";
+        calc: "weight" | "flat";
         metadata: Record<string, any> | null;
         createdAt: Date;
         updatedAt: Date;
@@ -186,9 +186,9 @@ export declare class ShippingController extends BaseController {
         createdAt: Date;
     }[]>;
     createTier(user: User, dto: UpsertRateTierDto, ip: string): Promise<{
+        companyId: string;
         id: string;
         createdAt: Date;
-        companyId: string;
         priority: number;
         minWeightGrams: number | null;
         maxWeightGrams: number | null;
@@ -218,12 +218,12 @@ export declare class ShippingController extends BaseController {
         amount: string;
     } | {
         zone: {
-            id: string;
+            companyId: string;
             name: string;
+            id: string;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            companyId: string;
             description: string | null;
             storeId: string;
             metadata: Record<string, any> | null;

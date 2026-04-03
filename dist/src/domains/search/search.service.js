@@ -21,44 +21,87 @@ let SearchService = class SearchService {
     constructor(db) {
         this.db = db;
     }
-    async globalSearch(companyId, q) {
+    async globalSearch(companyId, q, type = 'all') {
         const pattern = `%${q}%`;
-        const [orderRows, invoiceRows, quoteRows] = await Promise.all([
-            this.db
-                .select({
-                id: schema_1.orders.id,
-                number: schema_1.orders.orderNumber,
-                customer: (0, drizzle_orm_1.sql) `null`.as('customer'),
-                status: schema_1.orders.status,
-            })
-                .from(schema_1.orders)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.ilike)(schema_1.orders.orderNumber, pattern)))
-                .limit(5),
-            this.db
-                .select({
-                id: schema_1.invoices.id,
-                number: schema_1.invoices.number,
-                customer: (0, drizzle_orm_1.sql) `${schema_1.invoices.customerSnapshot}->>'name'`.as('customer'),
-                status: schema_1.invoices.status,
-            })
-                .from(schema_1.invoices)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.invoices.number, pattern), (0, drizzle_orm_1.sql) `${schema_1.invoices.customerSnapshot}->>'name' ilike ${pattern}`, (0, drizzle_orm_1.sql) `${schema_1.invoices.customerSnapshot}->>'email' ilike ${pattern}`)))
-                .limit(5),
-            this.db
-                .select({
-                id: schema_1.quoteRequests.id,
-                number: schema_1.quoteRequests.quoteNumber,
-                customer: schema_1.quoteRequests.customerName,
-                status: schema_1.quoteRequests.status,
-            })
-                .from(schema_1.quoteRequests)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.quoteRequests.quoteNumber, pattern), (0, drizzle_orm_1.ilike)(schema_1.quoteRequests.customerName, pattern), (0, drizzle_orm_1.ilike)(schema_1.quoteRequests.customerEmail, pattern))))
-                .limit(5),
-        ]);
+        const ordersQuery = this.db
+            .select({
+            id: schema_1.orders.id,
+            number: schema_1.orders.orderNumber,
+            customer: (0, drizzle_orm_1.sql) `null`.as('customer'),
+            status: schema_1.orders.status,
+        })
+            .from(schema_1.orders)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.ilike)(schema_1.orders.orderNumber, pattern)))
+            .limit(5);
+        const invoicesQuery = this.db
+            .select({
+            id: schema_1.invoices.id,
+            number: schema_1.invoices.number,
+            customer: (0, drizzle_orm_1.sql) `${schema_1.invoices.customerSnapshot}->>'name'`.as('customer'),
+            status: schema_1.invoices.status,
+        })
+            .from(schema_1.invoices)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.invoices.number, pattern), (0, drizzle_orm_1.sql) `${schema_1.invoices.customerSnapshot}->>'name' ilike ${pattern}`, (0, drizzle_orm_1.sql) `${schema_1.invoices.customerSnapshot}->>'email' ilike ${pattern}`)))
+            .limit(5);
+        const quotesQuery = this.db
+            .select({
+            id: schema_1.quoteRequests.id,
+            number: schema_1.quoteRequests.quoteNumber,
+            customer: schema_1.quoteRequests.customerName,
+            status: schema_1.quoteRequests.status,
+        })
+            .from(schema_1.quoteRequests)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.quoteRequests.quoteNumber, pattern), (0, drizzle_orm_1.ilike)(schema_1.quoteRequests.customerName, pattern), (0, drizzle_orm_1.ilike)(schema_1.quoteRequests.customerEmail, pattern))))
+            .limit(5);
+        const customersQuery = this.db
+            .select({
+            id: schema_1.customers.id,
+            number: (0, drizzle_orm_1.sql) `null`.as('number'),
+            customer: schema_1.customers.firstName,
+            status: (0, drizzle_orm_1.sql) `null`.as('status'),
+            email: schema_1.customers.billingEmail,
+        })
+            .from(schema_1.customers)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customers.companyId, companyId), (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.customers.firstName, pattern), (0, drizzle_orm_1.ilike)(schema_1.customers.billingEmail, pattern))))
+            .limit(5);
+        if (type === 'orders') {
+            return {
+                orders: await ordersQuery,
+                invoices: [],
+                quotes: [],
+                customers: [],
+            };
+        }
+        if (type === 'invoices') {
+            return {
+                orders: [],
+                invoices: await invoicesQuery,
+                quotes: [],
+                customers: [],
+            };
+        }
+        if (type === 'quotes') {
+            return {
+                orders: [],
+                invoices: [],
+                quotes: await quotesQuery,
+                customers: [],
+            };
+        }
+        if (type === 'customers') {
+            return {
+                orders: [],
+                invoices: [],
+                quotes: [],
+                customers: await customersQuery,
+            };
+        }
+        const [orderRows, invoiceRows, quoteRows, customerRows] = await Promise.all([ordersQuery, invoicesQuery, quotesQuery, customersQuery]);
         return {
             orders: orderRows,
             invoices: invoiceRows,
             quotes: quoteRows,
+            customers: customerRows,
         };
     }
 };

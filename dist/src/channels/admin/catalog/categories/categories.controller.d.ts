@@ -58,8 +58,8 @@ export declare class CategoriesController extends BaseController {
         createdAt: Date;
     }[]>;
     assignCategoriesToProduct(user: User, productId: string, dto: AssignCategoriesDto, ip: string): Promise<{
-        createdAt: Date;
         companyId: string;
+        createdAt: Date;
         productId: string;
         position: number;
         categoryId: string;

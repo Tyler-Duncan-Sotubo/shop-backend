@@ -77,6 +77,9 @@ let PermissionsService = class PermissionsService {
             permissionIds,
         });
     }
+    seedNewSystemRolesForAllCompanies() {
+        return this.access.seedNewSystemRolesForAllCompanies();
+    }
 };
 exports.PermissionsService = PermissionsService;
 exports.PermissionsService = PermissionsService = __decorate([

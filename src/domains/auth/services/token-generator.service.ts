@@ -26,7 +26,10 @@ export class TokenGeneratorService {
     const accessSecret = this.mustGetString('JWT_SECRET');
     const refreshSecret = this.mustGetString('JWT_REFRESH_SECRET');
 
-    const accessExpSeconds = this.getNumberOrDefault('JWT_EXPIRATION', 1200);
+    const accessExpSeconds = this.getNumberOrDefault(
+      'JWT_EXPIRATION',
+      4 * 60 * 60,
+    ); // default 4 hours
     const refreshExpSeconds = this.getNumberOrDefault(
       'JWT_REFRESH_EXPIRATION',
       60 * 60 * 24 * 7,

@@ -6,12 +6,12 @@ export declare class VariantOptionsController extends BaseController {
     private readonly optionsService;
     constructor(optionsService: OptionsService);
     getOptionsForProduct(user: User, productId: string): Promise<{
-        companyId: string;
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        companyId: string;
         productId: string;
         position: number;
         values: {
@@ -19,12 +19,12 @@ export declare class VariantOptionsController extends BaseController {
         }[];
     }[]>;
     createOption(user: User, productId: string, dto: CreateOptionDto, ip: string): Promise<{
-        companyId: string;
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        companyId: string;
         productId: string;
         position: number;
     }>;
@@ -43,11 +43,11 @@ export declare class VariantOptionsController extends BaseController {
         disabledVariantsForPosition: number;
     }>;
     createOptionValue(user: User, optionId: string, dto: CreateOptionValueDto, ip: string): Promise<{
-        companyId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        companyId: string;
         value: string;
         position: number;
         productOptionId: string;

@@ -34,7 +34,7 @@ export class InvitationsService {
    * Invite a user to a company.
    * - Uses an existing role (preset or custom) by roleId.
    * - Email shows role.displayName (fallback to role.name).
-   * - Token contains email + companyId + companyRoleId.
+   * - Token contains email + name + companyId + companyRoleId.
    */
   async inviteUser(dto: InviteUserInput, companyId: string) {
     const [company] = await this.db
@@ -104,10 +104,11 @@ export class InvitationsService {
     }
 
     // -----------------------------
-    // Create invite token
+    // Create invite token (includes name)
     // -----------------------------
     const token = this.jwtService.sign({
       email: dto.email.toLowerCase(),
+      name: dto.name,
       companyId,
       companyRoleId: roleId,
     });
@@ -136,7 +137,8 @@ export class InvitationsService {
   /**
    * Verify invite token and attach user to company + role.
    * - Validates role belongs to company.
-   * - Creates user if not exists, else updates role for existing user in company.
+   * - Splits name into firstName and lastName.
+   * - Creates user if not exists, else updates role + name for existing user.
    */
   async verifyInvite(token: string) {
     let decoded: any;
@@ -153,6 +155,15 @@ export class InvitationsService {
     if (!email || !companyId || !companyRoleId) {
       throw new BadRequestException('Invalid invite token payload.');
     }
+
+    // -----------------------------
+    // Split name into firstName / lastName
+    // -----------------------------
+    const nameParts = String(decoded?.name ?? '')
+      .trim()
+      .split(/\s+/);
+    const firstName = nameParts[0] ?? '';
+    const lastName = nameParts.slice(1).join(' ') ?? '';
 
     // Validate role exists AND belongs to this company
     const [role] = await this.db
@@ -188,12 +199,14 @@ export class InvitationsService {
           password: defaultPassword,
           companyRoleId,
           companyId,
+          firstName,
+          lastName,
         })
         .execute();
     } else {
       await this.db
         .update(users)
-        .set({ companyRoleId })
+        .set({ companyRoleId, firstName, lastName })
         .where(
           and(eq(users.id, existingUser.id), eq(users.companyId, companyId)),
         )

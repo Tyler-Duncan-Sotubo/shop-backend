@@ -18,9 +18,8 @@ export declare class SetupController {
             isActive: boolean;
         };
         store: {
-            companyId: string;
-            name: string;
             id: string;
+            name: string;
             slug: string;
             defaultCurrency: string;
             defaultLocale: string;
@@ -28,22 +27,23 @@ export declare class SetupController {
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
+            companyId: string;
             imageUrl: string | null;
             imageAltText: string | null;
             storeEmail: string | null;
             supportedCurrencies: string[] | null;
         };
         warehouse: {
-            companyId: string;
-            name: string;
             id: string;
+            name: string;
             country: string | null;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             deletedAt: Date | null;
-            type: string;
+            companyId: string;
             storeId: string;
+            type: string;
             city: string | null;
             postalCode: string | null;
             code: string | null;
@@ -62,12 +62,12 @@ export declare class SetupController {
             isPrimary: boolean;
         }[];
         draftOverride: {
-            companyId: string;
+            status: "draft" | "published";
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            companyId: string;
             storeId: string;
-            status: "draft" | "published";
             publishedAt: Date | null;
             theme: unknown;
             header: unknown;

@@ -17,9 +17,9 @@ export declare class LinkedProductsController extends BaseController {
         on_sale: boolean;
     } | undefined)[]>;
     setLinkedProducts(user: User, productId: string, linkType: ProductLinkType, dto: SetLinkedProductsDto, ip: string): Promise<{
-        companyId: string;
         id: string;
         createdAt: Date;
+        companyId: string;
         productId: string;
         position: number;
         linkedProductId: string;

@@ -6,11 +6,11 @@ export declare class ApiKeysController extends BaseController {
     private readonly apiKeysService;
     constructor(apiKeysService: ApiKeysService);
     listCompanyKeys(user: User, storeId?: string): Promise<{
-        companyId: string;
-        name: string;
         id: string;
+        name: string;
         isActive: boolean;
         createdAt: Date;
+        companyId: string;
         expiresAt: Date | null;
         lastUsedAt: Date | null;
         storeId: string | null;

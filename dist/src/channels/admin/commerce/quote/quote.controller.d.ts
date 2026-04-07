@@ -68,14 +68,14 @@ export declare class QuoteController extends BaseController {
             createdAt: Date;
             deletedAt: Date | null;
         }[];
-        companyId: string;
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        companyId: string;
         expiresAt: Date | null;
         storeId: string;
-        status: string;
         currency: string | null;
         meta: Record<string, unknown> | null;
         quoteNumber: string | null;
@@ -105,14 +105,14 @@ export declare class QuoteController extends BaseController {
         syncError: string | null;
     }>;
     createQuote(user: User, dto: CreateQuoteDto, ip: string): Promise<{
-        companyId: string;
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
+        companyId: string;
         expiresAt: Date | null;
         storeId: string;
-        status: string;
         currency: string | null;
         meta: Record<string, unknown> | null;
         quoteNumber: string | null;

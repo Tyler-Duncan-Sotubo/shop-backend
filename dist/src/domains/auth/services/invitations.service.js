@@ -68,6 +68,7 @@ let InvitationsService = class InvitationsService {
         }
         const token = this.jwtService.sign({
             email: dto.email.toLowerCase(),
+            name: dto.name,
             companyId,
             companyRoleId: roleId,
         });
@@ -95,6 +96,11 @@ let InvitationsService = class InvitationsService {
         if (!email || !companyId || !companyRoleId) {
             throw new common_1.BadRequestException('Invalid invite token payload.');
         }
+        const nameParts = String(decoded?.name ?? '')
+            .trim()
+            .split(/\s+/);
+        const firstName = nameParts[0] ?? '';
+        const lastName = nameParts.slice(1).join(' ') ?? '';
         const [role] = await this.db
             .select({ id: schema_1.companyRoles.id })
             .from(schema_1.companyRoles)
@@ -118,13 +124,15 @@ let InvitationsService = class InvitationsService {
                 password: defaultPassword,
                 companyRoleId,
                 companyId,
+                firstName,
+                lastName,
             })
                 .execute();
         }
         else {
             await this.db
                 .update(schema_1.users)
-                .set({ companyRoleId })
+                .set({ companyRoleId, firstName, lastName })
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.id, existingUser.id), (0, drizzle_orm_1.eq)(schema_1.users.companyId, companyId)))
                 .execute();
         }

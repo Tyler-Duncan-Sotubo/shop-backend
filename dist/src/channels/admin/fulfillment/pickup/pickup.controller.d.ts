@@ -19,12 +19,12 @@ export declare class PickupController extends BaseController {
         instructions: string | null;
     }[]>;
     create(user: User, dto: CreatePickupLocationDto, ip: string): Promise<{
-        companyId: string;
-        name: string;
         id: string;
+        name: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
         storeId: string;
         state: string;
         inventoryLocationId: string;

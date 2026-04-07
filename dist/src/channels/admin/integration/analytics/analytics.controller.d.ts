@@ -32,10 +32,10 @@ export declare class AnalyticsController extends BaseController {
         updatedAt: Date;
     }>;
     upsertAdmin(user: User, storeId: string, dto: CreateAnalyticsDto, ip: string): Promise<{
-        companyId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
         storeId: string;
         enabled: boolean;
         provider: string;
@@ -68,10 +68,10 @@ export declare class AnalyticsController extends BaseController {
         updatedAt: Date;
     }>;
     removeAdmin(user: User, storeId: string, provider: string, ip: string): Promise<{
-        companyId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
         storeId: string;
         enabled: boolean;
         provider: string;

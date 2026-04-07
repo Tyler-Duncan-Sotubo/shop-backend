@@ -6,12 +6,14 @@ import { InventoryStockService } from 'src/domains/commerce/inventory/services/i
 import { InventoryTransfersService } from 'src/domains/commerce/inventory/services/inventory-transfers.service';
 import { InventoryLedgerService } from 'src/domains/commerce/inventory/services/inventory-ledger.service';
 import { ListInventoryMovementsDto } from './dto/list-invertory-movements.dto';
+import { InventoryReportService } from 'src/domains/commerce/inventory/reports/inventory-report.service';
 export declare class InventoryController extends BaseController {
     private readonly locationsService;
     private readonly stockService;
     private readonly transfersService;
     private readonly svc;
-    constructor(locationsService: InventoryLocationsService, stockService: InventoryStockService, transfersService: InventoryTransfersService, svc: InventoryLedgerService);
+    private readonly inventoryReportService;
+    constructor(locationsService: InventoryLocationsService, stockService: InventoryStockService, transfersService: InventoryTransfersService, svc: InventoryLedgerService, inventoryReportService: InventoryReportService);
     getLocations(user: User, storeId: string): Promise<{
         id: string;
         storeId: string;
@@ -36,14 +38,14 @@ export declare class InventoryController extends BaseController {
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
-        type: string;
-        city: string | null;
-        postalCode: string | null;
         code: string | null;
+        type: string;
         isDefault: boolean;
         addressLine1: string | null;
         addressLine2: string | null;
+        city: string | null;
         region: string | null;
+        postalCode: string | null;
     }>;
     updateLocation(user: User, locationId: string, dto: UpdateLocationDto, ip: string): Promise<{
         id: string;
@@ -94,8 +96,8 @@ export declare class InventoryController extends BaseController {
         isActive: boolean;
         createdAt: Date;
         storeId: string;
-        isPrimary: boolean;
         locationId: string;
+        isPrimary: boolean;
     }[]>;
     setInventoryLevel(user: User, dto: SetInventoryLevelDto, ip: string): Promise<any>;
     adjustInventoryLevel(user: User, dto: AdjustInventoryLevelDto, ip: string): Promise<{
@@ -177,15 +179,15 @@ export declare class InventoryController extends BaseController {
         items: {
             id: string;
             createdAt: Date;
-            transferId: string;
             productVariantId: string;
+            transferId: string;
             quantity: number;
         }[];
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;
@@ -196,15 +198,15 @@ export declare class InventoryController extends BaseController {
         items: {
             id: string;
             createdAt: Date;
-            transferId: string;
             productVariantId: string;
+            transferId: string;
             quantity: number;
         }[];
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;
@@ -259,5 +261,25 @@ export declare class InventoryController extends BaseController {
         count: number;
         limit: number;
         offset: number;
+    }>;
+    exportStockLevels(user: User, storeId?: string, locationId?: string, status?: 'active' | 'draft' | 'archived', lowStockOnly?: string, format?: 'csv' | 'excel'): Promise<{
+        key: string;
+        url: string;
+    }>;
+    exportMovements(user: User, storeId?: string, locationId?: string, types?: string, from?: string, to?: string, format?: 'csv' | 'excel'): Promise<{
+        key: string;
+        url: string;
+    }>;
+    exportLowStockSummary(user: User, storeId?: string, format?: 'csv' | 'excel'): Promise<{
+        key: string;
+        url: string;
+    }>;
+    exportProductStockLevels(user: User, productId: string, storeId?: string, locationId?: string, status?: 'active' | 'draft' | 'archived', lowStockOnly?: string, format?: 'csv' | 'excel'): Promise<{
+        key: string;
+        url: string;
+    }>;
+    exportProductMovements(user: User, productId: string, storeId?: string, locationId?: string, types?: string, from?: string, to?: string, format?: 'csv' | 'excel'): Promise<{
+        key: string;
+        url: string;
     }>;
 }

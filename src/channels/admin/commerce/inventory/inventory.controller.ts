@@ -30,6 +30,7 @@ import { InventoryLedgerService } from 'src/domains/commerce/inventory/services/
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ListInventoryMovementsDto } from './dto/list-invertory-movements.dto';
+import { InventoryReportService } from 'src/domains/commerce/inventory/reports/inventory-report.service';
 
 @Controller('inventory')
 @UseGuards(JwtAuthGuard)
@@ -39,6 +40,7 @@ export class InventoryController extends BaseController {
     private readonly stockService: InventoryStockService,
     private readonly transfersService: InventoryTransfersService,
     private readonly svc: InventoryLedgerService,
+    private readonly inventoryReportService: InventoryReportService,
   ) {
     super();
   }
@@ -281,5 +283,114 @@ export class InventoryController extends BaseController {
       : undefined;
 
     return this.svc.list(user.companyId, { ...q, types });
+  }
+
+  // ----------------- Reports -----------------
+  @Get('reports/stock-levels')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['inventory.read'])
+  exportStockLevels(
+    @CurrentUser() user: User,
+    @Query('storeId') storeId?: string,
+    @Query('locationId') locationId?: string,
+    @Query('status') status?: 'active' | 'draft' | 'archived',
+    @Query('lowStockOnly') lowStockOnly?: string,
+    @Query('format') format?: 'csv' | 'excel',
+  ) {
+    return this.inventoryReportService.exportStockLevels(user.companyId, {
+      storeId,
+      locationId,
+      status,
+      lowStockOnly: lowStockOnly === 'true',
+      format,
+    });
+  }
+
+  @Get('reports/movements')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['inventory.read'])
+  exportMovements(
+    @CurrentUser() user: User,
+    @Query('storeId') storeId?: string,
+    @Query('locationId') locationId?: string,
+    @Query('types') types?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('format') format?: 'csv' | 'excel',
+  ) {
+    return this.inventoryReportService.exportMovements(user.companyId, {
+      storeId,
+      locationId,
+      types: types ? types.split(',') : undefined,
+      from,
+      to,
+      format,
+    });
+  }
+
+  @Get('reports/low-stock')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['inventory.read'])
+  exportLowStockSummary(
+    @CurrentUser() user: User,
+    @Query('storeId') storeId?: string,
+    @Query('format') format?: 'csv' | 'excel',
+  ) {
+    return this.inventoryReportService.exportLowStockSummary(user.companyId, {
+      storeId,
+      format,
+    });
+  }
+
+  @Get('reports/products/:productId/stock-levels')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['inventory.read'])
+  exportProductStockLevels(
+    @CurrentUser() user: User,
+    @Param('productId') productId: string,
+    @Query('storeId') storeId?: string,
+    @Query('locationId') locationId?: string,
+    @Query('status') status?: 'active' | 'draft' | 'archived',
+    @Query('lowStockOnly') lowStockOnly?: string,
+    @Query('format') format?: 'csv' | 'excel',
+  ) {
+    return this.inventoryReportService.exportProductStockLevels(
+      user.companyId,
+      productId,
+      {
+        storeId,
+        locationId,
+        status,
+        lowStockOnly: lowStockOnly === 'true',
+        format,
+      },
+    );
+  }
+
+  @Get('reports/products/:productId/movements')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['inventory.read'])
+  exportProductMovements(
+    @CurrentUser() user: User,
+    @Param('productId') productId: string,
+    @Query('storeId') storeId?: string,
+    @Query('locationId') locationId?: string,
+    @Query('types') types?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('format') format?: 'csv' | 'excel',
+  ) {
+    return this.inventoryReportService.exportProductMovements(
+      user.companyId,
+      productId,
+      {
+        storeId,
+        locationId,
+        types: types ? types.split(',') : undefined,
+        from,
+        to,
+        format,
+      },
+    );
   }
 }

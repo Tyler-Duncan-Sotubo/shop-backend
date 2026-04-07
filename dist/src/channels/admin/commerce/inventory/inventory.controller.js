@@ -23,13 +23,15 @@ const inventory_ledger_service_1 = require("../../../../domains/commerce/invento
 const current_user_decorator_1 = require("../../common/decorator/current-user.decorator");
 const jwt_auth_guard_1 = require("../../common/guards/jwt-auth.guard");
 const list_invertory_movements_dto_1 = require("./dto/list-invertory-movements.dto");
+const inventory_report_service_1 = require("../../../../domains/commerce/inventory/reports/inventory-report.service");
 let InventoryController = class InventoryController extends base_controller_1.BaseController {
-    constructor(locationsService, stockService, transfersService, svc) {
+    constructor(locationsService, stockService, transfersService, svc, inventoryReportService) {
         super();
         this.locationsService = locationsService;
         this.stockService = stockService;
         this.transfersService = transfersService;
         this.svc = svc;
+        this.inventoryReportService = inventoryReportService;
     }
     getLocations(user, storeId) {
         return this.locationsService.getLocationsForStore(user.companyId, storeId);
@@ -93,6 +95,50 @@ let InventoryController = class InventoryController extends base_controller_1.Ba
                 : [rawTypes]
             : undefined;
         return this.svc.list(user.companyId, { ...q, types });
+    }
+    exportStockLevels(user, storeId, locationId, status, lowStockOnly, format) {
+        return this.inventoryReportService.exportStockLevels(user.companyId, {
+            storeId,
+            locationId,
+            status,
+            lowStockOnly: lowStockOnly === 'true',
+            format,
+        });
+    }
+    exportMovements(user, storeId, locationId, types, from, to, format) {
+        return this.inventoryReportService.exportMovements(user.companyId, {
+            storeId,
+            locationId,
+            types: types ? types.split(',') : undefined,
+            from,
+            to,
+            format,
+        });
+    }
+    exportLowStockSummary(user, storeId, format) {
+        return this.inventoryReportService.exportLowStockSummary(user.companyId, {
+            storeId,
+            format,
+        });
+    }
+    exportProductStockLevels(user, productId, storeId, locationId, status, lowStockOnly, format) {
+        return this.inventoryReportService.exportProductStockLevels(user.companyId, productId, {
+            storeId,
+            locationId,
+            status,
+            lowStockOnly: lowStockOnly === 'true',
+            format,
+        });
+    }
+    exportProductMovements(user, productId, storeId, locationId, types, from, to, format) {
+        return this.inventoryReportService.exportProductMovements(user.companyId, productId, {
+            storeId,
+            locationId,
+            types: types ? types.split(',') : undefined,
+            from,
+            to,
+            format,
+        });
     }
 };
 exports.InventoryController = InventoryController;
@@ -272,12 +318,84 @@ __decorate([
     __metadata("design:paramtypes", [Object, list_invertory_movements_dto_1.ListInventoryMovementsDto, Object]),
     __metadata("design:returntype", void 0)
 ], InventoryController.prototype, "list", null);
+__decorate([
+    (0, common_1.Get)('reports/stock-levels'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['inventory.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)('storeId')),
+    __param(2, (0, common_1.Query)('locationId')),
+    __param(3, (0, common_1.Query)('status')),
+    __param(4, (0, common_1.Query)('lowStockOnly')),
+    __param(5, (0, common_1.Query)('format')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "exportStockLevels", null);
+__decorate([
+    (0, common_1.Get)('reports/movements'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['inventory.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)('storeId')),
+    __param(2, (0, common_1.Query)('locationId')),
+    __param(3, (0, common_1.Query)('types')),
+    __param(4, (0, common_1.Query)('from')),
+    __param(5, (0, common_1.Query)('to')),
+    __param(6, (0, common_1.Query)('format')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "exportMovements", null);
+__decorate([
+    (0, common_1.Get)('reports/low-stock'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['inventory.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)('storeId')),
+    __param(2, (0, common_1.Query)('format')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "exportLowStockSummary", null);
+__decorate([
+    (0, common_1.Get)('reports/products/:productId/stock-levels'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['inventory.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('productId')),
+    __param(2, (0, common_1.Query)('storeId')),
+    __param(3, (0, common_1.Query)('locationId')),
+    __param(4, (0, common_1.Query)('status')),
+    __param(5, (0, common_1.Query)('lowStockOnly')),
+    __param(6, (0, common_1.Query)('format')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "exportProductStockLevels", null);
+__decorate([
+    (0, common_1.Get)('reports/products/:productId/movements'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['inventory.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('productId')),
+    __param(2, (0, common_1.Query)('storeId')),
+    __param(3, (0, common_1.Query)('locationId')),
+    __param(4, (0, common_1.Query)('types')),
+    __param(5, (0, common_1.Query)('from')),
+    __param(6, (0, common_1.Query)('to')),
+    __param(7, (0, common_1.Query)('format')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String, String]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "exportProductMovements", null);
 exports.InventoryController = InventoryController = __decorate([
     (0, common_1.Controller)('inventory'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [inventory_locations_service_1.InventoryLocationsService,
         inventory_stock_service_1.InventoryStockService,
         inventory_transfers_service_1.InventoryTransfersService,
-        inventory_ledger_service_1.InventoryLedgerService])
+        inventory_ledger_service_1.InventoryLedgerService,
+        inventory_report_service_1.InventoryReportService])
 ], InventoryController);
 //# sourceMappingURL=inventory.controller.js.map

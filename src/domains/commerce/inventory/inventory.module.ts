@@ -8,6 +8,7 @@ import { InventoryStockService } from './services/inventory-stock.service';
 import { InventoryTransfersService } from './services/inventory-transfers.service';
 import { InventoryLedgerService } from './services/inventory-ledger.service';
 import { InventoryAvailabilityService } from './services/inventory-availability.service';
+import { InventoryReportService } from './reports/inventory-report.service';
 
 @Module({
   imports: [DrizzleModule, CacheModule, AuditModule],
@@ -17,6 +18,7 @@ import { InventoryAvailabilityService } from './services/inventory-availability.
     InventoryTransfersService,
     InventoryLedgerService,
     InventoryAvailabilityService,
+    InventoryReportService,
   ],
   exports: [
     InventoryStockService,
@@ -24,6 +26,7 @@ import { InventoryAvailabilityService } from './services/inventory-availability.
     InventoryTransfersService,
     InventoryLedgerService,
     InventoryAvailabilityService,
+    InventoryReportService,
   ], // for checkout / orders later
 })
 export class InventoryModule {}

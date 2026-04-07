@@ -16,6 +16,7 @@ const inventory_stock_service_1 = require("./services/inventory-stock.service");
 const inventory_transfers_service_1 = require("./services/inventory-transfers.service");
 const inventory_ledger_service_1 = require("./services/inventory-ledger.service");
 const inventory_availability_service_1 = require("./services/inventory-availability.service");
+const inventory_report_service_1 = require("./reports/inventory-report.service");
 let InventoryModule = class InventoryModule {
 };
 exports.InventoryModule = InventoryModule;
@@ -28,6 +29,7 @@ exports.InventoryModule = InventoryModule = __decorate([
             inventory_transfers_service_1.InventoryTransfersService,
             inventory_ledger_service_1.InventoryLedgerService,
             inventory_availability_service_1.InventoryAvailabilityService,
+            inventory_report_service_1.InventoryReportService,
         ],
         exports: [
             inventory_stock_service_1.InventoryStockService,
@@ -35,6 +37,7 @@ exports.InventoryModule = InventoryModule = __decorate([
             inventory_transfers_service_1.InventoryTransfersService,
             inventory_ledger_service_1.InventoryLedgerService,
             inventory_availability_service_1.InventoryAvailabilityService,
+            inventory_report_service_1.InventoryReportService,
         ],
     })
 ], InventoryModule);

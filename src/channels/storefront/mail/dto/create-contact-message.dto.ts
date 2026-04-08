@@ -19,7 +19,7 @@ export class CreateContactMessageDto {
 
   @IsEmail()
   @MaxLength(255)
-  email: string;
+  email!: string;
 
   @IsString()
   @MaxLength(255)
@@ -37,5 +37,5 @@ export class CreateContactMessageDto {
 
   @IsString()
   @MinLength(2)
-  message: string;
+  message!: string;
 }

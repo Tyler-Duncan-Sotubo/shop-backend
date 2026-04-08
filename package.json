@@ -48,6 +48,7 @@
     "@nestjs/websockets": "^11.1.2",
     "@sendgrid/mail": "^8.1.4",
     "@webundsoehne/nest-fastify-file-upload": "^2.3.1",
+    "akismet-api": "^6.0.0",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.5",
     "axios": "^1.8.1",

@@ -6,6 +6,7 @@ import { MailService } from 'src/domains/mail/mail.service';
 import { StorefrontGuard } from '../common/guard/storefront.guard';
 import { CurrentCompanyId } from '../common/decorators/current-company-id.decorator';
 import { CurrentStoreId } from '../common/decorators/current-store.decorator';
+import { UserAgent } from '../common/decorators/user-agent';
 
 @Controller('mail')
 export class MailController {
@@ -38,6 +39,7 @@ export class MailController {
     @CurrentStoreId() storeId: string,
     @Body() dto: CreateContactMessageDto,
     @Ip() ip: string,
+    @UserAgent() userAgent: string,
   ) {
     const payload = {
       ...dto,
@@ -46,6 +48,7 @@ export class MailController {
 
     return this.mailService.createContactMessage(companyId, payload, {
       ip,
+      userAgent,
     });
   }
 }

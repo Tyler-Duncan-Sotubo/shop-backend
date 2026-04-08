@@ -4,12 +4,14 @@ import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import {
   contactMessages,
+  storeDomains,
   stores,
   subscribers,
 } from 'src/infrastructure/drizzle/schema';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ContactNotificationService } from '../notification/services/contact-notification.service';
+import { AkismetClient } from 'akismet-api';
 
 @Injectable()
 export class MailService {
@@ -260,6 +262,39 @@ export class MailService {
   ) {
     const normalizedEmail = this.normalizeEmail(dto.email);
 
+    // ✅ Fetch store first — we need storeDomain for Akismet + storeEmail for notification
+    const [store] = await this.db
+      .select({
+        storeEmail: stores.storeEmail,
+        name: stores.name,
+        domain: storeDomains.domain,
+      })
+      .from(stores)
+      .leftJoin(storeDomains, eq(storeDomains.storeId, stores.id))
+      .where(eq(stores.id, dto.storeId))
+      .limit(1);
+
+    // ✅ Spam check using the store's own domain
+    const akismet = new AkismetClient({
+      key: process.env.AKISMET_API_KEY!,
+      blog: `https://${store.domain}`,
+    });
+
+    const isSpam = await akismet
+      .checkSpam({
+        ip: metadata?.ip ?? '127.0.0.1',
+        useragent: metadata?.userAgent ?? '',
+        content: dto.message,
+        name: dto.name,
+        email: normalizedEmail,
+      })
+      .catch(() => false); // fail open if Akismet is down
+
+    if (isSpam) {
+      return { id: null, spam: true }; // silent swallow
+    }
+
+    // DB insert
     const [created] = await this.db
       .insert(contactMessages)
       .values({
@@ -276,12 +311,7 @@ export class MailService {
       })
       .returning();
 
-    const [store] = await this.db
-      .select({ storeEmail: stores.storeEmail, name: stores.name })
-      .from(stores)
-      .where(eq(stores.id, dto.storeId))
-      .limit(1);
-
+    // Email notification
     await this.emailQueue.add(
       'sendContactNotification',
       {

@@ -1,64 +1,42 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as sgMail from '@sendgrid/mail';
+import { ResendProvider } from '../resend.provider';
+import { emailVerificationHtml } from '../templates/email-verification.html';
+import { verifyLoginHtml } from '../templates/verify-login.html';
 
 @Injectable()
 export class EmailVerificationService {
-  constructor(private config: ConfigService) {}
+  constructor(private readonly resend: ResendProvider) {}
+
   async sendVerifyEmail(email: string, token: string, companyName?: string) {
-    sgMail.setApiKey(this.config.get<string>('SEND_GRID_KEY') || '');
-    const msg = {
-      to: email,
-      from: {
-        name: 'noreply@centahr.com',
-        email: 'noreply@centahr.com',
-      },
-      templateId: this.config.get('VERIFY_TEMPLATE_ID'),
-      dynamicTemplateData: {
-        verificationCode: token,
-        email: email,
-        companyName: companyName,
-      },
-    };
-
-    (async () => {
-      try {
-        await sgMail.send(msg);
-      } catch (error) {
-        console.error(error);
-
-        if (error.response) {
-          console.error(error.response.body);
-        }
-      }
-    })();
+    try {
+      await this.resend.client.emails.send({
+        to: email,
+        from: 'noreply@mycenta.com',
+        subject: 'Verify your email',
+        html: emailVerificationHtml({
+          verificationCode: token,
+          companyName: companyName ?? email,
+        }),
+      });
+    } catch (error: any) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async sendVerifyLogin(email: string, token: string) {
-    sgMail.setApiKey(this.config.get<string>('SEND_GRID_KEY') || '');
-    const msg = {
-      to: email,
-      from: {
-        name: 'noreply@centahr.com',
-        email: 'noreply@centahr.com',
-      },
-      templateId: this.config.get('VERIFY_LOGIN_TEMPLATE_ID'),
-      dynamicTemplateData: {
-        verificationCode: token,
-        email: email,
-      },
-    };
-
-    (async () => {
-      try {
-        await sgMail.send(msg);
-      } catch (error) {
-        console.error(error);
-
-        if (error.response) {
-          console.error(error.response.body);
-        }
-      }
-    })();
+    try {
+      await this.resend.client.emails.send({
+        to: email,
+        from: 'noreply@mycenta.com',
+        subject: 'Your login verification code',
+        html: verifyLoginHtml({
+          verificationCode: token,
+        }),
+      });
+    } catch (error: any) {
+      console.error(error);
+      throw error;
+    }
   }
 }

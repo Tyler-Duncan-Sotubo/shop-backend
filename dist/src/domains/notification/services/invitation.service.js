@@ -11,45 +11,30 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InvitationService = void 0;
 const common_1 = require("@nestjs/common");
-const config_1 = require("@nestjs/config");
-const sgMail = require("@sendgrid/mail");
+const resend_provider_1 = require("../resend.provider");
+const invitation_html_1 = require("../templates/invitation.html");
 let InvitationService = class InvitationService {
-    constructor(config) {
-        this.config = config;
+    constructor(resend) {
+        this.resend = resend;
     }
     async sendInvitationEmail(email, name, companyName, role, url) {
-        sgMail.setApiKey(this.config.get('SEND_GRID_KEY') || '');
-        const msg = {
-            to: email,
-            from: {
-                name: `Invitation to Join as ${role}`,
-                email: 'noreply@mycenta.com',
-            },
-            templateId: this.config.get('USER_INVITE_TEMPLATE_ID'),
-            dynamicTemplateData: {
-                name: name,
-                verifyLink: url,
-                companyName: companyName,
-                role: role,
+        try {
+            await this.resend.client.emails.send({
+                to: email,
+                from: `Invitation to Join as ${role} <noreply@mycenta.com>`,
                 subject: `Invitation to Join ${companyName} as ${role}`,
-            },
-        };
-        (async () => {
-            try {
-                await sgMail.send(msg);
-            }
-            catch (error) {
-                console.error(error);
-                if (error.response) {
-                    console.error(error.response.body);
-                }
-            }
-        })();
+                html: (0, invitation_html_1.invitationHtml)({ name, companyName, verifyLink: url }),
+            });
+        }
+        catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
 };
 exports.InvitationService = InvitationService;
 exports.InvitationService = InvitationService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [config_1.ConfigService])
+    __metadata("design:paramtypes", [resend_provider_1.ResendProvider])
 ], InvitationService);
 //# sourceMappingURL=invitation.service.js.map

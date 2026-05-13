@@ -1,6 +1,6 @@
-import { ConfigService } from '@nestjs/config';
+import { ResendProvider } from '../resend.provider';
 export declare class EmployeeInvitationService {
-    private config;
-    constructor(config: ConfigService);
+    private readonly resend;
+    constructor(resend: ResendProvider);
     sendInvitationEmail(email: string, name: string, companyName: string, role: string, url: string): Promise<void>;
 }

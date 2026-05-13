@@ -1,6 +1,6 @@
-import { ConfigService } from '@nestjs/config';
+import { ResendProvider } from '../resend.provider';
 export declare class PasswordResetEmailService {
-    private config;
-    constructor(config: ConfigService);
+    private readonly resend;
+    constructor(resend: ResendProvider);
     sendPasswordResetEmail(email: string, name: string, url: string): Promise<void>;
 }

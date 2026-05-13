@@ -9,7 +9,11 @@ const compress_1 = require("@fastify/compress");
 const cookie_1 = require("@fastify/cookie");
 const multipart_1 = require("@fastify/multipart");
 async function bootstrap() {
-    const app = await core_1.NestFactory.create(app_module_1.AppModule, new platform_fastify_1.FastifyAdapter({ logger: false, bodyLimit: 10 * 1024 * 1024 }), {
+    const app = await core_1.NestFactory.create(app_module_1.AppModule, new platform_fastify_1.FastifyAdapter({
+        logger: false,
+        bodyLimit: 10 * 1024 * 1024,
+        trustProxy: true,
+    }), {
         bufferLogs: true,
         bodyParser: false,
     });

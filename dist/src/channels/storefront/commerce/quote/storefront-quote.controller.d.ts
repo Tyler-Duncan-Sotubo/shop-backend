@@ -5,20 +5,19 @@ export declare class QuoteController extends BaseController {
     private readonly quoteService;
     constructor(quoteService: QuoteService);
     submitQuoteFromStorefront(storeId: string, dto: CreateQuoteDto, ip: string): Promise<{
-        status: string;
         id: string;
+        quoteNumber: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
-        currency: string | null;
-        meta: Record<string, unknown> | null;
-        quoteNumber: string | null;
+        status: string;
         customerEmail: string;
         customerNote: string | null;
         customerName: string | null;
+        meta: Record<string, unknown> | null;
+        expiresAt: Date | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
@@ -26,6 +25,7 @@ export declare class QuoteController extends BaseController {
         sentAt: Date | null;
         acceptedAt: Date | null;
         convertedAt: Date | null;
+        currency: string | null;
         totalsSnapshot: {
             subtotal?: number;
             tax?: number;

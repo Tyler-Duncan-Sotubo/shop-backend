@@ -11,46 +11,37 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContactNotificationService = void 0;
 const common_1 = require("@nestjs/common");
-const config_1 = require("@nestjs/config");
-const sgMail = require("@sendgrid/mail");
+const resend_provider_1 = require("../resend.provider");
+const contact_notification_html_1 = require("../templates/contact-notification.html");
 let ContactNotificationService = class ContactNotificationService {
-    constructor(config) {
-        this.config = config;
-        sgMail.setApiKey(this.config.get('SEND_GRID_KEY') || '');
+    constructor(resend) {
+        this.resend = resend;
     }
     async sendContactNotification(payload) {
-        const { to, fromName, customerName, customerEmail, subject, message, phone, company, storeName, } = payload;
-        const safeSubject = (subject ?? '').trim() || 'New contact message';
-        const safeStore = (storeName ?? 'Contact').trim() || 'Contact';
-        const msg = {
-            to,
-            from: {
-                email: 'noreply@centahr.com',
-                name: fromName ?? safeStore ?? 'New Contact Message',
-            },
-            replyTo: {
-                email: customerEmail,
-                name: (customerName ?? '').trim() || customerEmail,
-            },
-            subject: `[${safeStore}] ${safeSubject}`,
-            templateId: this.config.get('CONTACT_NOTIFICATION_TEMPLATE_ID') || '',
-            dynamicTemplateData: {
-                subject: safeSubject,
-                message,
-                customerName,
-                customerEmail,
-                phone,
-                company,
-                storeName: safeStore,
-            },
+        const safeSubject = (payload.subject ?? '').trim() || 'New contact message';
+        const safeStore = (payload.storeName ?? 'Contact').trim() || 'Contact';
+        const templateData = {
+            storeName: safeStore,
+            createdAt: payload.createdAt ?? null,
+            customerName: payload.customerName ?? null,
+            customerEmail: payload.customerEmail,
+            phone: payload.phone ?? null,
+            company: payload.company ?? null,
+            subject: safeSubject,
+            message: payload.message,
+            adminUrl: payload.adminUrl ?? null,
         };
         try {
-            await sgMail.send(msg);
+            await this.resend.client.emails.send({
+                to: Array.isArray(payload.to) ? payload.to : [payload.to],
+                from: `${payload.fromName ?? safeStore} <noreply@mycenta.com>`,
+                replyTo: `${(payload.customerName ?? '').trim() || payload.customerEmail} <${payload.customerEmail}>`,
+                subject: `[${safeStore}] ${safeSubject}`,
+                html: (0, contact_notification_html_1.contactNotificationHtml)(templateData),
+            });
         }
         catch (error) {
             console.error(error);
-            if (error?.response?.body)
-                console.error(error.response.body);
             throw error;
         }
     }
@@ -58,6 +49,6 @@ let ContactNotificationService = class ContactNotificationService {
 exports.ContactNotificationService = ContactNotificationService;
 exports.ContactNotificationService = ContactNotificationService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [config_1.ConfigService])
+    __metadata("design:paramtypes", [resend_provider_1.ResendProvider])
 ], ContactNotificationService);
 //# sourceMappingURL=contact-notification.service.js.map

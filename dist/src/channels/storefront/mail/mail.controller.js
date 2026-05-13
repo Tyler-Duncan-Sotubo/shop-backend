@@ -21,6 +21,7 @@ const mail_service_1 = require("../../../domains/mail/mail.service");
 const storefront_guard_1 = require("../common/guard/storefront.guard");
 const current_company_id_decorator_1 = require("../common/decorators/current-company-id.decorator");
 const current_store_decorator_1 = require("../common/decorators/current-store.decorator");
+const user_agent_1 = require("../common/decorators/user-agent");
 let MailController = class MailController {
     constructor(mailService) {
         this.mailService = mailService;
@@ -34,13 +35,14 @@ let MailController = class MailController {
             ip,
         });
     }
-    createContactMessagePublic(companyId, storeId, dto, ip) {
+    createContactMessagePublic(companyId, storeId, dto, ip, userAgent) {
         const payload = {
             ...dto,
             storeId,
         };
         return this.mailService.createContactMessage(companyId, payload, {
             ip,
+            userAgent,
         });
     }
 };
@@ -65,8 +67,9 @@ __decorate([
     __param(1, (0, current_store_decorator_1.CurrentStoreId)()),
     __param(2, (0, common_1.Body)()),
     __param(3, (0, common_1.Ip)()),
+    __param(4, (0, user_agent_1.UserAgent)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, create_contact_message_dto_1.CreateContactMessageDto, String]),
+    __metadata("design:paramtypes", [String, String, create_contact_message_dto_1.CreateContactMessageDto, String, String]),
     __metadata("design:returntype", void 0)
 ], MailController.prototype, "createContactMessagePublic", null);
 exports.MailController = MailController = __decorate([

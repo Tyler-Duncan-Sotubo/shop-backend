@@ -1,7 +1,9 @@
-// contact-notification.service.ts
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as sgMail from '@sendgrid/mail';
+import { ResendProvider } from '../resend.provider';
+import {
+  contactNotificationHtml,
+  ContactNotificationTemplateData,
+} from '../templates/contact-notification.html';
 
 interface ContactNotificationPayload {
   to: string | string[];
@@ -13,59 +15,40 @@ interface ContactNotificationPayload {
   phone?: string;
   company?: string;
   storeName?: string;
+  createdAt?: string;
+  adminUrl?: string;
 }
 
 @Injectable()
 export class ContactNotificationService {
-  constructor(private readonly config: ConfigService) {
-    sgMail.setApiKey(this.config.get<string>('SEND_GRID_KEY') || '');
-  }
+  constructor(private readonly resend: ResendProvider) {}
 
   async sendContactNotification(payload: ContactNotificationPayload) {
-    const {
-      to,
-      fromName,
-      customerName,
-      customerEmail,
-      subject,
-      message,
-      phone,
-      company,
-      storeName,
-    } = payload;
+    const safeSubject = (payload.subject ?? '').trim() || 'New contact message';
+    const safeStore = (payload.storeName ?? 'Contact').trim() || 'Contact';
 
-    const safeSubject = (subject ?? '').trim() || 'New contact message';
-    const safeStore = (storeName ?? 'Contact').trim() || 'Contact';
-
-    const msg = {
-      to,
-      from: {
-        email: 'noreply@centahr.com',
-        name: fromName ?? safeStore ?? 'New Contact Message',
-      },
-      replyTo: {
-        email: customerEmail,
-        name: (customerName ?? '').trim() || customerEmail,
-      },
-      subject: `[${safeStore}] ${safeSubject}`,
-      templateId:
-        this.config.get<string>('CONTACT_NOTIFICATION_TEMPLATE_ID') || '',
-      dynamicTemplateData: {
-        subject: safeSubject,
-        message,
-        customerName,
-        customerEmail,
-        phone,
-        company,
-        storeName: safeStore,
-      },
+    const templateData: ContactNotificationTemplateData = {
+      storeName: safeStore,
+      createdAt: payload.createdAt ?? null,
+      customerName: payload.customerName ?? null,
+      customerEmail: payload.customerEmail,
+      phone: payload.phone ?? null,
+      company: payload.company ?? null,
+      subject: safeSubject,
+      message: payload.message,
+      adminUrl: payload.adminUrl ?? null,
     };
 
     try {
-      await sgMail.send(msg);
+      await this.resend.client.emails.send({
+        to: Array.isArray(payload.to) ? payload.to : [payload.to],
+        from: `${payload.fromName ?? safeStore} <noreply@mycenta.com>`,
+        replyTo: `${(payload.customerName ?? '').trim() || payload.customerEmail} <${payload.customerEmail}>`,
+        subject: `[${safeStore}] ${safeSubject}`,
+        html: contactNotificationHtml(templateData),
+      });
     } catch (error: any) {
       console.error(error);
-      if (error?.response?.body) console.error(error.response.body);
       throw error;
     }
   }

@@ -1,87 +1,49 @@
-// quote-notification.service.ts
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as sgMail from '@sendgrid/mail';
-
-export interface QuoteNotificationItem {
-  name: string;
-  quantity?: number;
-}
+import { ResendProvider } from '../resend.provider';
+import {
+  quoteNotificationHtml,
+  QuoteNotificationItem,
+} from '../templates/quote-notification.html';
 
 interface QuoteNotificationPayload {
   to: string | string[];
-
-  // branding
   fromName?: string;
   storeName?: string;
-
-  // customer
   customerEmail: string;
   customerName?: string;
-
-  // quote
   quoteId: string;
   customerNote?: string | null;
-
-  // items (names are the important part)
   items: QuoteNotificationItem[];
 }
 
 @Injectable()
 export class QuoteNotificationService {
-  constructor(private readonly config: ConfigService) {
-    sgMail.setApiKey(this.config.get<string>('SEND_GRID_KEY') || '');
-  }
+  constructor(private readonly resend: ResendProvider) {}
 
   async sendQuoteNotification(payload: QuoteNotificationPayload) {
-    const {
-      to,
-      fromName,
-      storeName,
-      customerEmail,
-      customerName,
-      quoteId,
-      customerNote,
-      items,
-    } = payload;
-
-    const safeStore = (storeName ?? 'Store').trim() || 'Store';
-    const safeSubject = 'New quote request';
-
-    const msg = {
-      to,
-      from: {
-        email: 'noreply@mycenta.com',
-        name: fromName ?? safeStore ?? 'Quote Request',
-      },
-      replyTo: {
-        email: customerEmail,
-        name: (customerName ?? '').trim() || customerEmail,
-      },
-      subject: `[${safeStore}] ${safeSubject}`,
-      templateId:
-        this.config.get<string>('QUOTE_NOTIFICATION_TEMPLATE_ID') || '',
-      dynamicTemplateData: {
-        subject: safeSubject,
-        storeName: safeStore,
-        quoteId,
-        customerEmail,
-        customerNote: customerNote ?? null,
-
-        // 👇 this is what you asked for
-        items: (items ?? []).map((it) => ({
-          name: (it.name ?? '').trim() || 'Item',
-          quantity: it.quantity ?? 1,
-        })),
-        itemsCount: items?.length ?? 0,
-      },
-    };
+    const safeStore = (payload.storeName ?? 'Store').trim() || 'Store';
+    const safeItems = (payload.items ?? []).map((it) => ({
+      name: (it.name ?? '').trim() || 'Item',
+      quantity: it.quantity ?? 1,
+    }));
 
     try {
-      await sgMail.send(msg as any);
+      await this.resend.client.emails.send({
+        to: Array.isArray(payload.to) ? payload.to : [payload.to],
+        from: `${payload.fromName ?? safeStore} <noreply@mycenta.com>`,
+        replyTo: `${(payload.customerName ?? '').trim() || payload.customerEmail} <${payload.customerEmail}>`,
+        subject: `[${safeStore}] New quote request`,
+        html: quoteNotificationHtml({
+          storeName: safeStore,
+          customerEmail: payload.customerEmail,
+          customerName: payload.customerName ?? null,
+          quoteId: payload.quoteId,
+          customerNote: payload.customerNote ?? null,
+          items: safeItems,
+        }),
+      });
     } catch (error: any) {
       console.error(error);
-      if (error?.response?.body) console.error(error.response.body);
       throw error;
     }
   }

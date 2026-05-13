@@ -14,6 +14,7 @@ const bullmq_1 = require("@nestjs/bullmq");
 const contact_notification_service_1 = require("../notification/services/contact-notification.service");
 const stores_service_1 = require("../commerce/stores/stores.service");
 const aws_service_1 = require("../../infrastructure/aws/aws.service");
+const resend_provider_1 = require("../notification/resend.provider");
 let MailModule = class MailModule {
 };
 exports.MailModule = MailModule;
@@ -25,6 +26,7 @@ exports.MailModule = MailModule = __decorate([
             }),
         ],
         providers: [
+            resend_provider_1.ResendProvider,
             mail_service_1.MailService,
             api_keys_service_1.ApiKeysService,
             contact_notification_service_1.ContactNotificationService,

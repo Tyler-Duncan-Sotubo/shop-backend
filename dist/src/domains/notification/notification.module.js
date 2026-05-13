@@ -16,6 +16,7 @@ const employee_invitation_service_1 = require("./services/employee-invitation.se
 const email_queue_processor_1 = require("./services/email-queue.processor");
 const contact_notification_service_1 = require("./services/contact-notification.service");
 const quote_notification_service_1 = require("./services/quote-notification.service");
+const resend_provider_1 = require("./resend.provider");
 let NotificationModule = class NotificationModule {
 };
 exports.NotificationModule = NotificationModule;
@@ -27,6 +28,7 @@ exports.NotificationModule = NotificationModule = __decorate([
             }),
         ],
         providers: [
+            resend_provider_1.ResendProvider,
             email_queue_processor_1.EmailQueueProcessor,
             password_reset_service_1.PasswordResetEmailService,
             invitation_service_1.InvitationService,

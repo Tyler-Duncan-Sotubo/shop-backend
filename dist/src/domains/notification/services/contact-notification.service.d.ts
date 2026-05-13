@@ -1,4 +1,4 @@
-import { ConfigService } from '@nestjs/config';
+import { ResendProvider } from '../resend.provider';
 interface ContactNotificationPayload {
     to: string | string[];
     fromName?: string;
@@ -9,10 +9,12 @@ interface ContactNotificationPayload {
     phone?: string;
     company?: string;
     storeName?: string;
+    createdAt?: string;
+    adminUrl?: string;
 }
 export declare class ContactNotificationService {
-    private readonly config;
-    constructor(config: ConfigService);
+    private readonly resend;
+    constructor(resend: ResendProvider);
     sendContactNotification(payload: ContactNotificationPayload): Promise<void>;
 }
 export {};

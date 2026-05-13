@@ -1,8 +1,5 @@
-import { ConfigService } from '@nestjs/config';
-export interface QuoteNotificationItem {
-    name: string;
-    quantity?: number;
-}
+import { ResendProvider } from '../resend.provider';
+import { QuoteNotificationItem } from '../templates/quote-notification.html';
 interface QuoteNotificationPayload {
     to: string | string[];
     fromName?: string;
@@ -14,8 +11,8 @@ interface QuoteNotificationPayload {
     items: QuoteNotificationItem[];
 }
 export declare class QuoteNotificationService {
-    private readonly config;
-    constructor(config: ConfigService);
+    private readonly resend;
+    constructor(resend: ResendProvider);
     sendQuoteNotification(payload: QuoteNotificationPayload): Promise<void>;
 }
 export {};

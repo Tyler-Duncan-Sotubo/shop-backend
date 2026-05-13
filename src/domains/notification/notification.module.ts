@@ -7,6 +7,7 @@ import { EmployeeInvitationService } from './services/employee-invitation.servic
 import { EmailQueueProcessor } from './services/email-queue.processor';
 import { ContactNotificationService } from './services/contact-notification.service';
 import { QuoteNotificationService } from './services/quote-notification.service';
+import { ResendProvider } from './resend.provider';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { QuoteNotificationService } from './services/quote-notification.service'
     }),
   ],
   providers: [
+    ResendProvider,
     EmailQueueProcessor,
     PasswordResetEmailService,
     InvitationService,

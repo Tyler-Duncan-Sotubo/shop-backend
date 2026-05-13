@@ -11,69 +11,50 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailVerificationService = void 0;
 const common_1 = require("@nestjs/common");
-const config_1 = require("@nestjs/config");
-const sgMail = require("@sendgrid/mail");
+const resend_provider_1 = require("../resend.provider");
+const email_verification_html_1 = require("../templates/email-verification.html");
+const verify_login_html_1 = require("../templates/verify-login.html");
 let EmailVerificationService = class EmailVerificationService {
-    constructor(config) {
-        this.config = config;
+    constructor(resend) {
+        this.resend = resend;
     }
     async sendVerifyEmail(email, token, companyName) {
-        sgMail.setApiKey(this.config.get('SEND_GRID_KEY') || '');
-        const msg = {
-            to: email,
-            from: {
-                name: 'noreply@centahr.com',
-                email: 'noreply@centahr.com',
-            },
-            templateId: this.config.get('VERIFY_TEMPLATE_ID'),
-            dynamicTemplateData: {
-                verificationCode: token,
-                email: email,
-                companyName: companyName,
-            },
-        };
-        (async () => {
-            try {
-                await sgMail.send(msg);
-            }
-            catch (error) {
-                console.error(error);
-                if (error.response) {
-                    console.error(error.response.body);
-                }
-            }
-        })();
+        try {
+            await this.resend.client.emails.send({
+                to: email,
+                from: 'noreply@mycenta.com',
+                subject: 'Verify your email',
+                html: (0, email_verification_html_1.emailVerificationHtml)({
+                    verificationCode: token,
+                    companyName: companyName ?? email,
+                }),
+            });
+        }
+        catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
     async sendVerifyLogin(email, token) {
-        sgMail.setApiKey(this.config.get('SEND_GRID_KEY') || '');
-        const msg = {
-            to: email,
-            from: {
-                name: 'noreply@centahr.com',
-                email: 'noreply@centahr.com',
-            },
-            templateId: this.config.get('VERIFY_LOGIN_TEMPLATE_ID'),
-            dynamicTemplateData: {
-                verificationCode: token,
-                email: email,
-            },
-        };
-        (async () => {
-            try {
-                await sgMail.send(msg);
-            }
-            catch (error) {
-                console.error(error);
-                if (error.response) {
-                    console.error(error.response.body);
-                }
-            }
-        })();
+        try {
+            await this.resend.client.emails.send({
+                to: email,
+                from: 'noreply@mycenta.com',
+                subject: 'Your login verification code',
+                html: (0, verify_login_html_1.verifyLoginHtml)({
+                    verificationCode: token,
+                }),
+            });
+        }
+        catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
 };
 exports.EmailVerificationService = EmailVerificationService;
 exports.EmailVerificationService = EmailVerificationService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [config_1.ConfigService])
+    __metadata("design:paramtypes", [resend_provider_1.ResendProvider])
 ], EmailVerificationService);
 //# sourceMappingURL=email-verification.service.js.map

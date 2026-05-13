@@ -20,6 +20,7 @@ const schema_1 = require("../../infrastructure/drizzle/schema");
 const bullmq_1 = require("@nestjs/bullmq");
 const bullmq_2 = require("bullmq");
 const contact_notification_service_1 = require("../notification/services/contact-notification.service");
+const akismet_api_1 = require("akismet-api");
 let MailService = class MailService {
     constructor(db, emailQueue, contactNotificationService) {
         this.db = db;
@@ -165,6 +166,32 @@ let MailService = class MailService {
     }
     async createContactMessage(companyId, dto, metadata) {
         const normalizedEmail = this.normalizeEmail(dto.email);
+        const [store] = await this.db
+            .select({
+            storeEmail: schema_1.stores.storeEmail,
+            name: schema_1.stores.name,
+            domain: schema_1.storeDomains.domain,
+        })
+            .from(schema_1.stores)
+            .leftJoin(schema_1.storeDomains, (0, drizzle_orm_1.eq)(schema_1.storeDomains.storeId, schema_1.stores.id))
+            .where((0, drizzle_orm_1.eq)(schema_1.stores.id, dto.storeId))
+            .limit(1);
+        const akismet = new akismet_api_1.AkismetClient({
+            key: process.env.AKISMET_API_KEY,
+            blog: `https://${store.domain}`,
+        });
+        const isSpam = await akismet
+            .checkSpam({
+            ip: metadata?.ip ?? '127.0.0.1',
+            useragent: metadata?.userAgent ?? '',
+            content: dto.message,
+            name: dto.name,
+            email: normalizedEmail,
+        })
+            .catch(() => false);
+        if (isSpam) {
+            return { id: null, spam: true };
+        }
         const [created] = await this.db
             .insert(schema_1.contactMessages)
             .values({
@@ -180,11 +207,6 @@ let MailService = class MailService {
             metadata: metadata ?? null,
         })
             .returning();
-        const [store] = await this.db
-            .select({ storeEmail: schema_1.stores.storeEmail, name: schema_1.stores.name })
-            .from(schema_1.stores)
-            .where((0, drizzle_orm_1.eq)(schema_1.stores.id, dto.storeId))
-            .limit(1);
         await this.emailQueue.add('sendContactNotification', {
             to: store.storeEmail,
             storeName: store?.name ?? 'My Store',

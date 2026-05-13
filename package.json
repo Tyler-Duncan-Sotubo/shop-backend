@@ -91,6 +91,7 @@
     "playwright-chromium": "^1.57.0",
     "png-to-ico": "^3.0.1",
     "reflect-metadata": "^0.2.0",
+    "resend": "^6.12.3",
     "rxjs": "^7.8.1",
     "sharp": "^0.34.5",
     "uuidv7": "^1.1.0",

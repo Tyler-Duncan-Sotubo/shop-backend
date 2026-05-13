@@ -28,9 +28,6 @@ export declare class CompaniesService {
         company: {
             id: string;
             name: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
             slug: string;
             legalName: string | null;
             country: string | null;
@@ -46,6 +43,9 @@ export declare class CompaniesService {
             industry: string | null;
             useCase: string | null;
             trialEndsAt: Date | null;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
             deletedAt: Date | null;
         };
     }>;

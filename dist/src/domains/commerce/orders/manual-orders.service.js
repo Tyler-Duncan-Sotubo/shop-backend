@@ -37,23 +37,33 @@ let ManualOrdersService = class ManualOrdersService {
             .execute();
     }
     async allocateOrderNumberInTx(tx, companyId) {
-        const [row] = await tx
-            .insert(schema_1.orderCounters)
-            .values({
-            companyId,
-            nextNumber: 2,
+        const [existing] = await tx
+            .select()
+            .from(schema_1.orderCounters)
+            .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
+            .for('update')
+            .execute();
+        if (!existing) {
+            await tx
+                .insert(schema_1.orderCounters)
+                .values({
+                companyId,
+                nextNumber: 2,
+                updatedAt: new Date(),
+            })
+                .execute();
+            return 1;
+        }
+        const toUse = existing.nextNumber;
+        await tx
+            .update(schema_1.orderCounters)
+            .set({
+            nextNumber: toUse + 1,
             updatedAt: new Date(),
         })
-            .onConflictDoUpdate({
-            target: schema_1.orderCounters.companyId,
-            set: {
-                nextNumber: (0, drizzle_orm_1.sql) `order_counters.next_number + 1`,
-                updatedAt: new Date(),
-            },
-        })
-            .returning({ n: schema_1.orderCounters.nextNumber })
+            .where((0, drizzle_orm_1.eq)(schema_1.orderCounters.companyId, companyId))
             .execute();
-        return Number(row.n) - 1;
+        return toUse;
     }
     async createManualOrder(companyId, input, actor, ip, ctx) {
         const outerTx = ctx?.tx;
@@ -64,8 +74,26 @@ let ManualOrdersService = class ManualOrdersService {
             if (!input.currency) {
                 throw new common_1.BadRequestException('currency is required');
             }
-            const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
-            const orderNo = `ORD-${String(nextNo).padStart(6, '0')}`;
+            let orderNo;
+            let attempts = 0;
+            while (true) {
+                const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
+                orderNo = `ORD-${String(nextNo).padStart(6, '0')}`;
+                console.log(`Allocating order number: got nextNo=${nextNo}, generated orderNo=${orderNo}`);
+                const [exists] = await tx
+                    .select({ id: schema_1.orders.id })
+                    .from(schema_1.orders)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.orderNumber, orderNo)))
+                    .limit(1)
+                    .execute();
+                if (!exists)
+                    break;
+                console.warn(`Order number ${orderNo} already exists, skipping...`);
+                attempts++;
+                if (attempts > 10) {
+                    throw new common_1.BadRequestException('Unable to allocate unique order number after 10 attempts');
+                }
+            }
             const isFromQuote = !!input.quoteRequestId;
             const [created] = await tx
                 .insert(schema_1.orders)

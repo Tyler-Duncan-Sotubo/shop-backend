@@ -50,24 +50,37 @@ export class ManualOrdersService {
 
   // 2. Allocate atomically on every order (your existing counter approach)
   private async allocateOrderNumberInTx(tx: TxOrDb, companyId: string) {
-    const [row] = await tx
-      .insert(orderCounters)
-      .values({
-        companyId,
-        nextNumber: 2,
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: orderCounters.companyId,
-        set: {
-          nextNumber: sql`order_counters.next_number + 1`,
-          updatedAt: new Date(),
-        },
-      })
-      .returning({ n: orderCounters.nextNumber })
+    const [existing] = await tx
+      .select()
+      .from(orderCounters)
+      .where(eq(orderCounters.companyId, companyId))
+      .for('update')
       .execute();
 
-    return Number(row.n) - 1;
+    if (!existing) {
+      await tx
+        .insert(orderCounters)
+        .values({
+          companyId,
+          nextNumber: 2, // next call gets 2
+          updatedAt: new Date(),
+        })
+        .execute();
+      return 1; // first order gets 1
+    }
+
+    const toUse = existing.nextNumber; // ← use what's stored
+
+    await tx
+      .update(orderCounters)
+      .set({
+        nextNumber: toUse + 1, // ← increment for next caller
+        updatedAt: new Date(),
+      })
+      .where(eq(orderCounters.companyId, companyId))
+      .execute();
+
+    return toUse; // ← return the incremented value
   }
 
   // ✅ UPDATED createManualOrder() (only changed orderNumber part)
@@ -89,8 +102,39 @@ export class ManualOrdersService {
         throw new BadRequestException('currency is required');
       }
 
-      const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
-      const orderNo = `ORD-${String(nextNo).padStart(6, '0')}`;
+      // ✅ skip already-used numbers in case counter is stale
+      let orderNo: string;
+      let attempts = 0;
+      while (true) {
+        const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
+        orderNo = `ORD-${String(nextNo).padStart(6, '0')}`;
+
+        console.log(
+          `Allocating order number: got nextNo=${nextNo}, generated orderNo=${orderNo}`,
+        );
+
+        const [exists] = await tx
+          .select({ id: orders.id })
+          .from(orders)
+          .where(
+            and(
+              eq(orders.companyId, companyId),
+              eq(orders.orderNumber, orderNo),
+            ),
+          )
+          .limit(1)
+          .execute();
+
+        if (!exists) break;
+
+        console.warn(`Order number ${orderNo} already exists, skipping...`);
+        attempts++;
+        if (attempts > 10) {
+          throw new BadRequestException(
+            'Unable to allocate unique order number after 10 attempts',
+          );
+        }
+      }
 
       const isFromQuote = !!input.quoteRequestId;
 

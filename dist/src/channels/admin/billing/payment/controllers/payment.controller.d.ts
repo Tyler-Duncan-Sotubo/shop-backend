@@ -1,10 +1,10 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../../common/types/user.type";
+import { BaseController } from "../../../../../infrastructure/interceptor/base.controller";
 import { PaystackSuccessDto } from '../dto/paystack-success.dto';
 import { ListPaymentsQueryDto } from '../dto/payment-list.dto';
 import { FinalizeBankTransferPaymentDto } from '../dto/finalize-bank-transfer.dto';
-import { PaymentService } from 'src/domains/billing/payment/services/payment.service';
-import { PaymentReceiptService } from 'src/domains/billing/payment/services/payment-receipt.service';
+import { PaymentService } from "../../../../../domains/billing/payment/services/payment.service";
+import { PaymentReceiptService } from "../../../../../domains/billing/payment/services/payment-receipt.service";
 export declare class PaymentController extends BaseController {
     private readonly paymentsService;
     private readonly receipts;

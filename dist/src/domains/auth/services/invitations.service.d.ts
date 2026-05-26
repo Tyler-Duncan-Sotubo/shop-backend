@@ -1,8 +1,8 @@
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { InvitationService } from 'src/domains/notification/services/invitation.service';
-import { PermissionsService } from 'src/domains/iam/permissions/permissions.service';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { InvitationService } from "../../notification/services/invitation.service";
+import { PermissionsService } from "../../iam/permissions/permissions.service";
 import { InviteUserInput } from '../inputs';
 export declare class InvitationsService {
     private readonly db;

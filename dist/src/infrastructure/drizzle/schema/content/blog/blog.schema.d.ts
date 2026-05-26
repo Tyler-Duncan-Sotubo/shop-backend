@@ -332,10 +332,5 @@ export declare const blogPostProducts: import("drizzle-orm/pg-core").PgTableWith
     };
     dialect: "pg";
 }>;
-export declare const blogPostsRelations: import("drizzle-orm").Relations<"blog_posts", {
-    products: import("drizzle-orm").Many<"blog_post_products">;
-}>;
-export declare const blogPostProductsRelations: import("drizzle-orm").Relations<"blog_post_products", {
-    post: import("drizzle-orm").One<"blog_posts", true>;
-    product: import("drizzle-orm").One<any, true>;
-}>;
+export declare const blogPostsRelations: any;
+export declare const blogPostProductsRelations: any;

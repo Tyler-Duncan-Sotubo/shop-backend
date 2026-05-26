@@ -1,4 +1,4 @@
-import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
+import { db as DbType } from "../../../infrastructure/drizzle/types/drizzle";
 export declare class CheckoutPaymentsService {
     private readonly db;
     constructor(db: DbType);

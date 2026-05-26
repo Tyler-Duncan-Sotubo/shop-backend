@@ -1,5 +1,5 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { PaymentMethodsService } from 'src/domains/billing/payment/services/payment-methods.service';
+import { BaseController } from "../../../../../infrastructure/interceptor/base.controller";
+import { PaymentMethodsService } from "../../../../../domains/billing/payment/services/payment-methods.service";
 export declare class PaymentMethodsController extends BaseController {
     private readonly storeMethods;
     constructor(storeMethods: PaymentMethodsService);

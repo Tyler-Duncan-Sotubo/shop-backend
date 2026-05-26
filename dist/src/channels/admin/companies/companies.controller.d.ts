@@ -1,6 +1,6 @@
 import { CreateCompanyDto } from './dto/create-company.dto';
-import { CompaniesService } from 'src/domains/companies/companies.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { CompaniesService } from "../../../domains/companies/companies.service";
+import { User } from "../common/types/user.type";
 import { UpdateCompanyDto } from './dto/update-company.dto';
 export declare class CompaniesController {
     private readonly companyService;

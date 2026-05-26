@@ -1,5 +1,5 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { PaystackService } from 'src/domains/billing/payment/services/paystack.service';
+import { BaseController } from "../../../../../infrastructure/interceptor/base.controller";
+import { PaystackService } from "../../../../../domains/billing/payment/services/paystack.service";
 export declare class PaystackStorefrontController extends BaseController {
     private readonly paystackService;
     constructor(paystackService: PaystackService);

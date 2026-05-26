@@ -1,9 +1,9 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { UpdateInvoiceBrandingDto } from './dto/invoice-templates-dto/update-invoice-branding.dto';
 import { UpdateInvoiceLogoDto } from './dto/invoice-templates-dto/update-invoice-logo.dto';
-import { InvoiceTemplatesService } from 'src/domains/billing/invoice/invoice-templates/invoice-templates.service';
-import { InvoicePdfService } from 'src/domains/billing/invoice/invoice-templates/invoice-pdf.service';
+import { InvoiceTemplatesService } from "../../../../domains/billing/invoice/invoice-templates/invoice-templates.service";
+import { InvoicePdfService } from "../../../../domains/billing/invoice/invoice-templates/invoice-pdf.service";
 export declare class AdminInvoiceTemplatesController extends BaseController {
     private readonly invoiceTemplatesService;
     private readonly invoicePdfService;

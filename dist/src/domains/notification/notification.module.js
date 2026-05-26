@@ -17,6 +17,8 @@ const email_queue_processor_1 = require("./services/email-queue.processor");
 const contact_notification_service_1 = require("./services/contact-notification.service");
 const quote_notification_service_1 = require("./services/quote-notification.service");
 const resend_provider_1 = require("./resend.provider");
+const order_paid_service_1 = require("./services/order-paid.service");
+const dispatch_notification_service_1 = require("./services/dispatch-notification.service");
 let NotificationModule = class NotificationModule {
 };
 exports.NotificationModule = NotificationModule;
@@ -37,6 +39,8 @@ exports.NotificationModule = NotificationModule = __decorate([
             email_queue_processor_1.EmailQueueProcessor,
             contact_notification_service_1.ContactNotificationService,
             quote_notification_service_1.QuoteNotificationService,
+            order_paid_service_1.OrderPaidAdminNotificationService,
+            dispatch_notification_service_1.DispatchNotificationService,
         ],
         exports: [
             password_reset_service_1.PasswordResetEmailService,
@@ -44,6 +48,8 @@ exports.NotificationModule = NotificationModule = __decorate([
             email_verification_service_1.EmailVerificationService,
             employee_invitation_service_1.EmployeeInvitationService,
             quote_notification_service_1.QuoteNotificationService,
+            order_paid_service_1.OrderPaidAdminNotificationService,
+            dispatch_notification_service_1.DispatchNotificationService,
         ],
     })
 ], NotificationModule);

@@ -18,6 +18,7 @@ const stores_service_1 = require("../../commerce/stores/stores.service");
 const payment_methods_service_1 = require("./services/payment-methods.service");
 const paystack_service_1 = require("./services/paystack.service");
 const axios_1 = require("@nestjs/axios");
+const notification_module_1 = require("../../notification/notification.module");
 let PaymentModule = class PaymentModule {
 };
 exports.PaymentModule = PaymentModule;
@@ -34,6 +35,7 @@ exports.PaymentModule = PaymentModule = __decorate([
             stores_service_1.StoresService,
             payment_methods_service_1.PaymentMethodsService,
             paystack_service_1.PaystackService,
+            notification_module_1.NotificationModule,
         ],
         exports: [
             payment_service_1.PaymentService,

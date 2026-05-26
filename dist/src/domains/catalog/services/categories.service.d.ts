@@ -1,10 +1,10 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
+import { AuditService } from "../../audit/audit.service";
+import { User } from "../../../channels/admin/common/types/user.type";
 import { CreateCategoryDto, UpdateCategoryDto, AssignCategoriesDto } from '../dtos/categories';
-import { AwsService } from 'src/infrastructure/aws/aws.service';
-import { MediaService } from 'src/domains/media/media.service';
+import { AwsService } from "../../../infrastructure/aws/aws.service";
+import { MediaService } from "../../media/media.service";
 export declare class CategoriesService {
     private readonly db;
     private readonly cache;
@@ -254,7 +254,7 @@ export declare class CategoriesService {
         slug: any;
         imageAltText: string | null;
         parentId: any;
-        hasChildren: boolean;
+        hasChildren: any;
     } | {
         imageUrl: string;
         id: any;
@@ -262,7 +262,7 @@ export declare class CategoriesService {
         slug: any;
         imageAltText: string | null;
         parentId: any;
-        hasChildren: boolean;
+        hasChildren: any;
     })[]>;
     createCategory(companyId: string, dto: CreateCategoryDto, user?: User, ip?: string): Promise<any>;
     updateCategory(companyId: string, categoryId: string, dto: UpdateCategoryDto, user?: User, ip?: string): Promise<{

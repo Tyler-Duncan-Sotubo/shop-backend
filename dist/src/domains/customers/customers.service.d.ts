@@ -1,8 +1,8 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../infrastructure/drizzle/types/drizzle";
 import { UpdateCustomerProfileDto } from './dto/update-customer-profile.dto';
 import { CreateCustomerAddressDto } from './dto/create-address.dto';
 import { UpdateCustomerAddressDto } from './dto/update-address.dto';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
+import { CacheService } from "../../infrastructure/cache/cache.service";
 export type AuthCustomer = {
     id: string;
     email: string;
@@ -209,25 +209,25 @@ export declare class CustomersService {
             name: any;
             slug: any;
             imageUrl: any;
-            lastOrderedAt: Date;
+            lastOrderedAt: any;
         } | {
             id: any;
             name: any;
             slug: any;
             imageUrl: any;
-            lastOrderedAt: Date;
+            lastOrderedAt: any;
         } | {
             id: any;
             name: any;
             slug: any;
             imageUrl: any;
-            lastOrderedAt: Date;
+            lastOrderedAt: any;
         } | {
             id: any;
             name: any;
             slug: any;
             imageUrl: any;
-            lastOrderedAt: Date;
+            lastOrderedAt: any;
         })[];
         total: number;
         limit: number;

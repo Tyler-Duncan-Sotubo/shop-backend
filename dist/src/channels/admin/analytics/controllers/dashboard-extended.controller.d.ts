@@ -1,6 +1,6 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { DashboardExtendedAnalyticsService, CompareMode } from 'src/domains/analytics/services/dashboard-extended-analytics.service';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { DashboardExtendedAnalyticsService, CompareMode } from "../../../../domains/analytics/services/dashboard-extended-analytics.service";
 export declare class DashboardExtendedAnalyticsController extends BaseController {
     private readonly extended;
     constructor(extended: DashboardExtendedAnalyticsService);

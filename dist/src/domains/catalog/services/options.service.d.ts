@@ -1,7 +1,7 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
+import { AuditService } from "../../audit/audit.service";
+import { User } from "../../../channels/admin/common/types/user.type";
 import { CreateOptionDto, CreateOptionValueDto, UpdateOptionDto, UpdateOptionValueDto } from '../dtos/options';
 export declare class OptionsService {
     private readonly db;
@@ -63,9 +63,7 @@ export declare class OptionsService {
         companyId: string;
         productId: string;
         position: number;
-        values: {
-            [x: string]: any;
-        }[];
+        values: any;
     }[]>;
     createOption(companyId: string, productId: string, dto: CreateOptionDto, user?: User, ip?: string): Promise<{
         id: string;

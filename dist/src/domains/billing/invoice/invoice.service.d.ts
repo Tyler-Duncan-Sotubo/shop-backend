@@ -1,12 +1,12 @@
-import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
+import { db as DbType } from "../../../infrastructure/drizzle/types/drizzle";
 import { InvoiceTotalsService } from './invoice-totals.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
+import { AuditService } from "../../audit/audit.service";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
 import { CreateInvoiceFromOrderInput } from './inputs/create-invoice-from-order.input';
 import { ListInvoicesQueryInput } from './inputs/list-invoices.query.input';
 import { UpdateInvoiceLineInput } from './inputs/update-invoice-line.input';
-import { User } from 'src/channels/admin/common/types/user.type';
-import { ZohoInvoicesService } from 'src/domains/integration/zoho/zoho-invoices.service';
+import { User } from "../../../channels/admin/common/types/user.type";
+import { ZohoInvoicesService } from "../../integration/zoho/zoho-invoices.service";
 type TxOrDb = DbType | any;
 export declare class InvoiceService {
     private readonly db;
@@ -130,7 +130,7 @@ export declare class InvoiceService {
             meta: unknown;
             customerSnapshot: unknown;
         }[];
-        count: number;
+        count: any;
         limit: number;
         offset: number;
     }>;

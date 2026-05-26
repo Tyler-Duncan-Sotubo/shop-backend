@@ -1,7 +1,7 @@
-import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
+import { db as DbType } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
 import { CardsResult, DashboardRangeArgs, GrossSalesCardsResult, LatestPaymentRow, RecentOrderRow } from '../inputs/analytics.input';
-import { Bucket, OverviewArgs } from 'src/common/utils/resolve-preset';
+import { Bucket, OverviewArgs } from "../../../common/utils/resolve-preset";
 export declare class DashboardCommerceAnalyticsService {
     private readonly db;
     private readonly cache;
@@ -35,8 +35,8 @@ export declare class DashboardCommerceAnalyticsService {
         limit?: number;
         by?: 'revenue' | 'units';
     }): Promise<{
-        productId: string | null;
-        variantId: string | null;
+        productId: any;
+        variantId: any;
         productName: any;
         variantTitle: any;
         imageUrl: string | null;
@@ -74,8 +74,8 @@ export declare class DashboardCommerceAnalyticsService {
         latestPayments: LatestPaymentRow[];
         recentOrders: RecentOrderRow[];
         topProducts: {
-            productId: string | null;
-            variantId: string | null;
+            productId: any;
+            variantId: any;
             productName: any;
             variantTitle: any;
             imageUrl: string | null;

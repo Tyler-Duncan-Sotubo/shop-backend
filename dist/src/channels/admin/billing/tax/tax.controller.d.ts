@@ -1,10 +1,10 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { CreateTaxDto } from './dto/create-tax.dto';
 import { TaxIdParamDto } from './dto/tax-id.param.dto';
 import { UpdateTaxDto } from './dto/update-tax.dto';
 import { ListTaxesQueryDto } from './dto/list-taxes.query.dto';
-import { TaxService } from 'src/domains/billing/tax/tax.service';
+import { TaxService } from "../../../../domains/billing/tax/tax.service";
 export declare class TaxController extends BaseController {
     private readonly taxService;
     constructor(taxService: TaxService);

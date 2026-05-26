@@ -1,8 +1,8 @@
-import { User } from 'src/channels/admin/common/types/user.type';
+import { User } from "../common/types/user.type";
 import { CreateCustomerAddressAdminDto, ListCustomersDto, UpdateCustomerAddressAdminDto, UpdateCustomerAdminDto } from './dto';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { BaseController } from "../../../infrastructure/interceptor/base.controller";
 import { CreateCustomerDto } from './dto/register-customer.dto';
-import { AdminCustomersService } from 'src/domains/customers/admin-customers.service';
+import { AdminCustomersService } from "../../../domains/customers/admin-customers.service";
 export declare class AdminCustomersController extends BaseController {
     private readonly adminCustomers;
     constructor(adminCustomers: AdminCustomersService);

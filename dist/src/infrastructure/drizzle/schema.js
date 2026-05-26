@@ -62,6 +62,7 @@ __exportStar(require("./schema/commerce/orders/orders.schema"), exports);
 __exportStar(require("./schema/commerce/orders/order-items.schema"), exports);
 __exportStar(require("./schema/commerce/orders/inventory-reservations.schema"), exports);
 __exportStar(require("./schema/commerce/orders/order-events.schema"), exports);
+__exportStar(require("./schema/commerce/orders/order-dispatch.schema"), exports);
 __exportStar(require("./schema/commerce/quotes/quote-requests.schema"), exports);
 __exportStar(require("./schema/billing/invoice/invoice-series.schema"), exports);
 __exportStar(require("./schema/billing/invoice/invoices.schema"), exports);

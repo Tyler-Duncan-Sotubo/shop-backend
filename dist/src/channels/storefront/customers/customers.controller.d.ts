@@ -3,8 +3,8 @@ import { CreateCustomerAddressDto } from './dto/create-address.dto';
 import { UpdateCustomerAddressDto } from './dto/update-address.dto';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { LoginCustomerDto } from './dto/login-customer.dto';
-import { CustomersService } from 'src/domains/customers/customers.service';
-import { CustomerAuthService } from 'src/domains/customers/customer-auth.service';
+import { CustomersService } from "../../../domains/customers/customers.service";
+import { CustomerAuthService } from "../../../domains/customers/customer-auth.service";
 import { AuthCustomer } from '../common/types/customers';
 export declare class CustomersController {
     private readonly customersService;
@@ -216,25 +216,25 @@ export declare class CustomersController {
             name: any;
             slug: any;
             imageUrl: any;
-            lastOrderedAt: Date;
+            lastOrderedAt: any;
         } | {
             id: any;
             name: any;
             slug: any;
             imageUrl: any;
-            lastOrderedAt: Date;
+            lastOrderedAt: any;
         } | {
             id: any;
             name: any;
             slug: any;
             imageUrl: any;
-            lastOrderedAt: Date;
+            lastOrderedAt: any;
         } | {
             id: any;
             name: any;
             slug: any;
             imageUrl: any;
-            lastOrderedAt: Date;
+            lastOrderedAt: any;
         })[];
         total: number;
         limit: number;

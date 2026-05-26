@@ -1,8 +1,8 @@
 import { RequestPasswordResetDto, TokenDto } from '../dto/token.dto';
 import { PasswordResetDto } from '../dto/user-email.dto';
-import { PasswordResetService, VerificationService } from 'src/domains/auth/services';
-import { LoginVerificationService } from 'src/domains/auth/services/login-verification.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { PasswordResetService, VerificationService } from "../../../../domains/auth/services";
+import { LoginVerificationService } from "../../../../domains/auth/services/login-verification.service";
+import { User } from "../../common/types/user.type";
 export declare class AuthEmailController {
     private readonly verification;
     private readonly password;

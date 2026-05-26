@@ -1,4 +1,4 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../infrastructure/drizzle/types/drizzle";
 import { PermissionsService } from '../iam/permissions/permissions.service';
 import { CompanySettingsService } from '../company-settings/company-settings.service';
 import { VerificationService } from '../auth/services';

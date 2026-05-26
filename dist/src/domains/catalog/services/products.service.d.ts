@@ -1,14 +1,14 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
+import { AuditService } from "../../audit/audit.service";
+import { User } from "../../../channels/admin/common/types/user.type";
 import { AssignProductCategoriesDto, CreateProductDto, ProductQueryDto, UpdateProductDto } from '../dtos/products';
 import { CategoriesService } from './categories.service';
 import { LinkedProductsService } from './linked-products.service';
-import { AwsService } from 'src/infrastructure/aws/aws.service';
+import { AwsService } from "../../../infrastructure/aws/aws.service";
 import { mapProductToCollectionListResponse } from '../mappers/product.mapper';
 import { ConfigService } from '@nestjs/config';
-import { InventoryStockService } from 'src/domains/commerce/inventory/services/inventory-stock.service';
+import { InventoryStockService } from "../../commerce/inventory/services/inventory-stock.service";
 type CollectionCategory = {
     id: string;
     name: string;
@@ -59,6 +59,9 @@ export declare class ProductsService {
     }>;
     findProductByIdOrThrow(companyId: string, productId: string): Promise<{
         [x: string]: any;
+        productCategories: any;
+        images: any;
+        variants: any;
     }>;
     ensureSlugUnique(companyId: string, slug: string, excludeId?: string): Promise<void>;
     private sanitizeFileName;
@@ -101,16 +104,35 @@ export declare class ProductsService {
         offset?: number;
     }): Promise<{
         [x: string]: any;
+        options: any;
+        productCategories: any;
+        images: any;
+        variants: any;
+        defaultVariant: any;
     }[]>;
     getProductById(companyId: string, productId: string): Promise<{
         [x: string]: any;
+        productCategories: any;
+        images: any;
+        variants: any;
     }>;
     getProductWithRelations(companyId: string, productId: string): Promise<{
         [x: string]: any;
+        options: any;
+        productCategories: any;
+        images: any;
+        variants: any;
+        defaultVariant: any;
     }>;
     getProductWithRelationsBySlug(companyId: string, slug: string): Promise<{
         rating_count: number;
         average_rating: number;
+        options: any;
+        productCategories: any;
+        images: any;
+        variants: any;
+        defaultVariant: any;
+        defaultImage: any;
     }>;
     getProductForEdit(companyId: string, productId: string): Promise<{
         id: any;

@@ -1,6 +1,6 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { ImagesService } from 'src/domains/catalog/services/images.service';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../common/types/user.type";
+import { ImagesService } from "../../../../domains/catalog/services/images.service";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { CreateImageDto, UpdateImageDto } from './dto';
 export declare class ImagesController extends BaseController {
     private readonly imagesService;

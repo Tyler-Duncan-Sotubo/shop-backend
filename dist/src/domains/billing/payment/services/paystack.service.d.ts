@@ -1,7 +1,8 @@
 import { HttpService } from '@nestjs/axios';
-import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
-import { OrdersService } from 'src/domains/commerce/orders/orders.service';
+import { db as DbType } from "../../../../infrastructure/drizzle/types/drizzle";
+import { OrdersService } from "../../../commerce/orders/orders.service";
 import { PaymentService } from './payment.service';
+import { OrderPaidAdminNotificationService } from "../../../notification/services/order-paid.service";
 type InitializePaystackInput = {
     companyId: string;
     storeId: string;
@@ -18,8 +19,9 @@ export declare class PaystackService {
     private readonly http;
     private readonly order;
     private readonly payment;
+    private readonly orderPaidAdmin;
     private readonly baseUrl;
-    constructor(db: DbType, http: HttpService, order: OrdersService, payment: PaymentService);
+    constructor(db: DbType, http: HttpService, order: OrdersService, payment: PaymentService, orderPaidAdmin: OrderPaidAdminNotificationService);
     private getStorePaystackMethod;
     private getSecretKey;
     private toSubunit;

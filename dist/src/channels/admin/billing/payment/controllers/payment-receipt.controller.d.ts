@@ -1,5 +1,5 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { PaymentReceiptService } from 'src/domains/billing/payment/services/payment-receipt.service';
+import { User } from "../../../common/types/user.type";
+import { PaymentReceiptService } from "../../../../../domains/billing/payment/services/payment-receipt.service";
 export declare class PaymentReceiptController {
     private readonly receipts;
     constructor(receipts: PaymentReceiptService);

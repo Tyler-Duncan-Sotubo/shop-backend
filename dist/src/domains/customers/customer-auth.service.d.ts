@@ -1,4 +1,4 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../infrastructure/drizzle/types/drizzle";
 import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { LoginCustomerDto } from './dto/login-customer.dto';
 import { ConfigService } from '@nestjs/config';

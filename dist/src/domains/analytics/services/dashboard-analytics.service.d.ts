@@ -1,5 +1,5 @@
-import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
+import { db as DbType } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
 import { DashboardRangeArgs, OverviewWithDelta } from '../inputs/analytics.input';
 export declare class DashboardAnalyticsService {
     private readonly db;
@@ -30,7 +30,7 @@ export declare class DashboardAnalyticsService {
     timeseries(args: DashboardRangeArgs & {
         bucket?: 'hour' | 'day';
     }): Promise<{
-        t: string;
+        t: any;
         pageViews: number;
         visits: number;
     }[]>;

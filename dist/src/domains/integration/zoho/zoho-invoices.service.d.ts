@@ -1,8 +1,8 @@
-import type { db } from 'src/infrastructure/drizzle/types/drizzle';
+import type { db } from "../../../infrastructure/drizzle/types/drizzle";
 import { ZohoService } from './zoho.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { AuditService } from "../../audit/audit.service";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
+import { User } from "../../../channels/admin/common/types/user.type";
 import { SyncInvoiceInput } from './types/types';
 import { ZohoCommonHelper } from './helpers/zoho-common.helper';
 export declare class ZohoInvoicesService {

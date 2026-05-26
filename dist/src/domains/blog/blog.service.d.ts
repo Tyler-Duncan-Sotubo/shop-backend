@@ -1,10 +1,10 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { db } from "../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../infrastructure/cache/cache.service";
+import { AuditService } from "../audit/audit.service";
+import { User } from "../../channels/admin/common/types/user.type";
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
-import { AwsService } from 'src/infrastructure/aws/aws.service';
+import { AwsService } from "../../infrastructure/aws/aws.service";
 import { BlogPostsAdminQueryDto } from './dto/blog-posts-admin-query.dto';
 export declare class BlogService {
     private readonly db;
@@ -65,9 +65,7 @@ export declare class BlogService {
         focusKeyword: string | null;
         publishedAt: Date | null;
         isFeatured: boolean;
-        products: {
-            [x: string]: any;
-        }[];
+        products: any;
     }>;
     listPublic(storeId: string, opts?: {
         page?: number;
@@ -111,9 +109,7 @@ export declare class BlogService {
         focusKeyword: string | null;
         publishedAt: Date | null;
         isFeatured: boolean;
-        products: {
-            [x: string]: any;
-        }[];
+        products: any;
     }>;
     update(user: User, id: string, dto: UpdateBlogPostDto, ip: string): Promise<{
         id: string;

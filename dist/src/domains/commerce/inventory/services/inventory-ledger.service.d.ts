@@ -1,4 +1,4 @@
-import type { db } from 'src/infrastructure/drizzle/types/drizzle';
+import type { db } from "../../../../infrastructure/drizzle/types/drizzle";
 type Ref = {
     refType: 'order';
     refId: string;
@@ -46,7 +46,7 @@ export declare class InventoryLedgerService {
     list(companyId: string, q: ListInventoryMovementsDto): Promise<{
         rows: {
             locationName: string | null;
-            variantName: string;
+            variantName: any;
             sku: any;
             id: string;
             companyId: string;

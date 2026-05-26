@@ -22,12 +22,14 @@ const drizzle_module_1 = require("../../../../infrastructure/drizzle/drizzle.mod
 const schema_1 = require("../../../../infrastructure/drizzle/schema");
 const orders_service_1 = require("../../../commerce/orders/orders.service");
 const payment_service_1 = require("./payment.service");
+const order_paid_service_1 = require("../../../notification/services/order-paid.service");
 let PaystackService = class PaystackService {
-    constructor(db, http, order, payment) {
+    constructor(db, http, order, payment, orderPaidAdmin) {
         this.db = db;
         this.http = http;
         this.order = order;
         this.payment = payment;
+        this.orderPaidAdmin = orderPaidAdmin;
         this.baseUrl = 'https://api.paystack.co';
     }
     async getStorePaystackMethod(companyId, storeId) {
@@ -180,6 +182,25 @@ let PaystackService = class PaystackService {
                 },
                 confirmedByUserId: null,
             });
+            const [store] = await this.db
+                .select()
+                .from(schema_1.stores)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.stores.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.stores.id, storeId)))
+                .limit(1)
+                .execute();
+            const adminEmails = [
+                store?.storeEmail,
+            ].filter(Boolean);
+            await Promise.all(adminEmails.map((toEmail) => this.orderPaidAdmin.sendOrderPaidAdminEmail({
+                toEmail,
+                orderId: order.id,
+                reference: result.reference,
+                amount: result.amount,
+                currency: result.currency ?? 'NGN',
+                channel: result.channel ?? null,
+                paidAt: result.paidAt ?? null,
+                storeName: store?.name ?? undefined,
+            })));
         }
         return {
             ...result,
@@ -223,6 +244,7 @@ exports.PaystackService = PaystackService = __decorate([
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, axios_1.HttpService,
         orders_service_1.OrdersService,
-        payment_service_1.PaymentService])
+        payment_service_1.PaymentService,
+        order_paid_service_1.OrderPaidAdminNotificationService])
 ], PaystackService);
 //# sourceMappingURL=paystack.service.js.map

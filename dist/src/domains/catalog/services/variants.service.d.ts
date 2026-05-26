@@ -1,13 +1,13 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
+import { AuditService } from "../../audit/audit.service";
+import { User } from "../../../channels/admin/common/types/user.type";
 import { CreateVariantDto, UpdateVariantDto, VariantQueryDto } from '../dtos/variants';
 import { ImagesService } from './images.service';
-import { InventoryStockService } from 'src/domains/commerce/inventory/services/inventory-stock.service';
+import { InventoryStockService } from "../../commerce/inventory/services/inventory-stock.service";
 import { StoreVariantQueryDto } from '../dtos/variants/store-vairants.dto';
 import { CategoriesService } from './categories.service';
-import { CompanySettingsService } from 'src/domains/company-settings/company-settings.service';
+import { CompanySettingsService } from "../../company-settings/company-settings.service";
 export declare class VariantsService {
     private readonly db;
     private readonly cache;
@@ -56,10 +56,7 @@ export declare class VariantsService {
             altText: any;
             position: any;
         };
-        inventory: {
-            stockQuantity: number;
-            lowStockThreshold: number;
-        };
+        inventory: any;
     } | {
         variant: any;
         image: {
@@ -68,10 +65,7 @@ export declare class VariantsService {
             altText: any;
             position: any;
         };
-        inventory: {
-            stockQuantity: number;
-            lowStockThreshold: number;
-        };
+        inventory: any;
     } | {
         variant: any;
         image: {
@@ -80,14 +74,11 @@ export declare class VariantsService {
             altText: any;
             position: any;
         } | null;
-        inventory: {
-            stockQuantity: number;
-            lowStockThreshold: number;
-        } | null;
+        inventory: any;
     } | {
         variant: any;
         image: never;
-        inventory: never;
+        inventory: any;
     })[]>;
     listStoreVariantsForCombobox(companyId: string, query: StoreVariantQueryDto): Promise<{
         id: any;
@@ -95,7 +86,7 @@ export declare class VariantsService {
         sku: any;
         productName: any;
         imageUrl: any;
-        suggestedUnitPrice: number | null;
+        suggestedUnitPrice: any;
         available: number;
         label: string;
     }[]>;

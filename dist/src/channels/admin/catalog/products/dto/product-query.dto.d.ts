@@ -1,4 +1,4 @@
-import { productStatusEnum, productTypeEnum } from 'src/infrastructure/drizzle/schema';
+import { productStatusEnum, productTypeEnum } from "../../../../../infrastructure/drizzle/schema";
 export declare class ProductQueryDto {
     storeId?: string;
     search?: string;

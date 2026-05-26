@@ -1,6 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
 declare const JwtStrategy_base: new (...args: any) => any;
 export declare class JwtStrategy extends JwtStrategy_base {
     private readonly config;

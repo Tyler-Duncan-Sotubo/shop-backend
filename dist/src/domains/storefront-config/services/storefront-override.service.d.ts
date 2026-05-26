@@ -1,9 +1,9 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
 import { UpsertStorefrontOverrideDto } from '../dto/upsert-storefront-override.dto';
 import { StorefrontConfigService } from './storefront-config.service';
 import { StorefrontRevalidateService } from './storefront-revalidate.service';
-import { CompanySettingsService } from 'src/domains/company-settings/company-settings.service';
+import { CompanySettingsService } from "../../company-settings/company-settings.service";
 export declare class StorefrontOverrideService {
     private readonly db;
     private readonly cache;

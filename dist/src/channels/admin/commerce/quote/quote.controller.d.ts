@@ -1,10 +1,10 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { User } from "../../common/types/user.type";
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { GetQuotesQueryDto } from './dto/get-quotes-query.dto';
 import { ConvertQuoteToManualOrderDto } from './dto/convert-quote-to-manual-order.dto';
-import { QuoteService } from 'src/domains/commerce/quote/quote.service';
+import { QuoteService } from "../../../../domains/commerce/quote/quote.service";
 export declare class QuoteController extends BaseController {
     private readonly quoteService;
     constructor(quoteService: QuoteService);

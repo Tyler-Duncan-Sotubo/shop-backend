@@ -1,11 +1,11 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
+import { User } from "../../../channels/admin/common/types/user.type";
 import { ListOrdersDto } from './dto/list-orders.dto';
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
-import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
-import { ShippingZonesService } from 'src/domains/fulfillment/shipping/services/shipping-zones.service';
-import { ShippingRatesService } from 'src/domains/fulfillment/shipping/services/shipping-rates.service';
+import { ZohoBooksService } from "../../integration/zoho/zoho-books.service";
+import { ShippingZonesService } from "../../fulfillment/shipping/services/shipping-zones.service";
+import { ShippingRatesService } from "../../fulfillment/shipping/services/shipping-rates.service";
 export declare class OrdersService {
     private readonly db;
     private readonly cache;
@@ -104,9 +104,6 @@ export declare class OrdersService {
         [x: string]: any;
     }>;
     convertToLayBuy(companyId: string, orderId: string, user?: User, ip?: string): Promise<{
-        [x: string]: any;
-    }>;
-    fulfill(companyId: string, orderId: string, user?: User, ip?: string): Promise<{
         [x: string]: any;
     }>;
     updateCustomerAndShipping(companyId: string, orderId: string, payload: {

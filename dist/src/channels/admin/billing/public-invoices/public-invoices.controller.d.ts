@@ -1,5 +1,5 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { PublicInvoicesService } from 'src/domains/billing/public-invoices/public-invoices.service';
+import { User } from "../../common/types/user.type";
+import { PublicInvoicesService } from "../../../../domains/billing/public-invoices/public-invoices.service";
 export declare class PublicInvoicesController {
     private readonly links;
     constructor(links: PublicInvoicesService);

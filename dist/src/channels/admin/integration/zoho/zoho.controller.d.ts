@@ -1,10 +1,10 @@
-import type { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { ZohoService } from 'src/domains/integration/zoho/zoho.service';
+import type { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { ZohoService } from "../../../../domains/integration/zoho/zoho.service";
 import { CreateZohoDto } from './dto/create-zoho.dto';
 import { UpdateZohoDto } from './dto/update-zoho.dto';
 import { SetZohoEnabledDto } from './dto/set-enabled.dto';
-import { ZohoOAuthService } from 'src/domains/integration/zoho/zoho-oauth.service';
+import { ZohoOAuthService } from "../../../../domains/integration/zoho/zoho-oauth.service";
 import { FastifyReply } from 'fastify';
 export declare class ZohoController extends BaseController {
     private readonly zohoService;

@@ -21,6 +21,12 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OrdersService } from 'src/domains/commerce/orders/orders.service';
 import { ManualOrdersService } from 'src/domains/commerce/orders/manual-orders.service';
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
+import { OrderDispatchService } from 'src/domains/commerce/orders/order-dispatch.service';
+import {
+  CancelDispatchDto,
+  ConfirmDispatchDto,
+  RequestDispatchDto,
+} from './dto/request-dispatch.dto';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
@@ -28,14 +34,42 @@ export class OrdersController extends BaseController {
   constructor(
     private readonly orders: OrdersService,
     private readonly manualOrdersService: ManualOrdersService,
+    private readonly dispatch: OrderDispatchService,
   ) {
     super();
   }
+
+  // ─────────────────────────────────────────────
+  // Orders
+  // ─────────────────────────────────────────────
 
   @Get()
   @SetMetadata('permissions', ['orders.read'])
   list(@CurrentUser() user: User, @Query() q: ListOrdersDto) {
     return this.orders.listOrders(user.companyId, q);
+  }
+
+  // ✅ static routes before :id
+  @Get('dispatches')
+  @SetMetadata('permissions', ['orders.read'])
+  listDispatches(
+    @CurrentUser() user: User,
+    @Query('storeId') storeId: string,
+    @Query('status') status?: 'pending' | 'dispatched' | 'cancelled',
+  ) {
+    return this.dispatch.listDispatches(user.companyId, storeId, status);
+  }
+
+  @Get('manual/:orderId/stock-check')
+  @SetMetadata('permissions', ['orders.manual.create'])
+  async checkStock(
+    @Param('orderId') orderId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.manualOrdersService.checkStockAvailability(
+      user.companyId,
+      orderId,
+    );
   }
 
   @Get(':id')
@@ -44,7 +78,16 @@ export class OrdersController extends BaseController {
     return this.orders.getOrder(user.companyId, id);
   }
 
-  // LATER:
+  @Get(':id/dispatch')
+  @SetMetadata('permissions', ['orders.read'])
+  getDispatch(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.dispatch.getDispatch(user.companyId, id);
+  }
+
+  // ─────────────────────────────────────────────
+  // Order actions
+  // ─────────────────────────────────────────────
+
   @Post(':id/pay')
   @SetMetadata('permissions', ['orders.update'])
   pay(@CurrentUser() user: User, @Param('id') id: string) {
@@ -55,12 +98,6 @@ export class OrdersController extends BaseController {
   @SetMetadata('permissions', ['orders.update'])
   cancel(@CurrentUser() user: User, @Param('id') id: string) {
     return this.orders.cancel(user.companyId, id, user, undefined);
-  }
-
-  @Post(':id/fulfill')
-  @SetMetadata('permissions', ['orders.update'])
-  fulfill(@CurrentUser() user: User, @Param('id') id: string) {
-    return this.orders.fulfill(user.companyId, id, user, undefined);
   }
 
   @Patch(':id/lay-buy')
@@ -102,18 +139,63 @@ export class OrdersController extends BaseController {
     );
   }
 
-  // MANUAL ORDERS
-  @Get('manual/:orderId/stock-check')
-  @SetMetadata('permissions', ['orders.manual.create'])
-  async checkStock(
-    @Param('orderId') orderId: string,
+  // ─────────────────────────────────────────────
+  // Dispatch
+  // ─────────────────────────────────────────────
+
+  @Post(':id/request-dispatch')
+  @SetMetadata('permissions', ['orders.update'])
+  requestDispatch(
     @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Ip() ip: string,
+    @Body() dto: RequestDispatchDto,
   ) {
-    return this.manualOrdersService.checkStockAvailability(
+    return this.dispatch.requestDispatch(
       user.companyId,
-      orderId,
+      dto.storeId,
+      id,
+      { id: user.id, ip },
+      dto.note,
     );
   }
+
+  @Post(':id/confirm-dispatch')
+  @SetMetadata('permissions', ['orders.update'])
+  confirmDispatch(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Ip() ip: string,
+    @Body() dto: ConfirmDispatchDto,
+  ) {
+    return this.dispatch.confirmDispatch(
+      user.companyId,
+      dto.storeId,
+      id,
+      { id: user.id, ip },
+      dto.note,
+    );
+  }
+
+  @Post(':id/cancel-dispatch')
+  @SetMetadata('permissions', ['orders.update'])
+  cancelDispatch(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Ip() ip: string,
+    @Body() dto: CancelDispatchDto,
+  ) {
+    return this.dispatch.cancelDispatch(
+      user.companyId,
+      id,
+      { id: user.id, ip },
+      dto.note,
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // Manual orders
+  // ─────────────────────────────────────────────
 
   @Post('manual')
   @SetMetadata('permissions', ['orders.manual.create'])
@@ -145,8 +227,6 @@ export class OrdersController extends BaseController {
       ip,
     );
 
-    // sync invoice after item added — only fires if order is pending_payment
-    // (i.e. skipDraft was used). Safe to call unconditionally — idempotent.
     await this.manualOrdersService.syncInvoiceAfterItems(
       user.companyId,
       dto.orderId,

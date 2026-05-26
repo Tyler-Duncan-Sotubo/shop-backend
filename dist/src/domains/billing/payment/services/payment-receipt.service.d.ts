@@ -1,5 +1,5 @@
-import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
-import { AwsService } from 'src/infrastructure/aws/aws.service';
+import { db as DbType } from "../../../../infrastructure/drizzle/types/drizzle";
+import { AwsService } from "../../../../infrastructure/aws/aws.service";
 export declare class PaymentReceiptService {
     private readonly db;
     private readonly aws;

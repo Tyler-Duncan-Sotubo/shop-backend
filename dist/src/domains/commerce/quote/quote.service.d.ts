@@ -1,13 +1,13 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
+import { AuditService } from "../../audit/audit.service";
+import { User } from "../../../channels/admin/common/types/user.type";
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { GetQuotesQueryDto } from './dto/get-quotes-query.dto';
 import { ManualOrdersService } from '../orders/manual-orders.service';
-import { QuoteNotificationService } from 'src/domains/notification/services/quote-notification.service';
-import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
+import { QuoteNotificationService } from "../../notification/services/quote-notification.service";
+import { ZohoBooksService } from "../../integration/zoho/zoho-books.service";
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
 export declare class QuoteService {
     private readonly db;

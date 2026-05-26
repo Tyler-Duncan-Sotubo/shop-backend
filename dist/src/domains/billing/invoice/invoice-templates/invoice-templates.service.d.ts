@@ -1,8 +1,8 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
-import { AwsService } from 'src/infrastructure/aws/aws.service';
+import { db } from "../../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../../infrastructure/cache/cache.service";
+import { AuditService } from "../../../audit/audit.service";
+import { User } from "../../../../channels/admin/common/types/user.type";
+import { AwsService } from "../../../../infrastructure/aws/aws.service";
 import { UpdateInvoiceLogoInput } from '../inputs/update-invoice-logo.input';
 export declare class InvoiceTemplatesService {
     private readonly db;

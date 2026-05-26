@@ -1,5 +1,5 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { CreateInvoiceFromOrderDto } from './dto/create-invoice-from-order.dto';
 import { InvoiceIdParamDto } from './dto/invoice-id.param.dto';
 import { IssueInvoiceDto } from './dto/issue-invoice.dto';
@@ -8,8 +8,8 @@ import { UpdateInvoiceLineDto } from './dto/update-invoice-line.dto';
 import { ListInvoicesQueryDto } from './dto/list-invoices.query.dto';
 import { UpdateInvoiceDraftDto } from './dto/update-invoice-draft.dto';
 import { RecordInvoicePaymentDto } from '../payment/dto/record-invoice-payment.dto';
-import { InvoiceService } from 'src/domains/billing/invoice/invoice.service';
-import { PaymentService } from 'src/domains/billing/payment/services/payment.service';
+import { InvoiceService } from "../../../../domains/billing/invoice/invoice.service";
+import { PaymentService } from "../../../../domains/billing/payment/services/payment.service";
 export declare class AdminInvoiceController extends BaseController {
     private readonly invoiceService;
     private readonly paymentService;
@@ -110,7 +110,7 @@ export declare class AdminInvoiceController extends BaseController {
             meta: unknown;
             customerSnapshot: unknown;
         }[];
-        count: number;
+        count: any;
         limit: number;
         offset: number;
     }>;

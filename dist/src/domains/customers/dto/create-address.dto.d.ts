@@ -1,4 +1,4 @@
-import { NGRegionCode } from 'src/common/utils/ng-region-codes';
+import { NGRegionCode } from "../../../common/utils/ng-region-codes";
 export declare class CreateCustomerAddressDto {
     label?: string;
     firstName?: string;

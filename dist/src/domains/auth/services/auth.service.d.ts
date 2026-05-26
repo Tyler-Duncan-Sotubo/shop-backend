@@ -1,15 +1,15 @@
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PinoLogger } from 'nestjs-pino';
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
 import { UserService } from './user.service';
 import { TokenGeneratorService } from './token-generator.service';
-import { AuditService } from 'src/domains/audit/audit.service';
+import { AuditService } from "../../audit/audit.service";
 import { LoginVerificationService } from './login-verification.service';
 import { PermissionsService } from '../../iam/permissions/permissions.service';
-import { CompanySettingsService } from 'src/domains/company-settings/company-settings.service';
+import { CompanySettingsService } from "../../company-settings/company-settings.service";
 import { SessionsService } from './sessions.service';
-import { JwtType, User } from 'src/channels/admin/common/types/user.type';
+import { JwtType, User } from "../../../channels/admin/common/types/user.type";
 import { LoginInput } from '../inputs';
 export declare class AuthService {
     private readonly db;

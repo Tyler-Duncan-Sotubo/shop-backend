@@ -1,5 +1,5 @@
-import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
+import { db as DbType } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
 export type CompareMode = 'wow' | 'mom' | 'yoy' | 'custom';
 export type AnalyticsRange = {
     from: Date;

@@ -12,10 +12,14 @@ import { AwsService } from 'src/infrastructure/aws/aws.service';
 import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
 import { ZohoService } from 'src/domains/integration/zoho/zoho.service';
 import { ZohoCommonHelper } from 'src/domains/integration/zoho/helpers/zoho-common.helper';
+import { OrderDispatchService } from './order-dispatch.service';
+import { NotificationModule } from 'src/domains/notification/notification.module';
 
 @Module({
+  imports: [NotificationModule],
   providers: [
     OrdersService,
+    OrderDispatchService,
     InventoryStockService,
     InventoryLocationsService,
     InventoryLedgerService,
@@ -29,6 +33,6 @@ import { ZohoCommonHelper } from 'src/domains/integration/zoho/helpers/zoho-comm
     ZohoService,
     ZohoCommonHelper,
   ],
-  exports: [OrdersService, ManualOrdersService],
+  exports: [OrdersService, ManualOrdersService, OrderDispatchService],
 })
 export class OrdersModule {}

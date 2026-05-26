@@ -446,97 +446,97 @@ export class OrdersService {
     return result;
   }
 
-  async fulfill(companyId: string, orderId: string, user?: User, ip?: string) {
-    const result = await this.db.transaction(async (tx) => {
-      const [before] = await tx
-        .select()
-        .from(orders)
-        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
-        .for('update')
-        .execute();
+  // async fulfill(companyId: string, orderId: string, user?: User, ip?: string) {
+  //   const result = await this.db.transaction(async (tx) => {
+  //     const [before] = await tx
+  //       .select()
+  //       .from(orders)
+  //       .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+  //       .for('update')
+  //       .execute();
 
-      if (!before) throw new NotFoundException('Order not found');
-      if (before.status !== 'paid' && before.status !== 'lay_buy') {
-        throw new BadRequestException(
-          'Only paid or lay-buy orders can be fulfilled',
-        );
-      }
+  //     if (!before) throw new NotFoundException('Order not found');
+  //     if (before.status !== 'paid' && before.status !== 'lay_buy') {
+  //       throw new BadRequestException(
+  //         'Only paid or lay-buy orders can be fulfilled',
+  //       );
+  //     }
 
-      const items = await tx
-        .select()
-        .from(orderItems)
-        .where(
-          and(
-            eq(orderItems.companyId, companyId),
-            eq(orderItems.orderId, orderId),
-          ),
-        )
-        .execute();
+  //     const items = await tx
+  //       .select()
+  //       .from(orderItems)
+  //       .where(
+  //         and(
+  //           eq(orderItems.companyId, companyId),
+  //           eq(orderItems.orderId, orderId),
+  //         ),
+  //       )
+  //       .execute();
 
-      const origin = (before as any).originInventoryLocationId;
-      if (!origin) {
-        throw new BadRequestException(
-          'Order missing originInventoryLocationId',
-        );
-      }
+  //     const origin = (before as any).originInventoryLocationId;
+  //     if (!origin) {
+  //       throw new BadRequestException(
+  //         'Order missing originInventoryLocationId',
+  //       );
+  //     }
 
-      for (const it of items) {
-        if (!it.variantId) continue;
-        const qty = Number(it.quantity ?? 0);
-        if (qty <= 0) continue;
+  //     for (const it of items) {
+  //       if (!it.variantId) continue;
+  //       const qty = Number(it.quantity ?? 0);
+  //       if (qty <= 0) continue;
 
-        if ((before as any).fulfillmentModel === 'payment_first') {
-          // Reserve any remaining shortfall — reserveForOrderInTx calculates
-          // delta = qty - alreadyReserved internally, so passing full qty is correct.
-          // If the remaining stock is insufficient this throws and rolls back.
-          await this.stock.reserveForOrderInTx(
-            tx,
-            companyId,
-            orderId,
-            origin,
-            it.variantId,
-            qty,
-            `Reserved remaining stock for order ${(before as any).orderNumber ?? orderId}`,
-          );
-        }
+  //       if ((before as any).fulfillmentModel === 'payment_first') {
+  //         // Reserve any remaining shortfall — reserveForOrderInTx calculates
+  //         // delta = qty - alreadyReserved internally, so passing full qty is correct.
+  //         // If the remaining stock is insufficient this throws and rolls back.
+  //         await this.stock.reserveForOrderInTx(
+  //           tx,
+  //           companyId,
+  //           orderId,
+  //           origin,
+  //           it.variantId,
+  //           qty,
+  //           `Reserved remaining stock for order ${(before as any).orderNumber ?? orderId}`,
+  //         );
+  //       }
 
-        // stock_first: reservation already existed from conversion time
-        // payment_first: now fully reserved above — convert to fulfilled
-        await this.stock.fulfillFromReservationInTx(
-          tx,
-          companyId,
-          origin,
-          it.variantId,
-          qty,
-          { refType: 'order', refId: orderId },
-          { orderId, fulfillmentModel: (before as any).fulfillmentModel },
-        );
-      }
+  //       // stock_first: reservation already existed from conversion time
+  //       // payment_first: now fully reserved above — convert to fulfilled
+  //       await this.stock.fulfillFromReservationInTx(
+  //         tx,
+  //         companyId,
+  //         origin,
+  //         it.variantId,
+  //         qty,
+  //         { refType: 'order', refId: orderId },
+  //         { orderId, fulfillmentModel: (before as any).fulfillmentModel },
+  //       );
+  //     }
 
-      const [after] = await tx
-        .update(orders)
-        .set({ status: 'fulfilled', updatedAt: new Date() })
-        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
-        .returning()
-        .execute();
+  //     const [after] = await tx
+  //       .update(orders)
+  //       .set({ status: 'fulfilled', updatedAt: new Date() })
+  //       .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+  //       .returning()
+  //       .execute();
 
-      await tx.insert(orderEvents).values({
-        companyId,
-        orderId,
-        type: 'fulfilled',
-        fromStatus: before.status,
-        toStatus: after.status,
-        actorUserId: user?.id ?? null,
-        ipAddress: ip ?? null,
-        message: 'Order fulfilled',
-      });
+  //     await tx.insert(orderEvents).values({
+  //       companyId,
+  //       orderId,
+  //       type: 'fulfilled',
+  //       fromStatus: before.status,
+  //       toStatus: after.status,
+  //       actorUserId: user?.id ?? null,
+  //       ipAddress: ip ?? null,
+  //       message: 'Order fulfilled',
+  //     });
 
-      return after;
-    });
+  //     return after;
+  //   });
 
-    await this.cache.bumpCompanyVersion(companyId);
-    return result;
-  }
+  //   await this.cache.bumpCompanyVersion(companyId);
+  //   return result;
+  // }
 
   async updateCustomerAndShipping(
     companyId: string,

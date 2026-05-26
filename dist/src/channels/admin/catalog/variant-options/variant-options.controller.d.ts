@@ -1,6 +1,6 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { OptionsService } from 'src/domains/catalog/services/options.service';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../common/types/user.type";
+import { OptionsService } from "../../../../domains/catalog/services/options.service";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { CreateOptionDto, CreateOptionValueDto, UpdateOptionDto, UpdateOptionValueDto } from './dto';
 export declare class VariantOptionsController extends BaseController {
     private readonly optionsService;
@@ -14,9 +14,7 @@ export declare class VariantOptionsController extends BaseController {
         companyId: string;
         productId: string;
         position: number;
-        values: {
-            [x: string]: any;
-        }[];
+        values: any;
     }[]>;
     createOption(user: User, productId: string, dto: CreateOptionDto, ip: string): Promise<{
         id: string;

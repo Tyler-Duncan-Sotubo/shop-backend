@@ -1,12 +1,12 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { AdjustInventoryLevelDto, CreateLocationDto, CreateTransferDto, SetInventoryLevelDto, UpdateLocationDto, UpdateStoreLocationsDto, UpdateTransferStatusDto } from './dto';
-import { InventoryLocationsService } from 'src/domains/commerce/inventory/services/inventory-locations.service';
-import { InventoryStockService } from 'src/domains/commerce/inventory/services/inventory-stock.service';
-import { InventoryTransfersService } from 'src/domains/commerce/inventory/services/inventory-transfers.service';
-import { InventoryLedgerService } from 'src/domains/commerce/inventory/services/inventory-ledger.service';
+import { InventoryLocationsService } from "../../../../domains/commerce/inventory/services/inventory-locations.service";
+import { InventoryStockService } from "../../../../domains/commerce/inventory/services/inventory-stock.service";
+import { InventoryTransfersService } from "../../../../domains/commerce/inventory/services/inventory-transfers.service";
+import { InventoryLedgerService } from "../../../../domains/commerce/inventory/services/inventory-ledger.service";
 import { ListInventoryMovementsDto } from './dto/list-invertory-movements.dto';
-import { InventoryReportService } from 'src/domains/commerce/inventory/reports/inventory-report.service';
+import { InventoryReportService } from "../../../../domains/commerce/inventory/reports/inventory-report.service";
 export declare class InventoryController extends BaseController {
     private readonly locationsService;
     private readonly stockService;
@@ -240,7 +240,7 @@ export declare class InventoryController extends BaseController {
     list(user: User, q: ListInventoryMovementsDto, rawTypes?: string | string[]): Promise<{
         rows: {
             locationName: string | null;
-            variantName: string;
+            variantName: any;
             sku: any;
             id: string;
             companyId: string;

@@ -1,10 +1,10 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { BaseController } from "../../../infrastructure/interceptor/base.controller";
+import { User } from "../common/types/user.type";
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { BlogPostIdParamDto, UpdateBlogPostDto } from './dto/update-blog-post.dto';
 import { BlogPostsAdminQueryDto } from './dto/blog-posts-admin-query.dto';
-import { BlogService } from 'src/domains/blog/blog.service';
-import { BlogPostsReportService } from 'src/domains/blog/blog-posts-report.service';
+import { BlogService } from "../../../domains/blog/blog.service";
+import { BlogPostsReportService } from "../../../domains/blog/blog-posts-report.service";
 export declare class BlogController extends BaseController {
     private readonly blogService;
     private readonly blogPostsReportService;
@@ -62,9 +62,7 @@ export declare class BlogController extends BaseController {
         focusKeyword: string | null;
         publishedAt: Date | null;
         isFeatured: boolean;
-        products: {
-            [x: string]: any;
-        }[];
+        products: any;
     }>;
     update(user: User, params: BlogPostIdParamDto, dto: UpdateBlogPostDto, ip: string): Promise<{
         id: string;

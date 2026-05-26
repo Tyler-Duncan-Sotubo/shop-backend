@@ -282,60 +282,6 @@ let OrdersService = class OrdersService {
         await this.cache.bumpCompanyVersion(companyId);
         return result;
     }
-    async fulfill(companyId, orderId, user, ip) {
-        const result = await this.db.transaction(async (tx) => {
-            const [before] = await tx
-                .select()
-                .from(schema_1.orders)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
-                .for('update')
-                .execute();
-            if (!before)
-                throw new common_1.NotFoundException('Order not found');
-            if (before.status !== 'paid' && before.status !== 'lay_buy') {
-                throw new common_1.BadRequestException('Only paid or lay-buy orders can be fulfilled');
-            }
-            const items = await tx
-                .select()
-                .from(schema_1.orderItems)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
-                .execute();
-            const origin = before.originInventoryLocationId;
-            if (!origin) {
-                throw new common_1.BadRequestException('Order missing originInventoryLocationId');
-            }
-            for (const it of items) {
-                if (!it.variantId)
-                    continue;
-                const qty = Number(it.quantity ?? 0);
-                if (qty <= 0)
-                    continue;
-                if (before.fulfillmentModel === 'payment_first') {
-                    await this.stock.reserveForOrderInTx(tx, companyId, orderId, origin, it.variantId, qty, `Reserved remaining stock for order ${before.orderNumber ?? orderId}`);
-                }
-                await this.stock.fulfillFromReservationInTx(tx, companyId, origin, it.variantId, qty, { refType: 'order', refId: orderId }, { orderId, fulfillmentModel: before.fulfillmentModel });
-            }
-            const [after] = await tx
-                .update(schema_1.orders)
-                .set({ status: 'fulfilled', updatedAt: new Date() })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
-                .returning()
-                .execute();
-            await tx.insert(schema_1.orderEvents).values({
-                companyId,
-                orderId,
-                type: 'fulfilled',
-                fromStatus: before.status,
-                toStatus: after.status,
-                actorUserId: user?.id ?? null,
-                ipAddress: ip ?? null,
-                message: 'Order fulfilled',
-            });
-            return after;
-        });
-        await this.cache.bumpCompanyVersion(companyId);
-        return result;
-    }
     async updateCustomerAndShipping(companyId, orderId, payload, user, ip) {
         return this.db.transaction(async (tx) => {
             const [order] = await tx

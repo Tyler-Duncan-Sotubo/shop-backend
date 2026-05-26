@@ -21,13 +21,17 @@ const aws_service_1 = require("../../../infrastructure/aws/aws.service");
 const zoho_books_service_1 = require("../../integration/zoho/zoho-books.service");
 const zoho_service_1 = require("../../integration/zoho/zoho.service");
 const zoho_common_helper_1 = require("../../integration/zoho/helpers/zoho-common.helper");
+const order_dispatch_service_1 = require("./order-dispatch.service");
+const notification_module_1 = require("../../notification/notification.module");
 let OrdersModule = class OrdersModule {
 };
 exports.OrdersModule = OrdersModule;
 exports.OrdersModule = OrdersModule = __decorate([
     (0, common_1.Module)({
+        imports: [notification_module_1.NotificationModule],
         providers: [
             orders_service_1.OrdersService,
+            order_dispatch_service_1.OrderDispatchService,
             inventory_stock_service_1.InventoryStockService,
             inventory_locations_service_1.InventoryLocationsService,
             inventory_ledger_service_1.InventoryLedgerService,
@@ -41,7 +45,7 @@ exports.OrdersModule = OrdersModule = __decorate([
             zoho_service_1.ZohoService,
             zoho_common_helper_1.ZohoCommonHelper,
         ],
-        exports: [orders_service_1.OrdersService, manual_orders_service_1.ManualOrdersService],
+        exports: [orders_service_1.OrdersService, manual_orders_service_1.ManualOrdersService, order_dispatch_service_1.OrderDispatchService],
     })
 ], OrdersModule);
 //# sourceMappingURL=orders.module.js.map

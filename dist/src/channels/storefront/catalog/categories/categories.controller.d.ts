@@ -1,5 +1,5 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { CategoriesService } from 'src/domains/catalog/services/categories.service';
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { CategoriesService } from "../../../../domains/catalog/services/categories.service";
 export declare class CategoriesController extends BaseController {
     private readonly categoriesService;
     constructor(categoriesService: CategoriesService);
@@ -10,7 +10,7 @@ export declare class CategoriesController extends BaseController {
         slug: any;
         imageAltText: string | null;
         parentId: any;
-        hasChildren: boolean;
+        hasChildren: any;
     } | {
         imageUrl: string;
         id: any;
@@ -18,6 +18,6 @@ export declare class CategoriesController extends BaseController {
         slug: any;
         imageAltText: string | null;
         parentId: any;
-        hasChildren: boolean;
+        hasChildren: any;
     })[]>;
 }

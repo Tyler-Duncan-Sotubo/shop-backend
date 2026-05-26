@@ -1,9 +1,9 @@
-import type { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import type { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { CreateAnalyticsDto } from './dto/create-analytics.dto';
 import { UpdateAnalyticsDto } from './dto/update-analytics.dto';
 import { SetAnalyticsEnabledDto } from './dto/set-enabled.dto';
-import { AnalyticsService } from 'src/domains/integration/analytics/analytics.service';
+import { AnalyticsService } from "../../../../domains/integration/analytics/analytics.service";
 export declare class AnalyticsController extends BaseController {
     private readonly analyticsService;
     constructor(analyticsService: AnalyticsService);

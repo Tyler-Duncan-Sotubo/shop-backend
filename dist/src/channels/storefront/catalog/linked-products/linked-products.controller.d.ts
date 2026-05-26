@@ -1,6 +1,6 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { ProductLinkType } from 'src/infrastructure/drizzle/schema';
-import { LinkedProductsService } from 'src/domains/catalog/services/linked-products.service';
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { ProductLinkType } from "../../../../infrastructure/drizzle/schema";
+import { LinkedProductsService } from "../../../../domains/catalog/services/linked-products.service";
 export declare class LinkedProductsController extends BaseController {
     private readonly linkedProductsService;
     constructor(linkedProductsService: LinkedProductsService);

@@ -1,5 +1,5 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { BlogService } from 'src/domains/blog/blog.service';
+import { BaseController } from "../../../infrastructure/interceptor/base.controller";
+import { BlogService } from "../../../domains/blog/blog.service";
 export declare class BlogController extends BaseController {
     private readonly blogService;
     constructor(blogService: BlogService);
@@ -42,8 +42,6 @@ export declare class BlogController extends BaseController {
         focusKeyword: string | null;
         publishedAt: Date | null;
         isFeatured: boolean;
-        products: {
-            [x: string]: any;
-        }[];
+        products: any;
     }>;
 }

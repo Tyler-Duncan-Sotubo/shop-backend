@@ -1,4 +1,4 @@
-import type { db } from 'src/infrastructure/drizzle/types/drizzle';
+import type { db } from "../../../infrastructure/drizzle/types/drizzle";
 import { ZohoService } from './zoho.service';
 export declare class ZohoPollingCron {
     private readonly db;

@@ -1,4 +1,4 @@
-import { OrdersService } from 'src/domains/commerce/orders/orders.service';
+import { OrdersService } from "../../../../domains/commerce/orders/orders.service";
 export declare class StorefrontOrdersController {
     private readonly orders;
     constructor(orders: OrdersService);

@@ -8,6 +8,8 @@ import { EmailQueueProcessor } from './services/email-queue.processor';
 import { ContactNotificationService } from './services/contact-notification.service';
 import { QuoteNotificationService } from './services/quote-notification.service';
 import { ResendProvider } from './resend.provider';
+import { OrderPaidAdminNotificationService } from './services/order-paid.service';
+import { DispatchNotificationService } from './services/dispatch-notification.service';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { ResendProvider } from './resend.provider';
     EmailQueueProcessor,
     ContactNotificationService,
     QuoteNotificationService,
+    OrderPaidAdminNotificationService,
+    DispatchNotificationService,
   ],
   exports: [
     PasswordResetEmailService,
@@ -32,6 +36,8 @@ import { ResendProvider } from './resend.provider';
     EmailVerificationService,
     EmployeeInvitationService,
     QuoteNotificationService,
+    OrderPaidAdminNotificationService,
+    DispatchNotificationService,
   ],
 })
 export class NotificationModule {}

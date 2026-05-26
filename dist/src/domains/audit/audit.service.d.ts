@@ -1,4 +1,4 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../infrastructure/drizzle/types/drizzle";
 export declare class AuditService {
     private db;
     constructor(db: db);
@@ -31,7 +31,7 @@ export declare class AuditService {
         details: string | null;
         changes: unknown;
         ipAddress: string | null;
-        name: unknown;
+        name: any;
         role: string;
     }[]>;
     getLoginAudit(companyId: string): Promise<{
@@ -43,7 +43,7 @@ export declare class AuditService {
         details: string | null;
         changes: unknown;
         ipAddress: string | null;
-        name: unknown;
+        name: any;
         role: string;
     }[]>;
 }

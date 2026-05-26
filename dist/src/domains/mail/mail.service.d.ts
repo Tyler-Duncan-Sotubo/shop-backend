@@ -1,4 +1,4 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../infrastructure/drizzle/types/drizzle";
 import { Queue } from 'bullmq';
 import { ContactNotificationService } from '../notification/services/contact-notification.service';
 export declare class MailService {

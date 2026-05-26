@@ -1,9 +1,9 @@
-import { AwsService } from 'src/infrastructure/aws/aws.service';
+import { AwsService } from "../../infrastructure/aws/aws.service";
 import { CreateMediaDto } from './dto/create-media.dto';
 import { UploadEditorImageDto } from './dto/upload-editor-image.dto';
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../infrastructure/drizzle/types/drizzle";
 import { GetMediaQueryDto } from './dto/get-media-query.dto';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
+import { CacheService } from "../../infrastructure/cache/cache.service";
 export type PresignFileInput = {
     fileName: string;
     mimeType: string;

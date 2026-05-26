@@ -1,6 +1,6 @@
-import { User } from 'src/channels/admin/common/types/user.type';
+import { User } from "../common/types/user.type";
 import { SetupCreateStoreAndDomainDto } from './dto/setup-store.dto';
-import { SetupService } from 'src/domains/setup/setup.service';
+import { SetupService } from "../../../domains/setup/setup.service";
 export declare class SetupController {
     private readonly setupService;
     constructor(setupService: SetupService);

@@ -1,8 +1,8 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { PasswordResetEmailService } from 'src/domains/notification/services/password-reset.service';
-import { AuditService } from 'src/domains/audit/audit.service';
+import { PasswordResetEmailService } from "../../notification/services/password-reset.service";
+import { AuditService } from "../../audit/audit.service";
 export declare class PasswordResetService {
     private db;
     private readonly passwordResetEmailService;

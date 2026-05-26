@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { TrackEventDto } from './dto/track-event.dto';
-import { StoresService } from 'src/domains/commerce/stores/stores.service';
-import { StorefrontAnalyticsService } from 'src/domains/analytics/services/storefront-analytics.service';
+import { StoresService } from "../../../domains/commerce/stores/stores.service";
+import { StorefrontAnalyticsService } from "../../../domains/analytics/services/storefront-analytics.service";
 export declare class AnalyticsController {
     private readonly sf;
     private readonly domain;

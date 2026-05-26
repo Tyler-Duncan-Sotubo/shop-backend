@@ -1,6 +1,6 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { CreateQuoteDto } from './dto/create-quote.dto';
-import { QuoteService } from 'src/domains/commerce/quote/quote.service';
+import { QuoteService } from "../../../../domains/commerce/quote/quote.service";
 export declare class QuoteController extends BaseController {
     private readonly quoteService;
     constructor(quoteService: QuoteService);

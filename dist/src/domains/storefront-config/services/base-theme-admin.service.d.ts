@@ -1,5 +1,5 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
 import { CreateBaseDto, UpdateBaseDto } from '../dto/base-theme.dto';
 import { CreateThemeDto, UpdateThemeDto } from '../dto/theme.dto';
 export declare class BaseThemeAdminService {

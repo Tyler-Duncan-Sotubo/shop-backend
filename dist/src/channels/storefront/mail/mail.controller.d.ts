@@ -1,6 +1,6 @@
 import { CreateSubscriberDto } from './dto/create-subscriber.dto';
 import { CreateContactMessageDto } from './dto/create-contact-message.dto';
-import { MailService } from 'src/domains/mail/mail.service';
+import { MailService } from "../../../domains/mail/mail.service";
 export declare class MailController {
     private readonly mailService;
     constructor(mailService: MailService);

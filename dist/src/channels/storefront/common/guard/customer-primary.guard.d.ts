@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../../../infrastructure/drizzle/types/drizzle";
 export declare class CustomerPrimaryGuard implements CanActivate {
     private readonly jwtService;
     private readonly configService;

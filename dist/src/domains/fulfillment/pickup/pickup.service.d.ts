@@ -1,6 +1,6 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { AuditService } from "../../audit/audit.service";
+import { User } from "../../../channels/admin/common/types/user.type";
 import { CreatePickupLocationDto } from './dto/create-pickup.dto';
 import { UpdatePickupDto } from './dto/update-pickup.dto';
 export declare class PickupService {
@@ -10,8 +10,8 @@ export declare class PickupService {
     listStorefront(companyId: string, storeId: string, state?: string): Promise<{
         id: string;
         name: string;
-        address1: string;
-        address2: string | null;
+        address1: any;
+        address2: any;
         instructions: string | null;
         state: string;
         inventoryLocationId: string;
@@ -25,8 +25,8 @@ export declare class PickupService {
         inventoryName: string;
         inventoryLocationId: string;
         state: string;
-        address1: string;
-        address2: string | null;
+        address1: any;
+        address2: any;
         instructions: string | null;
     }[]>;
     get(companyId: string, id: string): Promise<{

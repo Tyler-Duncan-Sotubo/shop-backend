@@ -1,9 +1,9 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { CreateCarrierDto, CreateRateDto, CreateZoneDto, QuoteShippingDto, UpdateRateDto, UpsertRateTierDto, UpsertZoneLocationDto } from './dto';
-import { ShippingZonesService } from 'src/domains/fulfillment/shipping/services/shipping-zones.service';
-import { ShippingCarriersService } from 'src/domains/fulfillment/shipping/services/shipping-carriers.service';
-import { ShippingRatesService } from 'src/domains/fulfillment/shipping/services/shipping-rates.service';
+import { ShippingZonesService } from "../../../../domains/fulfillment/shipping/services/shipping-zones.service";
+import { ShippingCarriersService } from "../../../../domains/fulfillment/shipping/services/shipping-carriers.service";
+import { ShippingRatesService } from "../../../../domains/fulfillment/shipping/services/shipping-rates.service";
 export declare class ShippingController extends BaseController {
     private readonly zones;
     private readonly carriers;

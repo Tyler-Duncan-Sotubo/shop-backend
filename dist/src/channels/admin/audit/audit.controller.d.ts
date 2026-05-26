@@ -1,6 +1,6 @@
 import { AuditService } from '../../../domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../common/types/user.type";
+import { BaseController } from "../../../infrastructure/interceptor/base.controller";
 export declare class AuditController extends BaseController {
     private readonly auditService;
     constructor(auditService: AuditService);
@@ -13,7 +13,7 @@ export declare class AuditController extends BaseController {
         details: string | null;
         changes: unknown;
         ipAddress: string | null;
-        name: unknown;
+        name: any;
         role: string;
     }[]>;
     getAuthenticationLogs(user: User): Promise<{
@@ -25,7 +25,7 @@ export declare class AuditController extends BaseController {
         details: string | null;
         changes: unknown;
         ipAddress: string | null;
-        name: unknown;
+        name: any;
         role: string;
     }[]>;
 }

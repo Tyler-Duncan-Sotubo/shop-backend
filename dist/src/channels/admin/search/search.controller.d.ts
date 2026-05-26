@@ -1,4 +1,4 @@
-import { SearchService } from 'src/domains/search/search.service';
+import { SearchService } from "../../../domains/search/search.service";
 import { User } from '../common/types/user.type';
 export declare class SearchController {
     private readonly searchService;
@@ -14,18 +14,18 @@ export declare class SearchController {
             orders: ({
                 id: any;
                 number: any;
-                customer: string;
+                customer: any;
                 status: any;
             } | {
                 id: any;
                 number: any;
-                customer: string;
+                customer: any;
                 status: any;
             })[];
             invoices: {
                 id: string;
                 number: string | null;
-                customer: string;
+                customer: any;
                 status: "draft" | "issued" | "partially_paid" | "paid" | "void";
             }[];
             quotes: {
@@ -36,9 +36,9 @@ export declare class SearchController {
             }[];
             customers: {
                 id: string;
-                number: string;
+                number: any;
                 customer: string | null;
-                status: string;
+                status: any;
                 email: string | null;
             }[];
         };

@@ -1,7 +1,7 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { BaseController } from "../../../infrastructure/interceptor/base.controller";
 import { StorefrontReviewQueryDto } from './dto/storefront-review-query.dto';
 import { CreateStorefrontReviewDto } from './dto/create-storefront-review.dto';
-import { ReviewsService } from 'src/domains/reviews/reviews.service';
+import { ReviewsService } from "../../../domains/reviews/reviews.service";
 export declare class ReviewsController extends BaseController {
     private readonly reviewsService;
     constructor(reviewsService: ReviewsService);

@@ -1,4 +1,4 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../infrastructure/drizzle/types/drizzle";
 export declare class SearchService {
     private readonly db;
     constructor(db: db);
@@ -6,18 +6,18 @@ export declare class SearchService {
         orders: ({
             id: any;
             number: any;
-            customer: string;
+            customer: any;
             status: any;
         } | {
             id: any;
             number: any;
-            customer: string;
+            customer: any;
             status: any;
         })[];
         invoices: {
             id: string;
             number: string | null;
-            customer: string;
+            customer: any;
             status: "draft" | "issued" | "partially_paid" | "paid" | "void";
         }[];
         quotes: {
@@ -28,9 +28,9 @@ export declare class SearchService {
         }[];
         customers: {
             id: string;
-            number: string;
+            number: any;
             customer: string | null;
-            status: string;
+            status: any;
             email: string | null;
         }[];
     }>;

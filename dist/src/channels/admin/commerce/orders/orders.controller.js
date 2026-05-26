@@ -23,17 +23,29 @@ const jwt_auth_guard_1 = require("../../common/guards/jwt-auth.guard");
 const orders_service_1 = require("../../../../domains/commerce/orders/orders.service");
 const manual_orders_service_1 = require("../../../../domains/commerce/orders/manual-orders.service");
 const current_user_decorator_1 = require("../../common/decorator/current-user.decorator");
+const order_dispatch_service_1 = require("../../../../domains/commerce/orders/order-dispatch.service");
+const request_dispatch_dto_1 = require("./dto/request-dispatch.dto");
 let OrdersController = class OrdersController extends base_controller_1.BaseController {
-    constructor(orders, manualOrdersService) {
+    constructor(orders, manualOrdersService, dispatch) {
         super();
         this.orders = orders;
         this.manualOrdersService = manualOrdersService;
+        this.dispatch = dispatch;
     }
     list(user, q) {
         return this.orders.listOrders(user.companyId, q);
     }
+    listDispatches(user, storeId, status) {
+        return this.dispatch.listDispatches(user.companyId, storeId, status);
+    }
+    async checkStock(orderId, user) {
+        return this.manualOrdersService.checkStockAvailability(user.companyId, orderId);
+    }
     get(user, id) {
         return this.orders.getOrder(user.companyId, id);
+    }
+    getDispatch(user, id) {
+        return this.dispatch.getDispatch(user.companyId, id);
     }
     pay(user, id) {
         return this.orders.markPaid(user.companyId, id, user, undefined);
@@ -41,17 +53,20 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
     cancel(user, id) {
         return this.orders.cancel(user.companyId, id, user, undefined);
     }
-    fulfill(user, id) {
-        return this.orders.fulfill(user.companyId, id, user, undefined);
-    }
     convertToLayBuy(user, id, ip) {
         return this.orders.convertToLayBuy(user.companyId, id, user, ip);
     }
     updateCustomerAndShipping(user, orderId, dto, ip) {
         return this.orders.updateCustomerAndShipping(user.companyId, orderId, dto, user, ip);
     }
-    async checkStock(orderId, user) {
-        return this.manualOrdersService.checkStockAvailability(user.companyId, orderId);
+    requestDispatch(user, id, ip, dto) {
+        return this.dispatch.requestDispatch(user.companyId, dto.storeId, id, { id: user.id, ip }, dto.note);
+    }
+    confirmDispatch(user, id, ip, dto) {
+        return this.dispatch.confirmDispatch(user.companyId, dto.storeId, id, { id: user.id, ip }, dto.note);
+    }
+    cancelDispatch(user, id, ip, dto) {
+        return this.dispatch.cancelDispatch(user.companyId, id, { id: user.id, ip }, dto.note);
     }
     createManualOrder(user, dto, ip) {
         return this.manualOrdersService.createManualOrder(user.companyId, dto, user, ip);
@@ -82,6 +97,25 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "list", null);
 __decorate([
+    (0, common_1.Get)('dispatches'),
+    (0, common_1.SetMetadata)('permissions', ['orders.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)('storeId')),
+    __param(2, (0, common_1.Query)('status')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "listDispatches", null);
+__decorate([
+    (0, common_1.Get)('manual/:orderId/stock-check'),
+    (0, common_1.SetMetadata)('permissions', ['orders.manual.create']),
+    __param(0, (0, common_1.Param)('orderId')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "checkStock", null);
+__decorate([
     (0, common_1.Get)(':id'),
     (0, common_1.SetMetadata)('permissions', ['orders.read']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
@@ -90,6 +124,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "get", null);
+__decorate([
+    (0, common_1.Get)(':id/dispatch'),
+    (0, common_1.SetMetadata)('permissions', ['orders.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "getDispatch", null);
 __decorate([
     (0, common_1.Post)(':id/pay'),
     (0, common_1.SetMetadata)('permissions', ['orders.update']),
@@ -108,15 +151,6 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "cancel", null);
-__decorate([
-    (0, common_1.Post)(':id/fulfill'),
-    (0, common_1.SetMetadata)('permissions', ['orders.update']),
-    __param(0, (0, current_user_decorator_1.CurrentUser)()),
-    __param(1, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
-    __metadata("design:returntype", void 0)
-], OrdersController.prototype, "fulfill", null);
 __decorate([
     (0, common_1.Patch)(':id/lay-buy'),
     (0, common_1.SetMetadata)('permissions', ['orders.update']),
@@ -139,14 +173,38 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "updateCustomerAndShipping", null);
 __decorate([
-    (0, common_1.Get)('manual/:orderId/stock-check'),
-    (0, common_1.SetMetadata)('permissions', ['orders.manual.create']),
-    __param(0, (0, common_1.Param)('orderId')),
-    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    (0, common_1.Post)(':id/request-dispatch'),
+    (0, common_1.SetMetadata)('permissions', ['orders.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Ip)()),
+    __param(3, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
-    __metadata("design:returntype", Promise)
-], OrdersController.prototype, "checkStock", null);
+    __metadata("design:paramtypes", [Object, String, String, request_dispatch_dto_1.RequestDispatchDto]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "requestDispatch", null);
+__decorate([
+    (0, common_1.Post)(':id/confirm-dispatch'),
+    (0, common_1.SetMetadata)('permissions', ['orders.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Ip)()),
+    __param(3, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, request_dispatch_dto_1.ConfirmDispatchDto]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "confirmDispatch", null);
+__decorate([
+    (0, common_1.Post)(':id/cancel-dispatch'),
+    (0, common_1.SetMetadata)('permissions', ['orders.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Ip)()),
+    __param(3, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, request_dispatch_dto_1.CancelDispatchDto]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "cancelDispatch", null);
 __decorate([
     (0, common_1.Post)('manual'),
     (0, common_1.SetMetadata)('permissions', ['orders.manual.create']),
@@ -202,6 +260,7 @@ exports.OrdersController = OrdersController = __decorate([
     (0, common_1.Controller)('orders'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [orders_service_1.OrdersService,
-        manual_orders_service_1.ManualOrdersService])
+        manual_orders_service_1.ManualOrdersService,
+        order_dispatch_service_1.OrderDispatchService])
 ], OrdersController);
 //# sourceMappingURL=orders.controller.js.map

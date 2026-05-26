@@ -1,4 +1,4 @@
-import { productVariants } from 'src/infrastructure/drizzle/schema';
+import { productVariants } from "../../../infrastructure/drizzle/schema";
 export type VariantRow = typeof productVariants.$inferSelect;
 export interface VariantImageResponse {
     id: string;

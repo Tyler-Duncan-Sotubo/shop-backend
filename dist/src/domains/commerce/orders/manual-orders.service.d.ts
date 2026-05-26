@@ -1,12 +1,12 @@
-import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { db as DbType } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
+import { AuditService } from "../../audit/audit.service";
+import { User } from "../../../channels/admin/common/types/user.type";
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
 import { AddManualOrderItemDto } from './dto/add-manual-order-item.dto';
 import { UpdateManualOrderItemDto } from './dto/update-manual-order-item.dto';
-import { InvoiceService } from 'src/domains/billing/invoice/invoice.service';
+import { InvoiceService } from "../../billing/invoice/invoice.service";
 type TxOrDb = DbType | any;
 export declare class ManualOrdersService {
     private readonly db;

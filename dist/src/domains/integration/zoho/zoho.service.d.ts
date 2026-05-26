@@ -1,7 +1,7 @@
-import type { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import type { User } from 'src/channels/admin/common/types/user.type';
+import type { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../infrastructure/cache/cache.service";
+import { AuditService } from "../../audit/audit.service";
+import type { User } from "../../../channels/admin/common/types/user.type";
 import { UpdateZohoConnectionDto } from './inputs/update-zoho-connect';
 import { UpsertZohoConnectionDto } from './inputs/upsert-zoho-connect';
 export declare class ZohoService {

@@ -1,7 +1,7 @@
 import { MarkOnboardingStepDto } from './dto/mark-onboarding-step.dto';
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { CompanySettingsService } from 'src/domains/company-settings/company-settings.service';
+import { User } from "../common/types/user.type";
+import { BaseController } from "../../../infrastructure/interceptor/base.controller";
+import { CompanySettingsService } from "../../../domains/company-settings/company-settings.service";
 export declare class CompanySettingsController extends BaseController {
     private readonly companySettingsService;
     constructor(companySettingsService: CompanySettingsService);

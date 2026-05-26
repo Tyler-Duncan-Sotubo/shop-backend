@@ -1,6 +1,6 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { db } from "../../../../infrastructure/drizzle/types/drizzle";
+import { AuditService } from "../../../audit/audit.service";
+import { User } from "../../../../channels/admin/common/types/user.type";
 import { CartQueryService } from './cart-query.service';
 export declare class CartTotalsService {
     private readonly db;

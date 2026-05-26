@@ -1,5 +1,5 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { TokenGeneratorService } from 'src/domains/auth/services';
+import { db } from "../../../../infrastructure/drizzle/types/drizzle";
+import { TokenGeneratorService } from "../../../auth/services";
 export declare class CartTokenService {
     private readonly db;
     private readonly tokenGenerator;

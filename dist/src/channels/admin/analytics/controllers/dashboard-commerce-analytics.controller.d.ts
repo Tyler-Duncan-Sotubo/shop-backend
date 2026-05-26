@@ -1,7 +1,7 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { DashboardCommerceAnalyticsService } from 'src/domains/analytics/services/dashboard-commerce-analytics.service';
-import { Preset } from 'src/common/utils/resolve-preset';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { DashboardCommerceAnalyticsService } from "../../../../domains/analytics/services/dashboard-commerce-analytics.service";
+import { Preset } from "../../../../common/utils/resolve-preset";
 export declare class DashboardCommerceAnalyticsController extends BaseController {
     private readonly commerce;
     constructor(commerce: DashboardCommerceAnalyticsService);
@@ -14,8 +14,8 @@ export declare class DashboardCommerceAnalyticsController extends BaseController
     grossSalesCards(user: User, from: string, to: string, storeId?: string): Promise<import("../../../../domains/analytics/inputs/analytics.input").GrossSalesCardsResult>;
     latestPayments(user: User, from: string, to: string, storeId?: string, limit?: string): Promise<import("../../../../domains/analytics/inputs/analytics.input").LatestPaymentRow[]>;
     topProducts(user: User, from: string, to: string, storeId?: string, limit?: string, by?: 'revenue' | 'units'): Promise<{
-        productId: string | null;
-        variantId: string | null;
+        productId: any;
+        variantId: any;
         productName: any;
         variantTitle: any;
         imageUrl: string | null;
@@ -43,8 +43,8 @@ export declare class DashboardCommerceAnalyticsController extends BaseController
         latestPayments: import("../../../../domains/analytics/inputs/analytics.input").LatestPaymentRow[];
         recentOrders: import("../../../../domains/analytics/inputs/analytics.input").RecentOrderRow[];
         topProducts: {
-            productId: string | null;
-            variantId: string | null;
+            productId: any;
+            variantId: any;
             productName: any;
             variantTitle: any;
             imageUrl: string | null;

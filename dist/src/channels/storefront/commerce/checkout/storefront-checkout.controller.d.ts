@@ -2,8 +2,8 @@ import { CreateCheckoutFromCartDto } from './dto/create-checkout-from-cart.dto';
 import { SetCheckoutShippingDto } from './dto/set-checkout-shipping.dto';
 import { SetCheckoutPickupDto } from './dto/set-checkout-pickup.dto';
 import { CompleteCheckoutDto } from './dto/complete-checkout.dto';
-import { CheckoutService } from 'src/domains/commerce/checkout/checkout.service';
-import { CheckoutPaymentsService } from 'src/domains/commerce/checkout/checkout-payment.service';
+import { CheckoutService } from "../../../../domains/commerce/checkout/checkout.service";
+import { CheckoutPaymentsService } from "../../../../domains/commerce/checkout/checkout-payment.service";
 export declare class StorefrontCheckoutController {
     private readonly checkout;
     private readonly checkoutPayments;

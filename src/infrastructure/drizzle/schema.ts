@@ -83,6 +83,7 @@ export * from './schema/commerce/orders/orders.schema';
 export * from './schema/commerce/orders/order-items.schema';
 export * from './schema/commerce/orders/inventory-reservations.schema';
 export * from './schema/commerce/orders/order-events.schema';
+export * from './schema/commerce/orders/order-dispatch.schema';
 // ---------------------------------------------------------
 
 //  QUOTE REQUESTS

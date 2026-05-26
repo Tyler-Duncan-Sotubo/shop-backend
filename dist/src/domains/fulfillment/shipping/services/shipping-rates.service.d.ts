@@ -1,10 +1,10 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
-import { AuditService } from 'src/domains/audit/audit.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { db } from "../../../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../../../infrastructure/cache/cache.service";
+import { AuditService } from "../../../audit/audit.service";
+import { User } from "../../../../channels/admin/common/types/user.type";
 import { CreateRateDto, UpdateRateDto, UpsertRateTierDto, QuoteShippingDto } from '../dto';
 import { ShippingZonesService } from './shipping-zones.service';
-import { CompanySettingsService } from 'src/domains/company-settings/company-settings.service';
+import { CompanySettingsService } from "../../../company-settings/company-settings.service";
 type Money = string;
 export declare class ShippingRatesService {
     private readonly db;

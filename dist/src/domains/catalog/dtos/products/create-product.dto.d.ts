@@ -1,4 +1,4 @@
-import { productStatusEnum, productTypeEnum, ProductLinkType } from 'src/infrastructure/drizzle/schema';
+import { productStatusEnum, productTypeEnum, ProductLinkType } from "../../../../infrastructure/drizzle/schema";
 export declare class CreateProductImageDto {
     key: string;
     url?: string;

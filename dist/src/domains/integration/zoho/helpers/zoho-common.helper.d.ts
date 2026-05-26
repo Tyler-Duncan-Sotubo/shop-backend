@@ -1,4 +1,4 @@
-import type { db } from 'src/infrastructure/drizzle/types/drizzle';
+import type { db } from "../../../../infrastructure/drizzle/types/drizzle";
 export declare class ZohoCommonHelper {
     private readonly db;
     constructor(db: db);

@@ -1,4 +1,4 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../../../infrastructure/drizzle/types/drizzle";
 export declare class InventoryAvailabilityService {
     private readonly db;
     constructor(db: db);

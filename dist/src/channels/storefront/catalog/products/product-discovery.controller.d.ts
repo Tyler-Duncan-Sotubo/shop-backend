@@ -1,5 +1,5 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { ProductDiscoveryService } from 'src/domains/catalog/services/product-discovery.service';
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { ProductDiscoveryService } from "../../../../domains/catalog/services/product-discovery.service";
 import { ProductQueryDto } from './dto';
 export declare class ProductsDiscoveryController extends BaseController {
     private readonly productDiscoveryService;

@@ -1,11 +1,11 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { BaseController } from "../../../infrastructure/interceptor/base.controller";
+import { User } from "../common/types/user.type";
 import { CreateBaseDto, UpdateBaseDto } from './dto/base-theme.dto';
 import { CreateThemeDto, UpdateThemeDto } from './dto/theme.dto';
 import { UpsertStorefrontOverrideDto } from './dto/upsert-storefront-override.dto';
-import { StorefrontConfigService } from 'src/domains/storefront-config/services/storefront-config.service';
-import { BaseThemeAdminService } from 'src/domains/storefront-config/services/base-theme-admin.service';
-import { StorefrontOverrideService } from 'src/domains/storefront-config/services/storefront-override.service';
+import { StorefrontConfigService } from "../../../domains/storefront-config/services/storefront-config.service";
+import { BaseThemeAdminService } from "../../../domains/storefront-config/services/base-theme-admin.service";
+import { StorefrontOverrideService } from "../../../domains/storefront-config/services/storefront-override.service";
 export declare class StorefrontConfigController extends BaseController {
     private readonly runtime;
     private readonly overrides;

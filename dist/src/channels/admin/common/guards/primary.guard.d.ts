@@ -1,8 +1,8 @@
 import { CanActivate, ExecutionContext } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { PermissionsService } from 'src/domains/iam/permissions/permissions.service';
+import { db } from "../../../../infrastructure/drizzle/types/drizzle";
+import { PermissionsService } from "../../../../domains/iam/permissions/permissions.service";
 export declare class PrimaryGuard implements CanActivate {
     private jwtService;
     private configService;

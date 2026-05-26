@@ -1,5 +1,5 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { DashboardAnalyticsService } from 'src/domains/analytics/services/dashboard-analytics.service';
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { DashboardAnalyticsService } from "../../../../domains/analytics/services/dashboard-analytics.service";
 import { User } from '../../common/types/user.type';
 export declare class DashboardAnalyticsController extends BaseController {
     private readonly dash;
@@ -17,7 +17,7 @@ export declare class DashboardAnalyticsController extends BaseController {
         visits: number;
     }[]>;
     timeseries(user: User, from: string, to: string, storeId?: string, bucket?: 'hour' | 'day'): Promise<{
-        t: string;
+        t: any;
         pageViews: number;
         visits: number;
     }[]>;

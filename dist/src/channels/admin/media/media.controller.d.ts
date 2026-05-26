@@ -1,4 +1,4 @@
-import { User } from 'src/channels/admin/common/types/user.type';
+import { User } from "../common/types/user.type";
 import { UploadEditorImageDto } from './dto/upload-editor-image.dto';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { GetMediaQueryDto } from './dto/get-media-query.dto';
@@ -6,7 +6,7 @@ import { PresignProductUploadsDto } from './dto/uploads-signed.dto';
 import { FinalizeMediaUploadDto } from './dto/finalize-media.dto';
 import { PresignMediaUploadsDto } from './dto/presign-media.dto';
 import { GenerateFaviconsDto } from './dto/generate-favicons.dto';
-import { MediaService } from 'src/domains/media/media.service';
+import { MediaService } from "../../../domains/media/media.service";
 export declare class MediaController {
     private readonly mediaService;
     constructor(mediaService: MediaService);

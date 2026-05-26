@@ -1,5 +1,5 @@
-import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
-import { CompanySettingsService } from 'src/domains/company-settings/company-settings.service';
+import { db as DbType } from "../../../../infrastructure/drizzle/types/drizzle";
+import { CompanySettingsService } from "../../../company-settings/company-settings.service";
 import { ToggleStorePaymentMethodInput, UpsertBankTransferConfigInput, UpsertGatewayConfigInput } from '../inputs';
 export declare class PaymentMethodsService {
     private readonly db;

@@ -1,6 +1,6 @@
 import { UpdateProfileDto } from '../dto/update-profile.dto';
-import { User } from 'src/channels/admin/common/types/user.type';
-import { UserService } from 'src/domains/auth/services';
+import { User } from "../../common/types/user.type";
+import { UserService } from "../../../../domains/auth/services";
 export declare class AuthProfileController {
     private readonly userService;
     constructor(userService: UserService);

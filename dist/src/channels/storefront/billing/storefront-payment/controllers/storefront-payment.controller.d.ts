@@ -1,6 +1,6 @@
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { BaseController } from "../../../../../infrastructure/interceptor/base.controller";
 import { PresignPaymentEvidenceDto } from '../dto/presign.dto';
-import { PaymentService } from 'src/domains/billing/payment/services/payment.service';
+import { PaymentService } from "../../../../../domains/billing/payment/services/payment.service";
 export declare class PaymentController extends BaseController {
     private readonly paymentsService;
     constructor(paymentsService: PaymentService);

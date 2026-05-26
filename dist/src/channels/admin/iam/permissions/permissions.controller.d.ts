@@ -1,9 +1,9 @@
-import { User } from 'src/channels/admin/common/types/user.type';
+import { User } from "../../common/types/user.type";
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdateCompanyPermissionsDto } from './dto/update-company-permission.dto';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { CompanyRoleName } from 'src/infrastructure/drizzle/schema/enum.schema';
-import { PermissionsService } from 'src/domains/iam/permissions/permissions.service';
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { CompanyRoleName } from "../../../../infrastructure/drizzle/schema/enum.schema";
+import { PermissionsService } from "../../../../domains/iam/permissions/permissions.service";
 export declare class PermissionsController extends BaseController {
     private readonly permissionsService;
     constructor(permissionsService: PermissionsService);

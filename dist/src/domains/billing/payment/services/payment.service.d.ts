@@ -1,5 +1,5 @@
-import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
-import { AwsService } from 'src/infrastructure/aws/aws.service';
+import { db as DbType } from "../../../../infrastructure/drizzle/types/drizzle";
+import { AwsService } from "../../../../infrastructure/aws/aws.service";
 import { InvoiceService } from '../../invoice/invoice.service';
 import { FinalizeBankTransferPaymentInput, ListPaymentsQueryInput, PaystackSuccessInput } from '../inputs';
 export declare class PaymentService {

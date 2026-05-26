@@ -1,7 +1,7 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { ProductLinkType } from 'src/infrastructure/drizzle/schema';
-import { LinkedProductsService } from 'src/domains/catalog/services/linked-products.service';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { ProductLinkType } from "../../../../infrastructure/drizzle/schema";
+import { LinkedProductsService } from "../../../../domains/catalog/services/linked-products.service";
 declare class SetLinkedProductsDto {
     linkedProductIds: string[];
 }

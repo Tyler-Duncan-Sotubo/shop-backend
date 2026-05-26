@@ -1,8 +1,8 @@
 import { CreatePickupLocationDto } from './dto/create-pickup.dto';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { User } from "../../common/types/user.type";
 import { UpdatePickupDto } from './dto/update-pickup.dto';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { PickupService } from 'src/domains/fulfillment/pickup/pickup.service';
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { PickupService } from "../../../../domains/fulfillment/pickup/pickup.service";
 export declare class PickupController extends BaseController {
     private readonly pickup;
     constructor(pickup: PickupService);
@@ -14,8 +14,8 @@ export declare class PickupController extends BaseController {
         inventoryName: string;
         inventoryLocationId: string;
         state: string;
-        address1: string;
-        address2: string | null;
+        address1: any;
+        address2: any;
         instructions: string | null;
     }[]>;
     create(user: User, dto: CreatePickupLocationDto, ip: string): Promise<{

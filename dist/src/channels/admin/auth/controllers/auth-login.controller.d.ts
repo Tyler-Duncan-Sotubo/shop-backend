@@ -1,8 +1,8 @@
 import { FastifyReply } from 'fastify';
 import { LoginDto } from '../dto/login.dto';
 import { VerifyLoginDto } from '../dto/token.dto';
-import { JwtType, User } from 'src/channels/admin/common/types/user.type';
-import { AuthService } from 'src/domains/auth/services';
+import { JwtType, User } from "../../common/types/user.type";
+import { AuthService } from "../../../../domains/auth/services";
 export declare class AuthLoginController {
     private readonly auth;
     constructor(auth: AuthService);

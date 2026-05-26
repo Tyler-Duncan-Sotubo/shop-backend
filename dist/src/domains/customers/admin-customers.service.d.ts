@@ -1,5 +1,5 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { CacheService } from 'src/infrastructure/cache/cache.service';
+import { db } from "../../infrastructure/drizzle/types/drizzle";
+import { CacheService } from "../../infrastructure/cache/cache.service";
 import { CreateCustomerAddressAdminDto, ListCustomersDto, UpdateCustomerAddressAdminDto, UpdateCustomerAdminDto } from './dto';
 import { CreateCustomerDto } from './dto/register-customer.dto';
 import { TokenGeneratorService } from '../auth/services';

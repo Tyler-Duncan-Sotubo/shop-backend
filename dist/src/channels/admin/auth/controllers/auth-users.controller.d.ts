@@ -1,7 +1,7 @@
 import { InviteUserDto } from '../dto/invite-user.dto';
-import { User } from 'src/channels/admin/common/types/user.type';
-import { UserService } from 'src/domains/auth/services';
-import { InvitationsService } from 'src/domains/auth/services/invitations.service';
+import { User } from "../../common/types/user.type";
+import { UserService } from "../../../../domains/auth/services";
+import { InvitationsService } from "../../../../domains/auth/services/invitations.service";
 export declare class AuthUsersController {
     private readonly user;
     private readonly invitations;

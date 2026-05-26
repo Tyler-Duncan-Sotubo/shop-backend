@@ -1,5 +1,5 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { sessions } from 'src/infrastructure/drizzle/schema';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { sessions } from "../../../infrastructure/drizzle/schema";
 type SessionRow = typeof sessions.$inferSelect;
 interface CreateSessionParams {
     userId: string;

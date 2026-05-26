@@ -1,4 +1,4 @@
-import { products, productImages, productOptions, productOptionValues, productCategories, categories, productVariants } from 'src/infrastructure/drizzle/schema';
+import { products, productImages, productOptions, productOptionValues, productCategories, categories, productVariants } from "../../../infrastructure/drizzle/schema";
 import { StorefrontProductDto } from '../dtos/products/storefront-product.dto';
 type ProductRow = typeof products.$inferSelect;
 type ProductImageRow = typeof productImages.$inferSelect;

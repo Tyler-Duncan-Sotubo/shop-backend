@@ -1,7 +1,7 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../../common/types/user.type";
+import { BaseController } from "../../../../../infrastructure/interceptor/base.controller";
 import { ToggleStorePaymentMethodDto, UpsertBankTransferConfigDto, UpsertGatewayConfigDto } from '../dto/payment-methods.dto';
-import { PaymentMethodsService } from 'src/domains/billing/payment/services/payment-methods.service';
+import { PaymentMethodsService } from "../../../../../domains/billing/payment/services/payment-methods.service";
 export declare class PaymentMethodsController extends BaseController {
     private readonly storeMethods;
     constructor(storeMethods: PaymentMethodsService);

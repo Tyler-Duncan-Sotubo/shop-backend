@@ -11,9 +11,14 @@ import * as crypto from 'crypto';
 
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
-import { orders, paymentMethods } from 'src/infrastructure/drizzle/schema';
+import {
+  orders,
+  paymentMethods,
+  stores,
+} from 'src/infrastructure/drizzle/schema';
 import { OrdersService } from 'src/domains/commerce/orders/orders.service';
 import { PaymentService } from './payment.service';
+import { OrderPaidAdminNotificationService } from 'src/domains/notification/services/order-paid.service';
 
 type PaystackConfig = {
   publicKey?: string | null;
@@ -43,6 +48,7 @@ export class PaystackService {
     private readonly http: HttpService,
     private readonly order: OrdersService,
     private readonly payment: PaymentService,
+    private readonly orderPaidAdmin: OrderPaidAdminNotificationService,
   ) {}
 
   private async getStorePaystackMethod(companyId: string, storeId: string) {
@@ -254,6 +260,34 @@ export class PaystackService {
         },
         confirmedByUserId: null,
       });
+
+      // Fetch store for admin email(s)
+      const [store] = await this.db
+        .select()
+        .from(stores)
+        .where(and(eq(stores.companyId, companyId), eq(stores.id, storeId)))
+        .limit(1)
+        .execute();
+
+      const adminEmails: string[] = [
+        store?.storeEmail,
+        // store?.notificationEmails ?? [],  ← add this column later
+      ].filter(Boolean) as string[];
+
+      await Promise.all(
+        adminEmails.map((toEmail) =>
+          this.orderPaidAdmin.sendOrderPaidAdminEmail({
+            toEmail,
+            orderId: order.id as string,
+            reference: result.reference,
+            amount: result.amount,
+            currency: result.currency ?? 'NGN',
+            channel: result.channel ?? null,
+            paidAt: result.paidAt ?? null,
+            storeName: store?.name ?? undefined,
+          }),
+        ),
+      );
     }
 
     return {

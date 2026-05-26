@@ -1,5 +1,5 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { apiKeys } from 'src/infrastructure/drizzle/schema';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { apiKeys } from "../../../infrastructure/drizzle/schema";
 import { CreateApiKeyDto } from './dto/create-api-key.dto';
 import { ConfigService } from '@nestjs/config';
 type ApiKeyRow = typeof apiKeys.$inferSelect;

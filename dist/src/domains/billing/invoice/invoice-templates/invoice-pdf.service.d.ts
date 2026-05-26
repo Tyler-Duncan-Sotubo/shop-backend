@@ -1,6 +1,6 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { AwsService } from 'src/infrastructure/aws/aws.service';
-import { AuditService } from 'src/domains/audit/audit.service';
+import { db } from "../../../../infrastructure/drizzle/types/drizzle";
+import { AwsService } from "../../../../infrastructure/aws/aws.service";
+import { AuditService } from "../../../audit/audit.service";
 export declare class InvoicePdfService {
     private readonly db;
     private readonly awsService;

@@ -414,11 +414,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 layout: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
                 overlay: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
             }, "strip", z.ZodTypeAny, {
-                image?: {
-                    alt?: string | undefined;
-                    src?: string | undefined;
-                } | undefined;
-                variant?: string | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -429,6 +424,11 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 } | undefined;
                 enabled?: boolean | undefined;
+                image?: {
+                    alt?: string | undefined;
+                    src?: string | undefined;
+                } | undefined;
+                variant?: string | undefined;
                 bottomStrip?: {
                     enabled?: boolean | undefined;
                     text?: string | undefined;
@@ -437,11 +437,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 layout?: Record<string, unknown> | undefined;
                 overlay?: Record<string, unknown> | undefined;
             }, {
-                image?: {
-                    alt?: string | undefined;
-                    src?: string | undefined;
-                } | undefined;
-                variant?: string | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -452,6 +447,11 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 } | undefined;
                 enabled?: boolean | undefined;
+                image?: {
+                    alt?: string | undefined;
+                    src?: string | undefined;
+                } | undefined;
+                variant?: string | undefined;
                 bottomStrip?: {
                     enabled?: boolean | undefined;
                     text?: string | undefined;
@@ -465,11 +465,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         }, "strip", z.ZodTypeAny, {
             contact?: Record<string, unknown> | undefined;
             hero?: {
-                image?: {
-                    alt?: string | undefined;
-                    src?: string | undefined;
-                } | undefined;
-                variant?: string | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -480,6 +475,11 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 } | undefined;
                 enabled?: boolean | undefined;
+                image?: {
+                    alt?: string | undefined;
+                    src?: string | undefined;
+                } | undefined;
+                variant?: string | undefined;
                 bottomStrip?: {
                     enabled?: boolean | undefined;
                     text?: string | undefined;
@@ -492,11 +492,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         }, {
             contact?: Record<string, unknown> | undefined;
             hero?: {
-                image?: {
-                    alt?: string | undefined;
-                    src?: string | undefined;
-                } | undefined;
-                variant?: string | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -507,6 +502,11 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 } | undefined;
                 enabled?: boolean | undefined;
+                image?: {
+                    alt?: string | undefined;
+                    src?: string | undefined;
+                } | undefined;
+                variant?: string | undefined;
                 bottomStrip?: {
                     enabled?: boolean | undefined;
                     text?: string | undefined;
@@ -547,11 +547,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         home?: {
             contact?: Record<string, unknown> | undefined;
             hero?: {
-                image?: {
-                    alt?: string | undefined;
-                    src?: string | undefined;
-                } | undefined;
-                variant?: string | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -562,6 +557,11 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 } | undefined;
                 enabled?: boolean | undefined;
+                image?: {
+                    alt?: string | undefined;
+                    src?: string | undefined;
+                } | undefined;
+                variant?: string | undefined;
                 bottomStrip?: {
                     enabled?: boolean | undefined;
                     text?: string | undefined;
@@ -586,11 +586,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         home?: {
             contact?: Record<string, unknown> | undefined;
             hero?: {
-                image?: {
-                    alt?: string | undefined;
-                    src?: string | undefined;
-                } | undefined;
-                variant?: string | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -601,6 +596,11 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 } | undefined;
                 enabled?: boolean | undefined;
+                image?: {
+                    alt?: string | undefined;
+                    src?: string | undefined;
+                } | undefined;
+                variant?: string | undefined;
                 bottomStrip?: {
                     enabled?: boolean | undefined;
                     text?: string | undefined;
@@ -662,11 +662,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         home?: {
             contact?: Record<string, unknown> | undefined;
             hero?: {
-                image?: {
-                    alt?: string | undefined;
-                    src?: string | undefined;
-                } | undefined;
-                variant?: string | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -677,6 +672,11 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 } | undefined;
                 enabled?: boolean | undefined;
+                image?: {
+                    alt?: string | undefined;
+                    src?: string | undefined;
+                } | undefined;
+                variant?: string | undefined;
                 bottomStrip?: {
                     enabled?: boolean | undefined;
                     text?: string | undefined;
@@ -779,11 +779,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         home?: {
             contact?: Record<string, unknown> | undefined;
             hero?: {
-                image?: {
-                    alt?: string | undefined;
-                    src?: string | undefined;
-                } | undefined;
-                variant?: string | undefined;
                 content?: {
                     description?: string | undefined;
                     eyebrow?: string | undefined;
@@ -794,6 +789,11 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                     } | undefined;
                 } | undefined;
                 enabled?: boolean | undefined;
+                image?: {
+                    alt?: string | undefined;
+                    src?: string | undefined;
+                } | undefined;
+                variant?: string | undefined;
                 bottomStrip?: {
                     enabled?: boolean | undefined;
                     text?: string | undefined;

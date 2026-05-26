@@ -1,9 +1,9 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { ProductsService } from 'src/domains/catalog/services/products.service';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { ProductsService } from "../../../../domains/catalog/services/products.service";
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto, UpdateProductDto } from './dto';
-import { ProductsReportService } from 'src/domains/catalog/reports/products-report.service';
+import { ProductsReportService } from "../../../../domains/catalog/reports/products-report.service";
 export declare class ProductsController extends BaseController {
     private readonly productsService;
     private readonly productsReportService;

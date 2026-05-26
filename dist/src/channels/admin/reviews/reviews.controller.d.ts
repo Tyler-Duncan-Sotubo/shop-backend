@@ -1,7 +1,7 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../common/types/user.type";
+import { BaseController } from "../../../infrastructure/interceptor/base.controller";
 import { UpdateReviewDto } from './dto';
-import { ReviewsService } from 'src/domains/reviews/reviews.service';
+import { ReviewsService } from "../../../domains/reviews/reviews.service";
 export declare class ReviewsController extends BaseController {
     private readonly reviewsService;
     constructor(reviewsService: ReviewsService);

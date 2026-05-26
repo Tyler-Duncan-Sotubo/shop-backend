@@ -1,6 +1,6 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { VariantsService } from 'src/domains/catalog/services/variants.service';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../common/types/user.type";
+import { VariantsService } from "../../../../domains/catalog/services/variants.service";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { CreateVariantDto, UpdateVariantDto, VariantQueryDto } from './dto';
 import { StoreVariantQueryDto } from './dto/store-vairants.dto';
 export declare class VariantsController extends BaseController {
@@ -13,7 +13,7 @@ export declare class VariantsController extends BaseController {
         sku: any;
         productName: any;
         imageUrl: any;
-        suggestedUnitPrice: number | null;
+        suggestedUnitPrice: any;
         available: number;
         label: string;
     }[]>;

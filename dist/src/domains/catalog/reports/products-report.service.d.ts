@@ -1,5 +1,5 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { AwsService } from 'src/infrastructure/aws/aws.service';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { AwsService } from "../../../infrastructure/aws/aws.service";
 export declare class ProductsReportService {
     private readonly db;
     private readonly aws;

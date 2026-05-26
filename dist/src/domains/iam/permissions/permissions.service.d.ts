@@ -1,6 +1,6 @@
 import { PermissionsRegistryService } from './permissions-registry.service';
 import { CompanyAccessService } from './company-access.service';
-import { User } from 'src/channels/admin/common/types/user.type';
+import { User } from "../../../channels/admin/common/types/user.type";
 export declare class PermissionsService {
     private readonly registry;
     private readonly access;

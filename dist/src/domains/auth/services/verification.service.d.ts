@@ -1,5 +1,5 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { EmailVerificationService } from 'src/domains/notification/services/email-verification.service';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
+import { EmailVerificationService } from "../../notification/services/email-verification.service";
 import { VerifyEmailInput } from '../inputs';
 export declare class VerificationService {
     private db;

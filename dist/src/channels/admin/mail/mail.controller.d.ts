@@ -1,9 +1,9 @@
-import { User } from 'src/channels/admin/common/types/user.type';
+import { User } from "../common/types/user.type";
 import { ListSubscribersQueryDto } from './dto/list-subscribers.query.dto';
 import { UpdateSubscriberStatusDto } from './dto/update-subscriber-status.dto';
 import { ListContactMessagesQueryDto } from './dto/list-contact-messages.query.dto';
 import { UpdateContactMessageStatusDto } from './dto/update-contact-status.dto';
-import { MailService } from 'src/domains/mail/mail.service';
+import { MailService } from "../../../domains/mail/mail.service";
 declare class IdParamDto {
     id: string;
 }

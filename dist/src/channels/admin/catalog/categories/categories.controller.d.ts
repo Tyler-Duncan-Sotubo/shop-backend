@@ -1,6 +1,6 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import { CategoriesService } from 'src/domains/catalog/services/categories.service';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
+import { CategoriesService } from "../../../../domains/catalog/services/categories.service";
 import { AssignCategoriesDto, CreateCategoryDto, UpdateCategoryDto } from './dto';
 export declare class CategoriesController extends BaseController {
     private readonly categoriesService;

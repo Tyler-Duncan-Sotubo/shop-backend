@@ -1,7 +1,7 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { CreateApiKeyDto } from './dto/create-api-key.dto';
-import { ApiKeysService } from 'src/domains/iam/api-keys/api-keys.service';
+import { ApiKeysService } from "../../../../domains/iam/api-keys/api-keys.service";
 export declare class ApiKeysController extends BaseController {
     private readonly apiKeysService;
     constructor(apiKeysService: ApiKeysService);

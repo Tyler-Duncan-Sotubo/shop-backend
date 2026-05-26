@@ -1,4 +1,4 @@
-import { PublicInvoicesService } from 'src/domains/billing/public-invoices/public-invoices.service';
+import { PublicInvoicesService } from "../../../../domains/billing/public-invoices/public-invoices.service";
 export declare class PublicInvoicesController {
     private readonly links;
     constructor(links: PublicInvoicesService);

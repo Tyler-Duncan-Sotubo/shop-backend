@@ -1,9 +1,9 @@
-import { User } from 'src/channels/admin/common/types/user.type';
-import { BaseController } from 'src/infrastructure/interceptor/base.controller';
+import { User } from "../../common/types/user.type";
+import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { UpdateStoreDomainsDto } from './dto/update-store-domains.dto';
-import { StoresService } from 'src/domains/commerce/stores/stores.service';
+import { StoresService } from "../../../../domains/commerce/stores/stores.service";
 export declare class StoresController extends BaseController {
     private readonly storesService;
     constructor(storesService: StoresService);

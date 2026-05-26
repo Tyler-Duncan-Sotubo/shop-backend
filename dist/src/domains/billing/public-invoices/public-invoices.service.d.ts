@@ -1,4 +1,4 @@
-import { db } from 'src/infrastructure/drizzle/types/drizzle';
+import { db } from "../../../infrastructure/drizzle/types/drizzle";
 import { InvoicePdfService } from '../invoice/invoice-templates/invoice-pdf.service';
 export declare class PublicInvoicesService {
     private readonly db;

@@ -20,8 +20,8 @@ RUN npx playwright install chromium
 
 COPY . .
 
-RUN npm run build && \
-    test -f dist/main.js || (echo "ERROR: dist/main.js not found" && exit 1)
+RUN npm run build && ls -la dist/
+RUN test -f dist/main.js || (echo "ERROR: dist/main.js not found" && exit 1)
 
 ENV NODE_ENV=production
 

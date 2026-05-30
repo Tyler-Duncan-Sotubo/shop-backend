@@ -22,10 +22,12 @@ const convert_quote_to_manual_order_dto_1 = require("./dto/convert-quote-to-manu
 const quote_service_1 = require("../../../../domains/commerce/quote/quote.service");
 const current_user_decorator_1 = require("../../common/decorator/current-user.decorator");
 const jwt_auth_guard_1 = require("../../common/guards/jwt-auth.guard");
+const quote_pdf_service_1 = require("../../../../domains/commerce/quote/quote-pdf.service");
 let QuoteController = class QuoteController extends base_controller_1.BaseController {
-    constructor(quoteService) {
+    constructor(quoteService, quotePdfService) {
         super();
         this.quoteService = quoteService;
+        this.quotePdfService = quotePdfService;
     }
     getQuotes(user, query) {
         return this.quoteService.findAll(user.companyId, query);
@@ -53,6 +55,13 @@ let QuoteController = class QuoteController extends base_controller_1.BaseContro
     }
     sendToZoho(user, quoteId, ip) {
         return this.quoteService.sendToZoho(user.companyId, quoteId, user, ip);
+    }
+    generateQuotePdf(user, quoteId) {
+        return this.quotePdfService.generateAndUploadPdf({
+            companyId: user.companyId,
+            generatedBy: user.id,
+            quoteId,
+        });
     }
     deleteQuote(user, quoteId, ip) {
         return this.quoteService.remove(user.companyId, quoteId, user, ip);
@@ -153,6 +162,15 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], QuoteController.prototype, "sendToZoho", null);
 __decorate([
+    (0, common_1.Post)(':quoteId/pdf'),
+    (0, common_1.SetMetadata)('permissions', ['quotes.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('quoteId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], QuoteController.prototype, "generateQuotePdf", null);
+__decorate([
     (0, common_1.Delete)(':quoteId'),
     (0, common_1.SetMetadata)('permissions', ['quotes.delete']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
@@ -165,6 +183,7 @@ __decorate([
 exports.QuoteController = QuoteController = __decorate([
     (0, common_1.Controller)('quotes'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [quote_service_1.QuoteService])
+    __metadata("design:paramtypes", [quote_service_1.QuoteService,
+        quote_pdf_service_1.QuotePdfService])
 ], QuoteController);
 //# sourceMappingURL=quote.controller.js.map

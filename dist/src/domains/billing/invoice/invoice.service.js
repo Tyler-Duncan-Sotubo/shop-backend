@@ -21,13 +21,15 @@ const invoice_totals_service_1 = require("./invoice-totals.service");
 const audit_service_1 = require("../../audit/audit.service");
 const cache_service_1 = require("../../../infrastructure/cache/cache.service");
 const zoho_invoices_service_1 = require("../../integration/zoho/zoho-invoices.service");
+const zoho_service_1 = require("../../integration/zoho/zoho.service");
 let InvoiceService = class InvoiceService {
-    constructor(db, totals, auditService, cache, zohoInvoices) {
+    constructor(db, totals, auditService, cache, zohoInvoices, zohoService) {
         this.db = db;
         this.totals = totals;
         this.auditService = auditService;
         this.cache = cache;
         this.zohoInvoices = zohoInvoices;
+        this.zohoService = zohoService;
     }
     async createDraftFromOrder(params, companyId, ctx) {
         const tx = ctx?.tx ?? this.db;
@@ -334,10 +336,10 @@ let InvoiceService = class InvoiceService {
         };
         const run = async (tx) => {
             const invRes = await tx.execute((0, drizzle_orm_1.sql) `
-          SELECT * FROM invoices
-          WHERE id = ${invoiceId} AND company_id = ${companyId}
-          FOR UPDATE
-        `);
+        SELECT * FROM invoices
+        WHERE id = ${invoiceId} AND company_id = ${companyId}
+        FOR UPDATE
+      `);
             const inv = firstRow(invRes);
             if (!inv)
                 throw new common_1.NotFoundException('Invoice not found');
@@ -354,16 +356,16 @@ let InvoiceService = class InvoiceService {
             const year = new Date().getUTCFullYear();
             const requestedSeriesName = (dto.seriesName ?? 'Default').trim();
             const seriesRes = await tx.execute((0, drizzle_orm_1.sql) `
-          SELECT *
-          FROM invoice_series
-          WHERE company_id = ${companyId}
-            AND (store_id IS NULL OR store_id = ${storeId})
-            AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
-            AND (year IS NULL OR year = ${year})
-          ORDER BY store_id DESC NULLS LAST
-          LIMIT 1
-          FOR UPDATE
-        `);
+        SELECT *
+        FROM invoice_series
+        WHERE company_id = ${companyId}
+          AND (store_id IS NULL OR store_id = ${storeId})
+          AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
+          AND (year IS NULL OR year = ${year})
+        ORDER BY store_id DESC NULLS LAST
+        LIMIT 1
+        FOR UPDATE
+      `);
             const series = firstRow(seriesRes);
             if (!series) {
                 throw new common_1.BadRequestException(`Invoice series not found for company=${companyId}, store=${storeId ?? 'NULL'}, name=${requestedSeriesName}, year=${year}. Create invoice_series first.`);
@@ -371,15 +373,18 @@ let InvoiceService = class InvoiceService {
             const nextNumber = Number(series.next_number);
             const number = this.formatInvoiceNumber(series.prefix, nextNumber);
             await tx.execute((0, drizzle_orm_1.sql) `
-          UPDATE invoice_series
-          SET next_number = next_number + 1,
-              updated_at = NOW()
-          WHERE id = ${series.id}
-        `);
+        UPDATE invoice_series
+        SET next_number = next_number + 1,
+            updated_at = NOW()
+        WHERE id = ${series.id}
+      `);
             const brandingRows = await tx
                 .select()
                 .from(schema_1.invoiceBranding)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceBranding.companyId, companyId), (0, drizzle_orm_1.sql) `${schema_1.invoiceBranding.storeId} IS NULL`))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceBranding.companyId, companyId), storeId
+                ? (0, drizzle_orm_1.sql) `(${schema_1.invoiceBranding.storeId} = ${storeId} OR ${schema_1.invoiceBranding.storeId} IS NULL)`
+                : (0, drizzle_orm_1.sql) `${schema_1.invoiceBranding.storeId} IS NULL`))
+                .orderBy((0, drizzle_orm_1.sql) `${schema_1.invoiceBranding.storeId} IS NULL ASC`)
                 .execute();
             const branding = brandingRows[0];
             const supplierSnapshot = {
@@ -390,10 +395,78 @@ let InvoiceService = class InvoiceService {
                 taxId: branding?.supplierTaxId ?? '',
                 bankDetails: branding?.bankDetails ?? null,
             };
-            const customerSnapshot = inv.customer_snapshot ?? {
+            let customerSnapshot = inv.customer_snapshot ?? null;
+            if (!customerSnapshot) {
+                const orderId = inv.order_id ?? inv.orderId ?? null;
+                let customerId = null;
+                if (orderId) {
+                    const orderRes = await tx.execute((0, drizzle_orm_1.sql) `SELECT customer_id FROM orders WHERE id = ${orderId} AND company_id = ${companyId} LIMIT 1`);
+                    const order = firstRow(orderRes);
+                    customerId = order?.customer_id ?? null;
+                }
+                if (customerId) {
+                    const [customer] = await tx
+                        .select({
+                        displayName: schema_1.customers.displayName,
+                        billingEmail: schema_1.customers.billingEmail,
+                        phone: schema_1.customers.phone,
+                        taxId: schema_1.customers.taxId,
+                        companyName: schema_1.customers.companyName,
+                    })
+                        .from(schema_1.customers)
+                        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customers.id, customerId), (0, drizzle_orm_1.eq)(schema_1.customers.companyId, companyId)))
+                        .limit(1)
+                        .execute();
+                    const [address] = await tx
+                        .select({
+                        line1: schema_1.customerAddresses.line1,
+                        line2: schema_1.customerAddresses.line2,
+                        city: schema_1.customerAddresses.city,
+                        state: schema_1.customerAddresses.state,
+                        postalCode: schema_1.customerAddresses.postalCode,
+                        country: schema_1.customerAddresses.country,
+                    })
+                        .from(schema_1.customerAddresses)
+                        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customerAddresses.customerId, customerId), (0, drizzle_orm_1.eq)(schema_1.customerAddresses.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.customerAddresses.isDefaultBilling, true)))
+                        .limit(1)
+                        .execute();
+                    if (customer) {
+                        const addressParts = [
+                            address?.line1,
+                            address?.line2,
+                            address?.city,
+                            address?.state,
+                            address?.postalCode,
+                            address?.country,
+                        ].filter(Boolean);
+                        customerSnapshot = {
+                            name: customer.displayName,
+                            email: customer.billingEmail ?? '',
+                            phone: customer.phone ?? '',
+                            taxId: customer.taxId ?? '',
+                            companyName: customer.companyName ?? '',
+                            address: address
+                                ? [
+                                    address.line1,
+                                    address.line2,
+                                    address.city,
+                                    address.state,
+                                    address.postalCode,
+                                    address.country,
+                                ]
+                                    .filter(Boolean)
+                                    .join(', ')
+                                : '',
+                        };
+                    }
+                }
+            }
+            customerSnapshot = customerSnapshot ?? {
                 name: 'Customer',
-                address: '',
+                email: '',
+                phone: '',
                 taxId: '',
+                companyName: '',
             };
             const taxIds = Array.from(new Set(lines.map((l) => l.taxId).filter(Boolean)));
             const taxMap = new Map();
@@ -507,11 +580,17 @@ let InvoiceService = class InvoiceService {
         await this.cache.bumpCompanyVersion(companyId);
         if (!outerTx && autoSyncZoho) {
             try {
-                await this.zohoInvoices.syncInvoiceToZoho(companyId, issued.id, opts?.actor, opts?.ip, {
-                    customer: opts?.zohoCustomer,
-                    softFailMissingCustomer: true,
-                });
-                await this.cache.bumpCompanyVersion(companyId);
+                const storeId = issued.storeId ?? issued.store_id ?? null;
+                const zohoActive = storeId
+                    ? await this.zohoService.isEnabled(companyId, storeId)
+                    : false;
+                if (zohoActive) {
+                    await this.zohoInvoices.syncInvoiceToZoho(companyId, issued.id, opts?.actor, opts?.ip, {
+                        customer: opts?.zohoCustomer,
+                        softFailMissingCustomer: true,
+                    });
+                    await this.cache.bumpCompanyVersion(companyId);
+                }
             }
             catch (e) {
                 console.error('Error syncing issued invoice to Zoho:', e);
@@ -859,14 +938,27 @@ let InvoiceService = class InvoiceService {
     }
     async syncToZoho(companyId, invoiceId, actor, ip, input, ctx) {
         const outerTx = ctx?.tx;
+        const [inv] = await this.db
+            .select({ id: schema_1.invoices.id, storeId: schema_1.invoices.storeId })
+            .from(schema_1.invoices)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.id, invoiceId)))
+            .execute();
+        if (!inv)
+            throw new common_1.NotFoundException('Invoice not found');
+        const zohoActive = inv.storeId
+            ? await this.zohoService.isEnabled(companyId, inv.storeId)
+            : false;
+        if (!zohoActive) {
+            throw new common_1.BadRequestException('Zoho integration is not active for this store');
+        }
         const run = async (tx) => {
-            const [inv] = await tx
+            const [locked] = await tx
                 .select({ id: schema_1.invoices.id })
                 .from(schema_1.invoices)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.id, invoiceId)))
                 .for('update')
                 .execute();
-            if (!inv)
+            if (!locked)
                 throw new common_1.NotFoundException('Invoice not found');
             return this.zohoInvoices.syncInvoiceToZohoTx(tx, companyId, invoiceId, actor, ip, input);
         };
@@ -884,6 +976,7 @@ exports.InvoiceService = InvoiceService = __decorate([
     __metadata("design:paramtypes", [Object, invoice_totals_service_1.InvoiceTotalsService,
         audit_service_1.AuditService,
         cache_service_1.CacheService,
-        zoho_invoices_service_1.ZohoInvoicesService])
+        zoho_invoices_service_1.ZohoInvoicesService,
+        zoho_service_1.ZohoService])
 ], InvoiceService);
 //# sourceMappingURL=invoice.service.js.map

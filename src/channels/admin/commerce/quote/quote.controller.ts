@@ -21,11 +21,15 @@ import { ConvertQuoteToManualOrderDto } from './dto/convert-quote-to-manual-orde
 import { QuoteService } from 'src/domains/commerce/quote/quote.service';
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { QuotePdfService } from 'src/domains/commerce/quote/quote-pdf.service';
 
 @Controller('quotes')
 @UseGuards(JwtAuthGuard)
 export class QuoteController extends BaseController {
-  constructor(private readonly quoteService: QuoteService) {
+  constructor(
+    private readonly quoteService: QuoteService,
+    private readonly quotePdfService: QuotePdfService,
+  ) {
     super();
   }
 
@@ -162,6 +166,19 @@ export class QuoteController extends BaseController {
     @Ip() ip: string,
   ) {
     return this.quoteService.sendToZoho(user.companyId, quoteId, user, ip);
+  }
+
+  @Post(':quoteId/pdf')
+  @SetMetadata('permissions', ['quotes.read'])
+  generateQuotePdf(
+    @CurrentUser() user: User,
+    @Param('quoteId') quoteId: string,
+  ) {
+    return this.quotePdfService.generateAndUploadPdf({
+      companyId: user.companyId,
+      generatedBy: user.id,
+      quoteId,
+    });
   }
 
   @Delete(':quoteId')

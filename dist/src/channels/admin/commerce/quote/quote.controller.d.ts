@@ -5,9 +5,11 @@ import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { GetQuotesQueryDto } from './dto/get-quotes-query.dto';
 import { ConvertQuoteToManualOrderDto } from './dto/convert-quote-to-manual-order.dto';
 import { QuoteService } from "../../../../domains/commerce/quote/quote.service";
+import { QuotePdfService } from "../../../../domains/commerce/quote/quote-pdf.service";
 export declare class QuoteController extends BaseController {
     private readonly quoteService;
-    constructor(quoteService: QuoteService);
+    private readonly quotePdfService;
+    constructor(quoteService: QuoteService, quotePdfService: QuotePdfService);
     getQuotes(user: User, query: GetQuotesQueryDto): Promise<{
         rows: {
             id: string;
@@ -68,20 +70,19 @@ export declare class QuoteController extends BaseController {
             createdAt: Date;
             deletedAt: Date | null;
         }[];
-        status: string;
         id: string;
+        quoteNumber: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
-        currency: string | null;
-        meta: Record<string, unknown> | null;
-        quoteNumber: string | null;
+        status: string;
         customerEmail: string;
         customerNote: string | null;
         customerName: string | null;
+        meta: Record<string, unknown> | null;
+        expiresAt: Date | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
@@ -89,6 +90,7 @@ export declare class QuoteController extends BaseController {
         sentAt: Date | null;
         acceptedAt: Date | null;
         convertedAt: Date | null;
+        currency: string | null;
         totalsSnapshot: {
             subtotal?: number;
             tax?: number;
@@ -105,20 +107,19 @@ export declare class QuoteController extends BaseController {
         syncError: string | null;
     }>;
     createQuote(user: User, dto: CreateQuoteDto, ip: string): Promise<{
-        status: string;
         id: string;
+        quoteNumber: string | null;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        expiresAt: Date | null;
         storeId: string;
-        currency: string | null;
-        meta: Record<string, unknown> | null;
-        quoteNumber: string | null;
+        status: string;
         customerEmail: string;
         customerNote: string | null;
         customerName: string | null;
+        meta: Record<string, unknown> | null;
+        expiresAt: Date | null;
         archivedAt: Date | null;
         convertedInvoiceId: string | null;
         convertedOrderId: string | null;
@@ -126,6 +127,7 @@ export declare class QuoteController extends BaseController {
         sentAt: Date | null;
         acceptedAt: Date | null;
         convertedAt: Date | null;
+        currency: string | null;
         totalsSnapshot: {
             subtotal?: number;
             tax?: number;
@@ -311,6 +313,10 @@ export declare class QuoteController extends BaseController {
         action: string;
         quoteId: string;
         convertedOrderId: string | null;
+    }>;
+    generateQuotePdf(user: User, quoteId: string): Promise<{
+        pdfUrl: string;
+        fileName: string;
     }>;
     deleteQuote(user: User, quoteId: string, ip: string): Promise<{
         success: boolean;

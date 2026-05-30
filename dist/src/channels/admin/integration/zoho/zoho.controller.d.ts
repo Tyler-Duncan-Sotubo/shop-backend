@@ -32,22 +32,23 @@ export declare class ZohoController extends BaseController {
         createdAt: Date;
         updatedAt: Date;
     }>;
+    isEnabled(user: User, storeId: string): Promise<boolean>;
     upsertAdmin(user: User, storeId: string, dto: CreateZohoDto, ip: string): Promise<{
+        region: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        region: string;
-        zohoOrganizationId: string | null;
-        lastSyncedAt: Date | null;
-        lastError: string | null;
-        connectedAt: Date;
         refreshToken: string;
         accessToken: string | null;
         accessTokenExpiresAt: Date | null;
+        zohoOrganizationId: string | null;
         zohoOrganizationName: string | null;
+        lastSyncedAt: Date | null;
+        lastError: string | null;
+        connectedAt: Date;
         disconnectedAt: Date | null;
     }>;
     updateAdmin(user: User, storeId: string, dto: UpdateZohoDto, ip: string): Promise<{
@@ -87,21 +88,21 @@ export declare class ZohoController extends BaseController {
         updatedAt: Date;
     }>;
     removeAdmin(user: User, storeId: string, ip: string): Promise<{
+        region: string;
         id: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        region: string;
-        zohoOrganizationId: string | null;
-        lastSyncedAt: Date | null;
-        lastError: string | null;
-        connectedAt: Date;
         refreshToken: string;
         accessToken: string | null;
         accessTokenExpiresAt: Date | null;
+        zohoOrganizationId: string | null;
         zohoOrganizationName: string | null;
+        lastSyncedAt: Date | null;
+        lastError: string | null;
+        connectedAt: Date;
         disconnectedAt: Date | null;
     }>;
 }

@@ -17,7 +17,7 @@ function wrapInHtml(content, css) {
         body {
           font-family: 'Helvetica', sans-serif;
           font-size: 12pt;
-          padding: 30px;
+          padding: 10px;
           line-height: 1.6;
           color: #000;
         }
@@ -32,12 +32,11 @@ function wrapInHtml(content, css) {
           margin-top: 15px;
         }
 
-        th, td {
-          border: 1px solid #ccc;
-          padding: 8px;
-          text-align: left;
-        }
-
+       th, td {
+  border: 1px solid #ccc;
+  padding: 8px 16px;
+  text-align: left;
+}
         .signature {
           margin-top: 50px;
         }

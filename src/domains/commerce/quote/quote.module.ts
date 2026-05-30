@@ -11,10 +11,12 @@ import { StoresService } from '../stores/stores.service';
 import { AwsService } from 'src/infrastructure/aws/aws.service';
 import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
 import { ZohoService } from 'src/domains/integration/zoho/zoho.service';
+import { QuotePdfService } from './quote-pdf.service';
 
 @Module({
   providers: [
     QuoteService,
+    QuotePdfService,
     ApiKeysService,
     ManualOrdersService,
     InventoryStockService,
@@ -27,6 +29,6 @@ import { ZohoService } from 'src/domains/integration/zoho/zoho.service';
     ZohoBooksService,
     ZohoService,
   ],
-  exports: [QuoteService],
+  exports: [QuoteService, QuotePdfService],
 })
 export class QuoteModule {}

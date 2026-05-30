@@ -75,11 +75,11 @@ exports.globalInvoiceTemplates = [
 
 <div style="display:flex; justify-content:flex-end; margin-top:16px;">
   <table style="min-width:280px;">
-    <tr><td>Subtotal</td><td style="text-align:right;">{{totals.subtotal}}</td></tr>
-    <tr><td>Tax</td><td style="text-align:right;">{{totals.tax}}</td></tr>
-    <tr style="font-weight:700;"><td>Total</td><td style="text-align:right;">{{totals.total}}</td></tr>
-    <tr><td>Paid</td><td style="text-align:right;">{{totals.paid}}</td></tr>
-    <tr><td>Balance</td><td style="text-align:right;">{{totals.balance}}</td></tr>
+    <tr><td style="padding:4px 16px;">Subtotal</td><td style="text-align:right; padding:4px 16px;">{{totals.subtotal}}</td></tr>
+    <tr><td style="padding:4px 16px;">Tax</td><td style="text-align:right; padding:4px 16px;">{{totals.tax}}</td></tr>
+    <tr style="font-weight:700;"><td style="padding:4px 16px;">Total</td><td style="text-align:right; padding:4px 16px;">{{totals.total}}</td></tr>
+    <tr><td style="padding:4px 16px;">Paid</td><td style="text-align:right; padding:4px 16px;">{{totals.paid}}</td></tr>
+    <tr><td style="padding:4px 16px;">Balance</td><td style="text-align:right; padding:4px 16px;">{{totals.balance}}</td></tr>
   </table>
 </div>
 
@@ -167,24 +167,24 @@ table { font-size: 13px; }
 <div style="display:flex; justify-content:flex-end; margin-top:24px;">
   <table style="min-width:260px;">
     <tr>
-      <td style="padding:6px 0;">Subtotal</td>
-      <td style="padding:6px 0; text-align:right;">{{totals.subtotal}}</td>
+      <td style="padding:6px 16px;">Subtotal</td>
+      <td style="padding:6px 16px; text-align:right;">{{totals.subtotal}}</td>
     </tr>
     <tr>
-      <td style="padding:6px 0;">Tax</td>
-      <td style="padding:6px 0; text-align:right;">{{totals.tax}}</td>
+      <td style="padding:6px 16px;">Tax</td>
+      <td style="padding:6px 16px; text-align:right;">{{totals.tax}}</td>
     </tr>
     <tr style="font-weight:700; font-size:15px;">
-      <td style="padding:8px 0;">Total</td>
-      <td style="padding:8px 0; text-align:right;">{{totals.total}}</td>
+      <td style="padding:8px 16px;">Total</td>
+      <td style="padding:8px 16px; text-align:right;">{{totals.total}}</td>
     </tr>
     <tr>
-      <td style="padding:6px 0;">Paid</td>
-      <td style="padding:6px 0; text-align:right;">{{totals.paid}}</td>
+      <td style="padding:6px 16px;">Paid</td>
+      <td style="padding:6px 16px; text-align:right;">{{totals.paid}}</td>
     </tr>
     <tr>
-      <td style="padding:6px 0;">Balance</td>
-      <td style="padding:6px 0; text-align:right;">{{totals.balance}}</td>
+      <td style="padding:6px 16px;">Balance</td>
+      <td style="padding:6px 16px; text-align:right;">{{totals.balance}}</td>
     </tr>
   </table>
 </div>

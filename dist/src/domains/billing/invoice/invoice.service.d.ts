@@ -7,6 +7,7 @@ import { ListInvoicesQueryInput } from './inputs/list-invoices.query.input';
 import { UpdateInvoiceLineInput } from './inputs/update-invoice-line.input';
 import { User } from "../../../channels/admin/common/types/user.type";
 import { ZohoInvoicesService } from "../../integration/zoho/zoho-invoices.service";
+import { ZohoService } from "../../integration/zoho/zoho.service";
 type TxOrDb = DbType | any;
 export declare class InvoiceService {
     private readonly db;
@@ -14,7 +15,8 @@ export declare class InvoiceService {
     private readonly auditService;
     private readonly cache;
     private readonly zohoInvoices;
-    constructor(db: DbType, totals: InvoiceTotalsService, auditService: AuditService, cache: CacheService, zohoInvoices: ZohoInvoicesService);
+    private readonly zohoService;
+    constructor(db: DbType, totals: InvoiceTotalsService, auditService: AuditService, cache: CacheService, zohoInvoices: ZohoInvoicesService, zohoService: ZohoService);
     createDraftFromOrder(params: CreateInvoiceFromOrderInput, companyId: string, ctx?: {
         tx?: TxOrDb;
         skipItemsCheck?: boolean;

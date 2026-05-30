@@ -16,6 +16,8 @@ import {
   orders,
   orderItems,
   invoiceSeries,
+  customers,
+  customerAddresses,
 } from 'src/infrastructure/drizzle/schema';
 import { InvoiceTotalsService } from './invoice-totals.service';
 import { AuditService } from 'src/domains/audit/audit.service';
@@ -25,6 +27,7 @@ import { ListInvoicesQueryInput } from './inputs/list-invoices.query.input';
 import { UpdateInvoiceLineInput } from './inputs/update-invoice-line.input';
 import { User } from 'src/channels/admin/common/types/user.type';
 import { ZohoInvoicesService } from 'src/domains/integration/zoho/zoho-invoices.service';
+import { ZohoService } from 'src/domains/integration/zoho/zoho.service';
 
 type TxOrDb = DbType | any;
 
@@ -36,6 +39,7 @@ export class InvoiceService {
     private readonly auditService: AuditService,
     private readonly cache: CacheService,
     private readonly zohoInvoices: ZohoInvoicesService,
+    private readonly zohoService: ZohoService,
   ) {}
 
   /**
@@ -500,21 +504,18 @@ export class InvoiceService {
    */
   async issueInvoice(
     invoiceId: string,
-    dto: any, // IssueInvoiceInput
+    dto: any,
     companyId: string,
     userId?: string,
     ctx?: { tx?: TxOrDb },
     opts?: {
-      // optional: allow caller to pass customer fallback used by Zoho sync
       zohoCustomer?: {
         email: string;
         name?: string | null;
         companyName?: string | null;
       };
-      // optional: you can pass actor/ip if you use them in zoho sync/audit
       actor?: any;
       ip?: string;
-      // turn off auto sync if you want
       autoSyncZoho?: boolean;
     },
   ) {
@@ -535,18 +536,17 @@ export class InvoiceService {
     };
 
     const run = async (tx: TxOrDb) => {
-      // Lock invoice row to prevent double-issue
       const invRes = await tx.execute(
         sql`
-          SELECT * FROM invoices
-          WHERE id = ${invoiceId} AND company_id = ${companyId}
-          FOR UPDATE
-        ` as any,
+        SELECT * FROM invoices
+        WHERE id = ${invoiceId} AND company_id = ${companyId}
+        FOR UPDATE
+      ` as any,
       );
       const inv = firstRow<any>(invRes);
 
       if (!inv) throw new NotFoundException('Invoice not found');
-      if (inv.status !== 'draft') return inv; // idempotent
+      if (inv.status !== 'draft') return inv;
 
       const lines = await tx
         .select()
@@ -561,23 +561,22 @@ export class InvoiceService {
 
       if (!lines.length) throw new BadRequestException('Invoice has no lines');
 
-      // Resolve series (store-specific optional)
       const storeId = dto.storeId ?? inv.store_id ?? null;
       const year = new Date().getUTCFullYear();
       const requestedSeriesName = (dto.seriesName ?? 'Default').trim();
 
       const seriesRes = await tx.execute(
         sql`
-          SELECT *
-          FROM invoice_series
-          WHERE company_id = ${companyId}
-            AND (store_id IS NULL OR store_id = ${storeId})
-            AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
-            AND (year IS NULL OR year = ${year})
-          ORDER BY store_id DESC NULLS LAST
-          LIMIT 1
-          FOR UPDATE
-        ` as any,
+        SELECT *
+        FROM invoice_series
+        WHERE company_id = ${companyId}
+          AND (store_id IS NULL OR store_id = ${storeId})
+          AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
+          AND (year IS NULL OR year = ${year})
+        ORDER BY store_id DESC NULLS LAST
+        LIMIT 1
+        FOR UPDATE
+      ` as any,
       );
 
       const series = firstRow<any>(seriesRes);
@@ -593,24 +592,28 @@ export class InvoiceService {
 
       await tx.execute(
         sql`
-          UPDATE invoice_series
-          SET next_number = next_number + 1,
-              updated_at = NOW()
-          WHERE id = ${series.id}
-        ` as any,
+        UPDATE invoice_series
+        SET next_number = next_number + 1,
+            updated_at = NOW()
+        WHERE id = ${series.id}
+      ` as any,
       );
 
-      // Supplier snapshot (company-level default branding)
+      // Supplier snapshot — prefer store-level branding, fall back to company default
       const brandingRows = await tx
         .select()
         .from(invoiceBranding)
         .where(
           and(
             eq(invoiceBranding.companyId, companyId),
-            sql`${invoiceBranding.storeId} IS NULL` as any,
+            storeId
+              ? sql`(${invoiceBranding.storeId} = ${storeId} OR ${invoiceBranding.storeId} IS NULL)`
+              : sql`${invoiceBranding.storeId} IS NULL`,
           ),
         )
+        .orderBy(sql`${invoiceBranding.storeId} IS NULL ASC`)
         .execute();
+
       const branding = brandingRows[0];
 
       const supplierSnapshot = {
@@ -622,13 +625,104 @@ export class InvoiceService {
         bankDetails: branding?.bankDetails ?? null,
       };
 
-      const customerSnapshot = inv.customer_snapshot ?? {
+      // ✅ Customer snapshot — look up from customers table via order's customerId
+      let customerSnapshot = inv.customer_snapshot ?? null;
+
+      if (!customerSnapshot) {
+        const orderId = inv.order_id ?? inv.orderId ?? null;
+        let customerId: string | null = null;
+
+        if (orderId) {
+          const orderRes = await tx.execute(
+            sql`SELECT customer_id FROM orders WHERE id = ${orderId} AND company_id = ${companyId} LIMIT 1` as any,
+          );
+          const order = firstRow<any>(orderRes);
+          customerId = order?.customer_id ?? null;
+        }
+
+        if (customerId) {
+          const [customer] = await tx
+            .select({
+              displayName: customers.displayName,
+              billingEmail: customers.billingEmail,
+              phone: customers.phone,
+              taxId: customers.taxId,
+              companyName: customers.companyName,
+            })
+            .from(customers)
+            .where(
+              and(
+                eq(customers.id, customerId),
+                eq(customers.companyId, companyId),
+              ),
+            )
+            .limit(1)
+            .execute();
+
+          // ✅ fetch default billing address
+          const [address] = await tx
+            .select({
+              line1: customerAddresses.line1,
+              line2: customerAddresses.line2,
+              city: customerAddresses.city,
+              state: customerAddresses.state,
+              postalCode: customerAddresses.postalCode,
+              country: customerAddresses.country,
+            })
+            .from(customerAddresses)
+            .where(
+              and(
+                eq(customerAddresses.customerId, customerId),
+                eq(customerAddresses.companyId, companyId),
+                eq(customerAddresses.isDefaultBilling, true),
+              ),
+            )
+            .limit(1)
+            .execute();
+
+          if (customer) {
+            const addressParts = [
+              address?.line1,
+              address?.line2,
+              address?.city,
+              address?.state,
+              address?.postalCode,
+              address?.country,
+            ].filter(Boolean);
+
+            customerSnapshot = {
+              name: customer.displayName,
+              email: customer.billingEmail ?? '',
+              phone: customer.phone ?? '',
+              taxId: customer.taxId ?? '',
+              companyName: customer.companyName ?? '',
+              address: address
+                ? [
+                    address.line1,
+                    address.line2,
+                    address.city,
+                    address.state,
+                    address.postalCode,
+                    address.country,
+                  ]
+                    .filter(Boolean)
+                    .join(', ')
+                : '',
+            };
+          }
+        }
+      }
+
+      // Final fallback
+      customerSnapshot = customerSnapshot ?? {
         name: 'Customer',
-        address: '',
+        email: '',
+        phone: '',
         taxId: '',
+        companyName: '',
       };
 
-      // Freeze tax snapshots from taxes table
+      // Freeze tax snapshots
       const taxIds = Array.from(
         new Set((lines as any[]).map((l) => l.taxId).filter(Boolean)),
       ) as string[];
@@ -643,7 +737,6 @@ export class InvoiceService {
         for (const t of taxRows) taxMap.set((t as any).id, t);
       }
 
-      // Compute and freeze line totals
       for (const l of lines as any[]) {
         const t = l.taxId ? taxMap.get(l.taxId) : null;
 
@@ -762,44 +855,36 @@ export class InvoiceService {
       return updated;
     };
 
-    // -----------------------------
-    // 1) Run issuance in tx
-    // -----------------------------
     const issued = outerTx
       ? await run(outerTx)
       : await this.db.transaction(async (tx: TxOrDb) => run(tx));
 
-    // bump cache for issuance
     await this.cache.bumpCompanyVersion(companyId);
 
-    // -----------------------------
-    // 2) Zoho sync: ONLY after commit when we control tx boundary
-    // -----------------------------
     if (!outerTx && autoSyncZoho) {
       try {
-        // NOTE: this calls Zoho after commit (safe).
-        await this.zohoInvoices.syncInvoiceToZoho(
-          companyId,
-          issued.id,
-          opts?.actor,
-          opts?.ip,
-          {
-            customer: opts?.zohoCustomer,
-            softFailMissingCustomer: true,
-          } as any,
-        );
+        const storeId = issued.storeId ?? issued.store_id ?? null;
+        const zohoActive = storeId
+          ? await this.zohoService.isEnabled(companyId, storeId)
+          : false;
 
-        // Optional: bump cache again after sync
-        await this.cache.bumpCompanyVersion(companyId);
+        if (zohoActive) {
+          await this.zohoInvoices.syncInvoiceToZoho(
+            companyId,
+            issued.id,
+            opts?.actor,
+            opts?.ip,
+            {
+              customer: opts?.zohoCustomer,
+              softFailMissingCustomer: true,
+            } as any,
+          );
+          await this.cache.bumpCompanyVersion(companyId);
+        }
       } catch (e) {
         console.error('Error syncing issued invoice to Zoho:', e);
-        // Do NOT fail issuing if Zoho fails.
-        // ZohoInvoicesService should write invoices.zohoSyncError for UI visibility.
       }
     }
-
-    // If outerTx was provided, caller should do this AFTER commit:
-    // await this.zohoInvoices.syncInvoiceToZoho(companyId, issued.id, actor, ip, { customer: ... })
 
     return issued;
   }
@@ -1280,9 +1365,27 @@ export class InvoiceService {
   ) {
     const outerTx = ctx?.tx;
 
+    // Check invoice exists and get storeId before entering tx
+    const [inv] = await this.db
+      .select({ id: invoices.id, storeId: invoices.storeId })
+      .from(invoices)
+      .where(and(eq(invoices.companyId, companyId), eq(invoices.id, invoiceId)))
+      .execute();
+
+    if (!inv) throw new NotFoundException('Invoice not found');
+
+    const zohoActive = inv.storeId
+      ? await this.zohoService.isEnabled(companyId, inv.storeId)
+      : false;
+
+    if (!zohoActive) {
+      throw new BadRequestException(
+        'Zoho integration is not active for this store',
+      );
+    }
+
     const run = async (tx: TxOrDb) => {
-      // (Optional) validate invoice exists early
-      const [inv] = await tx
+      const [locked] = await tx
         .select({ id: invoices.id })
         .from(invoices)
         .where(
@@ -1291,9 +1394,8 @@ export class InvoiceService {
         .for('update')
         .execute();
 
-      if (!inv) throw new NotFoundException('Invoice not found');
+      if (!locked) throw new NotFoundException('Invoice not found');
 
-      // Call Zoho service (tx-aware)
       return this.zohoInvoices.syncInvoiceToZohoTx(
         tx as any,
         companyId,
@@ -1307,6 +1409,7 @@ export class InvoiceService {
     const result = outerTx
       ? await run(outerTx)
       : await this.db.transaction(run);
+
     await this.cache.bumpCompanyVersion(companyId);
     return result;
   }

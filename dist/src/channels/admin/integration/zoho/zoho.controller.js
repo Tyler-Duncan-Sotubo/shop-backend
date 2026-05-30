@@ -55,6 +55,9 @@ let ZohoController = class ZohoController extends base_controller_1.BaseControll
     getAdmin(user, storeId) {
         return this.zohoService.findForStore(user.companyId, storeId);
     }
+    isEnabled(user, storeId) {
+        return this.zohoService.isEnabled(user.companyId, storeId);
+    }
     upsertAdmin(user, storeId, dto, ip) {
         return this.zohoService.upsertForStore(user.companyId, storeId, dto, user, ip);
     }
@@ -100,6 +103,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], ZohoController.prototype, "getAdmin", null);
+__decorate([
+    (0, common_1.Get)('admin/enabled'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['integrations.zoho.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)('storeId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], ZohoController.prototype, "isEnabled", null);
 __decorate([
     (0, common_1.Post)('admin'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

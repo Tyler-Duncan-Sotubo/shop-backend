@@ -20,6 +20,7 @@ const stores_service_1 = require("../stores/stores.service");
 const aws_service_1 = require("../../../infrastructure/aws/aws.service");
 const zoho_books_service_1 = require("../../integration/zoho/zoho-books.service");
 const zoho_service_1 = require("../../integration/zoho/zoho.service");
+const quote_pdf_service_1 = require("./quote-pdf.service");
 let QuoteModule = class QuoteModule {
 };
 exports.QuoteModule = QuoteModule;
@@ -27,6 +28,7 @@ exports.QuoteModule = QuoteModule = __decorate([
     (0, common_1.Module)({
         providers: [
             quote_service_1.QuoteService,
+            quote_pdf_service_1.QuotePdfService,
             api_keys_service_1.ApiKeysService,
             manual_orders_service_1.ManualOrdersService,
             inventory_stock_service_1.InventoryStockService,
@@ -39,7 +41,7 @@ exports.QuoteModule = QuoteModule = __decorate([
             zoho_books_service_1.ZohoBooksService,
             zoho_service_1.ZohoService,
         ],
-        exports: [quote_service_1.QuoteService],
+        exports: [quote_service_1.QuoteService, quote_pdf_service_1.QuotePdfService],
     })
 ], QuoteModule);
 //# sourceMappingURL=quote.module.js.map

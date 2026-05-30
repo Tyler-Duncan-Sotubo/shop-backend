@@ -97,6 +97,13 @@ export class ZohoController extends BaseController {
     return this.zohoService.findForStore(user.companyId, storeId);
   }
 
+  @Get('admin/enabled')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['integrations.zoho.read'])
+  isEnabled(@CurrentUser() user: User, @Query('storeId') storeId: string) {
+    return this.zohoService.isEnabled(user.companyId, storeId);
+  }
+
   /**
    * Create/Upsert Zoho connection (admin)
    * POST /integrations/zoho/admin?storeId=xxx

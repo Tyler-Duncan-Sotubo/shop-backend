@@ -435,12 +435,21 @@ export class InvoicePdfService {
     const currency = inv.currency ?? 'NGN';
     const fmt = (minor: number) => this.formatMinor(minor ?? 0, currency);
 
+    const formatDate = (d: Date | string | null | undefined) => {
+      if (!d) return '';
+      return new Date(d).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    };
+
     return {
       invoice: {
         id: inv.id,
         number: inv.number ?? inv.id.slice(0, 8),
-        issuedAt: inv.issuedAt?.toISOString?.() ?? '',
-        dueAt: inv.dueAt?.toISOString?.() ?? '',
+        issuedAt: formatDate(inv.issuedAt),
+        dueAt: formatDate(inv.dueAt),
         currency,
       },
       supplier: inv.supplierSnapshot ?? {

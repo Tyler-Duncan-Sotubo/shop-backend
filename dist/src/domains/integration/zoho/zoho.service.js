@@ -33,6 +33,15 @@ let ZohoService = class ZohoService {
         this.cache = cache;
         this.auditService = auditService;
     }
+    async isEnabled(companyId, storeId) {
+        const rows = await this.db
+            .select({ isActive: schema_1.zohoConnections.isActive })
+            .from(schema_1.zohoConnections)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.zohoConnections.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.zohoConnections.storeId, storeId)))
+            .limit(1)
+            .execute();
+        return rows[0]?.isActive ?? false;
+    }
     async upsertForStore(companyId, storeId, dto, user, ip) {
         if (!dto.refreshToken?.trim()) {
             throw new common_1.BadRequestException('refreshToken is required');

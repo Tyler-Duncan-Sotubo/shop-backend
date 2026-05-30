@@ -31,6 +31,22 @@ export class ZohoService {
     private readonly auditService: AuditService,
   ) {}
 
+  async isEnabled(companyId: string, storeId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ isActive: zohoConnections.isActive })
+      .from(zohoConnections)
+      .where(
+        and(
+          eq(zohoConnections.companyId, companyId),
+          eq(zohoConnections.storeId, storeId),
+        ),
+      )
+      .limit(1)
+      .execute();
+
+    return rows[0]?.isActive ?? false;
+  }
+
   /* ---------------------------------- */
   /* Admin: upsert zoho connection       */
   /* ---------------------------------- */

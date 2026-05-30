@@ -2,25 +2,26 @@ FROM node:22-bookworm
 
 WORKDIR /app
 
-# Install app dependencies first (better layer caching)
+RUN apt-get update && apt-get install -y \
+    libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+    libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+    libxfixes3 libxrandr2 libgbm1 libasound2 \
+    --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
+ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
-# Install Playwright deps + binary
-RUN npx playwright install-deps chromium && \
-    npx playwright install chromium
+RUN npx playwright install chromium
 
-# Copy source (exclude dist via .dockerignore)
 COPY . .
 
-# Build and verify output exists
-RUN npm run build && \
-    ls -la dist/ && \
-    test -f dist/main.js || (echo "ERROR: dist/main.js not found after build" && exit 1)
+RUN npm run build
+RUN test -f dist/src/main.js || (echo "ERROR: dist/src/main.js not found" && exit 1)
 
 ENV NODE_ENV=production
-ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]

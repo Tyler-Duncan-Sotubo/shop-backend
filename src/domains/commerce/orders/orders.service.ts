@@ -349,7 +349,6 @@ export class OrdersService {
       }
 
       // Cancel pending dispatch if awaiting_dispatch
-      // Cancel pending dispatch if awaiting_dispatch
       if (before.status === 'awaiting_dispatch') {
         const [pendingDispatch] = await tx
           .select()
@@ -377,6 +376,36 @@ export class OrdersService {
                 eq(orderDispatches.id, pendingDispatch.id),
               ),
             )
+            .execute();
+        }
+      }
+
+      const newStatus =
+        paidMinor > 0 && opts?.forceRefund ? 'refunded' : 'cancelled';
+
+      // Void any draft or issued invoices for this order
+      const orderInvoices = await tx
+        .select({ id: invoices.id, status: invoices.status })
+        .from(invoices)
+        .where(
+          and(eq(invoices.companyId, companyId), eq(invoices.orderId, orderId)),
+        )
+        .execute();
+
+      for (const inv of orderInvoices) {
+        if (inv.status !== 'void') {
+          await tx
+            .update(invoices)
+            .set({
+              status: 'void' as any,
+              voidedAt: new Date(),
+              voidReason:
+                newStatus === 'refunded'
+                  ? 'Order cancelled and flagged for refund'
+                  : 'Order cancelled',
+              updatedAt: new Date(),
+            })
+            .where(eq(invoices.id, inv.id))
             .execute();
         }
       }
@@ -409,9 +438,6 @@ export class OrdersService {
           );
         }
       }
-
-      const newStatus =
-        paidMinor > 0 && opts?.forceRefund ? 'refunded' : 'cancelled';
 
       const [after] = await tx
         .update(orders)

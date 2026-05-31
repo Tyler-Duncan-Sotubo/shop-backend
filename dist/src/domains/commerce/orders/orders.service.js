@@ -230,6 +230,28 @@ let OrdersService = class OrdersService {
                         .execute();
                 }
             }
+            const newStatus = paidMinor > 0 && opts?.forceRefund ? 'refunded' : 'cancelled';
+            const orderInvoices = await tx
+                .select({ id: schema_1.invoices.id, status: schema_1.invoices.status })
+                .from(schema_1.invoices)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.orderId, orderId)))
+                .execute();
+            for (const inv of orderInvoices) {
+                if (inv.status !== 'void') {
+                    await tx
+                        .update(schema_1.invoices)
+                        .set({
+                        status: 'void',
+                        voidedAt: new Date(),
+                        voidReason: newStatus === 'refunded'
+                            ? 'Order cancelled and flagged for refund'
+                            : 'Order cancelled',
+                        updatedAt: new Date(),
+                    })
+                        .where((0, drizzle_orm_1.eq)(schema_1.invoices.id, inv.id))
+                        .execute();
+                }
+            }
             const items = await tx
                 .select()
                 .from(schema_1.orderItems)
@@ -246,7 +268,6 @@ let OrdersService = class OrdersService {
                     await this.stock.releaseReservationInTx(tx, companyId, orderId, origin, it.variantId, qty);
                 }
             }
-            const newStatus = paidMinor > 0 && opts?.forceRefund ? 'refunded' : 'cancelled';
             const [after] = await tx
                 .update(schema_1.orders)
                 .set({ status: newStatus, updatedAt: new Date() })

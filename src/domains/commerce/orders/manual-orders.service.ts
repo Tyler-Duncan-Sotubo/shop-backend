@@ -1404,6 +1404,14 @@ export class ManualOrdersService {
         )
         .execute();
 
+      // In deleteManualOrder, before deleting the order:
+      await tx
+        .delete(invoices)
+        .where(
+          and(eq(invoices.companyId, companyId), eq(invoices.orderId, orderId)),
+        )
+        .execute();
+
       // 8) Delete order
       await tx
         .delete(orders)

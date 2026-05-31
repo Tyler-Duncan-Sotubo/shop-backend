@@ -93,11 +93,15 @@ export class OrdersController extends BaseController {
   pay(@CurrentUser() user: User, @Param('id') id: string) {
     return this.orders.markPaid(user.companyId, id, user, undefined);
   }
-
   @Post(':id/cancel')
   @SetMetadata('permissions', ['orders.update'])
-  cancel(@CurrentUser() user: User, @Param('id') id: string) {
-    return this.orders.cancel(user.companyId, id, user, undefined);
+  cancel(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Ip() ip: string,
+    @Body() body: { forceRefund?: boolean; refundNote?: string },
+  ) {
+    return this.orders.cancel(user.companyId, id, user, ip, body);
   }
 
   @Patch(':id/lay-buy')
@@ -233,6 +237,48 @@ export class OrdersController extends BaseController {
     );
 
     return item;
+  }
+
+  @Patch(':id/items/:itemId')
+  @SetMetadata('permissions', ['orders.update'])
+  async updateOrderItem(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() body: { quantity?: number; unitPrice?: number; name?: string },
+    @Ip() ip: string,
+  ) {
+    await this.manualOrdersService.updateItem(
+      user.companyId,
+      { orderId: id, itemId, ...body } as any,
+      user,
+      ip,
+    );
+
+    await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, id);
+
+    return { ok: true };
+  }
+
+  @Delete(':id/items/:itemId')
+  @SetMetadata('permissions', ['orders.update'])
+  async removeOrderItem(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Ip() ip: string,
+  ) {
+    await this.manualOrdersService.removeItem(
+      user.companyId,
+      id,
+      itemId,
+      user,
+      ip,
+    );
+
+    await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, id);
+
+    return { ok: true };
   }
 
   @Patch('manual/items/:itemId')

@@ -65,6 +65,7 @@ export declare class ManualOrdersService {
         tx?: TxOrDb;
     }): Promise<any>;
     private isEditableStatus;
+    private isLockedStatus;
     private recalculateTotalsInTx;
     deleteManualOrder(companyId: string, orderId: string, actor?: User, ip?: string): Promise<{
         deleted: boolean;

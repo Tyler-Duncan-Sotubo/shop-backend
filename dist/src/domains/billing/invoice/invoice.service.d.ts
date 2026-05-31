@@ -248,5 +248,8 @@ export declare class InvoiceService {
         reason?: undefined;
         message?: undefined;
     }>;
+    voidAndRecreateDraft(companyId: string, orderId: string, ctx?: {
+        tx?: TxOrDb;
+    }): Promise<any>;
 }
 export {};

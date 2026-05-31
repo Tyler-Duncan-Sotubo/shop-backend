@@ -266,8 +266,10 @@ export class ManualOrdersService {
 
       if (!ord) throw new NotFoundException('Order not found');
 
-      if (!this.isEditableStatus(ord.status)) {
-        throw new BadRequestException('Order is not editable');
+      if (this.isLockedStatus(ord.status)) {
+        throw new BadRequestException(
+          `Cannot modify items on a ${ord.status} order`,
+        );
       }
 
       const origin = (ord as any).originInventoryLocationId;
@@ -324,12 +326,7 @@ export class ManualOrdersService {
 
       const finalName = input.name ?? composedName;
 
-      // ✅ Price resolution:
-      // - Use input.unitPrice ONLY if > 0
-      // - else salePrice if > 0
-      // - else regularPrice if > 0
-      //
-      // NOTE: adjust these field names to your real drizzle column mappings.
+      // ✅ Price resolution
       const salePriceRaw =
         (variant as any).salePrice ??
         (variant as any).saleprice ??
@@ -382,6 +379,83 @@ export class ManualOrdersService {
         );
       }
 
+      // ✅ Check if variant already exists on this order — merge quantity
+      const [existing] = await tx
+        .select()
+        .from(orderItems)
+        .where(
+          and(
+            eq(orderItems.companyId, companyId),
+            eq(orderItems.orderId, input.orderId),
+            eq(orderItems.variantId, input.variantId),
+          ),
+        )
+        .limit(1)
+        .execute();
+
+      if (existing) {
+        const newQty = Math.trunc(Number(existing.quantity)) + qty;
+        const newLineTotal = unitPrice * newQty;
+
+        if (ord.fulfillmentModel === 'stock_first') {
+          await this.stock.reserveForOrderInTx(
+            tx,
+            companyId,
+            input.orderId,
+            origin,
+            input.variantId,
+            qty, // only reserve the delta
+          );
+        }
+
+        await tx
+          .update(orderItems)
+          .set({
+            quantity: newQty,
+            lineTotal: newLineTotal.toFixed(2),
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(orderItems.id, existing.id))
+          .execute();
+
+        await tx.insert(orderEvents).values({
+          companyId,
+          orderId: input.orderId,
+          type: 'item_updated',
+          fromStatus: ord.status,
+          toStatus: ord.status,
+          actorUserId: actor?.id ?? null,
+          ipAddress: ip ?? null,
+          message: `Updated item quantity ${existing.name} to x${newQty}`,
+        });
+
+        await this.recalculateTotalsInTx(tx, companyId, input.orderId);
+
+        if (actor?.id) {
+          await this.audit.logAction({
+            action: 'update',
+            entity: 'order_item',
+            entityId: existing.id,
+            userId: actor.id,
+            details: 'Merged item quantity on manual order',
+            ipAddress: ip,
+            changes: {
+              companyId,
+              orderId: input.orderId,
+              itemId: existing.id,
+              variantId: input.variantId,
+              previousQty: Number(existing.quantity),
+              addedQty: qty,
+              newQty,
+              unitPrice,
+            },
+          });
+        }
+
+        return existing;
+      }
+
+      // ✅ New variant — insert fresh row
       if (ord.fulfillmentModel === 'stock_first') {
         await this.stock.reserveForOrderInTx(
           tx,
@@ -490,6 +564,11 @@ export class ManualOrdersService {
         .for('update')
         .execute();
 
+      if (this.isLockedStatus(ord.status)) {
+        throw new BadRequestException(
+          `Cannot modify items on a ${ord.status} order`,
+        );
+      }
       if (!ord) throw new NotFoundException('Order not found');
       if (!this.isEditableStatus(ord.status)) {
         throw new BadRequestException('Order is not editable');
@@ -532,24 +611,26 @@ export class ManualOrdersService {
             );
           }
 
-          if (delta > 0) {
-            await this.stock.releaseReservationInTx(
-              tx,
-              companyId,
-              ord.id,
-              origin,
-              it.variantId,
-              delta,
-            );
-          } else {
-            await this.stock.releaseReservationInTx(
-              tx,
-              companyId,
-              ord.id,
-              origin,
-              it.variantId,
-              Math.abs(delta),
-            );
+          if (ord.fulfillmentModel === 'stock_first') {
+            if (delta > 0) {
+              await this.stock.reserveForOrderInTx(
+                tx,
+                companyId,
+                ord.id,
+                origin,
+                it.variantId,
+                delta,
+              );
+            } else {
+              await this.stock.releaseReservationInTx(
+                tx,
+                companyId,
+                ord.id,
+                origin,
+                it.variantId,
+                Math.abs(delta),
+              );
+            }
           }
         }
 
@@ -658,6 +739,11 @@ export class ManualOrdersService {
         .for('update')
         .execute();
 
+      if (this.isLockedStatus(ord.status)) {
+        throw new BadRequestException(
+          `Cannot modify items on a ${ord.status} order`,
+        );
+      }
       if (!ord) throw new NotFoundException('Order not found');
       if (!this.isEditableStatus(ord.status)) {
         throw new BadRequestException('Order is not editable');
@@ -681,7 +767,7 @@ export class ManualOrdersService {
       if (it.orderId !== orderId)
         throw new BadRequestException('Item does not belong to order');
 
-      if (it.variantId) {
+      if (it.variantId && ord.fulfillmentModel === 'stock_first') {
         const qty = Math.trunc(Number(it.quantity ?? 0));
         if (qty > 0) {
           await this.stock.releaseReservationInTx(
@@ -974,6 +1060,7 @@ export class ManualOrdersService {
 
   // Called by quote.service.ts (or any caller) after items have been added
   // to sync the invoice lines correctly
+
   async syncInvoiceAfterItems(
     companyId: string,
     orderId: string,
@@ -982,48 +1069,67 @@ export class ManualOrdersService {
     const tx = ctx?.tx ?? this.db;
 
     const [existingInvoice] = await tx
-      .select({ id: invoices.id })
+      .select({
+        id: invoices.id,
+        status: invoices.status,
+        storeId: invoices.storeId,
+        currency: invoices.currency,
+      })
       .from(invoices)
       .where(
-        and(
-          eq(invoices.companyId, companyId),
-          eq(invoices.orderId, orderId),
-          eq(invoices.status, 'draft'),
-        ),
+        and(eq(invoices.companyId, companyId), eq(invoices.orderId, orderId)),
       )
+      .orderBy(sql`${invoices.createdAt} DESC` as any)
       .limit(1)
       .execute();
 
-    if (existingInvoice) {
+    // No invoice yet — create draft
+    if (!existingInvoice) {
+      const [order] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .execute();
+
+      if (!order) throw new NotFoundException('Order not found');
+
+      return this.invoiceService.createDraftFromOrder(
+        {
+          orderId,
+          storeId: (order as any).storeId ?? null,
+          currency: (order as any).currency,
+          type: 'invoice',
+        } as any,
+        companyId,
+        { tx },
+      );
+    }
+
+    // Draft — just sync
+    if (existingInvoice.status === 'draft') {
       return this.invoiceService.syncFromOrder(orderId, companyId, { tx });
     }
 
-    const [order] = await tx
-      .select()
-      .from(orders)
-      .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
-      .execute();
-
-    if (!order) throw new NotFoundException('Order not found');
-
-    return this.invoiceService.createDraftFromOrder(
-      {
-        orderId,
-        storeId: (order as any).storeId ?? null,
-        currency: (order as any).currency,
-        type: 'invoice',
-      } as any,
-      companyId,
-      { tx },
-    );
+    // Void or issued/paid — always use voidAndRecreateDraft
+    // which handles both cases correctly without idempotency issues
+    return this.invoiceService.voidAndRecreateDraft(companyId, orderId, { tx });
   }
-
   // -------------------------
   // Internal helpers
   // -------------------------
 
   private isEditableStatus(status: string) {
-    return status === 'draft' || status === 'pending_payment';
+    return (
+      status === 'draft' ||
+      status === 'pending_payment' ||
+      status === 'lay_buy' ||
+      status === 'paid' ||
+      status === 'awaiting_dispatch'
+    );
+  }
+
+  private isLockedStatus(status: string) {
+    return ['fulfilled', 'cancelled', 'refunded'].includes(status);
   }
 
   /**

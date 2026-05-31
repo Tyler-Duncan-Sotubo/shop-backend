@@ -282,7 +282,7 @@ export class InvoiceService {
       )
       .execute();
 
-    // delete non-shipping lines
+    // delete non-shipping lines regardless of whether items exist
     await tx
       .delete(invoiceLines)
       .where(
@@ -294,7 +294,7 @@ export class InvoiceService {
       )
       .execute();
 
-    // re-position shipping line to end to avoid position conflicts
+    // re-position shipping line
     const shippingPosition = items.length + 1;
     await tx
       .update(invoiceLines)
@@ -336,7 +336,7 @@ export class InvoiceService {
               companyId,
               invoiceId: invoice.id,
               orderId,
-              position: idx + 1, // 1-based, shipping sits at items.length + 1
+              position: idx + 1,
               productId: item.productId ?? null,
               variantId: item.variantId ?? null,
               description: item.name ?? 'Item',
@@ -362,6 +362,34 @@ export class InvoiceService {
           }) as any,
         )
         .execute();
+    }
+
+    // ✅ Check remaining lines — if zero lines total, set invoice totals to 0
+    const remainingLines = await tx
+      .select()
+      .from(invoiceLines)
+      .where(
+        and(
+          eq(invoiceLines.companyId, companyId),
+          eq(invoiceLines.invoiceId, invoice.id),
+        ),
+      )
+      .execute();
+
+    if (!remainingLines.length) {
+      await tx
+        .update(invoices)
+        .set({
+          subtotalMinor: 0,
+          taxMinor: 0,
+          totalMinor: 0,
+          balanceMinor: 0,
+          updatedAt: new Date(),
+        })
+        .where(eq(invoices.id, invoice.id))
+        .execute();
+
+      return invoice;
     }
 
     await this.recalculateDraftTotals(companyId, invoice.id, { tx });
@@ -1412,5 +1440,64 @@ export class InvoiceService {
 
     await this.cache.bumpCompanyVersion(companyId);
     return result;
+  }
+
+  async voidAndRecreateDraft(
+    companyId: string,
+    orderId: string,
+    ctx?: { tx?: TxOrDb },
+  ) {
+    const tx = ctx?.tx ?? this.db;
+
+    const [existingInvoice] = await tx
+      .select()
+      .from(invoices)
+      .where(
+        and(eq(invoices.companyId, companyId), eq(invoices.orderId, orderId)),
+      )
+      .orderBy(sql`${invoices.createdAt} DESC` as any)
+      .limit(1)
+      .execute();
+
+    if (!existingInvoice) return null;
+
+    if (existingInvoice.status === 'draft') {
+      return this.syncFromOrder(orderId, companyId, { tx });
+    }
+
+    // ✅ Reset the existing invoice back to draft instead of inserting new one
+    // This avoids the unique constraint on (companyId, orderId, type)
+    await tx
+      .update(invoices)
+      .set({
+        status: 'draft' as any,
+        number: null,
+        seriesId: null,
+        issuedAt: null,
+        lockedAt: null,
+        supplierSnapshot: null,
+        customerSnapshot: null,
+        subtotalMinor: 0,
+        taxMinor: 0,
+        totalMinor: 0,
+        balanceMinor: 0,
+        updatedAt: new Date(),
+      })
+      .where(eq(invoices.id, existingInvoice.id))
+      .execute();
+
+    // Delete old lines so syncFromOrder can recreate them fresh
+    await tx
+      .delete(invoiceLines)
+      .where(
+        and(
+          eq(invoiceLines.companyId, companyId),
+          eq(invoiceLines.invoiceId, existingInvoice.id),
+        ),
+      )
+      .execute();
+
+    // Sync fresh lines from current order items
+    return this.syncFromOrder(orderId, companyId, { tx });
   }
 }

@@ -230,6 +230,25 @@ let InvoiceService = class InvoiceService {
             }))
                 .execute();
         }
+        const remainingLines = await tx
+            .select()
+            .from(schema_1.invoiceLines)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoice.id)))
+            .execute();
+        if (!remainingLines.length) {
+            await tx
+                .update(schema_1.invoices)
+                .set({
+                subtotalMinor: 0,
+                taxMinor: 0,
+                totalMinor: 0,
+                balanceMinor: 0,
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.eq)(schema_1.invoices.id, invoice.id))
+                .execute();
+            return invoice;
+        }
         await this.recalculateDraftTotals(companyId, invoice.id, { tx });
         return invoice;
     }
@@ -967,6 +986,44 @@ let InvoiceService = class InvoiceService {
             : await this.db.transaction(run);
         await this.cache.bumpCompanyVersion(companyId);
         return result;
+    }
+    async voidAndRecreateDraft(companyId, orderId, ctx) {
+        const tx = ctx?.tx ?? this.db;
+        const [existingInvoice] = await tx
+            .select()
+            .from(schema_1.invoices)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.orderId, orderId)))
+            .orderBy((0, drizzle_orm_1.sql) `${schema_1.invoices.createdAt} DESC`)
+            .limit(1)
+            .execute();
+        if (!existingInvoice)
+            return null;
+        if (existingInvoice.status === 'draft') {
+            return this.syncFromOrder(orderId, companyId, { tx });
+        }
+        await tx
+            .update(schema_1.invoices)
+            .set({
+            status: 'draft',
+            number: null,
+            seriesId: null,
+            issuedAt: null,
+            lockedAt: null,
+            supplierSnapshot: null,
+            customerSnapshot: null,
+            subtotalMinor: 0,
+            taxMinor: 0,
+            totalMinor: 0,
+            balanceMinor: 0,
+            updatedAt: new Date(),
+        })
+            .where((0, drizzle_orm_1.eq)(schema_1.invoices.id, existingInvoice.id))
+            .execute();
+        await tx
+            .delete(schema_1.invoiceLines)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, existingInvoice.id)))
+            .execute();
+        return this.syncFromOrder(orderId, companyId, { tx });
     }
 };
 exports.InvoiceService = InvoiceService;

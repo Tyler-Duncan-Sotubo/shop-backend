@@ -64,7 +64,7 @@ export declare class VariantsService {
             url: any;
             altText: any;
             position: any;
-        };
+        } | null;
         inventory: any;
     } | {
         variant: any;
@@ -73,7 +73,7 @@ export declare class VariantsService {
             url: any;
             altText: any;
             position: any;
-        } | null;
+        };
         inventory: any;
     } | {
         variant: any;

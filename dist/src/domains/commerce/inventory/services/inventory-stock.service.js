@@ -414,9 +414,7 @@ let InventoryStockService = class InventoryStockService {
             const reserved = Number(inv?.reserved ?? 0);
             const safetyStock = Number(inv?.safetyStock ?? 0);
             const sellable = available - reserved - safetyStock;
-            throw new common_1.BadRequestException(`Insufficient sellable stock to reserve. ` +
-                `only ${sellable} sellable unit(s) available ` +
-                `(${available} on hand, ${reserved} reserved, ${safetyStock} safety stock).`);
+            throw new common_1.BadRequestException(`Insufficient sellable stock to reserve.`);
         }
         await this.ledger.logInTx(tx, {
             companyId,

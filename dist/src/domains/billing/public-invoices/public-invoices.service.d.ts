@@ -12,13 +12,13 @@ export declare class PublicInvoicesService {
         expiresAt?: Date | null;
     }): Promise<{
         id: string;
-        meta: unknown;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        expiresAt: Date | null;
-        invoiceId: string;
         token: string;
+        expiresAt: Date | null;
+        meta: unknown;
+        invoiceId: string;
         enabled: boolean;
         viewCount: number;
         lastViewedAt: Date | null;

@@ -695,11 +695,7 @@ export class InventoryStockService {
       const safetyStock = Number(inv?.safetyStock ?? 0);
       const sellable = available - reserved - safetyStock;
 
-      throw new BadRequestException(
-        `Insufficient sellable stock to reserve. ` +
-          `only ${sellable} sellable unit(s) available ` +
-          `(${available} on hand, ${reserved} reserved, ${safetyStock} safety stock).`,
-      );
+      throw new BadRequestException(`Insufficient sellable stock to reserve.`);
     }
 
     // ✅ ledger

@@ -184,7 +184,7 @@ let OrdersService = class OrdersService {
         await this.cache.bumpCompanyVersion(companyId);
         return result;
     }
-    async cancel(companyId, orderId, user, ip) {
+    async cancel(companyId, orderId, user, ip, opts) {
         const result = await this.db.transaction(async (tx) => {
             const [before] = await tx
                 .select()
@@ -194,19 +194,41 @@ let OrdersService = class OrdersService {
                 .execute();
             if (!before)
                 throw new common_1.NotFoundException('Order not found');
-            if (before.status !== 'pending_payment' && before.status !== 'lay_buy') {
-                throw new common_1.BadRequestException('Only pending_payment or lay-buy orders can be cancelled');
+            const cancellableStatuses = [
+                'pending_payment',
+                'lay_buy',
+                'paid',
+                'awaiting_dispatch',
+            ];
+            if (!cancellableStatuses.includes(before.status)) {
+                throw new common_1.BadRequestException(`Cannot cancel order with status: ${before.status}`);
             }
             const [inv] = await tx
                 .select({ id: schema_1.invoices.id, paidMinor: schema_1.invoices.paidMinor })
                 .from(schema_1.invoices)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.orderId, orderId)))
                 .execute();
-            if (!inv)
-                throw new common_1.BadRequestException('Order has no invoice');
-            const paidMinor = Number(inv.paidMinor ?? 0);
-            if (paidMinor > 0) {
-                throw new common_1.BadRequestException(`Cannot cancel order with paid invoice amount: ${paidMinor}`);
+            const paidMinor = Number(inv?.paidMinor ?? 0);
+            if (paidMinor > 0 && !opts?.forceRefund) {
+                throw new common_1.BadRequestException(`This order has already been paid. To cancel it, please confirm you want to process a refund.`);
+            }
+            if (before.status === 'awaiting_dispatch') {
+                const [pendingDispatch] = await tx
+                    .select()
+                    .from(schema_1.orderDispatches)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderDispatches.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderDispatches.orderId, orderId), (0, drizzle_orm_1.eq)(schema_1.orderDispatches.status, 'pending')))
+                    .limit(1)
+                    .execute();
+                if (pendingDispatch) {
+                    await tx
+                        .update(schema_1.orderDispatches)
+                        .set({
+                        status: 'cancelled',
+                        updatedAt: new Date(),
+                    })
+                        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderDispatches.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderDispatches.id, pendingDispatch.id)))
+                        .execute();
+                }
             }
             const items = await tx
                 .select()
@@ -214,10 +236,7 @@ let OrdersService = class OrdersService {
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
                 .execute();
             const origin = before.originInventoryLocationId;
-            if (!origin) {
-                throw new common_1.BadRequestException('Order missing originInventoryLocationId');
-            }
-            if (before.fulfillmentModel === 'stock_first') {
+            if (origin && before.fulfillmentModel === 'stock_first') {
                 for (const it of items) {
                     if (!it.variantId)
                         continue;
@@ -227,21 +246,24 @@ let OrdersService = class OrdersService {
                     await this.stock.releaseReservationInTx(tx, companyId, orderId, origin, it.variantId, qty);
                 }
             }
+            const newStatus = paidMinor > 0 && opts?.forceRefund ? 'refunded' : 'cancelled';
             const [after] = await tx
                 .update(schema_1.orders)
-                .set({ status: 'cancelled', updatedAt: new Date() })
+                .set({ status: newStatus, updatedAt: new Date() })
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
                 .returning()
                 .execute();
             await tx.insert(schema_1.orderEvents).values({
                 companyId,
                 orderId,
-                type: 'cancelled',
+                type: newStatus === 'refunded' ? 'refunded' : 'cancelled',
                 fromStatus: before.status,
                 toStatus: after.status,
                 actorUserId: user?.id ?? null,
                 ipAddress: ip ?? null,
-                message: 'Order cancelled',
+                message: newStatus === 'refunded'
+                    ? `Order cancelled and flagged for refund${opts?.refundNote ? `: ${opts.refundNote}` : ''}`
+                    : 'Order cancelled',
             });
             return after;
         });

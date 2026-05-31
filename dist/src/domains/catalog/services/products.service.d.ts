@@ -60,8 +60,8 @@ export declare class ProductsService {
     findProductByIdOrThrow(companyId: string, productId: string): Promise<{
         [x: string]: any;
         productCategories: any;
-        images: any;
         variants: any;
+        images: any;
     }>;
     ensureSlugUnique(companyId: string, slug: string, excludeId?: string): Promise<void>;
     private sanitizeFileName;
@@ -104,33 +104,33 @@ export declare class ProductsService {
         offset?: number;
     }): Promise<{
         [x: string]: any;
-        options: any;
         productCategories: any;
-        images: any;
+        options: any;
         variants: any;
+        images: any;
         defaultVariant: any;
     }[]>;
     getProductById(companyId: string, productId: string): Promise<{
         [x: string]: any;
         productCategories: any;
-        images: any;
         variants: any;
+        images: any;
     }>;
     getProductWithRelations(companyId: string, productId: string): Promise<{
         [x: string]: any;
-        options: any;
         productCategories: any;
-        images: any;
+        options: any;
         variants: any;
+        images: any;
         defaultVariant: any;
     }>;
     getProductWithRelationsBySlug(companyId: string, slug: string): Promise<{
         rating_count: number;
         average_rating: number;
-        options: any;
         productCategories: any;
-        images: any;
+        options: any;
         variants: any;
+        images: any;
         defaultVariant: any;
         defaultImage: any;
     }>;

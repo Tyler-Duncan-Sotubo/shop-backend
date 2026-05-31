@@ -190,8 +190,8 @@ let ManualOrdersService = class ManualOrdersService {
                 .execute();
             if (!ord)
                 throw new common_1.NotFoundException('Order not found');
-            if (!this.isEditableStatus(ord.status)) {
-                throw new common_1.BadRequestException('Order is not editable');
+            if (this.isLockedStatus(ord.status)) {
+                throw new common_1.BadRequestException(`Cannot modify items on a ${ord.status} order`);
             }
             const origin = ord.originInventoryLocationId;
             if (!origin) {
@@ -255,6 +255,60 @@ let ManualOrdersService = class ManualOrdersService {
             }
             if (!Number.isFinite(unitPrice) || unitPrice < 0) {
                 throw new common_1.BadRequestException('unitPrice must be a non-negative number');
+            }
+            const [existing] = await tx
+                .select()
+                .from(schema_1.orderItems)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, input.orderId), (0, drizzle_orm_1.eq)(schema_1.orderItems.variantId, input.variantId)))
+                .limit(1)
+                .execute();
+            if (existing) {
+                const newQty = Math.trunc(Number(existing.quantity)) + qty;
+                const newLineTotal = unitPrice * newQty;
+                if (ord.fulfillmentModel === 'stock_first') {
+                    await this.stock.reserveForOrderInTx(tx, companyId, input.orderId, origin, input.variantId, qty);
+                }
+                await tx
+                    .update(schema_1.orderItems)
+                    .set({
+                    quantity: newQty,
+                    lineTotal: newLineTotal.toFixed(2),
+                    updatedAt: new Date(),
+                })
+                    .where((0, drizzle_orm_1.eq)(schema_1.orderItems.id, existing.id))
+                    .execute();
+                await tx.insert(schema_1.orderEvents).values({
+                    companyId,
+                    orderId: input.orderId,
+                    type: 'item_updated',
+                    fromStatus: ord.status,
+                    toStatus: ord.status,
+                    actorUserId: actor?.id ?? null,
+                    ipAddress: ip ?? null,
+                    message: `Updated item quantity ${existing.name} to x${newQty}`,
+                });
+                await this.recalculateTotalsInTx(tx, companyId, input.orderId);
+                if (actor?.id) {
+                    await this.audit.logAction({
+                        action: 'update',
+                        entity: 'order_item',
+                        entityId: existing.id,
+                        userId: actor.id,
+                        details: 'Merged item quantity on manual order',
+                        ipAddress: ip,
+                        changes: {
+                            companyId,
+                            orderId: input.orderId,
+                            itemId: existing.id,
+                            variantId: input.variantId,
+                            previousQty: Number(existing.quantity),
+                            addedQty: qty,
+                            newQty,
+                            unitPrice,
+                        },
+                    });
+                }
+                return existing;
             }
             if (ord.fulfillmentModel === 'stock_first') {
                 await this.stock.reserveForOrderInTx(tx, companyId, input.orderId, origin, input.variantId, qty);
@@ -332,6 +386,9 @@ let ManualOrdersService = class ManualOrdersService {
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, input.orderId)))
                 .for('update')
                 .execute();
+            if (this.isLockedStatus(ord.status)) {
+                throw new common_1.BadRequestException(`Cannot modify items on a ${ord.status} order`);
+            }
             if (!ord)
                 throw new common_1.NotFoundException('Order not found');
             if (!this.isEditableStatus(ord.status)) {
@@ -358,11 +415,13 @@ let ManualOrdersService = class ManualOrdersService {
                     if (!it.variantId) {
                         throw new common_1.BadRequestException('Cannot adjust stock: item has no variantId');
                     }
-                    if (delta > 0) {
-                        await this.stock.releaseReservationInTx(tx, companyId, ord.id, origin, it.variantId, delta);
-                    }
-                    else {
-                        await this.stock.releaseReservationInTx(tx, companyId, ord.id, origin, it.variantId, Math.abs(delta));
+                    if (ord.fulfillmentModel === 'stock_first') {
+                        if (delta > 0) {
+                            await this.stock.reserveForOrderInTx(tx, companyId, ord.id, origin, it.variantId, delta);
+                        }
+                        else {
+                            await this.stock.releaseReservationInTx(tx, companyId, ord.id, origin, it.variantId, Math.abs(delta));
+                        }
                     }
                 }
                 patch.quantity = newQty;
@@ -436,6 +495,9 @@ let ManualOrdersService = class ManualOrdersService {
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
                 .for('update')
                 .execute();
+            if (this.isLockedStatus(ord.status)) {
+                throw new common_1.BadRequestException(`Cannot modify items on a ${ord.status} order`);
+            }
             if (!ord)
                 throw new common_1.NotFoundException('Order not found');
             if (!this.isEditableStatus(ord.status)) {
@@ -453,7 +515,7 @@ let ManualOrdersService = class ManualOrdersService {
                 throw new common_1.NotFoundException('Order item not found');
             if (it.orderId !== orderId)
                 throw new common_1.BadRequestException('Item does not belong to order');
-            if (it.variantId) {
+            if (it.variantId && ord.fulfillmentModel === 'stock_first') {
                 const qty = Math.trunc(Number(it.quantity ?? 0));
                 if (qty > 0) {
                     await this.stock.releaseReservationInTx(tx, companyId, orderId, origin, it.variantId, qty);
@@ -650,30 +712,46 @@ let ManualOrdersService = class ManualOrdersService {
     async syncInvoiceAfterItems(companyId, orderId, ctx) {
         const tx = ctx?.tx ?? this.db;
         const [existingInvoice] = await tx
-            .select({ id: schema_1.invoices.id })
+            .select({
+            id: schema_1.invoices.id,
+            status: schema_1.invoices.status,
+            storeId: schema_1.invoices.storeId,
+            currency: schema_1.invoices.currency,
+        })
             .from(schema_1.invoices)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.orderId, orderId), (0, drizzle_orm_1.eq)(schema_1.invoices.status, 'draft')))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.orderId, orderId)))
+            .orderBy((0, drizzle_orm_1.sql) `${schema_1.invoices.createdAt} DESC`)
             .limit(1)
             .execute();
-        if (existingInvoice) {
+        if (!existingInvoice) {
+            const [order] = await tx
+                .select()
+                .from(schema_1.orders)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .execute();
+            if (!order)
+                throw new common_1.NotFoundException('Order not found');
+            return this.invoiceService.createDraftFromOrder({
+                orderId,
+                storeId: order.storeId ?? null,
+                currency: order.currency,
+                type: 'invoice',
+            }, companyId, { tx });
+        }
+        if (existingInvoice.status === 'draft') {
             return this.invoiceService.syncFromOrder(orderId, companyId, { tx });
         }
-        const [order] = await tx
-            .select()
-            .from(schema_1.orders)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
-            .execute();
-        if (!order)
-            throw new common_1.NotFoundException('Order not found');
-        return this.invoiceService.createDraftFromOrder({
-            orderId,
-            storeId: order.storeId ?? null,
-            currency: order.currency,
-            type: 'invoice',
-        }, companyId, { tx });
+        return this.invoiceService.voidAndRecreateDraft(companyId, orderId, { tx });
     }
     isEditableStatus(status) {
-        return status === 'draft' || status === 'pending_payment';
+        return (status === 'draft' ||
+            status === 'pending_payment' ||
+            status === 'lay_buy' ||
+            status === 'paid' ||
+            status === 'awaiting_dispatch');
+    }
+    isLockedStatus(status) {
+        return ['fulfilled', 'cancelled', 'refunded'].includes(status);
     }
     async recalculateTotalsInTx(tx, companyId, orderId) {
         const [ord] = await tx

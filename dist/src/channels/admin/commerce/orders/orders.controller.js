@@ -50,8 +50,8 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
     pay(user, id) {
         return this.orders.markPaid(user.companyId, id, user, undefined);
     }
-    cancel(user, id) {
-        return this.orders.cancel(user.companyId, id, user, undefined);
+    cancel(user, id, ip, body) {
+        return this.orders.cancel(user.companyId, id, user, ip, body);
     }
     convertToLayBuy(user, id, ip) {
         return this.orders.convertToLayBuy(user.companyId, id, user, ip);
@@ -75,6 +75,16 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
         const item = await this.manualOrdersService.addItem(user.companyId, dto, false, user, ip);
         await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, dto.orderId);
         return item;
+    }
+    async updateOrderItem(user, id, itemId, body, ip) {
+        await this.manualOrdersService.updateItem(user.companyId, { orderId: id, itemId, ...body }, user, ip);
+        await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, id);
+        return { ok: true };
+    }
+    async removeOrderItem(user, id, itemId, ip) {
+        await this.manualOrdersService.removeItem(user.companyId, id, itemId, user, ip);
+        await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, id);
+        return { ok: true };
     }
     updateItem(user, itemId, dto, ip) {
         return this.manualOrdersService.updateItem(user.companyId, { ...dto, itemId }, user, ip);
@@ -147,8 +157,10 @@ __decorate([
     (0, common_1.SetMetadata)('permissions', ['orders.update']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Ip)()),
+    __param(3, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String, Object]),
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "cancel", null);
 __decorate([
@@ -225,6 +237,29 @@ __decorate([
     __metadata("design:paramtypes", [Object, add_manual_order_item_dto_1.AddManualOrderItemDto, String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "addItem", null);
+__decorate([
+    (0, common_1.Patch)(':id/items/:itemId'),
+    (0, common_1.SetMetadata)('permissions', ['orders.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Param)('itemId')),
+    __param(3, (0, common_1.Body)()),
+    __param(4, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, Object, String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "updateOrderItem", null);
+__decorate([
+    (0, common_1.Delete)(':id/items/:itemId'),
+    (0, common_1.SetMetadata)('permissions', ['orders.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Param)('itemId')),
+    __param(3, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "removeOrderItem", null);
 __decorate([
     (0, common_1.Patch)('manual/items/:itemId'),
     (0, common_1.SetMetadata)('permissions', ['orders.manual.edit']),

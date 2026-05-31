@@ -20,6 +20,7 @@ import {
   paymentFiles,
   customers,
   customerAddresses,
+  orderDispatches,
 } from 'src/infrastructure/drizzle/schema';
 import { ListOrdersDto } from './dto/list-orders.dto';
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
@@ -302,7 +303,13 @@ export class OrdersService {
     return result;
   }
 
-  async cancel(companyId: string, orderId: string, user?: User, ip?: string) {
+  async cancel(
+    companyId: string,
+    orderId: string,
+    user?: User,
+    ip?: string,
+    opts?: { forceRefund?: boolean; refundNote?: string },
+  ) {
     const result = await this.db.transaction(async (tx) => {
       const [before] = await tx
         .select()
@@ -313,9 +320,15 @@ export class OrdersService {
 
       if (!before) throw new NotFoundException('Order not found');
 
-      if (before.status !== 'pending_payment' && before.status !== 'lay_buy') {
+      const cancellableStatuses = [
+        'pending_payment',
+        'lay_buy',
+        'paid',
+        'awaiting_dispatch',
+      ];
+      if (!cancellableStatuses.includes(before.status)) {
         throw new BadRequestException(
-          'Only pending_payment or lay-buy orders can be cancelled',
+          `Cannot cancel order with status: ${before.status}`,
         );
       }
 
@@ -327,13 +340,45 @@ export class OrdersService {
         )
         .execute();
 
-      if (!inv) throw new BadRequestException('Order has no invoice');
+      const paidMinor = Number(inv?.paidMinor ?? 0);
 
-      const paidMinor = Number(inv.paidMinor ?? 0);
-      if (paidMinor > 0) {
+      if (paidMinor > 0 && !opts?.forceRefund) {
         throw new BadRequestException(
-          `Cannot cancel order with paid invoice amount: ${paidMinor}`,
+          `This order has already been paid. To cancel it, please confirm you want to process a refund.`,
         );
+      }
+
+      // Cancel pending dispatch if awaiting_dispatch
+      // Cancel pending dispatch if awaiting_dispatch
+      if (before.status === 'awaiting_dispatch') {
+        const [pendingDispatch] = await tx
+          .select()
+          .from(orderDispatches)
+          .where(
+            and(
+              eq(orderDispatches.companyId, companyId),
+              eq(orderDispatches.orderId, orderId),
+              eq(orderDispatches.status, 'pending'),
+            ),
+          )
+          .limit(1)
+          .execute();
+
+        if (pendingDispatch) {
+          await tx
+            .update(orderDispatches)
+            .set({
+              status: 'cancelled',
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(orderDispatches.companyId, companyId),
+                eq(orderDispatches.id, pendingDispatch.id),
+              ),
+            )
+            .execute();
+        }
       }
 
       const items = await tx
@@ -348,20 +393,12 @@ export class OrdersService {
         .execute();
 
       const origin = (before as any).originInventoryLocationId;
-      if (!origin) {
-        throw new BadRequestException(
-          'Order missing originInventoryLocationId',
-        );
-      }
 
-      // only release reservations for stock_first orders
-      // payment_first orders never had reservations created
-      if ((before as any).fulfillmentModel === 'stock_first') {
+      if (origin && (before as any).fulfillmentModel === 'stock_first') {
         for (const it of items) {
           if (!it.variantId) continue;
           const qty = Number(it.quantity ?? 0);
           if (qty <= 0) continue;
-
           await this.stock.releaseReservationInTx(
             tx,
             companyId,
@@ -373,9 +410,12 @@ export class OrdersService {
         }
       }
 
+      const newStatus =
+        paidMinor > 0 && opts?.forceRefund ? 'refunded' : 'cancelled';
+
       const [after] = await tx
         .update(orders)
-        .set({ status: 'cancelled', updatedAt: new Date() })
+        .set({ status: newStatus as any, updatedAt: new Date() })
         .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
         .returning()
         .execute();
@@ -383,12 +423,15 @@ export class OrdersService {
       await tx.insert(orderEvents).values({
         companyId,
         orderId,
-        type: 'cancelled',
+        type: newStatus === 'refunded' ? 'refunded' : 'cancelled',
         fromStatus: before.status,
         toStatus: after.status,
         actorUserId: user?.id ?? null,
         ipAddress: ip ?? null,
-        message: 'Order cancelled',
+        message:
+          newStatus === 'refunded'
+            ? `Order cancelled and flagged for refund${opts?.refundNote ? `: ${opts.refundNote}` : ''}`
+            : 'Order cancelled',
       });
 
       return after;
@@ -445,98 +488,6 @@ export class OrdersService {
     await this.cache.bumpCompanyVersion(companyId);
     return result;
   }
-
-  // async fulfill(companyId: string, orderId: string, user?: User, ip?: string) {
-  //   const result = await this.db.transaction(async (tx) => {
-  //     const [before] = await tx
-  //       .select()
-  //       .from(orders)
-  //       .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
-  //       .for('update')
-  //       .execute();
-
-  //     if (!before) throw new NotFoundException('Order not found');
-  //     if (before.status !== 'paid' && before.status !== 'lay_buy') {
-  //       throw new BadRequestException(
-  //         'Only paid or lay-buy orders can be fulfilled',
-  //       );
-  //     }
-
-  //     const items = await tx
-  //       .select()
-  //       .from(orderItems)
-  //       .where(
-  //         and(
-  //           eq(orderItems.companyId, companyId),
-  //           eq(orderItems.orderId, orderId),
-  //         ),
-  //       )
-  //       .execute();
-
-  //     const origin = (before as any).originInventoryLocationId;
-  //     if (!origin) {
-  //       throw new BadRequestException(
-  //         'Order missing originInventoryLocationId',
-  //       );
-  //     }
-
-  //     for (const it of items) {
-  //       if (!it.variantId) continue;
-  //       const qty = Number(it.quantity ?? 0);
-  //       if (qty <= 0) continue;
-
-  //       if ((before as any).fulfillmentModel === 'payment_first') {
-  //         // Reserve any remaining shortfall — reserveForOrderInTx calculates
-  //         // delta = qty - alreadyReserved internally, so passing full qty is correct.
-  //         // If the remaining stock is insufficient this throws and rolls back.
-  //         await this.stock.reserveForOrderInTx(
-  //           tx,
-  //           companyId,
-  //           orderId,
-  //           origin,
-  //           it.variantId,
-  //           qty,
-  //           `Reserved remaining stock for order ${(before as any).orderNumber ?? orderId}`,
-  //         );
-  //       }
-
-  //       // stock_first: reservation already existed from conversion time
-  //       // payment_first: now fully reserved above — convert to fulfilled
-  //       await this.stock.fulfillFromReservationInTx(
-  //         tx,
-  //         companyId,
-  //         origin,
-  //         it.variantId,
-  //         qty,
-  //         { refType: 'order', refId: orderId },
-  //         { orderId, fulfillmentModel: (before as any).fulfillmentModel },
-  //       );
-  //     }
-
-  //     const [after] = await tx
-  //       .update(orders)
-  //       .set({ status: 'fulfilled', updatedAt: new Date() })
-  //       .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
-  //       .returning()
-  //       .execute();
-
-  //     await tx.insert(orderEvents).values({
-  //       companyId,
-  //       orderId,
-  //       type: 'fulfilled',
-  //       fromStatus: before.status,
-  //       toStatus: after.status,
-  //       actorUserId: user?.id ?? null,
-  //       ipAddress: ip ?? null,
-  //       message: 'Order fulfilled',
-  //     });
-
-  //     return after;
-  //   });
-
-  //   await this.cache.bumpCompanyVersion(companyId);
-  //   return result;
-  // }
 
   async updateCustomerAndShipping(
     companyId: string,

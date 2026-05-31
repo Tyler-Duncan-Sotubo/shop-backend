@@ -16,7 +16,7 @@ export function wrapInHtml(content: string, css?: string) {
         body {
           font-family: 'Helvetica', sans-serif;
           font-size: 12pt;
-          padding: 10px;
+          padding: 2px;
           line-height: 1.6;
           color: #000;
         }

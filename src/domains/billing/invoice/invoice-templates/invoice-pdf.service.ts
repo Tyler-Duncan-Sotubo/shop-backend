@@ -462,7 +462,10 @@ export class InvoicePdfService {
       customer: inv.customerSnapshot ?? {
         name: 'Customer',
         address: '',
+        email: '',
+        phone: '',
         taxId: '',
+        companyName: '',
       },
       branding: {
         logoUrl: branding?.logoUrl,
@@ -479,6 +482,8 @@ export class InvoicePdfService {
       totals: {
         subtotal: fmt(inv.subtotalMinor as any),
         tax: fmt(inv.taxMinor as any),
+        discount: fmt((inv.discountMinor as any) ?? 0),
+        hasDiscount: Number(inv.discountMinor ?? 0) > 0,
         total: fmt(inv.totalMinor as any),
         paid: fmt(inv.paidMinor as any),
         balance: fmt(inv.balanceMinor as any),
@@ -536,6 +541,8 @@ export class InvoicePdfService {
       totals: {
         subtotal: fmt(2500000),
         tax: fmt(187500),
+        discount: fmt(0),
+        hasDiscount: false,
         total: fmt(2687500),
         paid: fmt(0),
         balance: fmt(2687500),

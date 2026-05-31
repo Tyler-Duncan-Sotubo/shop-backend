@@ -17,7 +17,7 @@ function wrapInHtml(content, css) {
         body {
           font-family: 'Helvetica', sans-serif;
           font-size: 12pt;
-          padding: 10px;
+          padding: 2px;
           line-height: 1.6;
           color: #000;
         }

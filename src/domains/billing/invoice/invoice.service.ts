@@ -48,6 +48,7 @@ export class InvoiceService {
    *
    * NOTE: This method is "tx-aware" so PaymentsService can call it inside a transaction.
    */
+
   async createDraftFromOrder(
     params: CreateInvoiceFromOrderInput,
     companyId: string,
@@ -102,6 +103,12 @@ export class InvoiceService {
 
     const currency = params.currency ?? (ord as any).currency ?? 'NGN';
 
+    // ✅ resolve order discount
+    const orderDiscountMinor =
+      Number((ord as any)?.discountTotalMinor ?? 0) > 0
+        ? Number((ord as any).discountTotalMinor)
+        : Math.round(Number((ord as any)?.discountTotal ?? 0) * 100);
+
     const [inv] = await tx
       .insert(invoices)
       .values({
@@ -111,18 +118,15 @@ export class InvoiceService {
         type,
         status: 'draft',
         currency,
-
         subtotalMinor: 0,
+        discountMinor: orderDiscountMinor, // ✅
         taxMinor: 0,
         totalMinor: 0,
         paidMinor: 0,
         balanceMinor: 0,
-
         meta: {
           createdFrom: 'order',
           orderNumber: (ord as any).orderNumber ?? null,
-
-          // Optional: keep fulfillment/shipping snapshot on invoice too
           fulfillmentType: (ord as any).fulfillmentType ?? null,
           shippingMethod: (ord as any).shippingMethod ?? null,
           shippingMethodMeta: (ord as any).shippingMethodMeta ?? null,
@@ -138,7 +142,6 @@ export class InvoiceService {
     const toMinorFromMajor = (major: any) =>
       Math.round(parseNumeric(major) * 100);
 
-    // If order_items has minor columns, use them only if > 0; otherwise fall back to major numeric
     const pickMinor = (minor: any, major: any) => {
       const m = Number(minor ?? 0);
       if (m > 0) return m;
@@ -149,8 +152,7 @@ export class InvoiceService {
     const lineRows: any[] = items.map((it: any, idx: number) => {
       const quantity = Number(it.quantity ?? 1);
       const unitPriceMinor = pickMinor(it.unitPriceMinor, it.unitPrice);
-
-      const discountMinor = 0; // you can wire this if/when you store discounts on order_items
+      const discountMinor = 0;
       const lineNetMinor = unitPriceMinor * quantity - discountMinor;
 
       return {
@@ -158,30 +160,21 @@ export class InvoiceService {
         invoiceId: inv.id,
         orderId,
         position: idx,
-
-        // ✅ identity
         productId: it.productId ?? null,
         variantId: it.variantId ?? null,
-
         description: it.name ?? 'Item',
         quantity,
-
         unitPriceMinor,
         discountMinor,
-
-        // ✅ computed so UI shows amounts immediately
         lineNetMinor,
         taxMinor: 0,
         lineTotalMinor: lineNetMinor,
-
         taxId: null,
         taxName: null,
         taxRateBps: 0,
         taxInclusive: false,
-
         taxExempt: false,
         taxExemptReason: null,
-
         meta: {
           source: 'order',
           orderItemId: it.id ?? null,
@@ -190,10 +183,6 @@ export class InvoiceService {
         },
       };
     });
-
-    // --- add shipping from orders.shippingTotal (major numeric) as a line ---
-    // shippingTotal is NOT in order_items per your note
-    // --- add shipping as a line (amount stored as MAJOR string like "10000") ---
 
     // --- add shipping as a line ---
     const shippingFeeMinor = Number((ord as any).shippingTotalMinor ?? 0);
@@ -209,28 +198,21 @@ export class InvoiceService {
         invoiceId: inv.id,
         orderId,
         position: lineRows.length,
-
         productId: null,
         variantId: null,
-
         description: shippingName,
         quantity: 1,
-
         unitPriceMinor: shippingFeeMinor,
         discountMinor: 0,
-
         lineNetMinor: shippingFeeMinor,
         taxMinor: 0,
         lineTotalMinor: shippingFeeMinor,
-
         taxId: null,
         taxName: null,
         taxRateBps: 0,
         taxInclusive: false,
-
         taxExempt: false,
         taxExemptReason: null,
-
         meta: {
           kind: 'shipping',
           source: 'order',
@@ -241,10 +223,7 @@ export class InvoiceService {
       });
     }
 
-    // insert all lines in one go
     await tx.insert(invoiceLines).values(lineRows).execute();
-
-    // compute totals for draft (using current tax config if any)
     await this.recalculateDraftTotals(companyId, inv.id, { tx });
 
     return inv;
@@ -270,6 +249,28 @@ export class InvoiceService {
       .execute();
 
     if (!invoice) return null;
+
+    // ✅ fetch latest order discount
+    const [ord] = await tx
+      .select({
+        discountTotalMinor: (orders as any).discountTotalMinor,
+        discountTotal: orders.discountTotal,
+      })
+      .from(orders)
+      .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+      .execute();
+
+    const orderDiscountMinor =
+      Number((ord as any)?.discountTotalMinor ?? 0) > 0
+        ? Number((ord as any).discountTotalMinor)
+        : Math.round(Number((ord as any)?.discountTotal ?? 0) * 100);
+
+    // ✅ update discount on invoice before recalculating
+    await tx
+      .update(invoices)
+      .set({ discountMinor: orderDiscountMinor, updatedAt: new Date() })
+      .where(eq(invoices.id, invoice.id))
+      .execute();
 
     const items = await tx
       .select()
@@ -381,6 +382,7 @@ export class InvoiceService {
         .update(invoices)
         .set({
           subtotalMinor: 0,
+          discountMinor: orderDiscountMinor,
           taxMinor: 0,
           totalMinor: 0,
           balanceMinor: 0,
@@ -397,12 +399,6 @@ export class InvoiceService {
     return invoice;
   }
 
-  /**
-   * Draft-only recalc: uses current tax config for any selected taxId.
-   * Issued invoices must never be recalculated from mutable config.
-   *
-   * NOTE: tx-aware
-   */
   async recalculateDraftTotals(
     companyId: string,
     invoiceId: string,
@@ -418,6 +414,8 @@ export class InvoiceService {
 
     if (!inv) throw new NotFoundException('Invoice not found');
     if (inv.status !== 'draft') return inv;
+
+    const orderDiscountMinor = Number(inv.discountMinor ?? 0);
 
     const lines = await tx
       .select()
@@ -470,8 +468,6 @@ export class InvoiceService {
           lineNetMinor: calc.lineNetMinor,
           taxMinor: calc.taxMinor,
           lineTotalMinor: calc.lineTotalMinor,
-
-          // keep preview snapshot aligned (draft convenience)
           taxName: t?.name ?? l.taxName ?? null,
           taxRateBps: Number(t?.rateBps ?? l.taxRateBps ?? 0),
           taxInclusive: Boolean(t?.isInclusive ?? l.taxInclusive ?? false),
@@ -505,14 +501,21 @@ export class InvoiceService {
     );
 
     const paidMinor = Number(inv.paidMinor ?? 0);
-    const balanceMinor = totals.totalMinor - paidMinor;
+
+    // ✅ apply discount
+    const totalAfterDiscount = Math.max(
+      totals.totalMinor - orderDiscountMinor,
+      0,
+    );
+    const balanceMinor = totalAfterDiscount - paidMinor;
 
     const [updated] = await tx
       .update(invoices)
       .set({
         subtotalMinor: totals.subtotalMinor,
         taxMinor: totals.taxMinor,
-        totalMinor: totals.totalMinor,
+        discountMinor: orderDiscountMinor,
+        totalMinor: totalAfterDiscount,
         paidMinor,
         balanceMinor: Math.max(balanceMinor, 0),
         updatedAt: new Date(),
@@ -740,6 +743,17 @@ export class InvoiceService {
           }
         }
       }
+      // ✅ normalise existing snapshot to always have address
+      if (customerSnapshot) {
+        customerSnapshot = {
+          name: customerSnapshot.name ?? 'Customer',
+          email: customerSnapshot.email ?? '',
+          phone: customerSnapshot.phone ?? '',
+          taxId: customerSnapshot.taxId ?? '',
+          companyName: customerSnapshot.companyName ?? '',
+          address: customerSnapshot.address ?? '', // ✅ ensure always present
+        };
+      }
 
       // Final fallback
       customerSnapshot = customerSnapshot ?? {
@@ -748,8 +762,8 @@ export class InvoiceService {
         phone: '',
         taxId: '',
         companyName: '',
+        address: '',
       };
-
       // Freeze tax snapshots
       const taxIds = Array.from(
         new Set((lines as any[]).map((l) => l.taxId).filter(Boolean)),

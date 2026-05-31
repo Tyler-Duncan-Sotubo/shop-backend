@@ -49,7 +49,7 @@ export class DashboardCommerceAnalyticsService {
   ) {}
 
   // ✅ Adjust these when your order statuses are finalized
-  private readonly SALE_STATUSES = ['paid', 'completed', 'fulfilled'] as const;
+  private readonly SALE_STATUSES = ['fulfilled'] as const;
   private readonly RECENT_ORDER_STATUSES = [
     ...this.SALE_STATUSES,
     'pending',
@@ -146,33 +146,36 @@ export class DashboardCommerceAnalyticsService {
   }
 
   private async computeGrossSalesCards(args: DashboardRangeArgs) {
-    // 1) gross sales from PAID invoices (and optional store filter via orders join if you have invoice->orderId)
     const [gross] = await this.db
       .select({
-        grossSalesMinor: sql<number>`coalesce(sum(${invoices.subtotalMinor}), 0)`,
+        grossSalesMinor: sql<number>`
+        coalesce(
+          nullif(sum(${orders.subtotalMinor}), 0),
+          sum(cast(${orders.subtotal} as numeric) * 100)
+        )
+      `,
       })
-      .from(invoices)
+      .from(orders)
       .where(
         and(
-          eq(invoices.companyId, args.companyId),
-          eq(invoices.status, 'paid'),
-          gte(invoices.createdAt, args.from),
-          lt(invoices.createdAt, args.to),
-          args.storeId ? eq(invoices.storeId, args.storeId) : undefined,
+          eq(orders.companyId, args.companyId),
+          eq(orders.status, 'fulfilled'),
+          gte(orders.createdAt, args.from),
+          lt(orders.createdAt, args.to),
+          args.storeId ? eq(orders.storeId, args.storeId) : undefined,
         ),
       )
       .execute();
 
-    // 2) order counts
     const [counts] = await this.db
       .select({
         totalOrders: sql<number>`count(*)`,
-        fulfilledOrders: sql<number>`sum(case when ${inArray(orders.status, [
-          ...this.FULFILLED_STATUSES,
-        ])} then 1 else 0 end)::int`,
-        onHoldOrders: sql<number>`sum(case when ${inArray(orders.status, [
-          ...this.ON_HOLD_STATUSES,
-        ])} then 1 else 0 end)::int`,
+        fulfilledOrders: sql<number>`
+        sum(case when ${orders.status} = 'fulfilled' then 1 else 0 end)::int
+      `,
+        onHoldOrders: sql<number>`
+        sum(case when ${orders.status} = 'pending_payment' then 1 else 0 end)::int
+      `,
       })
       .from(orders)
       .where(
@@ -180,7 +183,7 @@ export class DashboardCommerceAnalyticsService {
           eq(orders.companyId, args.companyId),
           gte(orders.createdAt, args.from),
           lt(orders.createdAt, args.to),
-          args.storeId ? eq(orders.storeId, args.storeId) : sql`true`,
+          args.storeId ? eq(orders.storeId, args.storeId) : undefined,
         ),
       )
       .execute();
@@ -208,7 +211,6 @@ export class DashboardCommerceAnalyticsService {
       cacheKeyParts,
       async () => {
         const current = await this.computeGrossSalesCards(args);
-
         const { prevFrom, prevTo } = this.previousRange(args);
         const previous = await this.computeGrossSalesCards({
           companyId: args.companyId,
@@ -344,32 +346,36 @@ export class DashboardCommerceAnalyticsService {
               : sql`date_trunc('day', ${orders.paidAt})`;
 
         const rows = await this.db.execute(sql`
-      with series as (
-        select generate_series(${seriesStart}, ${seriesEndInclusive}, ${interval}) as t
-      ),
-      agg as (
-        select
-          ${bucketExpr} as t,
-          count(*)::int as orders,
-          coalesce(sum(${orders.total}), 0)::bigint as sales_minor
-        from ${orders}
-        where
-          ${eq(orders.companyId, args.companyId)}
-          and ${orders.paidAt} is not null
-          and ${gte(orders.paidAt, args.from)}
-          and ${lt(orders.paidAt, args.to)}
-          and ${inArray(orders.status, [...this.SALE_STATUSES])}
-          and ${args.storeId ? eq(orders.storeId, args.storeId) : sql`true`}
-        group by 1
-      )
-      select
-        series.t as t,
-        coalesce(agg.orders, 0)::int as orders,
-        coalesce(agg.sales_minor, 0)::bigint as sales_minor
-      from series
-      left join agg using (t)
-      order by series.t asc;
-    `);
+  with series as (
+    select generate_series(${seriesStart}, ${seriesEndInclusive}, ${interval}) as t
+  ),
+  agg as (
+    select
+      ${bucketExpr} as t,
+      count(*)::int as orders,
+      coalesce(
+        nullif(sum(${orders.subtotalMinor}), 0),
+        sum(cast(${orders.subtotal} as numeric) * 100),
+        0
+      )::bigint as sales_minor
+    from ${orders}
+    where
+      ${eq(orders.companyId, args.companyId)}
+      and ${orders.paidAt} is not null
+      and ${gte(orders.paidAt, args.from)}
+      and ${lt(orders.paidAt, args.to)}
+      and ${inArray(orders.status, [...this.SALE_STATUSES])}
+      and ${args.storeId ? eq(orders.storeId, args.storeId) : sql`true`}
+    group by 1
+  )
+  select
+    series.t as t,
+    coalesce(agg.orders, 0)::int as orders,
+    coalesce(agg.sales_minor, 0)::bigint as sales_minor
+  from series
+  left join agg using (t)
+  order by series.t asc;
+`);
 
         const resultRows: any[] = Array.isArray((rows as any)?.rows)
           ? (rows as any).rows
@@ -770,15 +776,15 @@ export class DashboardCommerceAnalyticsService {
   async ordersByChannelPie(
     args: DashboardRangeArgs & {
       storeId?: string;
-      metric?: 'orders' | 'revenue'; // default "orders"
+      metric?: 'orders' | 'revenue';
     },
   ): Promise<
     {
-      channel: string; // "online" | "manual" | "pos" | "unknown"
-      label: string; // pretty label for UI
-      value: number; // count or revenueMinor depending on metric
-      ordersCount: number; // always included (handy for tooltips)
-      revenueMinor: number; // always included (handy for tooltips)
+      channel: string;
+      label: string;
+      value: number;
+      ordersCount: number;
+      revenueMinor: number;
     }[]
   > {
     const metric = args.metric ?? 'orders';
@@ -800,7 +806,12 @@ export class DashboardCommerceAnalyticsService {
           .select({
             channel: sql<string>`coalesce(${orders.channel}, 'unknown')`,
             ordersCount: sql<number>`count(*)`,
-            revenueMinor: sql<number>`coalesce(sum(${orders.total}), 0)`,
+            revenueMinor: sql<number>`
+            coalesce(
+              nullif(sum(${orders.subtotalMinor}), 0),
+              sum(cast(${orders.subtotal} as numeric) * 100)
+            )
+          `,
           })
           .from(orders)
           .where(
@@ -808,7 +819,7 @@ export class DashboardCommerceAnalyticsService {
               eq(orders.companyId, args.companyId),
               gte(orders.createdAt, args.from),
               lt(orders.createdAt, args.to),
-              inArray(orders.status, ['paid', 'fulfilled']),
+              inArray(orders.status, ['fulfilled']),
               args.storeId ? eq(orders.storeId, args.storeId) : sql`true`,
             ),
           )

@@ -76,6 +76,16 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
         await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, dto.orderId);
         return item;
     }
+    async applyDiscount(user, id, body, ip) {
+        const result = await this.manualOrdersService.applyDiscount(user.companyId, id, body, user, ip);
+        await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, id);
+        return result;
+    }
+    async removeDiscount(user, id, ip) {
+        const result = await this.manualOrdersService.removeDiscount(user.companyId, id, user, ip);
+        await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, id);
+        return result;
+    }
     async updateOrderItem(user, id, itemId, body, ip) {
         await this.manualOrdersService.updateItem(user.companyId, { orderId: id, itemId, ...body }, user, ip);
         await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, id);
@@ -237,6 +247,27 @@ __decorate([
     __metadata("design:paramtypes", [Object, add_manual_order_item_dto_1.AddManualOrderItemDto, String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "addItem", null);
+__decorate([
+    (0, common_1.Post)(':id/discount'),
+    (0, common_1.SetMetadata)('permissions', ['orders.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
+    __param(3, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object, String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "applyDiscount", null);
+__decorate([
+    (0, common_1.Delete)(':id/discount'),
+    (0, common_1.SetMetadata)('permissions', ['orders.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "removeDiscount", null);
 __decorate([
     (0, common_1.Patch)(':id/items/:itemId'),
     (0, common_1.SetMetadata)('permissions', ['orders.update']),

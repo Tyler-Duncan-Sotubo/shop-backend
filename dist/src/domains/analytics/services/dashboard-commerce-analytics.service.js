@@ -23,7 +23,7 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
     constructor(db, cache) {
         this.db = db;
         this.cache = cache;
-        this.SALE_STATUSES = ['paid', 'completed', 'fulfilled'];
+        this.SALE_STATUSES = ['fulfilled'];
         this.RECENT_ORDER_STATUSES = [
             ...this.SALE_STATUSES,
             'pending',
@@ -108,23 +108,28 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
     async computeGrossSalesCards(args) {
         const [gross] = await this.db
             .select({
-            grossSalesMinor: (0, drizzle_orm_1.sql) `coalesce(sum(${schema_1.invoices.subtotalMinor}), 0)`,
+            grossSalesMinor: (0, drizzle_orm_1.sql) `
+        coalesce(
+          nullif(sum(${schema_1.orders.subtotalMinor}), 0),
+          sum(cast(${schema_1.orders.subtotal} as numeric) * 100)
+        )
+      `,
         })
-            .from(schema_1.invoices)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.companyId, args.companyId), (0, drizzle_orm_1.eq)(schema_1.invoices.status, 'paid'), (0, drizzle_orm_1.gte)(schema_1.invoices.createdAt, args.from), (0, drizzle_orm_1.lt)(schema_1.invoices.createdAt, args.to), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.invoices.storeId, args.storeId) : undefined))
+            .from(schema_1.orders)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId), (0, drizzle_orm_1.eq)(schema_1.orders.status, 'fulfilled'), (0, drizzle_orm_1.gte)(schema_1.orders.createdAt, args.from), (0, drizzle_orm_1.lt)(schema_1.orders.createdAt, args.to), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : undefined))
             .execute();
         const [counts] = await this.db
             .select({
             totalOrders: (0, drizzle_orm_1.sql) `count(*)`,
-            fulfilledOrders: (0, drizzle_orm_1.sql) `sum(case when ${(0, drizzle_orm_1.inArray)(schema_1.orders.status, [
-                ...this.FULFILLED_STATUSES,
-            ])} then 1 else 0 end)::int`,
-            onHoldOrders: (0, drizzle_orm_1.sql) `sum(case when ${(0, drizzle_orm_1.inArray)(schema_1.orders.status, [
-                ...this.ON_HOLD_STATUSES,
-            ])} then 1 else 0 end)::int`,
+            fulfilledOrders: (0, drizzle_orm_1.sql) `
+        sum(case when ${schema_1.orders.status} = 'fulfilled' then 1 else 0 end)::int
+      `,
+            onHoldOrders: (0, drizzle_orm_1.sql) `
+        sum(case when ${schema_1.orders.status} = 'pending_payment' then 1 else 0 end)::int
+      `,
         })
             .from(schema_1.orders)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId), (0, drizzle_orm_1.gte)(schema_1.orders.createdAt, args.from), (0, drizzle_orm_1.lt)(schema_1.orders.createdAt, args.to), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId), (0, drizzle_orm_1.gte)(schema_1.orders.createdAt, args.from), (0, drizzle_orm_1.lt)(schema_1.orders.createdAt, args.to), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : undefined))
             .execute();
         return {
             grossSalesMinor: Number(gross?.grossSalesMinor ?? 0),
@@ -226,32 +231,36 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
                     ? (0, drizzle_orm_1.sql) `date_bin(interval '15 minutes', ${schema_1.orders.paidAt}, date_trunc('day', ${args.from}::timestamptz))`
                     : (0, drizzle_orm_1.sql) `date_trunc('day', ${schema_1.orders.paidAt})`;
             const rows = await this.db.execute((0, drizzle_orm_1.sql) `
-      with series as (
-        select generate_series(${seriesStart}, ${seriesEndInclusive}, ${interval}) as t
-      ),
-      agg as (
-        select
-          ${bucketExpr} as t,
-          count(*)::int as orders,
-          coalesce(sum(${schema_1.orders.total}), 0)::bigint as sales_minor
-        from ${schema_1.orders}
-        where
-          ${(0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId)}
-          and ${schema_1.orders.paidAt} is not null
-          and ${(0, drizzle_orm_1.gte)(schema_1.orders.paidAt, args.from)}
-          and ${(0, drizzle_orm_1.lt)(schema_1.orders.paidAt, args.to)}
-          and ${(0, drizzle_orm_1.inArray)(schema_1.orders.status, [...this.SALE_STATUSES])}
-          and ${args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`}
-        group by 1
-      )
-      select
-        series.t as t,
-        coalesce(agg.orders, 0)::int as orders,
-        coalesce(agg.sales_minor, 0)::bigint as sales_minor
-      from series
-      left join agg using (t)
-      order by series.t asc;
-    `);
+  with series as (
+    select generate_series(${seriesStart}, ${seriesEndInclusive}, ${interval}) as t
+  ),
+  agg as (
+    select
+      ${bucketExpr} as t,
+      count(*)::int as orders,
+      coalesce(
+        nullif(sum(${schema_1.orders.subtotalMinor}), 0),
+        sum(cast(${schema_1.orders.subtotal} as numeric) * 100),
+        0
+      )::bigint as sales_minor
+    from ${schema_1.orders}
+    where
+      ${(0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId)}
+      and ${schema_1.orders.paidAt} is not null
+      and ${(0, drizzle_orm_1.gte)(schema_1.orders.paidAt, args.from)}
+      and ${(0, drizzle_orm_1.lt)(schema_1.orders.paidAt, args.to)}
+      and ${(0, drizzle_orm_1.inArray)(schema_1.orders.status, [...this.SALE_STATUSES])}
+      and ${args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`}
+    group by 1
+  )
+  select
+    series.t as t,
+    coalesce(agg.orders, 0)::int as orders,
+    coalesce(agg.sales_minor, 0)::bigint as sales_minor
+  from series
+  left join agg using (t)
+  order by series.t asc;
+`);
             const resultRows = Array.isArray(rows?.rows)
                 ? rows.rows
                 : rows;
@@ -451,10 +460,15 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
                 .select({
                 channel: (0, drizzle_orm_1.sql) `coalesce(${schema_1.orders.channel}, 'unknown')`,
                 ordersCount: (0, drizzle_orm_1.sql) `count(*)`,
-                revenueMinor: (0, drizzle_orm_1.sql) `coalesce(sum(${schema_1.orders.total}), 0)`,
+                revenueMinor: (0, drizzle_orm_1.sql) `
+            coalesce(
+              nullif(sum(${schema_1.orders.subtotalMinor}), 0),
+              sum(cast(${schema_1.orders.subtotal} as numeric) * 100)
+            )
+          `,
             })
                 .from(schema_1.orders)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId), (0, drizzle_orm_1.gte)(schema_1.orders.createdAt, args.from), (0, drizzle_orm_1.lt)(schema_1.orders.createdAt, args.to), (0, drizzle_orm_1.inArray)(schema_1.orders.status, ['paid', 'fulfilled']), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId), (0, drizzle_orm_1.gte)(schema_1.orders.createdAt, args.from), (0, drizzle_orm_1.lt)(schema_1.orders.createdAt, args.to), (0, drizzle_orm_1.inArray)(schema_1.orders.status, ['fulfilled']), args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`))
                 .groupBy((0, drizzle_orm_1.sql) `coalesce(${schema_1.orders.channel}, 'unknown')`)
                 .orderBy((0, drizzle_orm_1.desc)((0, drizzle_orm_1.sql) `count(*)`))
                 .execute();

@@ -179,6 +179,97 @@ let ManualOrdersService = class ManualOrdersService {
         await this.cache.bumpCompanyVersion(companyId);
         return result;
     }
+    async applyDiscount(companyId, orderId, discount, actor, ip) {
+        const result = await this.db.transaction(async (tx) => {
+            const [ord] = await tx
+                .select()
+                .from(schema_1.orders)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .for('update')
+                .execute();
+            if (!ord)
+                throw new common_1.NotFoundException('Order not found');
+            if (this.isLockedStatus(ord.status)) {
+                throw new common_1.BadRequestException(`Cannot apply discount to a ${ord.status} order`);
+            }
+            const subtotal = Number(ord.subtotal ?? 0);
+            const discountAmount = discount.type === 'percent'
+                ? subtotal * (discount.value / 100)
+                : discount.value;
+            if (discountAmount < 0)
+                throw new common_1.BadRequestException('Discount cannot be negative');
+            if (discountAmount > subtotal)
+                throw new common_1.BadRequestException('Discount cannot exceed subtotal');
+            const discountMinor = Math.round(discountAmount * 100);
+            await tx
+                .update(schema_1.orders)
+                .set({
+                discountTotal: discountAmount.toFixed(2),
+                discountTotalMinor: discountMinor,
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .execute();
+            await tx.insert(schema_1.orderEvents).values({
+                companyId,
+                orderId,
+                type: 'discount_applied',
+                actorUserId: actor?.id ?? null,
+                ipAddress: ip ?? null,
+                message: `Discount applied: ${discount.type === 'percent' ? `${discount.value}%` : `₦${discountAmount}`}`,
+            });
+            await this.recalculateTotalsInTx(tx, companyId, orderId);
+            const [updated] = await tx
+                .select()
+                .from(schema_1.orders)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .execute();
+            return updated;
+        });
+        await this.cache.bumpCompanyVersion(companyId);
+        return result;
+    }
+    async removeDiscount(companyId, orderId, actor, ip) {
+        const result = await this.db.transaction(async (tx) => {
+            const [ord] = await tx
+                .select()
+                .from(schema_1.orders)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .for('update')
+                .execute();
+            if (!ord)
+                throw new common_1.NotFoundException('Order not found');
+            if (this.isLockedStatus(ord.status)) {
+                throw new common_1.BadRequestException(`Cannot modify a ${ord.status} order`);
+            }
+            await tx
+                .update(schema_1.orders)
+                .set({
+                discountTotal: '0.00',
+                discountTotalMinor: 0,
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .execute();
+            await tx.insert(schema_1.orderEvents).values({
+                companyId,
+                orderId,
+                type: 'discount_removed',
+                actorUserId: actor?.id ?? null,
+                ipAddress: ip ?? null,
+                message: 'Discount removed',
+            });
+            await this.recalculateTotalsInTx(tx, companyId, orderId);
+            const [updated] = await tx
+                .select()
+                .from(schema_1.orders)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .execute();
+            return updated;
+        });
+        await this.cache.bumpCompanyVersion(companyId);
+        return result;
+    }
     async addItem(companyId, input, isQuoteDerived, actor, ip, ctx) {
         const outerTx = ctx?.tx;
         const run = async (tx) => {
@@ -757,7 +848,7 @@ let ManualOrdersService = class ManualOrdersService {
         const [ord] = await tx
             .select({
             shippingTotal: schema_1.orders.shippingTotal,
-            shippingTotalMinor: schema_1.orders.shippingTotalMinor,
+            discountTotal: schema_1.orders.discountTotal,
         })
             .from(schema_1.orders)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
@@ -773,15 +864,16 @@ let ManualOrdersService = class ManualOrdersService {
             .execute();
         const subtotalNum = Number(subtotal ?? '0');
         const shippingNum = Number(ord.shippingTotal ?? '0');
-        const totalNum = subtotalNum + shippingNum;
+        const discountNum = Number(ord.discountTotal ?? '0');
+        const totalNum = subtotalNum + shippingNum - discountNum;
         await tx
             .update(schema_1.orders)
             .set({
             subtotal: subtotalNum.toFixed(2),
-            discountTotal: '0.00',
+            discountTotal: discountNum.toFixed(2),
             taxTotal: '0.00',
             shippingTotal: (ord.shippingTotal ?? '0.00').toString(),
-            total: totalNum.toFixed(2),
+            total: Math.max(totalNum, 0).toFixed(2),
             updatedAt: new Date(),
         })
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))

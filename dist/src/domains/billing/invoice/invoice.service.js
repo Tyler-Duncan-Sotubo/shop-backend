@@ -58,6 +58,9 @@ let InvoiceService = class InvoiceService {
         if (existing)
             return existing;
         const currency = params.currency ?? ord.currency ?? 'NGN';
+        const orderDiscountMinor = Number(ord?.discountTotalMinor ?? 0) > 0
+            ? Number(ord.discountTotalMinor)
+            : Math.round(Number(ord?.discountTotal ?? 0) * 100);
         const [inv] = await tx
             .insert(schema_1.invoices)
             .values({
@@ -68,6 +71,7 @@ let InvoiceService = class InvoiceService {
             status: 'draft',
             currency,
             subtotalMinor: 0,
+            discountMinor: orderDiscountMinor,
             taxMinor: 0,
             totalMinor: 0,
             paidMinor: 0,
@@ -170,6 +174,22 @@ let InvoiceService = class InvoiceService {
             .execute();
         if (!invoice)
             return null;
+        const [ord] = await tx
+            .select({
+            discountTotalMinor: schema_1.orders.discountTotalMinor,
+            discountTotal: schema_1.orders.discountTotal,
+        })
+            .from(schema_1.orders)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+            .execute();
+        const orderDiscountMinor = Number(ord?.discountTotalMinor ?? 0) > 0
+            ? Number(ord.discountTotalMinor)
+            : Math.round(Number(ord?.discountTotal ?? 0) * 100);
+        await tx
+            .update(schema_1.invoices)
+            .set({ discountMinor: orderDiscountMinor, updatedAt: new Date() })
+            .where((0, drizzle_orm_1.eq)(schema_1.invoices.id, invoice.id))
+            .execute();
         const items = await tx
             .select()
             .from(schema_1.orderItems)
@@ -240,6 +260,7 @@ let InvoiceService = class InvoiceService {
                 .update(schema_1.invoices)
                 .set({
                 subtotalMinor: 0,
+                discountMinor: orderDiscountMinor,
                 taxMinor: 0,
                 totalMinor: 0,
                 balanceMinor: 0,
@@ -263,6 +284,7 @@ let InvoiceService = class InvoiceService {
             throw new common_1.NotFoundException('Invoice not found');
         if (inv.status !== 'draft')
             return inv;
+        const orderDiscountMinor = Number(inv.discountMinor ?? 0);
         const lines = await tx
             .select()
             .from(schema_1.invoiceLines)
@@ -322,13 +344,15 @@ let InvoiceService = class InvoiceService {
             },
         })));
         const paidMinor = Number(inv.paidMinor ?? 0);
-        const balanceMinor = totals.totalMinor - paidMinor;
+        const totalAfterDiscount = Math.max(totals.totalMinor - orderDiscountMinor, 0);
+        const balanceMinor = totalAfterDiscount - paidMinor;
         const [updated] = await tx
             .update(schema_1.invoices)
             .set({
             subtotalMinor: totals.subtotalMinor,
             taxMinor: totals.taxMinor,
-            totalMinor: totals.totalMinor,
+            discountMinor: orderDiscountMinor,
+            totalMinor: totalAfterDiscount,
             paidMinor,
             balanceMinor: Math.max(balanceMinor, 0),
             updatedAt: new Date(),
@@ -480,12 +504,23 @@ let InvoiceService = class InvoiceService {
                     }
                 }
             }
+            if (customerSnapshot) {
+                customerSnapshot = {
+                    name: customerSnapshot.name ?? 'Customer',
+                    email: customerSnapshot.email ?? '',
+                    phone: customerSnapshot.phone ?? '',
+                    taxId: customerSnapshot.taxId ?? '',
+                    companyName: customerSnapshot.companyName ?? '',
+                    address: customerSnapshot.address ?? '',
+                };
+            }
             customerSnapshot = customerSnapshot ?? {
                 name: 'Customer',
                 email: '',
                 phone: '',
                 taxId: '',
                 companyName: '',
+                address: '',
             };
             const taxIds = Array.from(new Set(lines.map((l) => l.taxId).filter(Boolean)));
             const taxMap = new Map();

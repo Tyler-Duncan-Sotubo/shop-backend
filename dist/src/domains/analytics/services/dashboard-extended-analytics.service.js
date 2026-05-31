@@ -52,7 +52,7 @@ let DashboardExtendedAnalyticsService = class DashboardExtendedAnalyticsService 
     constructor(db, cache) {
         this.db = db;
         this.cache = cache;
-        this.SALE_STATUSES = ['paid', 'completed', 'fulfilled'];
+        this.SALE_STATUSES = ['paid', 'fulfilled'];
     }
     keySuffix(args) {
         const storePart = args.storeId ? `store:${args.storeId}` : 'store:all';
@@ -69,18 +69,27 @@ let DashboardExtendedAnalyticsService = class DashboardExtendedAnalyticsService 
             this.db
                 .select({
                 grossSalesMinor: (0, drizzle_orm_1.sql) `
-          coalesce(nullif(sum(${schema_1.orders.subtotalMinor}), 0), sum(${schema_1.orders.subtotal}))
+          coalesce(
+            nullif(sum(${schema_1.orders.subtotalMinor}), 0),
+            sum(cast(${schema_1.orders.subtotal} as numeric) * 100)
+          )
         `,
                 discountTotalMinor: (0, drizzle_orm_1.sql) `
-          coalesce(nullif(sum(${schema_1.orders.discountTotalMinor}), 0), sum(${schema_1.orders.discountTotal}))
+          coalesce(
+            nullif(sum(${schema_1.orders.discountTotalMinor}), 0),
+            sum(cast(${schema_1.orders.discountTotal} as numeric) * 100)
+          )
         `,
                 totalMinor: (0, drizzle_orm_1.sql) `
-          coalesce(nullif(sum(${schema_1.orders.totalMinor}), 0), sum(${schema_1.orders.total}))
+          coalesce(
+            nullif(sum(${schema_1.orders.totalMinor}), 0),
+            sum(cast(${schema_1.orders.total} as numeric) * 100)
+          )
         `,
                 orderCount: (0, drizzle_orm_1.sql) `count(*)`,
             })
                 .from(schema_1.orders)
-                .where((0, drizzle_orm_1.and)(baseWhere, (0, drizzle_orm_1.inArray)(schema_1.orders.status, [...this.SALE_STATUSES])))
+                .where((0, drizzle_orm_1.and)(baseWhere, (0, drizzle_orm_1.eq)(schema_1.orders.status, 'fulfilled')))
                 .execute(),
             this.db
                 .select({
@@ -90,7 +99,12 @@ let DashboardExtendedAnalyticsService = class DashboardExtendedAnalyticsService 
         `,
             })
                 .from(schema_1.orders)
-                .where(baseWhere)
+                .where((0, drizzle_orm_1.and)(baseWhere, (0, drizzle_orm_1.inArray)(schema_1.orders.status, [
+                'fulfilled',
+                'refunded',
+                'cancelled',
+                'paid',
+            ])))
                 .execute(),
         ]);
         const grossSalesMinor = Number(salesResult?.grossSalesMinor ?? 0);

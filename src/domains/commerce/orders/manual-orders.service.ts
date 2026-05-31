@@ -230,6 +230,129 @@ export class ManualOrdersService {
     return result;
   }
 
+  async applyDiscount(
+    companyId: string,
+    orderId: string,
+    discount: { type: 'flat' | 'percent'; value: number },
+    actor?: User,
+    ip?: string,
+  ) {
+    const result = await this.db.transaction(async (tx) => {
+      const [ord] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .for('update')
+        .execute();
+
+      if (!ord) throw new NotFoundException('Order not found');
+      if (this.isLockedStatus(ord.status)) {
+        throw new BadRequestException(
+          `Cannot apply discount to a ${ord.status} order`,
+        );
+      }
+
+      const subtotal = Number(ord.subtotal ?? 0);
+
+      const discountAmount =
+        discount.type === 'percent'
+          ? subtotal * (discount.value / 100)
+          : discount.value;
+
+      if (discountAmount < 0)
+        throw new BadRequestException('Discount cannot be negative');
+      if (discountAmount > subtotal)
+        throw new BadRequestException('Discount cannot exceed subtotal');
+
+      const discountMinor = Math.round(discountAmount * 100);
+
+      await tx
+        .update(orders)
+        .set({
+          discountTotal: discountAmount.toFixed(2) as any,
+          discountTotalMinor: discountMinor as any,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .execute();
+
+      await tx.insert(orderEvents).values({
+        companyId,
+        orderId,
+        type: 'discount_applied',
+        actorUserId: actor?.id ?? null,
+        ipAddress: ip ?? null,
+        message: `Discount applied: ${discount.type === 'percent' ? `${discount.value}%` : `₦${discountAmount}`}`,
+      });
+
+      await this.recalculateTotalsInTx(tx, companyId, orderId);
+
+      const [updated] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .execute();
+
+      return updated;
+    });
+
+    await this.cache.bumpCompanyVersion(companyId);
+    return result;
+  }
+
+  async removeDiscount(
+    companyId: string,
+    orderId: string,
+    actor?: User,
+    ip?: string,
+  ) {
+    const result = await this.db.transaction(async (tx) => {
+      const [ord] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .for('update')
+        .execute();
+
+      if (!ord) throw new NotFoundException('Order not found');
+      if (this.isLockedStatus(ord.status)) {
+        throw new BadRequestException(`Cannot modify a ${ord.status} order`);
+      }
+
+      await tx
+        .update(orders)
+        .set({
+          discountTotal: '0.00' as any,
+          discountTotalMinor: 0 as any,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .execute();
+
+      await tx.insert(orderEvents).values({
+        companyId,
+        orderId,
+        type: 'discount_removed',
+        actorUserId: actor?.id ?? null,
+        ipAddress: ip ?? null,
+        message: 'Discount removed',
+      });
+
+      await this.recalculateTotalsInTx(tx, companyId, orderId);
+
+      const [updated] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .execute();
+
+      return updated;
+    });
+
+    await this.cache.bumpCompanyVersion(companyId);
+    return result;
+  }
+
   /**
    * Add item to manual order:
    * - validates order is editable (draft or pending_payment)
@@ -1144,7 +1267,7 @@ export class ManualOrdersService {
     const [ord] = await tx
       .select({
         shippingTotal: orders.shippingTotal,
-        shippingTotalMinor: (orders as any).shippingTotalMinor,
+        discountTotal: orders.discountTotal,
       })
       .from(orders)
       .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
@@ -1167,16 +1290,17 @@ export class ManualOrdersService {
 
     const subtotalNum = Number(subtotal ?? '0');
     const shippingNum = Number(ord.shippingTotal ?? '0');
-    const totalNum = subtotalNum + shippingNum;
+    const discountNum = Number(ord.discountTotal ?? '0');
+    const totalNum = subtotalNum + shippingNum - discountNum;
 
     await tx
       .update(orders)
       .set({
         subtotal: subtotalNum.toFixed(2),
-        discountTotal: '0.00',
+        discountTotal: discountNum.toFixed(2),
         taxTotal: '0.00',
         shippingTotal: (ord.shippingTotal ?? '0.00').toString(),
-        total: totalNum.toFixed(2),
+        total: Math.max(totalNum, 0).toFixed(2),
         updatedAt: new Date(),
       } as any)
       .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))

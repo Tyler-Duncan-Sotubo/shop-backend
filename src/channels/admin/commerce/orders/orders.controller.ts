@@ -239,6 +239,42 @@ export class OrdersController extends BaseController {
     return item;
   }
 
+  @Post(':id/discount')
+  @SetMetadata('permissions', ['orders.update'])
+  async applyDiscount(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { type: 'flat' | 'percent'; value: number },
+    @Ip() ip: string,
+  ) {
+    const result = await this.manualOrdersService.applyDiscount(
+      user.companyId,
+      id,
+      body,
+      user,
+      ip,
+    );
+    await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, id);
+    return result;
+  }
+
+  @Delete(':id/discount')
+  @SetMetadata('permissions', ['orders.update'])
+  async removeDiscount(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Ip() ip: string,
+  ) {
+    const result = await this.manualOrdersService.removeDiscount(
+      user.companyId,
+      id,
+      user,
+      ip,
+    );
+    await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, id);
+    return result;
+  }
+
   @Patch(':id/items/:itemId')
   @SetMetadata('permissions', ['orders.update'])
   async updateOrderItem(

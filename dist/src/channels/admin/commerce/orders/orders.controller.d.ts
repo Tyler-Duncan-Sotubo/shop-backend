@@ -450,6 +450,15 @@ export declare class OrdersController extends BaseController {
     }>;
     createManualOrder(user: User, dto: CreateManualOrderDto, ip: string): Promise<any>;
     addItem(user: User, dto: AddManualOrderItemDto, ip: string): Promise<any>;
+    applyDiscount(user: User, id: string, body: {
+        type: 'flat' | 'percent';
+        value: number;
+    }, ip: string): Promise<{
+        [x: string]: any;
+    }>;
+    removeDiscount(user: User, id: string, ip: string): Promise<{
+        [x: string]: any;
+    }>;
     updateOrderItem(user: User, id: string, itemId: string, body: {
         quantity?: number;
         unitPrice?: number;

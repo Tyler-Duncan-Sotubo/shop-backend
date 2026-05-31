@@ -310,7 +310,10 @@ let InvoicePdfService = class InvoicePdfService {
             customer: inv.customerSnapshot ?? {
                 name: 'Customer',
                 address: '',
+                email: '',
+                phone: '',
                 taxId: '',
+                companyName: '',
             },
             branding: {
                 logoUrl: branding?.logoUrl,
@@ -327,6 +330,8 @@ let InvoicePdfService = class InvoicePdfService {
             totals: {
                 subtotal: fmt(inv.subtotalMinor),
                 tax: fmt(inv.taxMinor),
+                discount: fmt(inv.discountMinor ?? 0),
+                hasDiscount: Number(inv.discountMinor ?? 0) > 0,
                 total: fmt(inv.totalMinor),
                 paid: fmt(inv.paidMinor),
                 balance: fmt(inv.balanceMinor),
@@ -382,6 +387,8 @@ let InvoicePdfService = class InvoicePdfService {
             totals: {
                 subtotal: fmt(2500000),
                 tax: fmt(187500),
+                discount: fmt(0),
+                hasDiscount: false,
                 total: fmt(2687500),
                 paid: fmt(0),
                 balance: fmt(2687500),

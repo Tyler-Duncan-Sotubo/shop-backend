@@ -10,6 +10,7 @@ import {
   products,
   productVariants,
   inventoryItems,
+  invoices,
 } from 'src/infrastructure/drizzle/schema';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
 
@@ -135,7 +136,7 @@ function resolveComparisonRange(args: ExtendedAnalyticsArgs): AnalyticsRange {
 
 @Injectable()
 export class DashboardExtendedAnalyticsService {
-  private readonly SALE_STATUSES = ['paid', 'completed', 'fulfilled'] as const;
+  private readonly SALE_STATUSES = ['paid', 'fulfilled'] as const;
 
   constructor(
     @Inject(DRIZZLE) private readonly db: DbType,
@@ -170,27 +171,34 @@ export class DashboardExtendedAnalyticsService {
       storeClause,
     );
 
-    // Run both in parallel
     const [[salesResult], [refundResult]] = await Promise.all([
-      // Only paid/fulfilled orders for revenue metrics
       this.db
         .select({
+          // ✅ subtotalMinor excludes shipping, fallback to subtotal * 100
           grossSalesMinor: sql<number>`
-          coalesce(nullif(sum(${orders.subtotalMinor}), 0), sum(${orders.subtotal}))
+          coalesce(
+            nullif(sum(${orders.subtotalMinor}), 0),
+            sum(cast(${orders.subtotal} as numeric) * 100)
+          )
         `,
           discountTotalMinor: sql<number>`
-          coalesce(nullif(sum(${orders.discountTotalMinor}), 0), sum(${orders.discountTotal}))
+          coalesce(
+            nullif(sum(${orders.discountTotalMinor}), 0),
+            sum(cast(${orders.discountTotal} as numeric) * 100)
+          )
         `,
           totalMinor: sql<number>`
-          coalesce(nullif(sum(${orders.totalMinor}), 0), sum(${orders.total}))
+          coalesce(
+            nullif(sum(${orders.totalMinor}), 0),
+            sum(cast(${orders.total} as numeric) * 100)
+          )
         `,
           orderCount: sql<number>`count(*)`,
         })
         .from(orders)
-        .where(and(baseWhere, inArray(orders.status, [...this.SALE_STATUSES])))
+        .where(and(baseWhere, eq(orders.status, 'fulfilled')))
         .execute(),
 
-      // All orders for refund rate
       this.db
         .select({
           totalCount: sql<number>`count(*)`,
@@ -199,7 +207,17 @@ export class DashboardExtendedAnalyticsService {
         `,
         })
         .from(orders)
-        .where(baseWhere)
+        .where(
+          and(
+            baseWhere,
+            inArray(orders.status, [
+              'fulfilled',
+              'refunded',
+              'cancelled',
+              'paid',
+            ]),
+          ),
+        )
         .execute(),
     ]);
 

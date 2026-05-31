@@ -250,20 +250,29 @@ export class InvoiceService {
 
     if (!invoice) return null;
 
-    // ✅ fetch latest order discount
+    // ✅ fetch full order row to avoid invalid column references
     const [ord] = await tx
-      .select({
-        discountTotalMinor: (orders as any).discountTotalMinor,
-        discountTotal: orders.discountTotal,
-      })
+      .select()
       .from(orders)
       .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
       .execute();
+
+    if (!ord) return null;
 
     const orderDiscountMinor =
       Number((ord as any)?.discountTotalMinor ?? 0) > 0
         ? Number((ord as any).discountTotalMinor)
         : Math.round(Number((ord as any)?.discountTotal ?? 0) * 100);
+
+    const shippingFeeMinor =
+      Number((ord as any)?.shippingTotalMinor ?? 0) > 0
+        ? Number((ord as any).shippingTotalMinor)
+        : Math.round(Number((ord as any)?.shippingTotal ?? 0) * 100);
+
+    const shippingName =
+      (ord as any)?.shippingMethodMeta?.rate?.name ??
+      (ord as any)?.shippingMethod ??
+      'Shipping';
 
     // ✅ update discount on invoice before recalculating
     await tx
@@ -283,7 +292,7 @@ export class InvoiceService {
       )
       .execute();
 
-    // delete non-shipping lines regardless of whether items exist
+    // ✅ delete non-shipping lines regardless of whether items exist
     await tx
       .delete(invoiceLines)
       .where(
@@ -295,20 +304,7 @@ export class InvoiceService {
       )
       .execute();
 
-    // re-position shipping line
-    const shippingPosition = items.length + 1;
-    await tx
-      .update(invoiceLines)
-      .set({ position: shippingPosition })
-      .where(
-        and(
-          eq(invoiceLines.companyId, companyId),
-          eq(invoiceLines.invoiceId, invoice.id),
-          sql`(${invoiceLines.meta}->>'kind') = 'shipping'`,
-        ),
-      )
-      .execute();
-
+    // ✅ insert item lines
     if (items.length) {
       const parseNumeric = (v: any) =>
         Number(typeof v === 'string' ? v : (v ?? 0));
@@ -362,6 +358,71 @@ export class InvoiceService {
             };
           }) as any,
         )
+        .execute();
+    }
+
+    // ✅ handle shipping line — add / update / remove
+    const [existingShippingLine] = await tx
+      .select()
+      .from(invoiceLines)
+      .where(
+        and(
+          eq(invoiceLines.companyId, companyId),
+          eq(invoiceLines.invoiceId, invoice.id),
+          sql`(${invoiceLines.meta}->>'kind') = 'shipping'`,
+        ),
+      )
+      .limit(1)
+      .execute();
+
+    if (shippingFeeMinor > 0 && !existingShippingLine) {
+      await tx
+        .insert(invoiceLines)
+        .values({
+          companyId,
+          invoiceId: invoice.id,
+          orderId,
+          position: items.length + 1,
+          productId: null,
+          variantId: null,
+          description: shippingName,
+          quantity: 1,
+          unitPriceMinor: shippingFeeMinor,
+          discountMinor: 0,
+          lineNetMinor: shippingFeeMinor,
+          taxMinor: 0,
+          lineTotalMinor: shippingFeeMinor,
+          taxId: null,
+          taxName: null,
+          taxRateBps: 0,
+          taxInclusive: false,
+          taxExempt: false,
+          taxExemptReason: null,
+          meta: {
+            kind: 'shipping',
+            source: 'order',
+            fulfillmentType: (ord as any)?.fulfillmentType ?? 'delivery',
+            method: (ord as any)?.shippingMethod ?? null,
+            rateSnapshot: (ord as any)?.shippingMethodMeta ?? null,
+          },
+        } as any)
+        .execute();
+    } else if (shippingFeeMinor === 0 && existingShippingLine) {
+      await tx
+        .delete(invoiceLines)
+        .where(eq(invoiceLines.id, existingShippingLine.id))
+        .execute();
+    } else if (shippingFeeMinor > 0 && existingShippingLine) {
+      await tx
+        .update(invoiceLines)
+        .set({
+          unitPriceMinor: shippingFeeMinor,
+          lineNetMinor: shippingFeeMinor,
+          lineTotalMinor: shippingFeeMinor,
+          description: shippingName,
+          position: items.length + 1,
+        })
+        .where(eq(invoiceLines.id, existingShippingLine.id))
         .execute();
     }
 

@@ -522,6 +522,58 @@ let OrdersService = class OrdersService {
             return updated;
         });
     }
+    async updateShippingFee(companyId, orderId, shippingAmount, user, ip) {
+        const result = await this.db.transaction(async (tx) => {
+            const [order] = await tx
+                .select()
+                .from(schema_1.orders)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .for('update')
+                .execute();
+            if (!order)
+                throw new common_1.NotFoundException('Order not found');
+            if (['fulfilled', 'cancelled', 'refunded'].includes(order.status)) {
+                throw new common_1.BadRequestException(`Cannot update shipping on a ${order.status} order`);
+            }
+            if (shippingAmount < 0) {
+                throw new common_1.BadRequestException('Shipping amount cannot be negative');
+            }
+            const subtotalNum = Number(order.subtotal ?? 0);
+            const discountNum = Number(order.discountTotal ?? 0);
+            const shippingTotalMinor = Math.round(shippingAmount * 100);
+            const totalNum = subtotalNum + shippingAmount - discountNum;
+            const subtotalMinor = Number(order.subtotalMinor ?? 0);
+            const discountTotalMinor = Number(order.discountTotalMinor ?? 0);
+            const totalMinor = subtotalMinor + shippingTotalMinor - discountTotalMinor;
+            await tx
+                .update(schema_1.orders)
+                .set({
+                shippingTotal: String(shippingAmount),
+                shippingTotalMinor: shippingTotalMinor,
+                total: Math.max(totalNum, 0).toFixed(2),
+                totalMinor: Math.max(totalMinor, 0),
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .execute();
+            await tx.insert(schema_1.orderEvents).values({
+                companyId,
+                orderId,
+                type: 'shipping_updated',
+                actorUserId: user?.id ?? null,
+                ipAddress: ip ?? null,
+                message: `Shipping fee updated to ${shippingAmount}`,
+            });
+            const [updated] = await tx
+                .select()
+                .from(schema_1.orders)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+                .execute();
+            return updated;
+        });
+        await this.cache.bumpCompanyVersion(companyId);
+        return result;
+    }
     async getShippingQuoteForOrder(companyId, args) {
         const normalizeCountryCode = (value) => {
             const v = (value ?? '').trim().toUpperCase();

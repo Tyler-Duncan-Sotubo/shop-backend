@@ -789,6 +789,77 @@ export class OrdersService {
     });
   }
 
+  async updateShippingFee(
+    companyId: string,
+    orderId: string,
+    shippingAmount: number,
+    user?: User,
+    ip?: string,
+  ) {
+    const result = await this.db.transaction(async (tx) => {
+      const [order] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .for('update')
+        .execute();
+
+      if (!order) throw new NotFoundException('Order not found');
+
+      if (['fulfilled', 'cancelled', 'refunded'].includes(order.status)) {
+        throw new BadRequestException(
+          `Cannot update shipping on a ${order.status} order`,
+        );
+      }
+
+      if (shippingAmount < 0) {
+        throw new BadRequestException('Shipping amount cannot be negative');
+      }
+
+      const subtotalNum = Number(order.subtotal ?? 0);
+      const discountNum = Number(order.discountTotal ?? 0);
+      const shippingTotalMinor = Math.round(shippingAmount * 100);
+      const totalNum = subtotalNum + shippingAmount - discountNum;
+
+      const subtotalMinor = Number((order as any).subtotalMinor ?? 0);
+      const discountTotalMinor = Number((order as any).discountTotalMinor ?? 0);
+      const totalMinor =
+        subtotalMinor + shippingTotalMinor - discountTotalMinor;
+
+      await tx
+        .update(orders)
+        .set({
+          shippingTotal: String(shippingAmount) as any,
+          shippingTotalMinor: shippingTotalMinor as any,
+          total: Math.max(totalNum, 0).toFixed(2) as any,
+          totalMinor: Math.max(totalMinor, 0) as any,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .execute();
+
+      await tx.insert(orderEvents).values({
+        companyId,
+        orderId,
+        type: 'shipping_updated',
+        actorUserId: user?.id ?? null,
+        ipAddress: ip ?? null,
+        message: `Shipping fee updated to ${shippingAmount}`,
+      });
+
+      const [updated] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .execute();
+
+      return updated;
+    });
+
+    await this.cache.bumpCompanyVersion(companyId);
+    return result;
+  }
+
   private async getShippingQuoteForOrder(
     companyId: string,
     args: {

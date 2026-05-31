@@ -143,6 +143,25 @@ export class OrdersController extends BaseController {
     );
   }
 
+  @Patch(':id/shipping-fee')
+  @SetMetadata('permissions', ['orders.update'])
+  async updateShippingFee(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { amount: number },
+    @Ip() ip: string,
+  ) {
+    const result = await this.orders.updateShippingFee(
+      user.companyId,
+      id,
+      body.amount,
+      user,
+      ip,
+    );
+    await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, id);
+    return result;
+  }
+
   // ─────────────────────────────────────────────
   // Dispatch
   // ─────────────────────────────────────────────

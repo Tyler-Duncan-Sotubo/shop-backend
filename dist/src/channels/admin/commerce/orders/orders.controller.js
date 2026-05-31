@@ -59,6 +59,11 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
     updateCustomerAndShipping(user, orderId, dto, ip) {
         return this.orders.updateCustomerAndShipping(user.companyId, orderId, dto, user, ip);
     }
+    async updateShippingFee(user, id, body, ip) {
+        const result = await this.orders.updateShippingFee(user.companyId, id, body.amount, user, ip);
+        await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, id);
+        return result;
+    }
     requestDispatch(user, id, ip, dto) {
         return this.dispatch.requestDispatch(user.companyId, dto.storeId, id, { id: user.id, ip }, dto.note);
     }
@@ -194,6 +199,17 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, Object, String]),
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "updateCustomerAndShipping", null);
+__decorate([
+    (0, common_1.Patch)(':id/shipping-fee'),
+    (0, common_1.SetMetadata)('permissions', ['orders.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
+    __param(3, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object, String]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "updateShippingFee", null);
 __decorate([
     (0, common_1.Post)(':id/request-dispatch'),
     (0, common_1.SetMetadata)('permissions', ['orders.update']),

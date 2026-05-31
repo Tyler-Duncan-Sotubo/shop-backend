@@ -175,16 +175,21 @@ let InvoiceService = class InvoiceService {
         if (!invoice)
             return null;
         const [ord] = await tx
-            .select({
-            discountTotalMinor: schema_1.orders.discountTotalMinor,
-            discountTotal: schema_1.orders.discountTotal,
-        })
+            .select()
             .from(schema_1.orders)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
             .execute();
+        if (!ord)
+            return null;
         const orderDiscountMinor = Number(ord?.discountTotalMinor ?? 0) > 0
             ? Number(ord.discountTotalMinor)
             : Math.round(Number(ord?.discountTotal ?? 0) * 100);
+        const shippingFeeMinor = Number(ord?.shippingTotalMinor ?? 0) > 0
+            ? Number(ord.shippingTotalMinor)
+            : Math.round(Number(ord?.shippingTotal ?? 0) * 100);
+        const shippingName = ord?.shippingMethodMeta?.rate?.name ??
+            ord?.shippingMethod ??
+            'Shipping';
         await tx
             .update(schema_1.invoices)
             .set({ discountMinor: orderDiscountMinor, updatedAt: new Date() })
@@ -198,12 +203,6 @@ let InvoiceService = class InvoiceService {
         await tx
             .delete(schema_1.invoiceLines)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoice.id), (0, drizzle_orm_1.sql) `(${schema_1.invoiceLines.meta}->>'kind') IS DISTINCT FROM 'shipping'`))
-            .execute();
-        const shippingPosition = items.length + 1;
-        await tx
-            .update(schema_1.invoiceLines)
-            .set({ position: shippingPosition })
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoice.id), (0, drizzle_orm_1.sql) `(${schema_1.invoiceLines.meta}->>'kind') = 'shipping'`))
             .execute();
         if (items.length) {
             const parseNumeric = (v) => Number(typeof v === 'string' ? v : (v ?? 0));
@@ -248,6 +247,64 @@ let InvoiceService = class InvoiceService {
                     },
                 };
             }))
+                .execute();
+        }
+        const [existingShippingLine] = await tx
+            .select()
+            .from(schema_1.invoiceLines)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoice.id), (0, drizzle_orm_1.sql) `(${schema_1.invoiceLines.meta}->>'kind') = 'shipping'`))
+            .limit(1)
+            .execute();
+        if (shippingFeeMinor > 0 && !existingShippingLine) {
+            await tx
+                .insert(schema_1.invoiceLines)
+                .values({
+                companyId,
+                invoiceId: invoice.id,
+                orderId,
+                position: items.length + 1,
+                productId: null,
+                variantId: null,
+                description: shippingName,
+                quantity: 1,
+                unitPriceMinor: shippingFeeMinor,
+                discountMinor: 0,
+                lineNetMinor: shippingFeeMinor,
+                taxMinor: 0,
+                lineTotalMinor: shippingFeeMinor,
+                taxId: null,
+                taxName: null,
+                taxRateBps: 0,
+                taxInclusive: false,
+                taxExempt: false,
+                taxExemptReason: null,
+                meta: {
+                    kind: 'shipping',
+                    source: 'order',
+                    fulfillmentType: ord?.fulfillmentType ?? 'delivery',
+                    method: ord?.shippingMethod ?? null,
+                    rateSnapshot: ord?.shippingMethodMeta ?? null,
+                },
+            })
+                .execute();
+        }
+        else if (shippingFeeMinor === 0 && existingShippingLine) {
+            await tx
+                .delete(schema_1.invoiceLines)
+                .where((0, drizzle_orm_1.eq)(schema_1.invoiceLines.id, existingShippingLine.id))
+                .execute();
+        }
+        else if (shippingFeeMinor > 0 && existingShippingLine) {
+            await tx
+                .update(schema_1.invoiceLines)
+                .set({
+                unitPriceMinor: shippingFeeMinor,
+                lineNetMinor: shippingFeeMinor,
+                lineTotalMinor: shippingFeeMinor,
+                description: shippingName,
+                position: items.length + 1,
+            })
+                .where((0, drizzle_orm_1.eq)(schema_1.invoiceLines.id, existingShippingLine.id))
                 .execute();
         }
         const remainingLines = await tx

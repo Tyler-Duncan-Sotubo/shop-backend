@@ -43,7 +43,7 @@ export declare class InvoicePdfService {
     }): Promise<{
         pdfUrl: string;
         fileName: string;
-        generatedInvoiceId: any;
+        generatedInvoiceId: string;
     }>;
     private getBranding;
     private resolveTemplate;

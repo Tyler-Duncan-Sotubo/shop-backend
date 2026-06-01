@@ -321,11 +321,18 @@ let InvoicePdfService = class InvoicePdfService {
                 bankDetails: branding?.bankDetails,
                 footerNote: branding?.footerNote,
             },
-            lines: lines.map((l) => ({
-                description: l.description,
-                quantity: l.quantity,
+            lines: lines
+                .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                .map((l, idx) => ({
+                position: l.meta?.kind === 'shipping' ? '' : idx + 1,
+                description: (l.description ?? '')
+                    .replace(/\s*-\s*Default$/i, '')
+                    .trim(),
+                quantity: l.meta?.kind === 'shipping' ? 1 : Number(l.quantity ?? 1),
                 unitPrice: fmt(l.unitPriceMinor),
-                lineTotal: fmt(l.lineTotalMinor),
+                lineTotal: fmt(l.lineNetMinor),
+                taxName: l.taxName ?? null,
+                taxRate: l.taxRateBps ? `${(l.taxRateBps / 100).toFixed(1)}%` : null,
             })),
             totals: {
                 subtotal: fmt(inv.subtotalMinor),

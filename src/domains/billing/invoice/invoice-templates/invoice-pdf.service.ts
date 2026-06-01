@@ -473,12 +473,19 @@ export class InvoicePdfService {
         bankDetails: branding?.bankDetails,
         footerNote: branding?.footerNote,
       },
-      lines: lines.map((l) => ({
-        description: l.description,
-        quantity: l.quantity,
-        unitPrice: fmt(l.unitPriceMinor as any),
-        lineTotal: fmt(l.lineTotalMinor as any),
-      })),
+      lines: lines
+        .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+        .map((l: any, idx: number) => ({
+          position: l.meta?.kind === 'shipping' ? '' : idx + 1, // ✅ shipping has no number, items start at 1
+          description: (l.description ?? '')
+            .replace(/\s*-\s*Default$/i, '')
+            .trim(),
+          quantity: l.meta?.kind === 'shipping' ? 1 : Number(l.quantity ?? 1),
+          unitPrice: fmt(l.unitPriceMinor),
+          lineTotal: fmt(l.lineNetMinor),
+          taxName: l.taxName ?? null,
+          taxRate: l.taxRateBps ? `${(l.taxRateBps / 100).toFixed(1)}%` : null,
+        })),
       totals: {
         subtotal: fmt(inv.subtotalMinor as any),
         tax: fmt(inv.taxMinor as any),

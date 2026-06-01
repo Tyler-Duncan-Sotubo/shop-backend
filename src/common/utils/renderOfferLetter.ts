@@ -25,23 +25,65 @@ export function wrapInHtml(content: string, css?: string) {
           margin-top: 20px;
         }
 
+        /* ✅ Remove global table borders — invoice templates handle their own */
         table {
-          width: 100%;
           border-collapse: collapse;
-          margin-top: 15px;
         }
 
-       th, td {
-  border: 1px solid #ccc;
-  padding: 8px 16px;
-  text-align: left;
-}
+        th, td {
+          padding: 8px 16px;
+          text-align: left;
+        }
+
         .signature {
           margin-top: 50px;
         }
 
         hr {
           margin: 40px 0;
+          border: none;
+          border-top: 1px solid #eee;
+        }
+
+        /* ✅ TipTap rich text styles — for footer notes and any HTML content */
+        ul {
+          list-style: disc;
+          padding-left: 1.25rem;
+          margin: 0.5rem 0;
+        }
+
+        ol {
+          list-style: decimal;
+          padding-left: 1.25rem;
+          margin: 0.5rem 0;
+        }
+
+        li {
+          margin: 0.2rem 0;
+        }
+
+        p {
+          margin: 0.4rem 0;
+        }
+
+        strong {
+          font-weight: 700;
+        }
+
+        em {
+          font-style: italic;
+        }
+
+        a {
+          color: #2563eb;
+          text-decoration: underline;
+        }
+
+        blockquote {
+          border-left: 3px solid #ddd;
+          padding-left: 0.75rem;
+          margin: 0.75rem 0;
+          color: #555;
         }
 
         /* ───────── Template-specific CSS ───────── */

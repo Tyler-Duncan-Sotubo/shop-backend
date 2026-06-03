@@ -116,7 +116,7 @@ export class OrdersController extends BaseController {
 
   @Patch(':orderId/customer-shipping')
   @SetMetadata('permissions', ['orders.update'])
-  updateCustomerAndShipping(
+  async updateCustomerAndShipping(
     @CurrentUser() user: User,
     @Param('orderId') orderId: string,
     @Body()
@@ -134,13 +134,19 @@ export class OrdersController extends BaseController {
     },
     @Ip() ip: string,
   ) {
-    return this.orders.updateCustomerAndShipping(
+    const result = await this.orders.updateCustomerAndShipping(
       user.companyId,
       orderId,
       dto,
       user,
       ip,
     );
+
+    await this.manualOrdersService.syncInvoiceAfterItems(
+      user.companyId,
+      orderId,
+    );
+    return result;
   }
 
   @Patch(':id/shipping-fee')

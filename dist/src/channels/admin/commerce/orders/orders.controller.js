@@ -56,8 +56,10 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
     convertToLayBuy(user, id, ip) {
         return this.orders.convertToLayBuy(user.companyId, id, user, ip);
     }
-    updateCustomerAndShipping(user, orderId, dto, ip) {
-        return this.orders.updateCustomerAndShipping(user.companyId, orderId, dto, user, ip);
+    async updateCustomerAndShipping(user, orderId, dto, ip) {
+        const result = await this.orders.updateCustomerAndShipping(user.companyId, orderId, dto, user, ip);
+        await this.manualOrdersService.syncInvoiceAfterItems(user.companyId, orderId);
+        return result;
     }
     async updateShippingFee(user, id, body, ip) {
         const result = await this.orders.updateShippingFee(user.companyId, id, body.amount, user, ip);
@@ -197,7 +199,7 @@ __decorate([
     __param(3, (0, common_1.Ip)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String, Object, String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "updateCustomerAndShipping", null);
 __decorate([
     (0, common_1.Patch)(':id/shipping-fee'),

@@ -202,67 +202,69 @@ let InvoiceService = class InvoiceService {
             .execute();
         await tx
             .delete(schema_1.invoiceLines)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoice.id), (0, drizzle_orm_1.sql) `(${schema_1.invoiceLines.meta}->>'kind') IS DISTINCT FROM 'shipping'`))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoice.id)))
             .execute();
-        if (items.length) {
-            const parseNumeric = (v) => Number(typeof v === 'string' ? v : (v ?? 0));
-            const toMinorFromMajor = (major) => Math.round(parseNumeric(major) * 100);
-            const pickMinor = (minor, major) => {
-                const m = Number(minor ?? 0);
-                if (m > 0)
-                    return m;
-                return toMinorFromMajor(major);
-            };
+        if (!items.length && shippingFeeMinor === 0) {
             await tx
-                .insert(schema_1.invoiceLines)
-                .values(items.map((item, idx) => {
-                const quantity = Number(item.quantity ?? 1);
-                const unitPriceMinor = pickMinor(item.unitPriceMinor, item.unitPrice);
-                const lineNetMinor = unitPriceMinor * quantity;
-                return {
-                    companyId,
-                    invoiceId: invoice.id,
-                    orderId,
-                    position: idx + 1,
-                    productId: item.productId ?? null,
-                    variantId: item.variantId ?? null,
-                    description: item.name ?? 'Item',
-                    quantity,
-                    unitPriceMinor,
-                    discountMinor: 0,
-                    lineNetMinor,
-                    taxMinor: 0,
-                    lineTotalMinor: lineNetMinor,
-                    taxId: null,
-                    taxName: null,
-                    taxRateBps: 0,
-                    taxInclusive: false,
-                    taxExempt: false,
-                    taxExemptReason: null,
-                    meta: {
-                        source: 'order',
-                        orderItemId: item.id ?? null,
-                        sku: item.sku ?? null,
-                        attributes: item.attributes ?? null,
-                    },
-                };
-            }))
+                .update(schema_1.invoices)
+                .set({
+                subtotalMinor: 0,
+                discountMinor: orderDiscountMinor,
+                taxMinor: 0,
+                totalMinor: 0,
+                balanceMinor: 0,
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.eq)(schema_1.invoices.id, invoice.id))
                 .execute();
+            return invoice;
         }
-        const [existingShippingLine] = await tx
-            .select()
-            .from(schema_1.invoiceLines)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoice.id), (0, drizzle_orm_1.sql) `(${schema_1.invoiceLines.meta}->>'kind') = 'shipping'`))
-            .limit(1)
-            .execute();
-        if (shippingFeeMinor > 0 && !existingShippingLine) {
-            await tx
-                .insert(schema_1.invoiceLines)
-                .values({
+        const parseNumeric = (v) => Number(typeof v === 'string' ? v : (v ?? 0));
+        const toMinorFromMajor = (major) => Math.round(parseNumeric(major) * 100);
+        const pickMinor = (minor, major) => {
+            const m = Number(minor ?? 0);
+            if (m > 0)
+                return m;
+            return toMinorFromMajor(major);
+        };
+        const lineRows = items.map((item, idx) => {
+            const quantity = Number(item.quantity ?? 1);
+            const unitPriceMinor = pickMinor(item.unitPriceMinor, item.unitPrice);
+            const lineNetMinor = unitPriceMinor * quantity;
+            return {
                 companyId,
                 invoiceId: invoice.id,
                 orderId,
-                position: items.length + 1,
+                position: idx,
+                productId: item.productId ?? null,
+                variantId: item.variantId ?? null,
+                description: item.name ?? 'Item',
+                quantity,
+                unitPriceMinor,
+                discountMinor: 0,
+                lineNetMinor,
+                taxMinor: 0,
+                lineTotalMinor: lineNetMinor,
+                taxId: null,
+                taxName: null,
+                taxRateBps: 0,
+                taxInclusive: false,
+                taxExempt: false,
+                taxExemptReason: null,
+                meta: {
+                    source: 'order',
+                    orderItemId: item.id ?? null,
+                    sku: item.sku ?? null,
+                    attributes: item.attributes ?? null,
+                },
+            };
+        });
+        if (shippingFeeMinor > 0) {
+            lineRows.push({
+                companyId,
+                invoiceId: invoice.id,
+                orderId,
+                position: items.length,
                 productId: null,
                 variantId: null,
                 description: shippingName,
@@ -285,47 +287,13 @@ let InvoiceService = class InvoiceService {
                     method: ord?.shippingMethod ?? null,
                     rateSnapshot: ord?.shippingMethodMeta ?? null,
                 },
-            })
-                .execute();
+            });
         }
-        else if (shippingFeeMinor === 0 && existingShippingLine) {
+        if (lineRows.length) {
             await tx
-                .delete(schema_1.invoiceLines)
-                .where((0, drizzle_orm_1.eq)(schema_1.invoiceLines.id, existingShippingLine.id))
+                .insert(schema_1.invoiceLines)
+                .values(lineRows)
                 .execute();
-        }
-        else if (shippingFeeMinor > 0 && existingShippingLine) {
-            await tx
-                .update(schema_1.invoiceLines)
-                .set({
-                unitPriceMinor: shippingFeeMinor,
-                lineNetMinor: shippingFeeMinor,
-                lineTotalMinor: shippingFeeMinor,
-                description: shippingName,
-                position: items.length + 1,
-            })
-                .where((0, drizzle_orm_1.eq)(schema_1.invoiceLines.id, existingShippingLine.id))
-                .execute();
-        }
-        const remainingLines = await tx
-            .select()
-            .from(schema_1.invoiceLines)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoice.id)))
-            .execute();
-        if (!remainingLines.length) {
-            await tx
-                .update(schema_1.invoices)
-                .set({
-                subtotalMinor: 0,
-                discountMinor: orderDiscountMinor,
-                taxMinor: 0,
-                totalMinor: 0,
-                balanceMinor: 0,
-                updatedAt: new Date(),
-            })
-                .where((0, drizzle_orm_1.eq)(schema_1.invoices.id, invoice.id))
-                .execute();
-            return invoice;
         }
         await this.recalculateDraftTotals(companyId, invoice.id, { tx });
         return invoice;

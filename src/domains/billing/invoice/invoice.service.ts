@@ -250,7 +250,6 @@ export class InvoiceService {
 
     if (!invoice) return null;
 
-    // ✅ fetch full order row to avoid invalid column references
     const [ord] = await tx
       .select()
       .from(orders)
@@ -274,7 +273,7 @@ export class InvoiceService {
       (ord as any)?.shippingMethod ??
       'Shipping';
 
-    // ✅ update discount on invoice before recalculating
+    // ✅ Update discount on invoice
     await tx
       .update(invoices)
       .set({ discountMinor: orderDiscountMinor, updatedAt: new Date() })
@@ -292,153 +291,18 @@ export class InvoiceService {
       )
       .execute();
 
-    // ✅ delete non-shipping lines regardless of whether items exist
+    // ✅ Delete ALL lines first — eliminates any position conflicts
     await tx
       .delete(invoiceLines)
       .where(
         and(
           eq(invoiceLines.companyId, companyId),
           eq(invoiceLines.invoiceId, invoice.id),
-          sql`(${invoiceLines.meta}->>'kind') IS DISTINCT FROM 'shipping'`,
         ),
       )
       .execute();
 
-    // ✅ insert item lines
-    if (items.length) {
-      const parseNumeric = (v: any) =>
-        Number(typeof v === 'string' ? v : (v ?? 0));
-
-      const toMinorFromMajor = (major: any) =>
-        Math.round(parseNumeric(major) * 100);
-
-      const pickMinor = (minor: any, major: any) => {
-        const m = Number(minor ?? 0);
-        if (m > 0) return m;
-        return toMinorFromMajor(major);
-      };
-
-      await tx
-        .insert(invoiceLines)
-        .values(
-          items.map((item: any, idx: number) => {
-            const quantity = Number(item.quantity ?? 1);
-            const unitPriceMinor = pickMinor(
-              item.unitPriceMinor,
-              item.unitPrice,
-            );
-            const lineNetMinor = unitPriceMinor * quantity;
-
-            return {
-              companyId,
-              invoiceId: invoice.id,
-              orderId,
-              position: idx + 1,
-              productId: item.productId ?? null,
-              variantId: item.variantId ?? null,
-              description: item.name ?? 'Item',
-              quantity,
-              unitPriceMinor,
-              discountMinor: 0,
-              lineNetMinor,
-              taxMinor: 0,
-              lineTotalMinor: lineNetMinor,
-              taxId: null,
-              taxName: null,
-              taxRateBps: 0,
-              taxInclusive: false,
-              taxExempt: false,
-              taxExemptReason: null,
-              meta: {
-                source: 'order',
-                orderItemId: item.id ?? null,
-                sku: item.sku ?? null,
-                attributes: item.attributes ?? null,
-              },
-            };
-          }) as any,
-        )
-        .execute();
-    }
-
-    // ✅ handle shipping line — add / update / remove
-    const [existingShippingLine] = await tx
-      .select()
-      .from(invoiceLines)
-      .where(
-        and(
-          eq(invoiceLines.companyId, companyId),
-          eq(invoiceLines.invoiceId, invoice.id),
-          sql`(${invoiceLines.meta}->>'kind') = 'shipping'`,
-        ),
-      )
-      .limit(1)
-      .execute();
-
-    if (shippingFeeMinor > 0 && !existingShippingLine) {
-      await tx
-        .insert(invoiceLines)
-        .values({
-          companyId,
-          invoiceId: invoice.id,
-          orderId,
-          position: items.length + 1,
-          productId: null,
-          variantId: null,
-          description: shippingName,
-          quantity: 1,
-          unitPriceMinor: shippingFeeMinor,
-          discountMinor: 0,
-          lineNetMinor: shippingFeeMinor,
-          taxMinor: 0,
-          lineTotalMinor: shippingFeeMinor,
-          taxId: null,
-          taxName: null,
-          taxRateBps: 0,
-          taxInclusive: false,
-          taxExempt: false,
-          taxExemptReason: null,
-          meta: {
-            kind: 'shipping',
-            source: 'order',
-            fulfillmentType: (ord as any)?.fulfillmentType ?? 'delivery',
-            method: (ord as any)?.shippingMethod ?? null,
-            rateSnapshot: (ord as any)?.shippingMethodMeta ?? null,
-          },
-        } as any)
-        .execute();
-    } else if (shippingFeeMinor === 0 && existingShippingLine) {
-      await tx
-        .delete(invoiceLines)
-        .where(eq(invoiceLines.id, existingShippingLine.id))
-        .execute();
-    } else if (shippingFeeMinor > 0 && existingShippingLine) {
-      await tx
-        .update(invoiceLines)
-        .set({
-          unitPriceMinor: shippingFeeMinor,
-          lineNetMinor: shippingFeeMinor,
-          lineTotalMinor: shippingFeeMinor,
-          description: shippingName,
-          position: items.length + 1,
-        })
-        .where(eq(invoiceLines.id, existingShippingLine.id))
-        .execute();
-    }
-
-    // ✅ Check remaining lines — if zero lines total, set invoice totals to 0
-    const remainingLines = await tx
-      .select()
-      .from(invoiceLines)
-      .where(
-        and(
-          eq(invoiceLines.companyId, companyId),
-          eq(invoiceLines.invoiceId, invoice.id),
-        ),
-      )
-      .execute();
-
-    if (!remainingLines.length) {
+    if (!items.length && shippingFeeMinor === 0) {
       await tx
         .update(invoices)
         .set({
@@ -453,6 +317,90 @@ export class InvoiceService {
         .execute();
 
       return invoice;
+    }
+
+    const parseNumeric = (v: any) =>
+      Number(typeof v === 'string' ? v : (v ?? 0));
+    const toMinorFromMajor = (major: any) =>
+      Math.round(parseNumeric(major) * 100);
+    const pickMinor = (minor: any, major: any) => {
+      const m = Number(minor ?? 0);
+      if (m > 0) return m;
+      return toMinorFromMajor(major);
+    };
+
+    // ✅ Build all lines with sequential positions from 0
+    const lineRows: any[] = items.map((item: any, idx: number) => {
+      const quantity = Number(item.quantity ?? 1);
+      const unitPriceMinor = pickMinor(item.unitPriceMinor, item.unitPrice);
+      const lineNetMinor = unitPriceMinor * quantity;
+
+      return {
+        companyId,
+        invoiceId: invoice.id,
+        orderId,
+        position: idx, // ✅ 0-based, clean sequence
+        productId: item.productId ?? null,
+        variantId: item.variantId ?? null,
+        description: item.name ?? 'Item',
+        quantity,
+        unitPriceMinor,
+        discountMinor: 0,
+        lineNetMinor,
+        taxMinor: 0,
+        lineTotalMinor: lineNetMinor,
+        taxId: null,
+        taxName: null,
+        taxRateBps: 0,
+        taxInclusive: false,
+        taxExempt: false,
+        taxExemptReason: null,
+        meta: {
+          source: 'order',
+          orderItemId: item.id ?? null,
+          sku: item.sku ?? null,
+          attributes: item.attributes ?? null,
+        },
+      };
+    });
+
+    // ✅ Append shipping line in the same insert batch
+    if (shippingFeeMinor > 0) {
+      lineRows.push({
+        companyId,
+        invoiceId: invoice.id,
+        orderId,
+        position: items.length, // ✅ always after all item lines
+        productId: null,
+        variantId: null,
+        description: shippingName,
+        quantity: 1,
+        unitPriceMinor: shippingFeeMinor,
+        discountMinor: 0,
+        lineNetMinor: shippingFeeMinor,
+        taxMinor: 0,
+        lineTotalMinor: shippingFeeMinor,
+        taxId: null,
+        taxName: null,
+        taxRateBps: 0,
+        taxInclusive: false,
+        taxExempt: false,
+        taxExemptReason: null,
+        meta: {
+          kind: 'shipping',
+          source: 'order',
+          fulfillmentType: (ord as any)?.fulfillmentType ?? 'delivery',
+          method: (ord as any)?.shippingMethod ?? null,
+          rateSnapshot: (ord as any)?.shippingMethodMeta ?? null,
+        },
+      });
+    }
+
+    if (lineRows.length) {
+      await tx
+        .insert(invoiceLines)
+        .values(lineRows as any)
+        .execute();
     }
 
     await this.recalculateDraftTotals(companyId, invoice.id, { tx });

@@ -190,7 +190,7 @@ export class OrdersController extends BaseController {
   }
 
   @Post(':id/confirm-dispatch')
-  @SetMetadata('permissions', ['orders.update'])
+  @SetMetadata('permissions', ['orders.read'])
   confirmDispatch(
     @CurrentUser() user: User,
     @Param('id') id: string,

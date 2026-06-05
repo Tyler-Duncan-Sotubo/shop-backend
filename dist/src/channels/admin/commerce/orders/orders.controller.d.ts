@@ -95,6 +95,16 @@ export declare class OrdersController extends BaseController {
         }[];
     }>;
     getDispatch(user: User, id: string): Promise<{
+        items: {
+            id: string;
+            name: string;
+            sku: string | null;
+            quantity: number;
+            unitPrice: string;
+            lineTotal: string;
+            variantId: string | null;
+            productId: string | null;
+        }[];
         id: string;
         companyId: string;
         storeId: string;
@@ -146,9 +156,9 @@ export declare class OrdersController extends BaseController {
         storeId: string;
         status: "pending" | "dispatched" | "cancelled";
         orderId: string;
+        requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;
-        requestedByUserId: string | null;
         dispatchedAt: Date | null;
     }>;
     confirmDispatch(user: User, id: string, ip: string, dto: ConfirmDispatchDto): Promise<{

@@ -13,16 +13,16 @@ export declare class OrderDispatchService {
     private readonly dispatchNotification;
     constructor(db: db, stock: InventoryStockService, cache: CacheService, dispatchNotification: DispatchNotificationService);
     requestDispatch(companyId: string, storeId: string, orderId: string, actor: Actor, note?: string): Promise<{
-        status: "pending" | "dispatched" | "cancelled";
         id: string;
         createdAt: Date | null;
         updatedAt: Date | null;
         companyId: string;
         storeId: string;
-        note: string | null;
+        status: "pending" | "dispatched" | "cancelled";
         orderId: string;
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
+        note: string | null;
         dispatchedAt: Date | null;
     }>;
     confirmDispatch(companyId: string, storeId: string, orderId: string, actor: Actor, note?: string): Promise<{
@@ -77,6 +77,16 @@ export declare class OrderDispatchService {
         updatedAt: Date | null;
     }[]>;
     getDispatch(companyId: string, orderId: string): Promise<{
+        items: {
+            id: string;
+            name: string;
+            sku: string | null;
+            quantity: number;
+            unitPrice: string;
+            lineTotal: string;
+            variantId: string | null;
+            productId: string | null;
+        }[];
         id: string;
         companyId: string;
         storeId: string;

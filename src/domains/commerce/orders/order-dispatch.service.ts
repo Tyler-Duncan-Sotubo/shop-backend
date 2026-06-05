@@ -535,7 +535,40 @@ export class OrderDispatchService {
       .execute();
 
     if (!dispatch) throw new NotFoundException('Dispatch record not found');
-    return dispatch;
+
+    const items = await this.db
+      .select({
+        id: orderItems.id,
+        name: orderItems.name,
+        sku: orderItems.sku,
+        quantity: orderItems.quantity,
+        unitPrice: orderItems.unitPrice,
+        lineTotal: orderItems.lineTotal,
+        variantId: orderItems.variantId,
+        productId: orderItems.productId,
+      })
+      .from(orderItems)
+      .where(
+        and(
+          eq(orderItems.companyId, companyId),
+          eq(orderItems.orderId, orderId),
+        ),
+      )
+      .execute();
+
+    return {
+      ...dispatch,
+      items: items.map((it) => ({
+        id: it.id,
+        name: it.name,
+        sku: it.sku ?? null,
+        quantity: Number(it.quantity ?? 0),
+        unitPrice: it.unitPrice ?? null,
+        lineTotal: it.lineTotal ?? null,
+        variantId: it.variantId ?? null,
+        productId: it.productId ?? null,
+      })),
+    };
   }
 
   private async getUserEmailsByRoles(

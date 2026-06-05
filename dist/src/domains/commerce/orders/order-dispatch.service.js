@@ -355,7 +355,33 @@ let OrderDispatchService = class OrderDispatchService {
             .execute();
         if (!dispatch)
             throw new common_1.NotFoundException('Dispatch record not found');
-        return dispatch;
+        const items = await this.db
+            .select({
+            id: schema_1.orderItems.id,
+            name: schema_1.orderItems.name,
+            sku: schema_1.orderItems.sku,
+            quantity: schema_1.orderItems.quantity,
+            unitPrice: schema_1.orderItems.unitPrice,
+            lineTotal: schema_1.orderItems.lineTotal,
+            variantId: schema_1.orderItems.variantId,
+            productId: schema_1.orderItems.productId,
+        })
+            .from(schema_1.orderItems)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
+            .execute();
+        return {
+            ...dispatch,
+            items: items.map((it) => ({
+                id: it.id,
+                name: it.name,
+                sku: it.sku ?? null,
+                quantity: Number(it.quantity ?? 0),
+                unitPrice: it.unitPrice ?? null,
+                lineTotal: it.lineTotal ?? null,
+                variantId: it.variantId ?? null,
+                productId: it.productId ?? null,
+            })),
+        };
     }
     async getUserEmailsByRoles(companyId, roleNames) {
         const rows = await this.db

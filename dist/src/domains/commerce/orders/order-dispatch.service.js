@@ -146,9 +146,6 @@ let OrderDispatchService = class OrderDispatchService {
             if (order.storeId !== storeId) {
                 throw new common_1.BadRequestException('Order does not belong to this store');
             }
-            if (order.status !== 'awaiting_dispatch') {
-                throw new common_1.BadRequestException('Order is not awaiting dispatch');
-            }
             const [dispatch] = await tx
                 .select()
                 .from(schema_1.orderDispatches)
@@ -157,6 +154,10 @@ let OrderDispatchService = class OrderDispatchService {
                 .execute();
             if (!dispatch) {
                 throw new common_1.NotFoundException('No pending dispatch request found for this order');
+            }
+            const allowedStatuses = ['awaiting_dispatch', 'paid', 'pending_payment'];
+            if (!allowedStatuses.includes(order.status)) {
+                throw new common_1.BadRequestException(`Order cannot be dispatched from status '${order.status}'`);
             }
             const origin = order.originInventoryLocationId;
             if (!origin) {
@@ -199,7 +200,7 @@ let OrderDispatchService = class OrderDispatchService {
                 companyId,
                 orderId,
                 type: 'dispatched',
-                fromStatus: 'awaiting_dispatch',
+                fromStatus: order.status,
                 toStatus: 'fulfilled',
                 actorUserId: actor.id,
                 ipAddress: actor.ip ?? null,

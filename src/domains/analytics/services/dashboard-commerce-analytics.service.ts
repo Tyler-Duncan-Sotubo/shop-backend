@@ -338,12 +338,16 @@ export class DashboardCommerceAnalyticsService {
               ? sql`date_bin(interval '15 minutes', (${args.to}::timestamptz - interval '1 microsecond'), date_trunc('day', ${args.from}::timestamptz))`
               : sql`date_trunc('day', (${args.to}::timestamptz - interval '1 microsecond'))`;
 
+        // coalesce paidAt -> createdAt so manual orders without a paidAt
+        // are still bucketed using their creation timestamp
+        const effectiveTs = sql`coalesce(${orders.paidAt}, ${orders.createdAt})`;
+
         const bucketExpr =
           bucket === 'month'
-            ? sql`date_trunc('month', ${orders.paidAt})`
+            ? sql`date_trunc('month', ${effectiveTs})`
             : bucket === '15m'
-              ? sql`date_bin(interval '15 minutes', ${orders.paidAt}, date_trunc('day', ${args.from}::timestamptz))`
-              : sql`date_trunc('day', ${orders.paidAt})`;
+              ? sql`date_bin(interval '15 minutes', ${effectiveTs}, date_trunc('day', ${args.from}::timestamptz))`
+              : sql`date_trunc('day', ${effectiveTs})`;
 
         const rows = await this.db.execute(sql`
   with series as (
@@ -355,15 +359,14 @@ export class DashboardCommerceAnalyticsService {
       count(*)::int as orders,
       coalesce(
         nullif(sum(${orders.subtotalMinor}), 0),
-        sum(cast(${orders.subtotal} as numeric) * 100),
+        sum(cast(${orders.subtotal} as numeric)),
         0
       )::bigint as sales_minor
     from ${orders}
     where
       ${eq(orders.companyId, args.companyId)}
-      and ${orders.paidAt} is not null
-      and ${gte(orders.paidAt, args.from)}
-      and ${lt(orders.paidAt, args.to)}
+      and ${gte(sql`coalesce(${orders.paidAt}, ${orders.createdAt})`, args.from)}
+      and ${lt(sql`coalesce(${orders.paidAt}, ${orders.createdAt})`, args.to)}
       and ${inArray(orders.status, [...this.SALE_STATUSES])}
       and ${args.storeId ? eq(orders.storeId, args.storeId) : sql`true`}
     group by 1

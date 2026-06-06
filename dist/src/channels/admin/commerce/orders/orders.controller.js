@@ -225,7 +225,7 @@ __decorate([
 ], OrdersController.prototype, "requestDispatch", null);
 __decorate([
     (0, common_1.Post)(':id/confirm-dispatch'),
-    (0, common_1.SetMetadata)('permissions', ['orders.update']),
+    (0, common_1.SetMetadata)('permissions', ['orders.read']),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Ip)()),

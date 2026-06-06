@@ -225,11 +225,12 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
                 : bucket === '15m'
                     ? (0, drizzle_orm_1.sql) `date_bin(interval '15 minutes', (${args.to}::timestamptz - interval '1 microsecond'), date_trunc('day', ${args.from}::timestamptz))`
                     : (0, drizzle_orm_1.sql) `date_trunc('day', (${args.to}::timestamptz - interval '1 microsecond'))`;
+            const effectiveTs = (0, drizzle_orm_1.sql) `coalesce(${schema_1.orders.paidAt}, ${schema_1.orders.createdAt})`;
             const bucketExpr = bucket === 'month'
-                ? (0, drizzle_orm_1.sql) `date_trunc('month', ${schema_1.orders.paidAt})`
+                ? (0, drizzle_orm_1.sql) `date_trunc('month', ${effectiveTs})`
                 : bucket === '15m'
-                    ? (0, drizzle_orm_1.sql) `date_bin(interval '15 minutes', ${schema_1.orders.paidAt}, date_trunc('day', ${args.from}::timestamptz))`
-                    : (0, drizzle_orm_1.sql) `date_trunc('day', ${schema_1.orders.paidAt})`;
+                    ? (0, drizzle_orm_1.sql) `date_bin(interval '15 minutes', ${effectiveTs}, date_trunc('day', ${args.from}::timestamptz))`
+                    : (0, drizzle_orm_1.sql) `date_trunc('day', ${effectiveTs})`;
             const rows = await this.db.execute((0, drizzle_orm_1.sql) `
   with series as (
     select generate_series(${seriesStart}, ${seriesEndInclusive}, ${interval}) as t
@@ -240,15 +241,14 @@ let DashboardCommerceAnalyticsService = class DashboardCommerceAnalyticsService 
       count(*)::int as orders,
       coalesce(
         nullif(sum(${schema_1.orders.subtotalMinor}), 0),
-        sum(cast(${schema_1.orders.subtotal} as numeric) * 100),
+        sum(cast(${schema_1.orders.subtotal} as numeric)),
         0
       )::bigint as sales_minor
     from ${schema_1.orders}
     where
       ${(0, drizzle_orm_1.eq)(schema_1.orders.companyId, args.companyId)}
-      and ${schema_1.orders.paidAt} is not null
-      and ${(0, drizzle_orm_1.gte)(schema_1.orders.paidAt, args.from)}
-      and ${(0, drizzle_orm_1.lt)(schema_1.orders.paidAt, args.to)}
+      and ${(0, drizzle_orm_1.gte)((0, drizzle_orm_1.sql) `coalesce(${schema_1.orders.paidAt}, ${schema_1.orders.createdAt})`, args.from)}
+      and ${(0, drizzle_orm_1.lt)((0, drizzle_orm_1.sql) `coalesce(${schema_1.orders.paidAt}, ${schema_1.orders.createdAt})`, args.to)}
       and ${(0, drizzle_orm_1.inArray)(schema_1.orders.status, [...this.SALE_STATUSES])}
       and ${args.storeId ? (0, drizzle_orm_1.eq)(schema_1.orders.storeId, args.storeId) : (0, drizzle_orm_1.sql) `true`}
     group by 1

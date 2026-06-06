@@ -210,10 +210,6 @@ export class OrderDispatchService {
         throw new BadRequestException('Order does not belong to this store');
       }
 
-      if (order.status !== 'awaiting_dispatch') {
-        throw new BadRequestException('Order is not awaiting dispatch');
-      }
-
       const [dispatch] = await tx
         .select()
         .from(orderDispatches)
@@ -231,6 +227,13 @@ export class OrderDispatchService {
       if (!dispatch) {
         throw new NotFoundException(
           'No pending dispatch request found for this order',
+        );
+      }
+
+      const allowedStatuses = ['awaiting_dispatch', 'paid', 'pending_payment'];
+      if (!allowedStatuses.includes(order.status)) {
+        throw new BadRequestException(
+          `Order cannot be dispatched from status '${order.status}'`,
         );
       }
 
@@ -302,7 +305,7 @@ export class OrderDispatchService {
         companyId,
         orderId,
         type: 'dispatched',
-        fromStatus: 'awaiting_dispatch',
+        fromStatus: order.status,
         toStatus: 'fulfilled',
         actorUserId: actor.id,
         ipAddress: actor.ip ?? null,

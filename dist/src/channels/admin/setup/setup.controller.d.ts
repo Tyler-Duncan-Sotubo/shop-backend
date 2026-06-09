@@ -44,13 +44,13 @@ export declare class SetupController {
             companyId: string;
             storeId: string;
             type: string;
-            city: string | null;
-            postalCode: string | null;
-            code: string | null;
             isDefault: boolean;
+            code: string | null;
             addressLine1: string | null;
             addressLine2: string | null;
+            city: string | null;
             region: string | null;
+            postalCode: string | null;
         };
         domains: {
             id: string;
@@ -62,12 +62,12 @@ export declare class SetupController {
             isPrimary: boolean;
         }[];
         draftOverride: {
-            status: "draft" | "published";
             id: string;
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
             storeId: string;
+            status: "draft" | "published";
             publishedAt: Date | null;
             theme: unknown;
             header: unknown;

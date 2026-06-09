@@ -6,6 +6,7 @@ export interface InviteUserInput {
     createRole?: boolean;
     baseRoleId?: string;
     permissionIds?: string[];
+    storeIds?: string[];
 }
 export interface AcceptInviteInput {
     token: string;

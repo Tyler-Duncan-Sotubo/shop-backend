@@ -18,11 +18,15 @@ import { UpdateStoreDomainsDto } from './dto/update-store-domains.dto';
 import { StoresService } from 'src/domains/commerce/stores/stores.service';
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { UserStoreAccessService } from 'src/domains/auth/services/user-store-access.service';
 
 @Controller('stores')
 @UseGuards(JwtAuthGuard)
 export class StoresController extends BaseController {
-  constructor(private readonly storesService: StoresService) {
+  constructor(
+    private readonly storesService: StoresService,
+    private readonly userStoreAccess: UserStoreAccessService,
+  ) {
     super();
   }
 
@@ -37,8 +41,25 @@ export class StoresController extends BaseController {
   }
 
   // --------------------------------------------------------------------------
+  // Accessible stores (scoped to user) — must be before :storeId
+  // --------------------------------------------------------------------------
+
+  @Get('accessible-stores')
+  @SetMetadata('permissions', ['stores.read'])
+  getAccessibleStores(@CurrentUser() user: User) {
+    return this.userStoreAccess.getStoresForUser(user.id);
+  }
+
+  @Get('users/:userId/stores')
+  @SetMetadata('permissions', ['users.read'])
+  getUserStores(@Param('userId') userId: string) {
+    return this.userStoreAccess.getStoresForUser(userId);
+  }
+
+  // --------------------------------------------------------------------------
   // Stores CRUD
   // --------------------------------------------------------------------------
+
   @Get()
   @SetMetadata('permissions', ['stores.read'])
   getStores(@CurrentUser() user: User) {
@@ -91,6 +112,7 @@ export class StoresController extends BaseController {
   // --------------------------------------------------------------------------
   // Store Domains
   // --------------------------------------------------------------------------
+
   @Get(':storeId/domains')
   @SetMetadata('permissions', ['stores.read'])
   getStoreDomains(

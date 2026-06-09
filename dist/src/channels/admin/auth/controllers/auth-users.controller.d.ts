@@ -2,10 +2,13 @@ import { InviteUserDto } from '../dto/invite-user.dto';
 import { User } from "../../common/types/user.type";
 import { UserService } from "../../../../domains/auth/services";
 import { InvitationsService } from "../../../../domains/auth/services/invitations.service";
+import { UserStoreAccessService } from "../../../../domains/auth/services/user-store-access.service";
+import { SyncUserStoresDto } from '../dto/sync-user-stores.dto';
 export declare class AuthUsersController {
     private readonly user;
     private readonly invitations;
-    constructor(user: UserService, invitations: InvitationsService);
+    private readonly userStoreAccess;
+    constructor(user: UserService, invitations: InvitationsService, userStoreAccess: UserStoreAccessService);
     invite(dto: InviteUserDto, user: User): Promise<{
         inviteLink: string;
     }>;
@@ -23,4 +26,5 @@ export declare class AuthUsersController {
         avatar: string | null;
         lastLogin: Date | null;
     }[]>;
+    syncUserStores(user: User, userId: string, dto: SyncUserStoresDto): Promise<void>;
 }

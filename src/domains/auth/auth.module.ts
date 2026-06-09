@@ -14,6 +14,7 @@ import { AuditService } from 'src/domains/audit/audit.service';
 import { LoginVerificationService } from './services/login-verification.service';
 import { InvitationsService } from './services/invitations.service';
 import { SessionsService } from './services/sessions.service';
+import { UserStoreAccessService } from './services/user-store-access.service';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { SessionsService } from './services/sessions.service';
     LoginVerificationService,
     InvitationsService,
     SessionsService,
+    UserStoreAccessService,
   ],
   exports: [
     UserService,
@@ -54,6 +56,7 @@ import { SessionsService } from './services/sessions.service';
     LoginVerificationService,
     InvitationsService,
     SessionsService,
+    UserStoreAccessService,
   ],
 })
 export class AuthModule {}

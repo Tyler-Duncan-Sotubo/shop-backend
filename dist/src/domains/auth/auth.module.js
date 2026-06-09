@@ -17,6 +17,7 @@ const audit_service_1 = require("../audit/audit.service");
 const login_verification_service_1 = require("./services/login-verification.service");
 const invitations_service_1 = require("./services/invitations.service");
 const sessions_service_1 = require("./services/sessions.service");
+const user_store_access_service_1 = require("./services/user-store-access.service");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -46,6 +47,7 @@ exports.AuthModule = AuthModule = __decorate([
             login_verification_service_1.LoginVerificationService,
             invitations_service_1.InvitationsService,
             sessions_service_1.SessionsService,
+            user_store_access_service_1.UserStoreAccessService,
         ],
         exports: [
             services_1.UserService,
@@ -60,6 +62,7 @@ exports.AuthModule = AuthModule = __decorate([
             login_verification_service_1.LoginVerificationService,
             invitations_service_1.InvitationsService,
             sessions_service_1.SessionsService,
+            user_store_access_service_1.UserStoreAccessService,
         ],
     })
 ], AuthModule);

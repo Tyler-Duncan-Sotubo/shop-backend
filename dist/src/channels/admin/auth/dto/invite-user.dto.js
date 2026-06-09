@@ -50,4 +50,10 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Array)
 ], InviteUserDto.prototype, "permissionIds", void 0);
+__decorate([
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsUUID)('7', { each: true }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Array)
+], InviteUserDto.prototype, "storeIds", void 0);
 //# sourceMappingURL=invite-user.dto.js.map

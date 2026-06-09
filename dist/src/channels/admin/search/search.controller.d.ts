@@ -11,17 +11,12 @@ export declare class SearchController {
         };
     } | {
         data: {
-            orders: ({
-                id: any;
-                number: any;
+            orders: {
+                id: string;
+                number: string;
                 customer: any;
-                status: any;
-            } | {
-                id: any;
-                number: any;
-                customer: any;
-                status: any;
-            })[];
+                status: string;
+            }[];
             invoices: {
                 id: string;
                 number: string | null;

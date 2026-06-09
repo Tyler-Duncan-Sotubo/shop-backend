@@ -6,4 +6,5 @@ export declare class InviteUserDto {
     roleName?: string;
     baseRoleId?: string;
     permissionIds?: string[];
+    storeIds?: string[];
 }

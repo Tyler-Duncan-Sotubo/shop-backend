@@ -21,13 +21,21 @@ const update_store_domains_dto_1 = require("./dto/update-store-domains.dto");
 const stores_service_1 = require("../../../../domains/commerce/stores/stores.service");
 const current_user_decorator_1 = require("../../common/decorator/current-user.decorator");
 const jwt_auth_guard_1 = require("../../common/guards/jwt-auth.guard");
+const user_store_access_service_1 = require("../../../../domains/auth/services/user-store-access.service");
 let StoresController = class StoresController extends base_controller_1.BaseController {
-    constructor(storesService) {
+    constructor(storesService, userStoreAccess) {
         super();
         this.storesService = storesService;
+        this.userStoreAccess = userStoreAccess;
     }
     getCompanyStoresSummary(user) {
         return this.storesService.getCompanyStoresSummary(user.companyId);
+    }
+    getAccessibleStores(user) {
+        return this.userStoreAccess.getStoresForUser(user.id);
+    }
+    getUserStores(userId) {
+        return this.userStoreAccess.getStoresForUser(userId);
     }
     getStores(user) {
         return this.storesService.getStoresByCompany(user.companyId);
@@ -60,6 +68,22 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], StoresController.prototype, "getCompanyStoresSummary", null);
+__decorate([
+    (0, common_1.Get)('accessible-stores'),
+    (0, common_1.SetMetadata)('permissions', ['stores.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], StoresController.prototype, "getAccessibleStores", null);
+__decorate([
+    (0, common_1.Get)('users/:userId/stores'),
+    (0, common_1.SetMetadata)('permissions', ['users.read']),
+    __param(0, (0, common_1.Param)('userId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], StoresController.prototype, "getUserStores", null);
 __decorate([
     (0, common_1.Get)(),
     (0, common_1.SetMetadata)('permissions', ['stores.read']),
@@ -131,6 +155,7 @@ __decorate([
 exports.StoresController = StoresController = __decorate([
     (0, common_1.Controller)('stores'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [stores_service_1.StoresService])
+    __metadata("design:paramtypes", [stores_service_1.StoresService,
+        user_store_access_service_1.UserStoreAccessService])
 ], StoresController);
 //# sourceMappingURL=stores.controller.js.map

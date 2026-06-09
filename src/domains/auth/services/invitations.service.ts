@@ -19,6 +19,8 @@ import {
 import { InvitationService } from 'src/domains/notification/services/invitation.service';
 import { PermissionsService } from 'src/domains/iam/permissions/permissions.service';
 import { InviteUserInput } from '../inputs';
+import { User } from 'src/channels/admin/common/types/user.type';
+import { UserStoreAccessService } from './user-store-access.service';
 
 @Injectable()
 export class InvitationsService {
@@ -28,6 +30,7 @@ export class InvitationsService {
     private readonly configService: ConfigService,
     private readonly invitationService: InvitationService,
     private readonly permissionsService: PermissionsService,
+    private readonly userStoreAccessService: UserStoreAccessService,
   ) {}
 
   /**
@@ -36,7 +39,8 @@ export class InvitationsService {
    * - Email shows role.displayName (fallback to role.name).
    * - Token contains email + name + companyId + companyRoleId.
    */
-  async inviteUser(dto: InviteUserInput, companyId: string) {
+  async inviteUser(dto: InviteUserInput, user: User) {
+    const { companyId, id: userId } = user;
     const [company] = await this.db
       .select({ name: companies.name })
       .from(companies)
@@ -111,6 +115,8 @@ export class InvitationsService {
       name: dto.name,
       companyId,
       companyRoleId: roleId,
+      storeIds: dto.storeIds, // 👈 add
+      invitedBy: user.id, // 👈 add (pass this into inviteUser from the controller's @CurrentUser())
     });
 
     const clientUrl = this.configService.get<string>('CLIENT_URL');
@@ -151,6 +157,8 @@ export class InvitationsService {
     const email = String(decoded?.email ?? '').toLowerCase();
     const companyId = String(decoded?.companyId ?? '');
     const companyRoleId = String(decoded?.companyRoleId ?? '');
+    const storeIds: string[] = decoded?.storeIds ?? [];
+    const invitedBy: string | null = decoded?.invitedBy ?? null;
 
     if (!email || !companyId || !companyRoleId) {
       throw new BadRequestException('Invalid invite token payload.');
@@ -181,7 +189,9 @@ export class InvitationsService {
       throw new BadRequestException('Invalid role for this company.');
     }
 
+    // -----------------------------
     // Create or update user
+    // -----------------------------
     const defaultPassword = await bcrypt.hash('ChangeMe123!', 10);
 
     const [existingUser] = await this.db
@@ -191,8 +201,10 @@ export class InvitationsService {
       .limit(1)
       .execute();
 
+    let userId: string;
+
     if (!existingUser) {
-      await this.db
+      const [newUser] = await this.db
         .insert(users)
         .values({
           email,
@@ -202,7 +214,10 @@ export class InvitationsService {
           firstName,
           lastName,
         })
+        .returning({ id: users.id })
         .execute();
+
+      userId = newUser.id;
     } else {
       await this.db
         .update(users)
@@ -211,6 +226,19 @@ export class InvitationsService {
           and(eq(users.id, existingUser.id), eq(users.companyId, companyId)),
         )
         .execute();
+
+      userId = existingUser.id;
+    }
+
+    // -----------------------------
+    // Grant store access
+    // -----------------------------
+    if (storeIds.length && invitedBy) {
+      await this.userStoreAccessService.grantAccess(
+        userId,
+        storeIds,
+        invitedBy,
+      );
     }
 
     return { message: 'Invitation accepted', email };

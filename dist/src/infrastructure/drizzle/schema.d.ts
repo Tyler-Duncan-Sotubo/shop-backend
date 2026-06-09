@@ -8,6 +8,7 @@ export * from './schema/iam/company-roles.schema';
 export * from './schema/iam/company-role-permissions.schema';
 export * from './schema/iam/permissions.schema';
 export * from './schema/iam/api-keys.schema';
+export * from './schema/iam/user-store-access.schema';
 export * from './schema/audit/audit.schema';
 export * from './schema/content/media/media.schema';
 export * from './schema/enum.schema';

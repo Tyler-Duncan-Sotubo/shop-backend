@@ -13,14 +13,17 @@ import {
 } from '@nestjs/common';
 
 import { InviteUserDto } from '../dto/invite-user.dto';
+
 import { User } from 'src/channels/admin/common/types/user.type';
 import { UserService } from 'src/domains/auth/services';
 import { InvitationsService } from 'src/domains/auth/services/invitations.service';
+import { UserStoreAccessService } from 'src/domains/auth/services/user-store-access.service';
 import { ResponseInterceptor } from 'src/infrastructure/interceptor/error-interceptor';
 import { AuditInterceptor } from 'src/channels/admin/audit/audit.interceptor';
 import { Audit } from 'src/channels/admin/audit/audit.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
+import { SyncUserStoresDto } from '../dto/sync-user-stores.dto';
 
 @UseInterceptors(AuditInterceptor)
 @Controller('auth')
@@ -28,6 +31,7 @@ export class AuthUsersController {
   constructor(
     private readonly user: UserService,
     private readonly invitations: InvitationsService,
+    private readonly userStoreAccess: UserStoreAccessService, // 👈
   ) {}
 
   @HttpCode(HttpStatus.CREATED)
@@ -37,7 +41,7 @@ export class AuthUsersController {
   @SetMetadata('roles', ['super_admin'])
   @Audit({ action: 'New User Invite', entity: 'User' })
   async invite(@Body() dto: InviteUserDto, @CurrentUser() user: User) {
-    return this.invitations.inviteUser(dto, user.companyId);
+    return this.invitations.inviteUser(dto, user);
   }
 
   @HttpCode(HttpStatus.CREATED)
@@ -61,5 +65,19 @@ export class AuthUsersController {
   @UseGuards(JwtAuthGuard)
   async getCompanyUsers(@CurrentUser() user: User) {
     return this.user.companyUsers(user.companyId);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(ResponseInterceptor)
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('roles', ['super_admin'])
+  @Audit({ action: 'Updated User Store Access', entity: 'User' })
+  @Patch(':userId/stores')
+  async syncUserStores(
+    @CurrentUser() user: User,
+    @Param('userId') userId: string,
+    @Body() dto: SyncUserStoresDto,
+  ) {
+    return this.userStoreAccess.syncAccess(userId, dto.storeIds, user.id);
   }
 }

@@ -11,11 +11,11 @@ export declare class ApiKeysController extends BaseController {
         isActive: boolean;
         createdAt: Date;
         companyId: string;
-        expiresAt: Date | null;
-        lastUsedAt: Date | null;
         storeId: string | null;
-        keyHash: string;
+        expiresAt: Date | null;
         prefix: string;
+        lastUsedAt: Date | null;
+        keyHash: string;
         scopes: string[] | null;
         allowedOrigins: string[] | null;
     }[]>;

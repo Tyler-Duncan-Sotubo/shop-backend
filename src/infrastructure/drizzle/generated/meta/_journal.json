@@ -351,6 +351,13 @@
       "when": 1779781693761,
       "tag": "0049_wide_northstar",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1780994174930,
+      "tag": "0050_conscious_lester",
+      "breakpoints": true
     }
   ]
 }

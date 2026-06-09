@@ -10,6 +10,8 @@ export interface InviteUserInput {
   createRole?: boolean;
   baseRoleId?: string; // optional template
   permissionIds?: string[]; // required if creating
+
+  storeIds?: string[];
 }
 
 export interface AcceptInviteInput {

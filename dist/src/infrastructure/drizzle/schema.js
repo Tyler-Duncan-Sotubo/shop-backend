@@ -24,6 +24,7 @@ __exportStar(require("./schema/iam/company-roles.schema"), exports);
 __exportStar(require("./schema/iam/company-role-permissions.schema"), exports);
 __exportStar(require("./schema/iam/permissions.schema"), exports);
 __exportStar(require("./schema/iam/api-keys.schema"), exports);
+__exportStar(require("./schema/iam/user-store-access.schema"), exports);
 __exportStar(require("./schema/audit/audit.schema"), exports);
 __exportStar(require("./schema/content/media/media.schema"), exports);
 __exportStar(require("./schema/enum.schema"), exports);

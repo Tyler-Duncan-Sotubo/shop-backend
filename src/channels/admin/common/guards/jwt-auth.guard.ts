@@ -28,7 +28,7 @@ export class JwtAuthGuard implements CanActivate {
     try {
       const isAuthenticated = await this.jwtGuard.canActivate(context);
       if (!isAuthenticated) return false;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(error.message);
       this.handleUnauthorized(request, error.message);
     }

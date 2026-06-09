@@ -11,11 +11,11 @@ import {
 export class InviteUserDto {
   @IsEmail()
   @IsNotEmpty()
-  email: string;
+  email!: string;
 
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   /**
    * Existing role assignment (no creation)
@@ -50,4 +50,12 @@ export class InviteUserDto {
   @IsUUID('7', { each: true })
   @IsOptional()
   permissionIds?: string[];
+
+  /**
+   * Optional store assignments for the user
+   */
+  @IsArray()
+  @IsUUID('7', { each: true })
+  @IsOptional()
+  storeIds?: string[];
 }

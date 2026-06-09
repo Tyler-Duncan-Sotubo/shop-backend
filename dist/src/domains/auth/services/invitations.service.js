@@ -22,15 +22,18 @@ const drizzle_module_1 = require("../../../infrastructure/drizzle/drizzle.module
 const schema_1 = require("../../../infrastructure/drizzle/schema");
 const invitation_service_1 = require("../../notification/services/invitation.service");
 const permissions_service_1 = require("../../iam/permissions/permissions.service");
+const user_store_access_service_1 = require("./user-store-access.service");
 let InvitationsService = class InvitationsService {
-    constructor(db, jwtService, configService, invitationService, permissionsService) {
+    constructor(db, jwtService, configService, invitationService, permissionsService, userStoreAccessService) {
         this.db = db;
         this.jwtService = jwtService;
         this.configService = configService;
         this.invitationService = invitationService;
         this.permissionsService = permissionsService;
+        this.userStoreAccessService = userStoreAccessService;
     }
-    async inviteUser(dto, companyId) {
+    async inviteUser(dto, user) {
+        const { companyId, id: userId } = user;
         const [company] = await this.db
             .select({ name: schema_1.companies.name })
             .from(schema_1.companies)
@@ -71,6 +74,8 @@ let InvitationsService = class InvitationsService {
             name: dto.name,
             companyId,
             companyRoleId: roleId,
+            storeIds: dto.storeIds,
+            invitedBy: user.id,
         });
         const clientUrl = this.configService.get('CLIENT_URL');
         if (!clientUrl) {
@@ -93,6 +98,8 @@ let InvitationsService = class InvitationsService {
         const email = String(decoded?.email ?? '').toLowerCase();
         const companyId = String(decoded?.companyId ?? '');
         const companyRoleId = String(decoded?.companyRoleId ?? '');
+        const storeIds = decoded?.storeIds ?? [];
+        const invitedBy = decoded?.invitedBy ?? null;
         if (!email || !companyId || !companyRoleId) {
             throw new common_1.BadRequestException('Invalid invite token payload.');
         }
@@ -116,8 +123,9 @@ let InvitationsService = class InvitationsService {
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.email, email), (0, drizzle_orm_1.eq)(schema_1.users.companyId, companyId)))
             .limit(1)
             .execute();
+        let userId;
         if (!existingUser) {
-            await this.db
+            const [newUser] = await this.db
                 .insert(schema_1.users)
                 .values({
                 email,
@@ -127,7 +135,9 @@ let InvitationsService = class InvitationsService {
                 firstName,
                 lastName,
             })
+                .returning({ id: schema_1.users.id })
                 .execute();
+            userId = newUser.id;
         }
         else {
             await this.db
@@ -135,6 +145,10 @@ let InvitationsService = class InvitationsService {
                 .set({ companyRoleId, firstName, lastName })
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.id, existingUser.id), (0, drizzle_orm_1.eq)(schema_1.users.companyId, companyId)))
                 .execute();
+            userId = existingUser.id;
+        }
+        if (storeIds.length && invitedBy) {
+            await this.userStoreAccessService.grantAccess(userId, storeIds, invitedBy);
         }
         return { message: 'Invitation accepted', email };
     }
@@ -146,6 +160,7 @@ exports.InvitationsService = InvitationsService = __decorate([
     __metadata("design:paramtypes", [Object, jwt_1.JwtService,
         config_1.ConfigService,
         invitation_service_1.InvitationService,
-        permissions_service_1.PermissionsService])
+        permissions_service_1.PermissionsService,
+        user_store_access_service_1.UserStoreAccessService])
 ], InvitationsService);
 //# sourceMappingURL=invitations.service.js.map

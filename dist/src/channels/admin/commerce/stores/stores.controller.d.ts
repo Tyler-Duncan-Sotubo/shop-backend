@@ -4,9 +4,11 @@ import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { UpdateStoreDomainsDto } from './dto/update-store-domains.dto';
 import { StoresService } from "../../../../domains/commerce/stores/stores.service";
+import { UserStoreAccessService } from "../../../../domains/auth/services/user-store-access.service";
 export declare class StoresController extends BaseController {
     private readonly storesService;
-    constructor(storesService: StoresService);
+    private readonly userStoreAccess;
+    constructor(storesService: StoresService, userStoreAccess: UserStoreAccessService);
     getCompanyStoresSummary(user: User): Promise<{
         company: {
             id: string;
@@ -39,6 +41,16 @@ export declare class StoresController extends BaseController {
             deletedAt: Date | null;
         }[];
     }>;
+    getAccessibleStores(user: User): Promise<{
+        id: string;
+        name: string;
+        imageUrl: string | null;
+    }[]>;
+    getUserStores(userId: string): Promise<{
+        id: string;
+        name: string;
+        imageUrl: string | null;
+    }[]>;
     getStores(user: User): Promise<{
         primaryDomain: string | null;
         domains: string[];

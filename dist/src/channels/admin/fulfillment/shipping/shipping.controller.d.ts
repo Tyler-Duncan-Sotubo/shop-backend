@@ -29,8 +29,8 @@ export declare class ShippingController extends BaseController {
         updatedAt: Date;
         companyId: string;
         storeId: string;
-        priority: number;
         description: string | null;
+        priority: number;
         metadata: Record<string, any> | null;
     }>;
     updateZone(user: User, zoneId: string, dto: Partial<CreateZoneDto>, ip: string): Promise<{
@@ -225,8 +225,8 @@ export declare class ShippingController extends BaseController {
             updatedAt: Date;
             companyId: string;
             storeId: string;
-            priority: number;
             description: string | null;
+            priority: number;
             metadata: Record<string, any> | null;
         };
         rate: any;

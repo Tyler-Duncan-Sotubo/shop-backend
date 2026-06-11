@@ -329,16 +329,19 @@ let InvoiceService = class InvoiceService {
                 taxMap.set(t.id, t);
         }
         for (const l of lines) {
-            const t = l.taxId ? taxMap.get(l.taxId) : null;
+            const isShipping = l.meta?.kind === 'shipping';
+            const t = !isShipping && l.taxId ? taxMap.get(l.taxId) : null;
             const calc = this.totals.calcLine({
                 quantity: Number(l.quantity),
                 unitPriceMinor: Number(l.unitPriceMinor),
                 tax: {
-                    taxId: l.taxId ?? null,
-                    taxName: t?.name ?? l.taxName ?? null,
-                    taxRateBps: Number(t?.rateBps ?? l.taxRateBps ?? 0),
-                    taxInclusive: Boolean(t?.isInclusive ?? l.taxInclusive ?? false),
-                    taxExempt: Boolean(l.taxExempt ?? false),
+                    taxId: isShipping ? null : (l.taxId ?? null),
+                    taxName: isShipping ? null : (t?.name ?? l.taxName ?? null),
+                    taxRateBps: isShipping ? 0 : Number(t?.rateBps ?? l.taxRateBps ?? 0),
+                    taxInclusive: isShipping
+                        ? false
+                        : Boolean(t?.isInclusive ?? l.taxInclusive ?? false),
+                    taxExempt: isShipping ? true : Boolean(l.taxExempt ?? false),
                 },
             });
             await tx
@@ -347,9 +350,11 @@ let InvoiceService = class InvoiceService {
                 lineNetMinor: calc.lineNetMinor,
                 taxMinor: calc.taxMinor,
                 lineTotalMinor: calc.lineTotalMinor,
-                taxName: t?.name ?? l.taxName ?? null,
-                taxRateBps: Number(t?.rateBps ?? l.taxRateBps ?? 0),
-                taxInclusive: Boolean(t?.isInclusive ?? l.taxInclusive ?? false),
+                taxName: isShipping ? null : (t?.name ?? l.taxName ?? null),
+                taxRateBps: isShipping ? 0 : Number(t?.rateBps ?? l.taxRateBps ?? 0),
+                taxInclusive: isShipping
+                    ? false
+                    : Boolean(t?.isInclusive ?? l.taxInclusive ?? false),
             })
                 .where((0, drizzle_orm_1.eq)(schema_1.invoiceLines.id, l.id))
                 .execute();
@@ -359,7 +364,9 @@ let InvoiceService = class InvoiceService {
             .from(schema_1.invoiceLines)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoiceId)))
             .execute();
-        const totals = this.totals.calcInvoice(fresh.map((l) => ({
+        const taxableLines = fresh.filter((l) => l.meta?.kind !== 'shipping');
+        const shippingLines = fresh.filter((l) => l.meta?.kind === 'shipping');
+        const taxableTotals = this.totals.calcInvoice(taxableLines.map((l) => ({
             quantity: Number(l.quantity),
             unitPriceMinor: Number(l.unitPriceMinor),
             tax: {
@@ -368,14 +375,22 @@ let InvoiceService = class InvoiceService {
                 taxExempt: Boolean(l.taxExempt),
             },
         })));
+        const shippingMinor = shippingLines.reduce((sum, l) => sum + Number(l.lineTotalMinor ?? 0), 0);
+        const taxableBase = Math.max(taxableTotals.subtotalMinor - orderDiscountMinor, 0);
+        const discountRatio = taxableTotals.subtotalMinor > 0
+            ? taxableBase / taxableTotals.subtotalMinor
+            : 1;
+        const taxAfterDiscount = Math.round(taxableTotals.taxMinor * discountRatio);
+        const subtotalMinor = taxableTotals.subtotalMinor + shippingMinor;
+        const taxMinor = taxAfterDiscount;
+        const totalAfterDiscount = Math.max(taxableBase + taxAfterDiscount + shippingMinor, 0);
         const paidMinor = Number(inv.paidMinor ?? 0);
-        const totalAfterDiscount = Math.max(totals.totalMinor - orderDiscountMinor, 0);
         const balanceMinor = totalAfterDiscount - paidMinor;
         const [updated] = await tx
             .update(schema_1.invoices)
             .set({
-            subtotalMinor: totals.subtotalMinor,
-            taxMinor: totals.taxMinor,
+            subtotalMinor,
+            taxMinor,
             discountMinor: orderDiscountMinor,
             totalMinor: totalAfterDiscount,
             paidMinor,
@@ -402,12 +417,24 @@ let InvoiceService = class InvoiceService {
             }
             return d;
         };
+        const addressSelectFields = {
+            line1: schema_1.customerAddresses.line1,
+            line2: schema_1.customerAddresses.line2,
+            city: schema_1.customerAddresses.city,
+            state: schema_1.customerAddresses.state,
+            postalCode: schema_1.customerAddresses.postalCode,
+            country: schema_1.customerAddresses.country,
+            addressee: schema_1.customerAddresses.addressee,
+            companyName: schema_1.customerAddresses.companyName,
+            firstName: schema_1.customerAddresses.firstName,
+            lastName: schema_1.customerAddresses.lastName,
+        };
         const run = async (tx) => {
             const invRes = await tx.execute((0, drizzle_orm_1.sql) `
-        SELECT * FROM invoices
-        WHERE id = ${invoiceId} AND company_id = ${companyId}
-        FOR UPDATE
-      `);
+      SELECT * FROM invoices
+      WHERE id = ${invoiceId} AND company_id = ${companyId}
+      FOR UPDATE
+    `);
             const inv = firstRow(invRes);
             if (!inv)
                 throw new common_1.NotFoundException('Invoice not found');
@@ -424,16 +451,16 @@ let InvoiceService = class InvoiceService {
             const year = new Date().getUTCFullYear();
             const requestedSeriesName = (dto.seriesName ?? 'Default').trim();
             const seriesRes = await tx.execute((0, drizzle_orm_1.sql) `
-        SELECT *
-        FROM invoice_series
-        WHERE company_id = ${companyId}
-          AND (store_id IS NULL OR store_id = ${storeId})
-          AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
-          AND (year IS NULL OR year = ${year})
-        ORDER BY store_id DESC NULLS LAST
-        LIMIT 1
-        FOR UPDATE
-      `);
+      SELECT *
+      FROM invoice_series
+      WHERE company_id = ${companyId}
+        AND (store_id IS NULL OR store_id = ${storeId})
+        AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
+        AND (year IS NULL OR year = ${year})
+      ORDER BY store_id DESC NULLS LAST
+      LIMIT 1
+      FOR UPDATE
+    `);
             const series = firstRow(seriesRes);
             if (!series) {
                 throw new common_1.BadRequestException(`Invoice series not found for company=${companyId}, store=${storeId ?? 'NULL'}, name=${requestedSeriesName}, year=${year}. Create invoice_series first.`);
@@ -441,11 +468,11 @@ let InvoiceService = class InvoiceService {
             const nextNumber = Number(series.next_number);
             const number = this.formatInvoiceNumber(series.prefix, nextNumber);
             await tx.execute((0, drizzle_orm_1.sql) `
-        UPDATE invoice_series
-        SET next_number = next_number + 1,
-            updated_at = NOW()
-        WHERE id = ${series.id}
-      `);
+      UPDATE invoice_series
+      SET next_number = next_number + 1,
+          updated_at = NOW()
+      WHERE id = ${series.id}
+    `);
             const brandingRows = await tx
                 .select()
                 .from(schema_1.invoiceBranding)
@@ -485,34 +512,34 @@ let InvoiceService = class InvoiceService {
                         .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customers.id, customerId), (0, drizzle_orm_1.eq)(schema_1.customers.companyId, companyId)))
                         .limit(1)
                         .execute();
-                    const [address] = await tx
-                        .select({
-                        line1: schema_1.customerAddresses.line1,
-                        line2: schema_1.customerAddresses.line2,
-                        city: schema_1.customerAddresses.city,
-                        state: schema_1.customerAddresses.state,
-                        postalCode: schema_1.customerAddresses.postalCode,
-                        country: schema_1.customerAddresses.country,
-                    })
+                    let [address] = await tx
+                        .select(addressSelectFields)
                         .from(schema_1.customerAddresses)
                         .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customerAddresses.customerId, customerId), (0, drizzle_orm_1.eq)(schema_1.customerAddresses.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.customerAddresses.isDefaultBilling, true)))
                         .limit(1)
                         .execute();
+                    if (!address) {
+                        [address] = await tx
+                            .select(addressSelectFields)
+                            .from(schema_1.customerAddresses)
+                            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customerAddresses.customerId, customerId), (0, drizzle_orm_1.eq)(schema_1.customerAddresses.companyId, companyId)))
+                            .orderBy((0, drizzle_orm_1.sql) `is_default_shipping DESC, created_at ASC`)
+                            .limit(1)
+                            .execute();
+                    }
                     if (customer) {
-                        const addressParts = [
-                            address?.line1,
-                            address?.line2,
-                            address?.city,
-                            address?.state,
-                            address?.postalCode,
-                            address?.country,
-                        ].filter(Boolean);
+                        const addressName = (address?.addressee ??
+                            [address?.firstName, address?.lastName]
+                                .filter(Boolean)
+                                .join(' ')
+                                .trim()) ||
+                            null;
                         customerSnapshot = {
-                            name: customer.displayName,
+                            name: addressName ?? customer.displayName,
                             email: customer.billingEmail ?? '',
                             phone: customer.phone ?? '',
                             taxId: customer.taxId ?? '',
-                            companyName: customer.companyName ?? '',
+                            companyName: address?.companyName ?? customer.companyName ?? '',
                             address: address
                                 ? [
                                     address.line1,
@@ -559,21 +586,26 @@ let InvoiceService = class InvoiceService {
                     taxMap.set(t.id, t);
             }
             for (const l of lines) {
-                const t = l.taxId ? taxMap.get(l.taxId) : null;
-                const taxRateBps = l.taxExempt
+                const isShipping = l.meta?.kind === 'shipping';
+                const t = !isShipping && l.taxId ? taxMap.get(l.taxId) : null;
+                const taxRateBps = isShipping
                     ? 0
-                    : Number(t?.rateBps ?? l.taxRateBps ?? 0);
-                const taxInclusive = Boolean(t?.isInclusive ?? l.taxInclusive ?? false);
-                const taxName = t?.name ?? l.taxName ?? null;
+                    : l.taxExempt
+                        ? 0
+                        : Number(t?.rateBps ?? l.taxRateBps ?? 0);
+                const taxInclusive = isShipping
+                    ? false
+                    : Boolean(t?.isInclusive ?? l.taxInclusive ?? false);
+                const taxName = isShipping ? null : (t?.name ?? l.taxName ?? null);
                 const calc = this.totals.calcLine({
                     quantity: Number(l.quantity),
                     unitPriceMinor: Number(l.unitPriceMinor),
                     tax: {
-                        taxId: l.taxId ?? null,
+                        taxId: isShipping ? null : (l.taxId ?? null),
                         taxName,
                         taxRateBps,
                         taxInclusive,
-                        taxExempt: Boolean(l.taxExempt),
+                        taxExempt: isShipping ? true : Boolean(l.taxExempt),
                     },
                 });
                 await tx
@@ -594,7 +626,9 @@ let InvoiceService = class InvoiceService {
                 .from(schema_1.invoiceLines)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoiceLines.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.invoiceLines.invoiceId, invoiceId)))
                 .execute();
-            const totals = this.totals.calcInvoice(frozenLines.map((l) => ({
+            const taxableLines = frozenLines.filter((l) => l.meta?.kind !== 'shipping');
+            const shippingLines = frozenLines.filter((l) => l.meta?.kind === 'shipping');
+            const taxableTotals = this.totals.calcInvoice(taxableLines.map((l) => ({
                 quantity: Number(l.quantity),
                 unitPriceMinor: Number(l.unitPriceMinor),
                 tax: {
@@ -603,15 +637,25 @@ let InvoiceService = class InvoiceService {
                     taxExempt: Boolean(l.taxExempt),
                 },
             })));
+            const shippingMinor = shippingLines.reduce((sum, l) => sum + Number(l.lineTotalMinor ?? 0), 0);
+            const orderDiscountMinor = Number(inv.discount_minor ?? inv.discountMinor ?? 0);
+            const taxableBase = Math.max(taxableTotals.subtotalMinor - orderDiscountMinor, 0);
+            const discountRatio = taxableTotals.subtotalMinor > 0
+                ? taxableBase / taxableTotals.subtotalMinor
+                : 1;
+            const taxAfterDiscount = Math.round(taxableTotals.taxMinor * discountRatio);
+            const subtotalMinor = taxableTotals.subtotalMinor + shippingMinor;
+            const taxMinor = taxAfterDiscount;
+            const totalMinor = Math.max(taxableBase + taxAfterDiscount + shippingMinor, 0);
             const issuedAt = new Date();
             const dueAt = toDateOrNull(dto.dueAt ?? inv.due_at ?? null);
             const paidMinor = Number(inv.paid_minor ?? 0);
-            const balanceMinor = totals.totalMinor - paidMinor;
+            const balanceMinor = totalMinor - paidMinor;
             const updatedRows = await tx
                 .update(schema_1.invoices)
                 .set({
                 status: paidMinor > 0
-                    ? paidMinor >= totals.totalMinor
+                    ? paidMinor >= totalMinor
                         ? 'paid'
                         : 'partially_paid'
                     : 'issued',
@@ -619,9 +663,10 @@ let InvoiceService = class InvoiceService {
                 number,
                 issuedAt,
                 dueAt,
-                subtotalMinor: totals.subtotalMinor,
-                taxMinor: totals.taxMinor,
-                totalMinor: totals.totalMinor,
+                subtotalMinor,
+                taxMinor,
+                discountMinor: orderDiscountMinor,
+                totalMinor,
                 paidMinor,
                 balanceMinor: Math.max(balanceMinor, 0),
                 supplierSnapshot,
@@ -647,7 +692,7 @@ let InvoiceService = class InvoiceService {
                         seriesId: series.id,
                         issuedAt: issuedAt.toISOString(),
                         dueAt: dueAt ? dueAt.toISOString() : null,
-                        totals,
+                        totals: { subtotalMinor, taxMinor, totalMinor },
                     },
                 });
             }

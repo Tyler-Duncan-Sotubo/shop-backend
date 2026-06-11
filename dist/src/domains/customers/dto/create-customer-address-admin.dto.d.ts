@@ -1,6 +1,8 @@
 import { NGRegionCode } from "../../../common/utils/ng-region-codes";
 export declare class CreateCustomerAddressAdminDto {
     label?: string;
+    addressee?: string;
+    companyName?: string;
     firstName?: string;
     lastName?: string;
     line1: string;

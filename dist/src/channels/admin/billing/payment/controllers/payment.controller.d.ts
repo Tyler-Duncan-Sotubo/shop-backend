@@ -85,6 +85,13 @@ export declare class PaymentController extends BaseController {
         confirmedByUserId: string | null;
         meta: unknown;
         createdAt: Date;
+        invoiceNumber: string | null;
+        invoiceStatus: "draft" | "issued" | "partially_paid" | "paid" | "void" | null;
+        invoiceMeta: unknown;
+        customerSnapshot: unknown;
+        supplierSnapshot: unknown;
+        orderNumber: any;
+        orderStatus: any;
     }[]>;
     listPendingOrderPaymentsForReview(user: User): Promise<{
         data: ({

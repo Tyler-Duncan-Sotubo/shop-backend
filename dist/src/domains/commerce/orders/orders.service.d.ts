@@ -81,7 +81,7 @@ export declare class OrdersService {
             evidenceCount: number;
             lastEvidenceUrl: string | null;
             id: string;
-            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
             status: "pending" | "succeeded" | "reversed";
             provider: string | null;
             amountMinor: number;
@@ -91,7 +91,9 @@ export declare class OrdersService {
     }>;
     listOrders(companyId: string, q: ListOrdersDto): Promise<{
         rows: {
-            [x: string]: any;
+            itemCount: number;
+            firstItemName: string | null;
+            firstItemImageUrl: string | null;
         }[];
         count: number;
         limit: number;

@@ -19,6 +19,16 @@ export class CreateCustomerAddressAdminDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(200)
+  addressee?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  companyName?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(100)
   firstName?: string;
 
@@ -29,7 +39,7 @@ export class CreateCustomerAddressAdminDto {
 
   @IsString()
   @MaxLength(255)
-  line1: string;
+  line1!: string;
 
   @IsOptional()
   @IsString()
@@ -38,7 +48,7 @@ export class CreateCustomerAddressAdminDto {
 
   @IsString()
   @MaxLength(100)
-  city: string;
+  city!: string;
 
   @IsOptional()
   @IsIn(NG_REGION_CODES)
@@ -51,7 +61,7 @@ export class CreateCustomerAddressAdminDto {
 
   @IsString()
   @MaxLength(100)
-  country: string;
+  country!: string;
 
   @IsOptional()
   @IsString()

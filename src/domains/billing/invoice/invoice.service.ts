@@ -456,18 +456,22 @@ export class InvoiceService {
     }
 
     // Update each line computed fields
+    // Shipping lines (meta.kind === 'shipping') are never taxed
     for (const l of lines as any[]) {
-      const t = l.taxId ? taxMap.get(l.taxId) : null;
+      const isShipping = l.meta?.kind === 'shipping';
+      const t = !isShipping && l.taxId ? taxMap.get(l.taxId) : null;
 
       const calc = this.totals.calcLine({
         quantity: Number(l.quantity),
         unitPriceMinor: Number(l.unitPriceMinor),
         tax: {
-          taxId: l.taxId ?? null,
-          taxName: t?.name ?? l.taxName ?? null,
-          taxRateBps: Number(t?.rateBps ?? l.taxRateBps ?? 0),
-          taxInclusive: Boolean(t?.isInclusive ?? l.taxInclusive ?? false),
-          taxExempt: Boolean(l.taxExempt ?? false),
+          taxId: isShipping ? null : (l.taxId ?? null),
+          taxName: isShipping ? null : (t?.name ?? l.taxName ?? null),
+          taxRateBps: isShipping ? 0 : Number(t?.rateBps ?? l.taxRateBps ?? 0),
+          taxInclusive: isShipping
+            ? false
+            : Boolean(t?.isInclusive ?? l.taxInclusive ?? false),
+          taxExempt: isShipping ? true : Boolean(l.taxExempt ?? false),
         },
       });
 
@@ -477,9 +481,11 @@ export class InvoiceService {
           lineNetMinor: calc.lineNetMinor,
           taxMinor: calc.taxMinor,
           lineTotalMinor: calc.lineTotalMinor,
-          taxName: t?.name ?? l.taxName ?? null,
-          taxRateBps: Number(t?.rateBps ?? l.taxRateBps ?? 0),
-          taxInclusive: Boolean(t?.isInclusive ?? l.taxInclusive ?? false),
+          taxName: isShipping ? null : (t?.name ?? l.taxName ?? null),
+          taxRateBps: isShipping ? 0 : Number(t?.rateBps ?? l.taxRateBps ?? 0),
+          taxInclusive: isShipping
+            ? false
+            : Boolean(t?.isInclusive ?? l.taxInclusive ?? false),
         })
         .where(eq(invoiceLines.id, l.id))
         .execute();
@@ -497,8 +503,17 @@ export class InvoiceService {
       )
       .execute();
 
-    const totals = this.totals.calcInvoice(
-      (fresh as any[]).map((l) => ({
+    // ✅ Separate taxable lines from shipping lines for correct totals
+    const taxableLines = (fresh as any[]).filter(
+      (l) => l.meta?.kind !== 'shipping',
+    );
+    const shippingLines = (fresh as any[]).filter(
+      (l) => l.meta?.kind === 'shipping',
+    );
+
+    // Calculate totals on taxable lines only
+    const taxableTotals = this.totals.calcInvoice(
+      taxableLines.map((l) => ({
         quantity: Number(l.quantity),
         unitPriceMinor: Number(l.unitPriceMinor),
         tax: {
@@ -509,20 +524,39 @@ export class InvoiceService {
       })),
     );
 
-    const paidMinor = Number(inv.paidMinor ?? 0);
-
-    // ✅ apply discount
-    const totalAfterDiscount = Math.max(
-      totals.totalMinor - orderDiscountMinor,
+    // Shipping total — no tax
+    const shippingMinor = shippingLines.reduce(
+      (sum, l) => sum + Number(l.lineTotalMinor ?? 0),
       0,
     );
+
+    // ✅ Apply discount only to taxable subtotal, not shipping
+    const taxableBase = Math.max(
+      taxableTotals.subtotalMinor - orderDiscountMinor,
+      0,
+    );
+    const discountRatio =
+      taxableTotals.subtotalMinor > 0
+        ? taxableBase / taxableTotals.subtotalMinor
+        : 1;
+    const taxAfterDiscount = Math.round(taxableTotals.taxMinor * discountRatio);
+
+    // Final totals
+    const subtotalMinor = taxableTotals.subtotalMinor + shippingMinor;
+    const taxMinor = taxAfterDiscount;
+    const totalAfterDiscount = Math.max(
+      taxableBase + taxAfterDiscount + shippingMinor,
+      0,
+    );
+
+    const paidMinor = Number(inv.paidMinor ?? 0);
     const balanceMinor = totalAfterDiscount - paidMinor;
 
     const [updated] = await tx
       .update(invoices)
       .set({
-        subtotalMinor: totals.subtotalMinor,
-        taxMinor: totals.taxMinor,
+        subtotalMinor,
+        taxMinor,
         discountMinor: orderDiscountMinor,
         totalMinor: totalAfterDiscount,
         paidMinor,
@@ -575,13 +609,27 @@ export class InvoiceService {
       return d;
     };
 
+    // ✅ Reusable address select fields
+    const addressSelectFields = {
+      line1: customerAddresses.line1,
+      line2: customerAddresses.line2,
+      city: customerAddresses.city,
+      state: customerAddresses.state,
+      postalCode: customerAddresses.postalCode,
+      country: customerAddresses.country,
+      addressee: customerAddresses.addressee,
+      companyName: customerAddresses.companyName,
+      firstName: customerAddresses.firstName,
+      lastName: customerAddresses.lastName,
+    };
+
     const run = async (tx: TxOrDb) => {
       const invRes = await tx.execute(
         sql`
-        SELECT * FROM invoices
-        WHERE id = ${invoiceId} AND company_id = ${companyId}
-        FOR UPDATE
-      ` as any,
+      SELECT * FROM invoices
+      WHERE id = ${invoiceId} AND company_id = ${companyId}
+      FOR UPDATE
+    ` as any,
       );
       const inv = firstRow<any>(invRes);
 
@@ -607,16 +655,16 @@ export class InvoiceService {
 
       const seriesRes = await tx.execute(
         sql`
-        SELECT *
-        FROM invoice_series
-        WHERE company_id = ${companyId}
-          AND (store_id IS NULL OR store_id = ${storeId})
-          AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
-          AND (year IS NULL OR year = ${year})
-        ORDER BY store_id DESC NULLS LAST
-        LIMIT 1
-        FOR UPDATE
-      ` as any,
+      SELECT *
+      FROM invoice_series
+      WHERE company_id = ${companyId}
+        AND (store_id IS NULL OR store_id = ${storeId})
+        AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
+        AND (year IS NULL OR year = ${year})
+      ORDER BY store_id DESC NULLS LAST
+      LIMIT 1
+      FOR UPDATE
+    ` as any,
       );
 
       const series = firstRow<any>(seriesRes);
@@ -632,11 +680,11 @@ export class InvoiceService {
 
       await tx.execute(
         sql`
-        UPDATE invoice_series
-        SET next_number = next_number + 1,
-            updated_at = NOW()
-        WHERE id = ${series.id}
-      ` as any,
+      UPDATE invoice_series
+      SET next_number = next_number + 1,
+          updated_at = NOW()
+      WHERE id = ${series.id}
+    ` as any,
       );
 
       // Supplier snapshot — prefer store-level branding, fall back to company default
@@ -699,16 +747,9 @@ export class InvoiceService {
             .limit(1)
             .execute();
 
-          // ✅ fetch default billing address
-          const [address] = await tx
-            .select({
-              line1: customerAddresses.line1,
-              line2: customerAddresses.line2,
-              city: customerAddresses.city,
-              state: customerAddresses.state,
-              postalCode: customerAddresses.postalCode,
-              country: customerAddresses.country,
-            })
+          // ✅ Step 1 — try default billing address
+          let [address] = await tx
+            .select(addressSelectFields)
             .from(customerAddresses)
             .where(
               and(
@@ -720,22 +761,42 @@ export class InvoiceService {
             .limit(1)
             .execute();
 
+          // ✅ Step 2 — fallback: try default shipping, then any address
+          if (!address) {
+            [address] = await tx
+              .select(addressSelectFields)
+              .from(customerAddresses)
+              .where(
+                and(
+                  eq(customerAddresses.customerId, customerId),
+                  eq(customerAddresses.companyId, companyId),
+                ),
+              )
+              .orderBy(sql`is_default_shipping DESC, created_at ASC`)
+              .limit(1)
+              .execute();
+          }
+
           if (customer) {
-            const addressParts = [
-              address?.line1,
-              address?.line2,
-              address?.city,
-              address?.state,
-              address?.postalCode,
-              address?.country,
-            ].filter(Boolean);
+            // ✅ Resolve display name:
+            // 1. addressee on billing address (e.g. "Procurement Manager")
+            // 2. firstName + lastName on address
+            // 3. customer displayName
+            const addressName =
+              (address?.addressee ??
+                [address?.firstName, address?.lastName]
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim()) ||
+              null;
 
             customerSnapshot = {
-              name: customer.displayName,
+              name: addressName ?? customer.displayName,
               email: customer.billingEmail ?? '',
               phone: customer.phone ?? '',
               taxId: customer.taxId ?? '',
-              companyName: customer.companyName ?? '',
+              // ✅ address-level companyName overrides customer-level
+              companyName: address?.companyName ?? customer.companyName ?? '',
               address: address
                 ? [
                     address.line1,
@@ -752,7 +813,8 @@ export class InvoiceService {
           }
         }
       }
-      // ✅ normalise existing snapshot to always have address
+
+      // ✅ normalise existing snapshot to always have all fields
       if (customerSnapshot) {
         customerSnapshot = {
           name: customerSnapshot.name ?? 'Customer',
@@ -760,7 +822,7 @@ export class InvoiceService {
           phone: customerSnapshot.phone ?? '',
           taxId: customerSnapshot.taxId ?? '',
           companyName: customerSnapshot.companyName ?? '',
-          address: customerSnapshot.address ?? '', // ✅ ensure always present
+          address: customerSnapshot.address ?? '',
         };
       }
 
@@ -773,6 +835,7 @@ export class InvoiceService {
         companyName: '',
         address: '',
       };
+
       // Freeze tax snapshots
       const taxIds = Array.from(
         new Set((lines as any[]).map((l) => l.taxId).filter(Boolean)),
@@ -789,23 +852,28 @@ export class InvoiceService {
       }
 
       for (const l of lines as any[]) {
-        const t = l.taxId ? taxMap.get(l.taxId) : null;
+        const isShipping = l.meta?.kind === 'shipping';
+        const t = !isShipping && l.taxId ? taxMap.get(l.taxId) : null;
 
-        const taxRateBps = l.taxExempt
+        const taxRateBps = isShipping
           ? 0
-          : Number(t?.rateBps ?? l.taxRateBps ?? 0);
-        const taxInclusive = Boolean(t?.isInclusive ?? l.taxInclusive ?? false);
-        const taxName = t?.name ?? l.taxName ?? null;
+          : l.taxExempt
+            ? 0
+            : Number(t?.rateBps ?? l.taxRateBps ?? 0);
+        const taxInclusive = isShipping
+          ? false
+          : Boolean(t?.isInclusive ?? l.taxInclusive ?? false);
+        const taxName = isShipping ? null : (t?.name ?? l.taxName ?? null);
 
         const calc = this.totals.calcLine({
           quantity: Number(l.quantity),
           unitPriceMinor: Number(l.unitPriceMinor),
           tax: {
-            taxId: l.taxId ?? null,
+            taxId: isShipping ? null : (l.taxId ?? null),
             taxName,
             taxRateBps,
             taxInclusive,
-            taxExempt: Boolean(l.taxExempt),
+            taxExempt: isShipping ? true : Boolean(l.taxExempt),
           },
         });
 
@@ -834,8 +902,17 @@ export class InvoiceService {
         )
         .execute();
 
-      const totals = this.totals.calcInvoice(
-        (frozenLines as any[]).map((l) => ({
+      // ✅ Separate taxable lines from shipping lines
+      const taxableLines = (frozenLines as any[]).filter(
+        (l) => l.meta?.kind !== 'shipping',
+      );
+      const shippingLines = (frozenLines as any[]).filter(
+        (l) => l.meta?.kind === 'shipping',
+      );
+
+      // Calculate totals on taxable lines only
+      const taxableTotals = this.totals.calcInvoice(
+        taxableLines.map((l) => ({
           quantity: Number(l.quantity),
           unitPriceMinor: Number(l.unitPriceMinor),
           tax: {
@@ -846,18 +923,47 @@ export class InvoiceService {
         })),
       );
 
+      // Shipping total — no tax, no discount
+      const shippingMinor = shippingLines.reduce(
+        (sum, l) => sum + Number(l.lineTotalMinor ?? 0),
+        0,
+      );
+
+      // ✅ Apply discount only to taxable subtotal, not shipping
+      const orderDiscountMinor = Number(
+        inv.discount_minor ?? inv.discountMinor ?? 0,
+      );
+      const taxableBase = Math.max(
+        taxableTotals.subtotalMinor - orderDiscountMinor,
+        0,
+      );
+      const discountRatio =
+        taxableTotals.subtotalMinor > 0
+          ? taxableBase / taxableTotals.subtotalMinor
+          : 1;
+      const taxAfterDiscount = Math.round(
+        taxableTotals.taxMinor * discountRatio,
+      );
+
+      const subtotalMinor = taxableTotals.subtotalMinor + shippingMinor;
+      const taxMinor = taxAfterDiscount;
+      const totalMinor = Math.max(
+        taxableBase + taxAfterDiscount + shippingMinor,
+        0,
+      );
+
       const issuedAt = new Date();
       const dueAt = toDateOrNull(dto.dueAt ?? inv.due_at ?? null);
 
       const paidMinor = Number(inv.paid_minor ?? 0);
-      const balanceMinor = totals.totalMinor - paidMinor;
+      const balanceMinor = totalMinor - paidMinor;
 
       const updatedRows = await tx
         .update(invoices)
         .set({
           status:
             paidMinor > 0
-              ? paidMinor >= totals.totalMinor
+              ? paidMinor >= totalMinor
                 ? 'paid'
                 : 'partially_paid'
               : 'issued',
@@ -866,9 +972,10 @@ export class InvoiceService {
           issuedAt,
           dueAt,
 
-          subtotalMinor: totals.subtotalMinor,
-          taxMinor: totals.taxMinor,
-          totalMinor: totals.totalMinor,
+          subtotalMinor,
+          taxMinor,
+          discountMinor: orderDiscountMinor,
+          totalMinor,
           paidMinor,
           balanceMinor: Math.max(balanceMinor, 0),
 
@@ -898,7 +1005,7 @@ export class InvoiceService {
             seriesId: series.id,
             issuedAt: issuedAt.toISOString(),
             dueAt: dueAt ? dueAt.toISOString() : null,
-            totals,
+            totals: { subtotalMinor, taxMinor, totalMinor },
           },
         });
       }

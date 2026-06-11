@@ -46,13 +46,13 @@ export declare class PaymentMethodsService {
     }>;
     private pickPublicGatewayConfig;
     toggle(companyId: string, dto: ToggleStorePaymentMethodInput): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
+        status: string;
         method: string;
         provider: string | null;
         isEnabled: boolean;
@@ -60,13 +60,13 @@ export declare class PaymentMethodsService {
         lastError: string | null;
     }>;
     upsertGateway(companyId: string, dto: UpsertGatewayConfigInput): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
+        status: string;
         method: string;
         provider: string | null;
         isEnabled: boolean;
@@ -74,13 +74,13 @@ export declare class PaymentMethodsService {
         lastError: string | null;
     }>;
     upsertBankTransfer(companyId: string, dto: UpsertBankTransferConfigInput): Promise<{
-        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
+        status: string;
         method: string;
         provider: string | null;
         isEnabled: boolean;

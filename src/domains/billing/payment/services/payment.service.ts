@@ -5,7 +5,7 @@ import {
   Inject,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, sql, desc } from 'drizzle-orm';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
 import {
@@ -61,9 +61,9 @@ export class PaymentService {
       conditions.push(eq(payments.invoiceId, filter.invoiceId));
     if (filter.orderId) conditions.push(eq(payments.orderId, filter.orderId));
 
-    // ✅ select ONLY payment fields so result is Payment[]
     let query = this.db
       .select({
+        // ── existing payment fields ──
         id: payments.id,
         companyId: payments.companyId,
         orderId: payments.orderId,
@@ -82,8 +82,26 @@ export class PaymentService {
         confirmedByUserId: payments.confirmedByUserId,
         meta: payments.meta,
         createdAt: payments.createdAt,
+
+        // ── enriched from invoice ──
+        invoiceNumber: invoices.number,
+        invoiceStatus: invoices.status,
+        invoiceMeta: invoices.meta,
+        customerSnapshot: invoices.customerSnapshot,
+        supplierSnapshot: invoices.supplierSnapshot,
+
+        // ── enriched from order ──
+        orderNumber: orders.orderNumber,
+        orderStatus: orders.status,
       })
-      .from(payments);
+      .from(payments)
+      .leftJoin(
+        invoices,
+        and(
+          eq(invoices.id, payments.invoiceId),
+          eq(invoices.companyId, payments.companyId),
+        ),
+      );
 
     if (filter.storeId) {
       query = query
@@ -94,16 +112,26 @@ export class PaymentService {
             eq(orders.companyId, payments.companyId),
           ),
         )
-        // ✅ store filter MUST be in WHERE
         .where(and(...conditions, eq(orders.storeId, filter.storeId))) as any;
     } else {
-      query = query.where(and(...conditions)) as any;
+      query = query
+        .leftJoin(
+          orders,
+          and(
+            eq(orders.id, payments.orderId),
+            eq(orders.companyId, payments.companyId),
+          ),
+        )
+        .where(and(...conditions)) as any;
     }
+
+    // ── ordering + pagination ──
+    query = query.orderBy(desc(payments.createdAt)) as any;
 
     if (filter.limit) query = query.limit(filter.limit) as any;
     if (filter.offset) query = query.offset(filter.offset) as any;
 
-    return query.execute(); // ✅ Payment[]
+    return query.execute();
   }
 
   /**

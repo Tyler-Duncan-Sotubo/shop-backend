@@ -133,7 +133,7 @@ let OrdersService = class OrdersService {
         const limit = Math.min(Number(q.limit ?? 50), 200);
         const offset = Number(q.offset ?? 0);
         const where = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.storeId, q.storeId), q.status ? (0, drizzle_orm_1.eq)(schema_1.orders.status, q.status) : undefined, q.channel ? (0, drizzle_orm_1.eq)(schema_1.orders.channel, q.channel) : undefined, q.search
-            ? (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.orders.id, `%${q.search}%`), (0, drizzle_orm_1.ilike)(schema_1.orders.orderNumber, `%${q.search}%`), (0, drizzle_orm_1.ilike)((0, drizzle_orm_1.sql) `${schema_1.orders.shippingAddress}::text`, `%${q.search}%`))
+            ? (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.orders.orderNumber, `%${q.search}%`), (0, drizzle_orm_1.ilike)((0, drizzle_orm_1.sql) `${schema_1.orders.id}::text`, `%${q.search}%`), (0, drizzle_orm_1.ilike)((0, drizzle_orm_1.sql) `${schema_1.orders.shippingAddress}::text`, `%${q.search}%`))
             : undefined);
         const rows = await this.db
             .select()
@@ -148,7 +148,46 @@ let OrdersService = class OrdersService {
             .from(schema_1.orders)
             .where(where)
             .execute();
-        return { rows, count: Number(count ?? 0), limit, offset };
+        const orderIds = rows.map((o) => o.id);
+        let itemSummaryMap = new Map();
+        if (orderIds.length > 0) {
+            const itemRows = await this.db
+                .select({
+                orderId: schema_1.orderItems.orderId,
+                name: schema_1.orderItems.name,
+                variantId: schema_1.orderItems.variantId,
+                imageUrl: schema_1.productImages.url,
+            })
+                .from(schema_1.orderItems)
+                .leftJoin(schema_1.productVariants, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.id, schema_1.orderItems.variantId)))
+                .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.id, schema_1.productVariants.imageId)))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.sql) `${schema_1.orderItems.orderId} = ANY(${drizzle_orm_1.sql.raw(`ARRAY[${orderIds.map((id) => `'${id}'`).join(',')}]::uuid[]`)})`))
+                .orderBy(schema_1.orderItems.orderId, schema_1.orderItems.createdAt)
+                .execute();
+            for (const row of itemRows) {
+                const existing = itemSummaryMap.get(row.orderId);
+                if (!existing) {
+                    itemSummaryMap.set(row.orderId, {
+                        itemCount: 1,
+                        firstItemName: row.name ?? null,
+                        firstItemImageUrl: row.imageUrl ?? null,
+                    });
+                }
+                else {
+                    existing.itemCount += 1;
+                }
+            }
+        }
+        const enrichedRows = rows.map((order) => {
+            const summary = itemSummaryMap.get(order.id);
+            return {
+                ...order,
+                itemCount: summary?.itemCount ?? 0,
+                firstItemName: summary?.firstItemName ?? null,
+                firstItemImageUrl: summary?.firstItemImageUrl ?? null,
+            };
+        });
+        return { rows: enrichedRows, count: Number(count ?? 0), limit, offset };
     }
     async markPaid(companyId, orderId, user, ip) {
         const result = await this.db.transaction(async (tx) => {

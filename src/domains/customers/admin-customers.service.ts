@@ -521,6 +521,8 @@ export class AdminCustomersService {
       .values({
         companyId,
         customerId,
+        addressee: dto.addressee,
+        companyName: dto.companyName,
         label: dto.label,
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -544,6 +546,8 @@ export class AdminCustomersService {
       changes: {
         customerId,
         label: created.label ?? null,
+        addressee: created.addressee ?? null,
+        companyName: created.companyName ?? null,
         isDefaultBilling: created.isDefaultBilling ?? false,
         isDefaultShipping: created.isDefaultShipping ?? false,
         city: created.city ?? null,
@@ -570,8 +574,6 @@ export class AdminCustomersService {
         marketingOptIn: customers.marketingOptIn,
         createdAt: customers.createdAt,
         isActive: customers.isActive,
-
-        // auth info (nullable)
         loginEmail: customerCredentials.email,
         isVerified: customerCredentials.isVerified,
         lastLoginAt: customerCredentials.lastLoginAt,
@@ -596,6 +598,16 @@ export class AdminCustomersService {
                   ilike(customers.billingEmail, `%${s}%`),
                   ilike(customerCredentials.email, `%${s}%`),
                   ilike(customers.phone, `%${s}%`),
+                  // ✅ match addressee or companyName on any of their addresses
+                  sql`EXISTS (
+                  SELECT 1 FROM customer_addresses ca
+                  WHERE ca.customer_id = ${customers.id}
+                    AND ca.company_id = ${companyId}
+                    AND (
+                      ca.addressee ILIKE ${`%${s}%`}
+                      OR ca.company_name ILIKE ${`%${s}%`}
+                    )
+                )`,
                 ),
               ]
             : []),
@@ -779,6 +791,8 @@ export class AdminCustomersService {
             id: customerAddresses.id,
             customerId: customerAddresses.customerId,
             label: customerAddresses.label,
+            addressee: customerAddresses.addressee,
+            companyName: customerAddresses.companyName,
             firstName: customerAddresses.firstName,
             lastName: customerAddresses.lastName,
             line1: customerAddresses.line1,
@@ -935,6 +949,8 @@ export class AdminCustomersService {
       .update(customerAddresses)
       .set({
         label: dto.label ?? undefined,
+        addressee: dto.addressee ?? undefined,
+        companyName: dto.companyName ?? undefined,
         firstName: dto.firstName ?? undefined,
         lastName: dto.lastName ?? undefined,
         line1: dto.line1 ?? undefined,

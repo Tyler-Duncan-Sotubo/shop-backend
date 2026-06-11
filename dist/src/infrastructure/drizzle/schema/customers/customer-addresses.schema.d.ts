@@ -72,6 +72,44 @@ export declare const customerAddresses: import("drizzle-orm/pg-core").PgTableWit
         }, {}, {
             length: 100;
         }>;
+        addressee: import("drizzle-orm/pg-core").PgColumn<{
+            name: "addressee";
+            tableName: "customer_addresses";
+            dataType: "string";
+            columnType: "PgVarchar";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            length: 200;
+        }>;
+        companyName: import("drizzle-orm/pg-core").PgColumn<{
+            name: "company_name";
+            tableName: "customer_addresses";
+            dataType: "string";
+            columnType: "PgVarchar";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            length: 200;
+        }>;
         firstName: import("drizzle-orm/pg-core").PgColumn<{
             name: "first_name";
             tableName: "customer_addresses";

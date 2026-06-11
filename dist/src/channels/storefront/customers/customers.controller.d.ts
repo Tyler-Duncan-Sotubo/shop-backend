@@ -78,6 +78,8 @@ export declare class CustomersController {
         companyId: string;
         customerId: string;
         label: string | null;
+        addressee: string | null;
+        companyName: string | null;
         firstName: string | null;
         lastName: string | null;
         line1: string;
@@ -100,9 +102,11 @@ export declare class CustomersController {
         companyId: string;
         firstName: string | null;
         lastName: string | null;
+        companyName: string | null;
         phone: string | null;
         customerId: string;
         label: string | null;
+        addressee: string | null;
         line1: string;
         line2: string | null;
         city: string;
@@ -116,6 +120,8 @@ export declare class CustomersController {
         companyId: string;
         customerId: string;
         label: string | null;
+        addressee: string | null;
+        companyName: string | null;
         firstName: string | null;
         lastName: string | null;
         line1: string;
@@ -134,21 +140,14 @@ export declare class CustomersController {
         success: boolean;
     }>;
     getCustomerActivity(customer: AuthCustomer, storeId: string): Promise<{
-        orders: ({
-            id: any;
-            orderNumber: any;
-            status: any;
-            createdAt: any;
+        orders: {
+            id: string;
+            orderNumber: string;
+            status: string;
+            createdAt: Date | null;
             currency: any;
             totalMinor: any;
-        } | {
-            id: any;
-            orderNumber: any;
-            status: any;
-            createdAt: any;
-            currency: any;
-            totalMinor: any;
-        })[];
+        }[];
         products: {
             id: string;
             name: string;
@@ -212,18 +211,6 @@ export declare class CustomersController {
         offset?: string;
     }): Promise<{
         items: ({
-            id: any;
-            name: any;
-            slug: any;
-            imageUrl: any;
-            lastOrderedAt: any;
-        } | {
-            id: any;
-            name: any;
-            slug: any;
-            imageUrl: any;
-            lastOrderedAt: any;
-        } | {
             id: any;
             name: any;
             slug: any;

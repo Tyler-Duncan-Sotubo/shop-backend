@@ -744,7 +744,7 @@ export class QuoteService {
         : ne(quoteRequests.status, 'archived' as any),
       query.search
         ? or(
-            ilike(quoteRequests.id, `%${query.search}%`),
+            ilike(sql`${quoteRequests.id}::text`, `%${query.search}%`),
             ilike(quoteRequests.customerEmail, `%${query.search}%`),
             ilike(quoteRequests.customerNote, `%${query.search}%`),
           )

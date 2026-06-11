@@ -67,16 +67,27 @@ let PaymentService = class PaymentService {
             confirmedByUserId: schema_1.payments.confirmedByUserId,
             meta: schema_1.payments.meta,
             createdAt: schema_1.payments.createdAt,
+            invoiceNumber: schema_1.invoices.number,
+            invoiceStatus: schema_1.invoices.status,
+            invoiceMeta: schema_1.invoices.meta,
+            customerSnapshot: schema_1.invoices.customerSnapshot,
+            supplierSnapshot: schema_1.invoices.supplierSnapshot,
+            orderNumber: schema_1.orders.orderNumber,
+            orderStatus: schema_1.orders.status,
         })
-            .from(schema_1.payments);
+            .from(schema_1.payments)
+            .leftJoin(schema_1.invoices, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.invoices.id, schema_1.payments.invoiceId), (0, drizzle_orm_1.eq)(schema_1.invoices.companyId, schema_1.payments.companyId)));
         if (filter.storeId) {
             query = query
                 .innerJoin(schema_1.orders, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.id, schema_1.payments.orderId), (0, drizzle_orm_1.eq)(schema_1.orders.companyId, schema_1.payments.companyId)))
                 .where((0, drizzle_orm_1.and)(...conditions, (0, drizzle_orm_1.eq)(schema_1.orders.storeId, filter.storeId)));
         }
         else {
-            query = query.where((0, drizzle_orm_1.and)(...conditions));
+            query = query
+                .leftJoin(schema_1.orders, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.id, schema_1.payments.orderId), (0, drizzle_orm_1.eq)(schema_1.orders.companyId, schema_1.payments.companyId)))
+                .where((0, drizzle_orm_1.and)(...conditions));
         }
+        query = query.orderBy((0, drizzle_orm_1.desc)(schema_1.payments.createdAt));
         if (filter.limit)
             query = query.limit(filter.limit);
         if (filter.offset)

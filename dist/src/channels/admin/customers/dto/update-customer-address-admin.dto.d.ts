@@ -12,4 +12,6 @@ export declare class UpdateCustomerAddressAdminDto {
     phone?: string;
     isDefaultBilling?: boolean;
     isDefaultShipping?: boolean;
+    addressee?: string;
+    companyName?: string;
 }

@@ -39,13 +39,13 @@ export declare class InventoryController extends BaseController {
         companyId: string;
         storeId: string;
         type: string;
+        city: string | null;
+        postalCode: string | null;
         isDefault: boolean;
         code: string | null;
         addressLine1: string | null;
         addressLine2: string | null;
-        city: string | null;
         region: string | null;
-        postalCode: string | null;
     }>;
     updateLocation(user: User, locationId: string, dto: UpdateLocationDto, ip: string): Promise<{
         id: string;
@@ -96,8 +96,8 @@ export declare class InventoryController extends BaseController {
         isActive: boolean;
         createdAt: Date;
         storeId: string;
-        locationId: string;
         isPrimary: boolean;
+        locationId: string;
     }[]>;
     setInventoryLevel(user: User, dto: SetInventoryLevelDto, ip: string): Promise<any>;
     adjustInventoryLevel(user: User, dto: AdjustInventoryLevelDto, ip: string): Promise<{

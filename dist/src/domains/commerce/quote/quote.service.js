@@ -474,7 +474,7 @@ let QuoteService = class QuoteService {
         const where = (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.companyId, companyId), (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.storeId, query.storeId), (0, drizzle_orm_1.isNull)(quote_requests_schema_1.quoteRequests.deletedAt), query.status ? (0, drizzle_orm_1.eq)(quote_requests_schema_1.quoteRequests.status, query.status) : undefined, query.includeArchived
             ? undefined
             : (0, drizzle_orm_1.ne)(quote_requests_schema_1.quoteRequests.status, 'archived'), query.search
-            ? (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(quote_requests_schema_1.quoteRequests.id, `%${query.search}%`), (0, drizzle_orm_1.ilike)(quote_requests_schema_1.quoteRequests.customerEmail, `%${query.search}%`), (0, drizzle_orm_1.ilike)(quote_requests_schema_1.quoteRequests.customerNote, `%${query.search}%`))
+            ? (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)((0, drizzle_orm_1.sql) `${quote_requests_schema_1.quoteRequests.id}::text`, `%${query.search}%`), (0, drizzle_orm_1.ilike)(quote_requests_schema_1.quoteRequests.customerEmail, `%${query.search}%`), (0, drizzle_orm_1.ilike)(quote_requests_schema_1.quoteRequests.customerNote, `%${query.search}%`))
             : undefined);
         const rows = await this.db
             .select()

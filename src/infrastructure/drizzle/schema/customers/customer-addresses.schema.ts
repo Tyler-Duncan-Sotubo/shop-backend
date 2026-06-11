@@ -25,6 +25,8 @@ export const customerAddresses = pgTable(
       .references(() => customers.id, { onDelete: 'cascade' }),
 
     label: varchar('label', { length: 100 }), // "Home", "Office", etc.
+    addressee: varchar('addressee', { length: 200 }),
+    companyName: varchar('company_name', { length: 200 }),
 
     firstName: varchar('first_name', { length: 100 }),
     lastName: varchar('last_name', { length: 100 }),

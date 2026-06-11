@@ -84,4 +84,16 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], UpdateCustomerAddressAdminDto.prototype, "isDefaultShipping", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(200),
+    __metadata("design:type", String)
+], UpdateCustomerAddressAdminDto.prototype, "addressee", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(200),
+    __metadata("design:type", String)
+], UpdateCustomerAddressAdminDto.prototype, "companyName", void 0);
 //# sourceMappingURL=update-customer-address-admin.dto.js.map

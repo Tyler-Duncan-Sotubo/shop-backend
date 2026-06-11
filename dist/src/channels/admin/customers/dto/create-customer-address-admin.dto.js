@@ -81,4 +81,16 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], CreateCustomerAddressAdminDto.prototype, "isDefaultShipping", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(200),
+    __metadata("design:type", String)
+], CreateCustomerAddressAdminDto.prototype, "addressee", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(200),
+    __metadata("design:type", String)
+], CreateCustomerAddressAdminDto.prototype, "companyName", void 0);
 //# sourceMappingURL=create-customer-address-admin.dto.js.map

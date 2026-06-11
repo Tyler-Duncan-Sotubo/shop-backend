@@ -226,16 +226,13 @@ export class OrdersService {
 
     const where = and(
       eq(orders.companyId, companyId),
-
-      // ✅ store scoped (not from query)
       eq(orders.storeId, q.storeId),
-
       q.status ? eq(orders.status, q.status as any) : undefined,
       q.channel ? eq(orders.channel, q.channel as any) : undefined,
       q.search
         ? or(
-            ilike(orders.id, `%${q.search}%`),
             ilike(orders.orderNumber, `%${q.search}%`),
+            ilike(sql`${orders.id}::text`, `%${q.search}%`),
             ilike(sql`${orders.shippingAddress}::text`, `%${q.search}%`),
           )
         : undefined,
@@ -256,7 +253,76 @@ export class OrdersService {
       .where(where)
       .execute();
 
-    return { rows, count: Number(count ?? 0), limit, offset };
+    // ── Enrich with item count + first item name ──
+    const orderIds = rows.map((o) => o.id);
+
+    let itemSummaryMap = new Map<
+      string,
+      {
+        itemCount: number;
+        firstItemName: string | null;
+        firstItemImageUrl: string | null;
+      }
+    >();
+
+    if (orderIds.length > 0) {
+      const itemRows = await this.db
+        .select({
+          orderId: orderItems.orderId,
+          name: orderItems.name,
+          variantId: orderItems.variantId,
+          imageUrl: productImages.url,
+        })
+        .from(orderItems)
+        .leftJoin(
+          productVariants,
+          and(
+            eq(productVariants.companyId, companyId),
+            eq(productVariants.id, orderItems.variantId),
+          ),
+        )
+        .leftJoin(
+          productImages,
+          and(
+            eq(productImages.companyId, companyId),
+            eq(productImages.id, productVariants.imageId),
+          ),
+        )
+        .where(
+          and(
+            eq(orderItems.companyId, companyId),
+            sql`${orderItems.orderId} = ANY(${sql.raw(
+              `ARRAY[${orderIds.map((id) => `'${id}'`).join(',')}]::uuid[]`,
+            )})`,
+          ),
+        )
+        .orderBy(orderItems.orderId, orderItems.createdAt)
+        .execute();
+
+      for (const row of itemRows) {
+        const existing = itemSummaryMap.get(row.orderId);
+        if (!existing) {
+          itemSummaryMap.set(row.orderId, {
+            itemCount: 1,
+            firstItemName: row.name ?? null,
+            firstItemImageUrl: row.imageUrl ?? null, // ← add
+          });
+        } else {
+          existing.itemCount += 1;
+        }
+      }
+    }
+    const enrichedRows = rows.map((order) => {
+      const summary = itemSummaryMap.get(order.id);
+      return {
+        ...order,
+        itemCount: summary?.itemCount ?? 0,
+        firstItemName: summary?.firstItemName ?? null,
+        firstItemImageUrl: summary?.firstItemImageUrl ?? null, // ← add
+      };
+    });
+
+    return { rows: enrichedRows, count: Number(count ?? 0), limit, offset };
   }
 
   // -----------------------

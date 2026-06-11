@@ -14,6 +14,8 @@ exports.customerAddresses = (0, pg_core_1.pgTable)('customer_addresses', {
         .notNull()
         .references(() => customers_schema_1.customers.id, { onDelete: 'cascade' }),
     label: (0, pg_core_1.varchar)('label', { length: 100 }),
+    addressee: (0, pg_core_1.varchar)('addressee', { length: 200 }),
+    companyName: (0, pg_core_1.varchar)('company_name', { length: 200 }),
     firstName: (0, pg_core_1.varchar)('first_name', { length: 100 }),
     lastName: (0, pg_core_1.varchar)('last_name', { length: 100 }),
     line1: (0, pg_core_1.varchar)('line1', { length: 255 }).notNull(),

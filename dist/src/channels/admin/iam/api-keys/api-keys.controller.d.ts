@@ -13,9 +13,9 @@ export declare class ApiKeysController extends BaseController {
         companyId: string;
         storeId: string | null;
         expiresAt: Date | null;
-        prefix: string;
         lastUsedAt: Date | null;
         keyHash: string;
+        prefix: string;
         scopes: string[] | null;
         allowedOrigins: string[] | null;
     }[]>;

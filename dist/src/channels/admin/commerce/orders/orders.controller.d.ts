@@ -15,7 +15,9 @@ export declare class OrdersController extends BaseController {
     constructor(orders: OrdersService, manualOrdersService: ManualOrdersService, dispatch: OrderDispatchService);
     list(user: User, q: ListOrdersDto): Promise<{
         rows: {
-            [x: string]: any;
+            itemCount: number;
+            firstItemName: string | null;
+            firstItemImageUrl: string | null;
         }[];
         count: number;
         limit: number;

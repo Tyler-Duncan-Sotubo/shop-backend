@@ -352,6 +352,8 @@ let AdminCustomersService = class AdminCustomersService {
             .values({
             companyId,
             customerId,
+            addressee: dto.addressee,
+            companyName: dto.companyName,
             label: dto.label,
             firstName: dto.firstName,
             lastName: dto.lastName,
@@ -374,6 +376,8 @@ let AdminCustomersService = class AdminCustomersService {
             changes: {
                 customerId,
                 label: created.label ?? null,
+                addressee: created.addressee ?? null,
+                companyName: created.companyName ?? null,
                 isDefaultBilling: created.isDefaultBilling ?? false,
                 isDefaultShipping: created.isDefaultShipping ?? false,
                 city: created.city ?? null,
@@ -404,7 +408,15 @@ let AdminCustomersService = class AdminCustomersService {
             .leftJoin(schema_1.customerCredentials, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customerCredentials.companyId, schema_1.customers.companyId), (0, drizzle_orm_1.eq)(schema_1.customerCredentials.customerId, schema_1.customers.id)))
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.customers.companyId, companyId), opts.storeId ? (0, drizzle_orm_1.eq)(schema_1.customers.storeId, opts.storeId) : undefined, ...(opts.includeInactive ? [] : [(0, drizzle_orm_1.eq)(schema_1.customers.isActive, true)]), ...(s
             ? [
-                (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.customers.displayName, `%${s}%`), (0, drizzle_orm_1.ilike)(schema_1.customers.billingEmail, `%${s}%`), (0, drizzle_orm_1.ilike)(schema_1.customerCredentials.email, `%${s}%`), (0, drizzle_orm_1.ilike)(schema_1.customers.phone, `%${s}%`)),
+                (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.customers.displayName, `%${s}%`), (0, drizzle_orm_1.ilike)(schema_1.customers.billingEmail, `%${s}%`), (0, drizzle_orm_1.ilike)(schema_1.customerCredentials.email, `%${s}%`), (0, drizzle_orm_1.ilike)(schema_1.customers.phone, `%${s}%`), (0, drizzle_orm_1.sql) `EXISTS (
+                  SELECT 1 FROM customer_addresses ca
+                  WHERE ca.customer_id = ${schema_1.customers.id}
+                    AND ca.company_id = ${companyId}
+                    AND (
+                      ca.addressee ILIKE ${`%${s}%`}
+                      OR ca.company_name ILIKE ${`%${s}%`}
+                    )
+                )`),
             ]
             : [])))
             .limit(opts.limit)
@@ -551,6 +563,8 @@ let AdminCustomersService = class AdminCustomersService {
                 id: schema_1.customerAddresses.id,
                 customerId: schema_1.customerAddresses.customerId,
                 label: schema_1.customerAddresses.label,
+                addressee: schema_1.customerAddresses.addressee,
+                companyName: schema_1.customerAddresses.companyName,
                 firstName: schema_1.customerAddresses.firstName,
                 lastName: schema_1.customerAddresses.lastName,
                 line1: schema_1.customerAddresses.line1,
@@ -659,6 +673,8 @@ let AdminCustomersService = class AdminCustomersService {
             .update(schema_1.customerAddresses)
             .set({
             label: dto.label ?? undefined,
+            addressee: dto.addressee ?? undefined,
+            companyName: dto.companyName ?? undefined,
             firstName: dto.firstName ?? undefined,
             lastName: dto.lastName ?? undefined,
             line1: dto.line1 ?? undefined,

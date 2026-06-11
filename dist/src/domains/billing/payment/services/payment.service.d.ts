@@ -12,7 +12,7 @@ export declare class PaymentService {
         companyId: string;
         orderId: string | null;
         invoiceId: string | null;
-        method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+        method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
         status: "pending" | "succeeded" | "reversed";
         currency: string;
         amountMinor: number;
@@ -26,6 +26,13 @@ export declare class PaymentService {
         confirmedByUserId: string | null;
         meta: unknown;
         createdAt: Date;
+        invoiceNumber: string | null;
+        invoiceStatus: "draft" | "issued" | "partially_paid" | "paid" | "void" | null;
+        invoiceMeta: unknown;
+        customerSnapshot: unknown;
+        supplierSnapshot: unknown;
+        orderNumber: any;
+        orderStatus: any;
     }[]>;
     recordInvoicePayment(dto: {
         invoiceId: string;
@@ -169,7 +176,7 @@ export declare class PaymentService {
             amountMinor: number;
             pdfUrl: string | null;
             pdfStorageKey: string | null;
-            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
             reference: string | null;
             customerSnapshot: unknown;
             storeSnapshot: unknown;
@@ -215,7 +222,7 @@ export declare class PaymentService {
             amountMinor: number;
             pdfUrl: string | null;
             pdfStorageKey: string | null;
-            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
             reference: string | null;
             customerSnapshot: unknown;
             storeSnapshot: unknown;
@@ -258,7 +265,7 @@ export declare class PaymentService {
             amountMinor: number;
             pdfUrl: string | null;
             pdfStorageKey: string | null;
-            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
             reference: string | null;
             customerSnapshot: unknown;
             storeSnapshot: unknown;
@@ -281,7 +288,7 @@ export declare class PaymentService {
         orderId: string | null;
         amountMinor: number;
         currency: string;
-        method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+        method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
         status: "pending" | "succeeded" | "reversed";
         reference: string | null;
         createdAt: Date;
@@ -292,7 +299,7 @@ export declare class PaymentService {
         orderId: string | null;
         amountMinor: number;
         currency: string;
-        method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+        method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
         status: "pending" | "succeeded" | "reversed";
         reference: string | null;
         createdAt: Date;
@@ -304,7 +311,7 @@ export declare class PaymentService {
         orderId: string | null;
         amountMinor: number;
         currency: string;
-        method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+        method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
         status: "pending" | "succeeded" | "reversed";
         reference: string | null;
         createdAt: Date;
@@ -315,7 +322,7 @@ export declare class PaymentService {
         orderId: string | null;
         amountMinor: number;
         currency: string;
-        method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
+        method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
         status: "pending" | "succeeded" | "reversed";
         reference: string | null;
         createdAt: Date;
@@ -363,12 +370,12 @@ export declare class PaymentService {
         uploadedByUserId?: string | null;
         requirePendingBankTransfer?: boolean;
     }): Promise<{
-        url: string;
         id: string;
         createdAt: Date;
         companyId: string;
         fileName: string;
         mimeType: string;
+        url: string;
         note: string | null;
         kind: string;
         paymentId: string;

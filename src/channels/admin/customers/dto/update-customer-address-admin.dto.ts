@@ -68,4 +68,14 @@ export class UpdateCustomerAddressAdminDto {
   @IsOptional()
   @IsBoolean()
   isDefaultShipping?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  addressee?: string; // "Procurement Manager", "Accounts Payable"
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  companyName?: string; // "Acme Corporation"
 }

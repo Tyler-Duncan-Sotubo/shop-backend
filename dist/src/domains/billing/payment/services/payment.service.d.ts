@@ -373,13 +373,13 @@ export declare class PaymentService {
         id: string;
         createdAt: Date;
         companyId: string;
+        paymentId: string;
         fileName: string;
         mimeType: string;
         url: string;
-        note: string | null;
-        kind: string;
-        paymentId: string;
         sizeBytes: number | null;
+        kind: string;
+        note: string | null;
         uploadedByUserId: string | null;
     }>;
 }

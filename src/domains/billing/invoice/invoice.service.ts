@@ -626,10 +626,10 @@ export class InvoiceService {
     const run = async (tx: TxOrDb) => {
       const invRes = await tx.execute(
         sql`
-      SELECT * FROM invoices
-      WHERE id = ${invoiceId} AND company_id = ${companyId}
-      FOR UPDATE
-    ` as any,
+        SELECT * FROM invoices
+        WHERE id = ${invoiceId} AND company_id = ${companyId}
+        FOR UPDATE
+      ` as any,
       );
       const inv = firstRow<any>(invRes);
 
@@ -653,39 +653,55 @@ export class InvoiceService {
       const year = new Date().getUTCFullYear();
       const requestedSeriesName = (dto.seriesName ?? 'Default').trim();
 
-      const seriesRes = await tx.execute(
-        sql`
-      SELECT *
-      FROM invoice_series
-      WHERE company_id = ${companyId}
-        AND (store_id IS NULL OR store_id = ${storeId})
-        AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
-        AND (year IS NULL OR year = ${year})
-      ORDER BY store_id DESC NULLS LAST
-      LIMIT 1
-      FOR UPDATE
-    ` as any,
-      );
+      // ✅ Preserve existing number if already assigned — never burn a new sequence slot
+      const existingNumber: string | null = inv.number ?? null;
+      const existingSeriesId: string | null =
+        inv.series_id ?? inv.seriesId ?? null;
 
-      const series = firstRow<any>(seriesRes);
+      let number: string;
+      let seriesIdToSet: string;
 
-      if (!series) {
-        throw new BadRequestException(
-          `Invoice series not found for company=${companyId}, store=${storeId ?? 'NULL'}, name=${requestedSeriesName}, year=${year}. Create invoice_series first.`,
+      if (existingNumber && existingSeriesId) {
+        // Re-issuing a previously issued invoice — reuse the same number
+        number = existingNumber;
+        seriesIdToSet = existingSeriesId;
+      } else {
+        // Fresh invoice — consume next number from series
+        const seriesRes = await tx.execute(
+          sql`
+          SELECT *
+          FROM invoice_series
+          WHERE company_id = ${companyId}
+            AND (store_id IS NULL OR store_id = ${storeId})
+            AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
+            AND (year IS NULL OR year = ${year})
+          ORDER BY store_id DESC NULLS LAST
+          LIMIT 1
+          FOR UPDATE
+        ` as any,
+        );
+
+        const series = firstRow<any>(seriesRes);
+
+        if (!series) {
+          throw new BadRequestException(
+            `Invoice series not found for company=${companyId}, store=${storeId ?? 'NULL'}, name=${requestedSeriesName}, year=${year}. Create invoice_series first.`,
+          );
+        }
+
+        const nextNumber = Number(series.next_number);
+        number = this.formatInvoiceNumber(series.prefix, nextNumber);
+        seriesIdToSet = series.id;
+
+        await tx.execute(
+          sql`
+          UPDATE invoice_series
+          SET next_number = next_number + 1,
+              updated_at = NOW()
+          WHERE id = ${series.id}
+        ` as any,
         );
       }
-
-      const nextNumber = Number(series.next_number);
-      const number = this.formatInvoiceNumber(series.prefix, nextNumber);
-
-      await tx.execute(
-        sql`
-      UPDATE invoice_series
-      SET next_number = next_number + 1,
-          updated_at = NOW()
-      WHERE id = ${series.id}
-    ` as any,
-      );
 
       // Supplier snapshot — prefer store-level branding, fall back to company default
       const brandingRows = await tx
@@ -778,10 +794,6 @@ export class InvoiceService {
           }
 
           if (customer) {
-            // ✅ Resolve display name:
-            // 1. addressee on billing address (e.g. "Procurement Manager")
-            // 2. firstName + lastName on address
-            // 3. customer displayName
             const addressName =
               (address?.addressee ??
                 [address?.firstName, address?.lastName]
@@ -795,7 +807,6 @@ export class InvoiceService {
               email: customer.billingEmail ?? '',
               phone: customer.phone ?? '',
               taxId: customer.taxId ?? '',
-              // ✅ address-level companyName overrides customer-level
               companyName: address?.companyName ?? customer.companyName ?? '',
               address: address
                 ? [
@@ -814,7 +825,7 @@ export class InvoiceService {
         }
       }
 
-      // ✅ normalise existing snapshot to always have all fields
+      // ✅ Normalise existing snapshot to always have all fields
       if (customerSnapshot) {
         customerSnapshot = {
           name: customerSnapshot.name ?? 'Customer',
@@ -836,7 +847,7 @@ export class InvoiceService {
         address: '',
       };
 
-      // Freeze tax snapshots
+      // Freeze tax snapshots on lines
       const taxIds = Array.from(
         new Set((lines as any[]).map((l) => l.taxId).filter(Boolean)),
       ) as string[];
@@ -910,7 +921,6 @@ export class InvoiceService {
         (l) => l.meta?.kind === 'shipping',
       );
 
-      // Calculate totals on taxable lines only
       const taxableTotals = this.totals.calcInvoice(
         taxableLines.map((l) => ({
           quantity: Number(l.quantity),
@@ -923,7 +933,6 @@ export class InvoiceService {
         })),
       );
 
-      // Shipping total — no tax, no discount
       const shippingMinor = shippingLines.reduce(
         (sum, l) => sum + Number(l.lineTotalMinor ?? 0),
         0,
@@ -967,21 +976,18 @@ export class InvoiceService {
                 ? 'paid'
                 : 'partially_paid'
               : 'issued',
-          seriesId: series.id,
-          number,
+          seriesId: seriesIdToSet, // ✅ uses preserved or newly assigned series
+          number, // ✅ uses preserved or newly assigned number
           issuedAt,
           dueAt,
-
           subtotalMinor,
           taxMinor,
           discountMinor: orderDiscountMinor,
           totalMinor,
           paidMinor,
           balanceMinor: Math.max(balanceMinor, 0),
-
           supplierSnapshot,
           customerSnapshot,
-
           lockedAt: issuedAt,
           updatedAt: new Date(),
         })
@@ -997,12 +1003,15 @@ export class InvoiceService {
           entity: 'invoice',
           entityId: updated.id,
           userId: userId,
-          details: 'Issued invoice',
+          details: existingNumber
+            ? 'Re-issued invoice (number preserved)'
+            : 'Issued invoice',
           changes: {
             companyId,
             invoiceId: updated.id,
             number,
-            seriesId: series.id,
+            seriesId: seriesIdToSet,
+            numberPreserved: !!existingNumber,
             issuedAt: issuedAt.toISOString(),
             dueAt: dueAt ? dueAt.toISOString() : null,
             totals: { subtotalMinor, taxMinor, totalMinor },
@@ -1595,14 +1604,13 @@ export class InvoiceService {
       return this.syncFromOrder(orderId, companyId, { tx });
     }
 
-    // ✅ Reset the existing invoice back to draft instead of inserting new one
-    // This avoids the unique constraint on (companyId, orderId, type)
+    // ✅ Reset back to draft but PRESERVE number + seriesId — they must never change
     await tx
       .update(invoices)
       .set({
         status: 'draft' as any,
-        number: null,
-        seriesId: null,
+        // number:    intentionally NOT cleared — permanent once assigned
+        // seriesId:  intentionally NOT cleared — must match the number
         issuedAt: null,
         lockedAt: null,
         supplierSnapshot: null,
@@ -1627,7 +1635,6 @@ export class InvoiceService {
       )
       .execute();
 
-    // Sync fresh lines from current order items
     return this.syncFromOrder(orderId, companyId, { tx });
   }
 }

@@ -431,10 +431,10 @@ let InvoiceService = class InvoiceService {
         };
         const run = async (tx) => {
             const invRes = await tx.execute((0, drizzle_orm_1.sql) `
-      SELECT * FROM invoices
-      WHERE id = ${invoiceId} AND company_id = ${companyId}
-      FOR UPDATE
-    `);
+        SELECT * FROM invoices
+        WHERE id = ${invoiceId} AND company_id = ${companyId}
+        FOR UPDATE
+      `);
             const inv = firstRow(invRes);
             if (!inv)
                 throw new common_1.NotFoundException('Invoice not found');
@@ -450,29 +450,40 @@ let InvoiceService = class InvoiceService {
             const storeId = dto.storeId ?? inv.store_id ?? null;
             const year = new Date().getUTCFullYear();
             const requestedSeriesName = (dto.seriesName ?? 'Default').trim();
-            const seriesRes = await tx.execute((0, drizzle_orm_1.sql) `
-      SELECT *
-      FROM invoice_series
-      WHERE company_id = ${companyId}
-        AND (store_id IS NULL OR store_id = ${storeId})
-        AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
-        AND (year IS NULL OR year = ${year})
-      ORDER BY store_id DESC NULLS LAST
-      LIMIT 1
-      FOR UPDATE
-    `);
-            const series = firstRow(seriesRes);
-            if (!series) {
-                throw new common_1.BadRequestException(`Invoice series not found for company=${companyId}, store=${storeId ?? 'NULL'}, name=${requestedSeriesName}, year=${year}. Create invoice_series first.`);
+            const existingNumber = inv.number ?? null;
+            const existingSeriesId = inv.series_id ?? inv.seriesId ?? null;
+            let number;
+            let seriesIdToSet;
+            if (existingNumber && existingSeriesId) {
+                number = existingNumber;
+                seriesIdToSet = existingSeriesId;
             }
-            const nextNumber = Number(series.next_number);
-            const number = this.formatInvoiceNumber(series.prefix, nextNumber);
-            await tx.execute((0, drizzle_orm_1.sql) `
-      UPDATE invoice_series
-      SET next_number = next_number + 1,
-          updated_at = NOW()
-      WHERE id = ${series.id}
-    `);
+            else {
+                const seriesRes = await tx.execute((0, drizzle_orm_1.sql) `
+          SELECT *
+          FROM invoice_series
+          WHERE company_id = ${companyId}
+            AND (store_id IS NULL OR store_id = ${storeId})
+            AND lower(trim(name)) = lower(trim(${requestedSeriesName}))
+            AND (year IS NULL OR year = ${year})
+          ORDER BY store_id DESC NULLS LAST
+          LIMIT 1
+          FOR UPDATE
+        `);
+                const series = firstRow(seriesRes);
+                if (!series) {
+                    throw new common_1.BadRequestException(`Invoice series not found for company=${companyId}, store=${storeId ?? 'NULL'}, name=${requestedSeriesName}, year=${year}. Create invoice_series first.`);
+                }
+                const nextNumber = Number(series.next_number);
+                number = this.formatInvoiceNumber(series.prefix, nextNumber);
+                seriesIdToSet = series.id;
+                await tx.execute((0, drizzle_orm_1.sql) `
+          UPDATE invoice_series
+          SET next_number = next_number + 1,
+              updated_at = NOW()
+          WHERE id = ${series.id}
+        `);
+            }
             const brandingRows = await tx
                 .select()
                 .from(schema_1.invoiceBranding)
@@ -659,7 +670,7 @@ let InvoiceService = class InvoiceService {
                         ? 'paid'
                         : 'partially_paid'
                     : 'issued',
-                seriesId: series.id,
+                seriesId: seriesIdToSet,
                 number,
                 issuedAt,
                 dueAt,
@@ -684,12 +695,15 @@ let InvoiceService = class InvoiceService {
                     entity: 'invoice',
                     entityId: updated.id,
                     userId: userId,
-                    details: 'Issued invoice',
+                    details: existingNumber
+                        ? 'Re-issued invoice (number preserved)'
+                        : 'Issued invoice',
                     changes: {
                         companyId,
                         invoiceId: updated.id,
                         number,
-                        seriesId: series.id,
+                        seriesId: seriesIdToSet,
+                        numberPreserved: !!existingNumber,
                         issuedAt: issuedAt.toISOString(),
                         dueAt: dueAt ? dueAt.toISOString() : null,
                         totals: { subtotalMinor, taxMinor, totalMinor },
@@ -1110,8 +1124,6 @@ let InvoiceService = class InvoiceService {
             .update(schema_1.invoices)
             .set({
             status: 'draft',
-            number: null,
-            seriesId: null,
             issuedAt: null,
             lockedAt: null,
             supplierSnapshot: null,

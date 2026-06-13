@@ -189,15 +189,18 @@ let PaymentService = class PaymentService {
             const newBalance = Math.max(totalMinor - newPaid, 0);
             const newStatus = newBalance === 0 ? 'paid' : 'partially_paid';
             if (newBalance === 0 && inv.orderId) {
-                await tx
-                    .update(schema_1.orders)
-                    .set({
-                    status: 'paid',
-                    updatedAt: new Date(),
-                    paidAt: new Date(),
-                })
-                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, inv.orderId)))
-                    .execute();
+                await tx.execute((0, drizzle_orm_1.sql) `
+      UPDATE orders
+      SET paid_at = COALESCE(paid_at, NOW()),
+          updated_at = NOW(),
+          status = CASE
+            WHEN status IN ('fulfilled', 'dispatched', 'completed', 'cancelled')
+            THEN status
+            ELSE 'paid'
+          END
+      WHERE id = ${inv.orderId}
+        AND company_id = ${companyId}
+    `);
             }
             await tx
                 .update(schema_1.invoices)
@@ -412,16 +415,19 @@ let PaymentService = class PaymentService {
         const newPaid = alreadyPaid + applied;
         const newBalance = Math.max(totalMinor - newPaid, 0);
         const newStatus = newBalance === 0 ? 'paid' : 'partially_paid';
-        if (newBalance === 0 && inv.orderId) {
-            await tx
-                .update(schema_1.orders)
-                .set({
-                status: 'paid',
-                updatedAt: new Date(),
-                paidAt: new Date(),
-            })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, dto.companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, inv.orderId)))
-                .execute();
+        if (newBalance === 0 && (inv.order_id ?? inv.orderId)) {
+            await tx.execute((0, drizzle_orm_1.sql) `
+      UPDATE orders
+      SET paid_at = COALESCE(paid_at, NOW()),
+          updated_at = NOW(),
+          status = CASE
+            WHEN status IN ('fulfilled', 'dispatched', 'completed', 'cancelled')
+            THEN status
+            ELSE 'paid'
+          END
+      WHERE id = ${inv.order_id ?? inv.orderId}
+        AND company_id = ${dto.companyId}
+    `);
         }
         await tx
             .update(schema_1.invoices)

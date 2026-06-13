@@ -283,17 +283,20 @@ export class PaymentService {
       const newStatus = newBalance === 0 ? 'paid' : 'partially_paid';
 
       if (newBalance === 0 && inv.orderId) {
-        await tx
-          .update(orders)
-          .set({
-            status: 'paid',
-            updatedAt: new Date(),
-            paidAt: new Date(),
-          } as any)
-          .where(
-            and(eq(orders.companyId, companyId), eq(orders.id, inv.orderId)),
-          )
-          .execute();
+        await tx.execute(
+          sql`
+      UPDATE orders
+      SET paid_at = COALESCE(paid_at, NOW()),
+          updated_at = NOW(),
+          status = CASE
+            WHEN status IN ('fulfilled', 'dispatched', 'completed', 'cancelled')
+            THEN status
+            ELSE 'paid'
+          END
+      WHERE id = ${inv.orderId}
+        AND company_id = ${companyId}
+    ` as any,
+        );
       }
 
       await tx
@@ -624,18 +627,21 @@ export class PaymentService {
     const newBalance = Math.max(totalMinor - newPaid, 0);
     const newStatus = newBalance === 0 ? 'paid' : 'partially_paid';
 
-    if (newBalance === 0 && inv.orderId) {
-      await tx
-        .update(orders)
-        .set({
-          status: 'paid', // or status: 'paid' depending on your schema
-          updatedAt: new Date(), // optional if you have it
-          paidAt: new Date(),
-        } as any)
-        .where(
-          and(eq(orders.companyId, dto.companyId), eq(orders.id, inv.orderId)),
-        )
-        .execute();
+    if (newBalance === 0 && (inv.order_id ?? inv.orderId)) {
+      await tx.execute(
+        sql`
+      UPDATE orders
+      SET paid_at = COALESCE(paid_at, NOW()),
+          updated_at = NOW(),
+          status = CASE
+            WHEN status IN ('fulfilled', 'dispatched', 'completed', 'cancelled')
+            THEN status
+            ELSE 'paid'
+          END
+      WHERE id = ${inv.order_id ?? inv.orderId}
+        AND company_id = ${dto.companyId}
+    ` as any,
+      );
     }
 
     await tx

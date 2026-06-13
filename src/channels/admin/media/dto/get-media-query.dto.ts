@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 
 export class GetMediaQueryDto {
   @IsUUID()
-  storeId: string;
+  storeId!: string;
 
   @IsOptional()
   @IsString()
@@ -13,6 +13,6 @@ export class GetMediaQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
+  @Max(500) // ← was 100
   limit?: number = 20;
 }

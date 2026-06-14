@@ -2,11 +2,13 @@ import { db as DbType } from "../../../../infrastructure/drizzle/types/drizzle";
 import { AwsService } from "../../../../infrastructure/aws/aws.service";
 import { InvoiceService } from '../../invoice/invoice.service';
 import { FinalizeBankTransferPaymentInput, ListPaymentsQueryInput, PaystackSuccessInput } from '../inputs';
+import { NotificationsService } from "../../../notification/services/notifications.service";
 export declare class PaymentService {
     private readonly db;
     private readonly aws;
     private readonly invoiceService;
-    constructor(db: DbType, aws: AwsService, invoiceService: InvoiceService);
+    private readonly notifications;
+    constructor(db: DbType, aws: AwsService, invoiceService: InvoiceService, notifications: NotificationsService);
     listPayments(companyId: string, filter: ListPaymentsQueryInput): Promise<{
         id: string;
         companyId: string;
@@ -194,6 +196,44 @@ export declare class PaymentService {
         receipt: any;
         alreadyConfirmed: boolean;
     }>;
+    finalizePendingOrderBankTransferPayment(dto: {
+        paymentId: string;
+        reference?: string | null;
+        evidenceRequired?: boolean;
+    }, companyId: string, userId: string): Promise<{
+        paymentId: any;
+        receipt: {
+            id: string;
+            companyId: string;
+            paymentId: string;
+            invoiceId: string | null;
+            orderId: string | null;
+            invoiceNumber: string | null;
+            orderNumber: string | null;
+            sequenceNumber: number;
+            receiptNumber: string;
+            currency: string;
+            amountMinor: number;
+            pdfUrl: string | null;
+            pdfStorageKey: string | null;
+            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            reference: string | null;
+            customerSnapshot: unknown;
+            storeSnapshot: unknown;
+            meta: unknown;
+            issuedAt: Date;
+            createdByUserId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+        alreadyConfirmed: boolean;
+        receiptId?: undefined;
+    } | {
+        paymentId: any;
+        receiptId: any;
+        receipt: any;
+        alreadyConfirmed: boolean;
+    }>;
     finalizeGatewayPaymentForOrder(params: {
         companyId: string;
         storeId?: string | null;
@@ -244,44 +284,6 @@ export declare class PaymentService {
         receipt: any;
         receiptId: any;
         alreadyProcessed: boolean;
-    }>;
-    finalizePendingOrderBankTransferPayment(dto: {
-        paymentId: string;
-        reference?: string | null;
-        evidenceRequired?: boolean;
-    }, companyId: string, userId: string): Promise<{
-        paymentId: any;
-        receipt: {
-            id: string;
-            companyId: string;
-            paymentId: string;
-            invoiceId: string | null;
-            orderId: string | null;
-            invoiceNumber: string | null;
-            orderNumber: string | null;
-            sequenceNumber: number;
-            receiptNumber: string;
-            currency: string;
-            amountMinor: number;
-            pdfUrl: string | null;
-            pdfStorageKey: string | null;
-            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
-            reference: string | null;
-            customerSnapshot: unknown;
-            storeSnapshot: unknown;
-            meta: unknown;
-            issuedAt: Date;
-            createdByUserId: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-        };
-        alreadyConfirmed: boolean;
-        receiptId?: undefined;
-    } | {
-        paymentId: any;
-        receiptId: any;
-        receipt: any;
-        alreadyConfirmed: boolean;
     }>;
     listPendingOrderPaymentsForReview(companyId: string): Promise<({
         paymentId: string;
@@ -373,13 +375,13 @@ export declare class PaymentService {
         id: string;
         createdAt: Date;
         companyId: string;
-        paymentId: string;
         fileName: string;
         mimeType: string;
         url: string;
-        sizeBytes: number | null;
-        kind: string;
         note: string | null;
+        kind: string;
+        paymentId: string;
+        sizeBytes: number | null;
         uploadedByUserId: string | null;
     }>;
 }

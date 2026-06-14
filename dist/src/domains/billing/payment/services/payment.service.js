@@ -20,6 +20,7 @@ const schema_1 = require("../../../../infrastructure/drizzle/schema");
 const aws_service_1 = require("../../../../infrastructure/aws/aws.service");
 const invoice_service_1 = require("../../invoice/invoice.service");
 const id_1 = require("../../../../infrastructure/drizzle/id");
+const notifications_service_1 = require("../../../notification/services/notifications.service");
 function sanitizeFileName(name) {
     return (name || 'upload')
         .trim()
@@ -36,10 +37,11 @@ function assertEvidenceMime(mimeType) {
     }
 }
 let PaymentService = class PaymentService {
-    constructor(db, aws, invoiceService) {
+    constructor(db, aws, invoiceService, notifications) {
         this.db = db;
         this.aws = aws;
         this.invoiceService = invoiceService;
+        this.notifications = notifications;
     }
     async listPayments(companyId, filter) {
         const conditions = [(0, drizzle_orm_1.eq)(schema_1.payments.companyId, companyId)];
@@ -95,7 +97,7 @@ let PaymentService = class PaymentService {
         return query.execute();
     }
     async recordInvoicePayment(dto, companyId, userId) {
-        return this.db.transaction(async (tx) => {
+        const result = await this.db.transaction(async (tx) => {
             const [inv] = await tx
                 .select()
                 .from(schema_1.invoices)
@@ -190,17 +192,17 @@ let PaymentService = class PaymentService {
             const newStatus = newBalance === 0 ? 'paid' : 'partially_paid';
             if (newBalance === 0 && inv.orderId) {
                 await tx.execute((0, drizzle_orm_1.sql) `
-      UPDATE orders
-      SET paid_at = COALESCE(paid_at, NOW()),
-          updated_at = NOW(),
-          status = CASE
-            WHEN status IN ('fulfilled', 'dispatched', 'completed', 'cancelled')
-            THEN status
-            ELSE 'paid'
-          END
-      WHERE id = ${inv.orderId}
-        AND company_id = ${companyId}
-    `);
+          UPDATE orders
+          SET paid_at = COALESCE(paid_at, NOW()),
+              updated_at = NOW(),
+              status = CASE
+                WHEN status IN ('fulfilled', 'dispatched', 'completed', 'cancelled')
+                THEN status
+                ELSE 'paid'
+              END
+          WHERE id = ${inv.orderId}
+            AND company_id = ${companyId}
+        `);
             }
             await tx
                 .update(schema_1.invoices)
@@ -226,6 +228,27 @@ let PaymentService = class PaymentService {
                 evidence: evidenceRow,
             };
         });
+        this.notifications
+            .create({
+            companyId,
+            type: 'payment_received',
+            title: 'Payment received',
+            body: `${result.receipt?.orderNumber
+                ? `Order #${result.receipt.orderNumber}`
+                : result.receipt?.invoiceNumber
+                    ? `Invoice ${result.receipt.invoiceNumber}`
+                    : 'Payment'} — ${dto.currency} ${dto.amount.toLocaleString()}`,
+            data: {
+                invoiceId: dto.invoiceId,
+                paymentId: result.paymentId,
+                amountMinor: result.appliedMinor,
+                orderNumber: result.receipt?.orderNumber ?? null,
+                invoiceNumber: result.receipt?.invoiceNumber ?? null,
+            },
+            channel: 'in_app',
+        })
+            .catch(console.error);
+        return result;
     }
     async handlePaystackSuccess(dto, companyId, userId) {
         return this.db.transaction(async (tx) => {
@@ -507,12 +530,12 @@ let PaymentService = class PaymentService {
         return row;
     }
     async finalizePendingBankTransferPayment(dto, companyId, userId) {
-        return this.db.transaction(async (tx) => {
+        const result = await this.db.transaction(async (tx) => {
             const payRes = await tx.execute((0, drizzle_orm_1.sql) `
-        SELECT * FROM payments
-        WHERE id = ${dto.paymentId} AND company_id = ${companyId}
-        FOR UPDATE
-      `);
+      SELECT * FROM payments
+      WHERE id = ${dto.paymentId} AND company_id = ${companyId}
+      FOR UPDATE
+    `);
             const p = payRes?.rows?.[0] ?? null;
             if (!p)
                 throw new common_1.NotFoundException('Payment not found');
@@ -539,10 +562,10 @@ let PaymentService = class PaymentService {
                 throw new common_1.BadRequestException('Payment is missing invoiceId');
             }
             const invRes = await tx.execute((0, drizzle_orm_1.sql) `
-        SELECT * FROM invoices
-        WHERE id = ${invoiceId} AND company_id = ${companyId}
-        FOR UPDATE
-      `);
+      SELECT * FROM invoices
+      WHERE id = ${invoiceId} AND company_id = ${companyId}
+      FOR UPDATE
+    `);
             const inv = invRes?.rows?.[0] ?? null;
             if (!inv)
                 throw new common_1.NotFoundException('Invoice not found');
@@ -611,7 +634,7 @@ let PaymentService = class PaymentService {
                 companyId,
                 paymentId: p.id,
                 invoiceId: inv.id,
-                orderId: orderId,
+                orderId,
                 invoiceNumber: inv.number ?? null,
                 orderNumber,
                 currency: p.currency ?? inv.currency ?? 'NGN',
@@ -630,6 +653,140 @@ let PaymentService = class PaymentService {
                 alreadyConfirmed: false,
             };
         });
+        if (!result.alreadyConfirmed) {
+            this.notifications
+                .create({
+                companyId,
+                type: 'payment_received',
+                title: 'Bank transfer confirmed',
+                body: `${result.receipt?.orderNumber
+                    ? `Order #${result.receipt.orderNumber}`
+                    : result.receipt?.invoiceNumber
+                        ? `Invoice ${result.receipt.invoiceNumber}`
+                        : 'Payment'} — bank transfer confirmed`,
+                data: {
+                    paymentId: result.paymentId,
+                    receiptId: result.receiptId,
+                    orderNumber: result.receipt?.orderNumber ?? null,
+                    invoiceNumber: result.receipt?.invoiceNumber ?? null,
+                },
+                channel: 'in_app',
+            })
+                .catch(console.error);
+        }
+        return result;
+    }
+    async finalizePendingOrderBankTransferPayment(dto, companyId, userId) {
+        const result = await this.db.transaction(async (tx) => {
+            const payRes = await tx.execute((0, drizzle_orm_1.sql) `
+      SELECT * FROM payments
+      WHERE id = ${dto.paymentId} AND company_id = ${companyId}
+      FOR UPDATE
+    `);
+            const p = payRes?.rows?.[0] ?? null;
+            if (!p)
+                throw new common_1.NotFoundException('Payment not found');
+            if (p.method !== 'bank_transfer') {
+                throw new common_1.BadRequestException('Payment is not a bank transfer');
+            }
+            if (p.status === 'succeeded') {
+                const [existingReceipt] = await tx
+                    .select()
+                    .from(schema_1.paymentReceipts)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.paymentReceipts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.paymentReceipts.paymentId, p.id)))
+                    .execute();
+                return {
+                    paymentId: p.id,
+                    receipt: existingReceipt ?? null,
+                    alreadyConfirmed: true,
+                };
+            }
+            if (p.status !== 'pending') {
+                throw new common_1.BadRequestException(`Payment must be pending (got ${p.status})`);
+            }
+            if (!p.order_id) {
+                throw new common_1.BadRequestException('Payment is not linked to an order');
+            }
+            const orderRes = await tx.execute((0, drizzle_orm_1.sql) `
+      SELECT * FROM orders
+      WHERE id = ${p.order_id} AND company_id = ${companyId}
+      FOR UPDATE
+    `);
+            const order = orderRes?.rows?.[0] ?? null;
+            if (!order)
+                throw new common_1.NotFoundException('Order not found');
+            if (dto.evidenceRequired) {
+                const [file] = await tx
+                    .select({ id: schema_1.paymentFiles.id })
+                    .from(schema_1.paymentFiles)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.paymentFiles.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.paymentFiles.paymentId, p.id)))
+                    .execute();
+                if (!file) {
+                    throw new common_1.BadRequestException('No payment proof uploaded');
+                }
+            }
+            await tx
+                .update(schema_1.payments)
+                .set({
+                status: 'succeeded',
+                reference: dto.reference !== undefined ? dto.reference : (p.reference ?? null),
+                receivedAt: new Date(),
+                confirmedAt: new Date(),
+                confirmedByUserId: userId,
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.eq)(schema_1.payments.id, p.id))
+                .execute();
+            await tx
+                .update(schema_1.orders)
+                .set({
+                status: 'paid',
+                paidAt: new Date(),
+                updatedAt: new Date(),
+            })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, order.id)))
+                .execute();
+            const receipt = await this.createReceiptForPaymentTx(tx, {
+                companyId,
+                paymentId: p.id,
+                invoiceId: null,
+                orderId: order.id,
+                invoiceNumber: null,
+                orderNumber: order.order_number ?? order.orderNumber ?? null,
+                currency: p.currency ?? order.currency ?? 'NGN',
+                amountMinor: Number(p.amount_minor ?? 0),
+                method: 'bank_transfer',
+                reference: dto.reference ?? p.reference ?? null,
+                customerSnapshot: null,
+                storeSnapshot: null,
+                meta: p.meta ?? null,
+                createdByUserId: userId,
+            });
+            return {
+                paymentId: p.id,
+                receiptId: receipt.id,
+                receipt,
+                alreadyConfirmed: false,
+            };
+        });
+        if (!result.alreadyConfirmed) {
+            this.notifications
+                .create({
+                companyId,
+                type: 'payment_received',
+                title: 'Bank transfer confirmed',
+                body: `Order #${result.receipt?.orderNumber ?? ''} — bank transfer confirmed`,
+                data: {
+                    paymentId: result.paymentId,
+                    receiptId: result.receiptId,
+                    orderId: result.receipt?.orderId ?? null,
+                    orderNumber: result.receipt?.orderNumber ?? null,
+                },
+                channel: 'in_app',
+            })
+                .catch(console.error);
+        }
+        return result;
     }
     async finalizeGatewayPaymentForOrder(params) {
         const { companyId, storeId, orderId, provider, providerRef, providerEventId = null, amountMinor, currency, paidAt = null, meta = null, confirmedByUserId = null, } = params;
@@ -745,100 +902,6 @@ let PaymentService = class PaymentService {
                 receipt,
                 receiptId: receipt.id,
                 alreadyProcessed: false,
-            };
-        });
-    }
-    async finalizePendingOrderBankTransferPayment(dto, companyId, userId) {
-        return this.db.transaction(async (tx) => {
-            const payRes = await tx.execute((0, drizzle_orm_1.sql) `
-      SELECT * FROM payments
-      WHERE id = ${dto.paymentId} AND company_id = ${companyId}
-      FOR UPDATE
-    `);
-            const p = payRes?.rows?.[0] ?? null;
-            if (!p)
-                throw new common_1.NotFoundException('Payment not found');
-            if (p.method !== 'bank_transfer') {
-                throw new common_1.BadRequestException('Payment is not a bank transfer');
-            }
-            if (p.status === 'succeeded') {
-                const [existingReceipt] = await tx
-                    .select()
-                    .from(schema_1.paymentReceipts)
-                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.paymentReceipts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.paymentReceipts.paymentId, p.id)))
-                    .execute();
-                return {
-                    paymentId: p.id,
-                    receipt: existingReceipt ?? null,
-                    alreadyConfirmed: true,
-                };
-            }
-            if (p.status !== 'pending') {
-                throw new common_1.BadRequestException(`Payment must be pending (got ${p.status})`);
-            }
-            if (!p.order_id) {
-                throw new common_1.BadRequestException('Payment is not linked to an order');
-            }
-            const orderRes = await tx.execute((0, drizzle_orm_1.sql) `
-      SELECT * FROM orders
-      WHERE id = ${p.order_id} AND company_id = ${companyId}
-      FOR UPDATE
-    `);
-            const order = orderRes?.rows?.[0] ?? null;
-            if (!order)
-                throw new common_1.NotFoundException('Order not found');
-            if (dto.evidenceRequired) {
-                const [file] = await tx
-                    .select({ id: schema_1.paymentFiles.id })
-                    .from(schema_1.paymentFiles)
-                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.paymentFiles.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.paymentFiles.paymentId, p.id)))
-                    .execute();
-                if (!file) {
-                    throw new common_1.BadRequestException('No payment proof uploaded');
-                }
-            }
-            await tx
-                .update(schema_1.payments)
-                .set({
-                status: 'succeeded',
-                reference: dto.reference !== undefined ? dto.reference : (p.reference ?? null),
-                receivedAt: new Date(),
-                confirmedAt: new Date(),
-                confirmedByUserId: userId,
-                updatedAt: new Date(),
-            })
-                .where((0, drizzle_orm_1.eq)(schema_1.payments.id, p.id))
-                .execute();
-            await tx
-                .update(schema_1.orders)
-                .set({
-                status: 'paid',
-                paidAt: new Date(),
-                updatedAt: new Date(),
-            })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, order.id)))
-                .execute();
-            const receipt = await this.createReceiptForPaymentTx(tx, {
-                companyId,
-                paymentId: p.id,
-                invoiceId: null,
-                orderId: order.id,
-                invoiceNumber: null,
-                orderNumber: order.order_number ?? order.orderNumber ?? null,
-                currency: p.currency ?? order.currency ?? 'NGN',
-                amountMinor: Number(p.amount_minor ?? 0),
-                method: 'bank_transfer',
-                reference: dto.reference ?? p.reference ?? null,
-                customerSnapshot: null,
-                storeSnapshot: null,
-                meta: p.meta ?? null,
-                createdByUserId: userId,
-            });
-            return {
-                paymentId: p.id,
-                receiptId: receipt.id,
-                receipt,
-                alreadyConfirmed: false,
             };
         });
     }
@@ -1005,6 +1068,7 @@ exports.PaymentService = PaymentService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, aws_service_1.AwsService,
-        invoice_service_1.InvoiceService])
+        invoice_service_1.InvoiceService,
+        notifications_service_1.NotificationsService])
 ], PaymentService);
 //# sourceMappingURL=payment.service.js.map

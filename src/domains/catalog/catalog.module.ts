@@ -14,11 +14,13 @@ import { StoresService } from '../commerce/stores/stores.service';
 import { ProductDiscoveryService } from './services/product-discovery.service';
 import { MediaService } from '../media/media.service';
 import { ProductsReportService } from './reports/products-report.service';
+import { BarcodeService } from './services/barcode.service';
 
 @Module({
   providers: [
     ProductsService,
     VariantsService,
+    BarcodeService,
     OptionsService,
     ImagesService,
     CategoriesService,
@@ -35,6 +37,7 @@ import { ProductsReportService } from './reports/products-report.service';
   ],
   exports: [
     ProductsService,
+    BarcodeService,
     VariantsService,
     OptionsService,
     ImagesService,

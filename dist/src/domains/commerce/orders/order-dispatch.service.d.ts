@@ -2,6 +2,7 @@ import { db } from "../../../infrastructure/drizzle/types/drizzle";
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
 import { CacheService } from "../../../infrastructure/cache/cache.service";
 import { DispatchNotificationService } from "../../notification/services/dispatch-notification.service";
+import { NotificationsService } from "../../notification/services/notifications.service";
 type Actor = {
     id: string;
     ip?: string;
@@ -11,7 +12,8 @@ export declare class OrderDispatchService {
     private readonly stock;
     private readonly cache;
     private readonly dispatchNotification;
-    constructor(db: db, stock: InventoryStockService, cache: CacheService, dispatchNotification: DispatchNotificationService);
+    private readonly notifications;
+    constructor(db: db, stock: InventoryStockService, cache: CacheService, dispatchNotification: DispatchNotificationService, notifications: NotificationsService);
     requestDispatch(companyId: string, storeId: string, orderId: string, actor: Actor, note?: string): Promise<{
         id: string;
         createdAt: Date | null;

@@ -93,4 +93,6 @@ __exportStar(require("./schema/mail/subscribers.schema"), exports);
 __exportStar(require("./schema/mail/contact-messages.schema"), exports);
 __exportStar(require("./schema/integrations/analytics/analytics-integration.schema"), exports);
 __exportStar(require("./schema/integrations/zoho/zoho-connections.schema"), exports);
+__exportStar(require("./schema/support/feedback.schema"), exports);
+__exportStar(require("./schema/notifications/notifications.schema"), exports);
 //# sourceMappingURL=schema.js.map

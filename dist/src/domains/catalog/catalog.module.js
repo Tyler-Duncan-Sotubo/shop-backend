@@ -23,6 +23,7 @@ const stores_service_1 = require("../commerce/stores/stores.service");
 const product_discovery_service_1 = require("./services/product-discovery.service");
 const media_service_1 = require("../media/media.service");
 const products_report_service_1 = require("./reports/products-report.service");
+const barcode_service_1 = require("./services/barcode.service");
 let CatalogModule = class CatalogModule {
 };
 exports.CatalogModule = CatalogModule;
@@ -31,6 +32,7 @@ exports.CatalogModule = CatalogModule = __decorate([
         providers: [
             products_service_1.ProductsService,
             variants_service_1.VariantsService,
+            barcode_service_1.BarcodeService,
             options_service_1.OptionsService,
             images_service_1.ImagesService,
             categories_service_1.CategoriesService,
@@ -47,6 +49,7 @@ exports.CatalogModule = CatalogModule = __decorate([
         ],
         exports: [
             products_service_1.ProductsService,
+            barcode_service_1.BarcodeService,
             variants_service_1.VariantsService,
             options_service_1.OptionsService,
             images_service_1.ImagesService,

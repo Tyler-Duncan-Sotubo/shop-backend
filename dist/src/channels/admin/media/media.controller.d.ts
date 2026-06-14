@@ -19,11 +19,11 @@ export declare class MediaController {
         storeId: string;
         fileName: string;
         mimeType: string;
-        url: string;
-        storageKey: string | null;
         width: number | null;
         height: number | null;
+        url: string;
         altText: string | null;
+        storageKey: string | null;
         folder: string | null;
         tag: string | null;
     }>;
@@ -32,12 +32,12 @@ export declare class MediaController {
         altText: string | null;
     }>;
     getMedia(user: User, query: GetMediaQueryDto): Promise<{
-        id: string;
-        url: string;
-        createdAt: Date;
-        fileName: string | null;
-        mimeType: string | null;
-        size: number | null;
+        id: any;
+        url: any;
+        createdAt: any;
+        fileName: any;
+        mimeType: any;
+        size: any;
     }[]>;
     deleteMedia(user: User, mediaId: string): Promise<{
         success: boolean;
@@ -66,11 +66,11 @@ export declare class MediaController {
         storeId: string;
         fileName: string;
         mimeType: string;
-        url: string;
-        storageKey: string | null;
         width: number | null;
         height: number | null;
+        url: string;
         altText: string | null;
+        storageKey: string | null;
         folder: string | null;
         tag: string | null;
     }>;

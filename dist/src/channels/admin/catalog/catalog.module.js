@@ -14,6 +14,7 @@ const linked_products_module_1 = require("./linked-products/linked-products.modu
 const variant_options_module_1 = require("./variant-options/variant-options.module");
 const variants_module_1 = require("./variants/variants.module");
 const products_module_1 = require("./products/products.module");
+const barcode_module_1 = require("./barcode/barcode.module");
 let AdminCatalogModule = class AdminCatalogModule {
 };
 exports.AdminCatalogModule = AdminCatalogModule;
@@ -26,6 +27,7 @@ exports.AdminCatalogModule = AdminCatalogModule = __decorate([
             linked_products_module_1.AdminLinkedProductsModule,
             variant_options_module_1.AdminVariantOptionsModule,
             variants_module_1.AdminVariantsModule,
+            barcode_module_1.BarcodeModule,
         ],
     })
 ], AdminCatalogModule);

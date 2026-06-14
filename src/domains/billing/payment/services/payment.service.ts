@@ -26,6 +26,7 @@ import {
   ListPaymentsQueryInput,
   PaystackSuccessInput,
 } from '../inputs';
+import { NotificationsService } from 'src/domains/notification/services/notifications.service';
 
 function sanitizeFileName(name: string) {
   return (name || 'upload')
@@ -50,6 +51,7 @@ export class PaymentService {
     @Inject(DRIZZLE) private readonly db: DbType,
     private readonly aws: AwsService,
     private readonly invoiceService: InvoiceService,
+    private readonly notifications: NotificationsService, // ← add
   ) {}
 
   // Get Payments, List Payments, etc. can be added here
@@ -141,12 +143,11 @@ export class PaymentService {
   async recordInvoicePayment(
     dto: {
       invoiceId: string;
-      amount: number; // MAJOR
+      amount: number;
       currency: string;
       method: 'bank_transfer' | 'cash' | 'card_manual' | 'other';
       reference?: string | null;
       meta?: any;
-
       evidenceDataUrl?: string;
       evidenceFileName?: string;
       evidenceNote?: string;
@@ -154,7 +155,7 @@ export class PaymentService {
     companyId: string,
     userId: string,
   ) {
-    return this.db.transaction(async (tx) => {
+    const result = await this.db.transaction(async (tx) => {
       // 1) Lock invoice
       const [inv] = await tx
         .select()
@@ -190,14 +191,13 @@ export class PaymentService {
       if (invoiceRemaining <= 0)
         throw new BadRequestException('Invoice already fully paid');
 
-      // Keep it simple: no overpay/credit yet
       if (requestedMinor > invoiceRemaining) {
         throw new BadRequestException(
           `Amount exceeds invoice balance (${invoiceRemaining}).`,
         );
       }
 
-      // 3) Create payment (succeeded immediately)
+      // 3) Create payment
       const [p] = await tx
         .insert(payments)
         .values({
@@ -218,7 +218,7 @@ export class PaymentService {
         .returning({ id: payments.id })
         .execute();
 
-      // fetch orderNumber (optional, only if order exists)
+      // fetch orderNumber
       let orderNumber: string | null = null;
       if (inv.orderId) {
         const [ord] = await tx
@@ -235,26 +235,21 @@ export class PaymentService {
       const receipt = await this.createReceiptForPaymentTx(tx, {
         companyId,
         paymentId: p.id,
-
         invoiceId: dto.invoiceId,
         orderId: inv.orderId ?? null,
-
         invoiceNumber: (inv as any).number ?? null,
         orderNumber,
-
         currency,
         amountMinor: requestedMinor,
         method: dto.method,
         reference: dto.reference ?? null,
-
         customerSnapshot: (inv as any).customerSnapshot ?? null,
-        storeSnapshot: (inv as any).supplierSnapshot ?? null, // or store snapshot you prefer
+        storeSnapshot: (inv as any).supplierSnapshot ?? null,
         meta: dto.meta ?? null,
-
         createdByUserId: userId,
       });
 
-      // 4) Optional evidence upload + normalized write
+      // 4) Optional evidence upload
       let evidenceRow: any | null = null;
       if (dto.evidenceDataUrl) {
         evidenceRow = await this.uploadPaymentEvidenceTx(tx, {
@@ -267,7 +262,7 @@ export class PaymentService {
         });
       }
 
-      // 5) Allocation (append-only ledger)
+      // 5) Allocation
       await tx.insert(paymentAllocations).values({
         companyId,
         paymentId: p.id,
@@ -285,17 +280,17 @@ export class PaymentService {
       if (newBalance === 0 && inv.orderId) {
         await tx.execute(
           sql`
-      UPDATE orders
-      SET paid_at = COALESCE(paid_at, NOW()),
-          updated_at = NOW(),
-          status = CASE
-            WHEN status IN ('fulfilled', 'dispatched', 'completed', 'cancelled')
-            THEN status
-            ELSE 'paid'
-          END
-      WHERE id = ${inv.orderId}
-        AND company_id = ${companyId}
-    ` as any,
+          UPDATE orders
+          SET paid_at = COALESCE(paid_at, NOW()),
+              updated_at = NOW(),
+              status = CASE
+                WHEN status IN ('fulfilled', 'dispatched', 'completed', 'cancelled')
+                THEN status
+                ELSE 'paid'
+              END
+          WHERE id = ${inv.orderId}
+            AND company_id = ${companyId}
+        ` as any,
         );
       }
 
@@ -335,6 +330,32 @@ export class PaymentService {
         evidence: evidenceRow,
       };
     });
+
+    // ✅ After transaction commits — safe to fire notification
+    this.notifications
+      .create({
+        companyId,
+        type: 'payment_received',
+        title: 'Payment received',
+        body: `${
+          result.receipt?.orderNumber
+            ? `Order #${result.receipt.orderNumber}`
+            : result.receipt?.invoiceNumber
+              ? `Invoice ${result.receipt.invoiceNumber}`
+              : 'Payment'
+        } — ${dto.currency} ${dto.amount.toLocaleString()}`,
+        data: {
+          invoiceId: dto.invoiceId,
+          paymentId: result.paymentId,
+          amountMinor: result.appliedMinor,
+          orderNumber: result.receipt?.orderNumber ?? null,
+          invoiceNumber: result.receipt?.invoiceNumber ?? null,
+        },
+        channel: 'in_app',
+      })
+      .catch(console.error);
+
+    return result;
   }
 
   /**
@@ -772,20 +793,19 @@ export class PaymentService {
     return row;
   }
 
-  // in PaymentService
   async finalizePendingBankTransferPayment(
     dto: FinalizeBankTransferPaymentInput,
     companyId: string,
     userId: string,
   ) {
-    return this.db.transaction(async (tx) => {
+    const result = await this.db.transaction(async (tx) => {
       // 1) lock payment
       const payRes = await tx.execute(
         sql`
-        SELECT * FROM payments
-        WHERE id = ${dto.paymentId} AND company_id = ${companyId}
-        FOR UPDATE
-      ` as any,
+      SELECT * FROM payments
+      WHERE id = ${dto.paymentId} AND company_id = ${companyId}
+      FOR UPDATE
+    ` as any,
       );
       const p = (payRes as any)?.rows?.[0] ?? null;
       if (!p) throw new NotFoundException('Payment not found');
@@ -819,19 +839,18 @@ export class PaymentService {
         );
       }
 
-      // 2) invoice must exist in your flow (checkout creates draft invoice)
+      // 2) invoice must exist
       const invoiceId = p.invoice_id ?? null;
       if (!invoiceId) {
         throw new BadRequestException('Payment is missing invoiceId');
       }
 
-      // lock invoice row early (prevents race with other confirmations)
       const invRes = await tx.execute(
         sql`
-        SELECT * FROM invoices
-        WHERE id = ${invoiceId} AND company_id = ${companyId}
-        FOR UPDATE
-      ` as any,
+      SELECT * FROM invoices
+      WHERE id = ${invoiceId} AND company_id = ${companyId}
+      FOR UPDATE
+    ` as any,
       );
       const inv = (invRes as any)?.rows?.[0] ?? null;
       if (!inv) throw new NotFoundException('Invoice not found');
@@ -842,11 +861,6 @@ export class PaymentService {
         );
       }
       if (inv.status === 'draft') {
-        // You can decide policy:
-        // Option A: issue invoice automatically on confirmation
-        // Option B: require invoice to be issued before confirming
-        //
-        // For checkout, I recommend issuing when confirming bank transfer:
         const issued = await this.invoiceService.issueInvoice(
           inv.id,
           { storeId: inv.store_id ?? null },
@@ -854,7 +868,6 @@ export class PaymentService {
           userId,
           { tx },
         );
-        // refresh inv view
         (inv as any).number = (issued as any).number;
         (inv as any).status = (issued as any).status;
       }
@@ -871,7 +884,7 @@ export class PaymentService {
         });
       }
 
-      // 4) decide applied amount (full vs override)
+      // 4) decide applied amount
       const paymentAmountMinor = Math.trunc(Number(p.amount_minor ?? 0));
       if (!Number.isFinite(paymentAmountMinor) || paymentAmountMinor <= 0) {
         throw new BadRequestException('Payment amountMinor is invalid');
@@ -902,12 +915,12 @@ export class PaymentService {
           receivedAt: new Date(),
           confirmedAt: new Date(),
           confirmedByUserId: userId,
-          updatedAt: new Date(), // if you have it; otherwise remove
+          updatedAt: new Date(),
         } as any)
         .where(eq(payments.id, p.id))
         .execute();
 
-      // 6) allocate to invoice (this updates invoice + may mark order paid)
+      // 6) allocate to invoice
       await this.allocatePaymentToInvoiceTx(tx, {
         companyId,
         invoiceId: inv.id,
@@ -916,7 +929,7 @@ export class PaymentService {
         createdByUserId: userId,
       });
 
-      // 7) order number (for receipt print)
+      // 7) order number
       let orderNumber: string | null = null;
       const orderId = (inv as any).order_id ?? null;
       if (orderId) {
@@ -928,27 +941,21 @@ export class PaymentService {
         orderNumber = ord?.orderNumber ?? null;
       }
 
-      // 8) create receipt (idempotent)
+      // 8) create receipt
       const receipt = await this.createReceiptForPaymentTx(tx, {
         companyId,
         paymentId: p.id,
-
         invoiceId: inv.id,
-        orderId: orderId,
-
+        orderId,
         invoiceNumber: (inv as any).number ?? null,
         orderNumber,
-
         currency: p.currency ?? inv.currency ?? 'NGN',
         amountMinor: appliedMinor,
-
         method: 'bank_transfer',
         reference: dto.reference ?? p.reference ?? null,
-
         customerSnapshot: inv.customer_snapshot ?? null,
         storeSnapshot: inv.supplier_snapshot ?? null,
         meta: p.meta ?? null,
-
         createdByUserId: userId,
       });
 
@@ -959,10 +966,193 @@ export class PaymentService {
         alreadyConfirmed: false,
       };
     });
+
+    // ✅ After transaction commits
+    if (!result.alreadyConfirmed) {
+      this.notifications
+        .create({
+          companyId,
+          type: 'payment_received',
+          title: 'Bank transfer confirmed',
+          body: `${
+            result.receipt?.orderNumber
+              ? `Order #${result.receipt.orderNumber}`
+              : result.receipt?.invoiceNumber
+                ? `Invoice ${result.receipt.invoiceNumber}`
+                : 'Payment'
+          } — bank transfer confirmed`,
+          data: {
+            paymentId: result.paymentId,
+            receiptId: result.receiptId,
+            orderNumber: result.receipt?.orderNumber ?? null,
+            invoiceNumber: result.receipt?.invoiceNumber ?? null,
+          },
+          channel: 'in_app',
+        })
+        .catch(console.error);
+    }
+
+    return result;
   }
 
-  // For gateway payments (e.g. Paystack), after receiving provider webhook,
-  // call this to finalize payment, mark order paid, and create receipt.
+  async finalizePendingOrderBankTransferPayment(
+    dto: {
+      paymentId: string;
+      reference?: string | null;
+      evidenceRequired?: boolean;
+    },
+    companyId: string,
+    userId: string,
+  ) {
+    const result = await this.db.transaction(async (tx) => {
+      // 1) lock payment
+      const payRes = await tx.execute(
+        sql`
+      SELECT * FROM payments
+      WHERE id = ${dto.paymentId} AND company_id = ${companyId}
+      FOR UPDATE
+    ` as any,
+      );
+
+      const p = (payRes as any)?.rows?.[0] ?? null;
+      if (!p) throw new NotFoundException('Payment not found');
+
+      if (p.method !== 'bank_transfer') {
+        throw new BadRequestException('Payment is not a bank transfer');
+      }
+
+      if (p.status === 'succeeded') {
+        const [existingReceipt] = await tx
+          .select()
+          .from(paymentReceipts)
+          .where(
+            and(
+              eq(paymentReceipts.companyId, companyId),
+              eq(paymentReceipts.paymentId, p.id),
+            ),
+          )
+          .execute();
+
+        return {
+          paymentId: p.id,
+          receipt: existingReceipt ?? null,
+          alreadyConfirmed: true,
+        };
+      }
+
+      if (p.status !== 'pending') {
+        throw new BadRequestException(
+          `Payment must be pending (got ${p.status})`,
+        );
+      }
+
+      if (!p.order_id) {
+        throw new BadRequestException('Payment is not linked to an order');
+      }
+
+      // 2) lock order
+      const orderRes = await tx.execute(
+        sql`
+      SELECT * FROM orders
+      WHERE id = ${p.order_id} AND company_id = ${companyId}
+      FOR UPDATE
+    ` as any,
+      );
+
+      const order = (orderRes as any)?.rows?.[0] ?? null;
+      if (!order) throw new NotFoundException('Order not found');
+
+      // 3) optionally require evidence
+      if (dto.evidenceRequired) {
+        const [file] = await tx
+          .select({ id: paymentFiles.id })
+          .from(paymentFiles)
+          .where(
+            and(
+              eq(paymentFiles.companyId, companyId),
+              eq(paymentFiles.paymentId, p.id),
+            ),
+          )
+          .execute();
+
+        if (!file) {
+          throw new BadRequestException('No payment proof uploaded');
+        }
+      }
+
+      // 4) mark payment succeeded
+      await tx
+        .update(payments)
+        .set({
+          status: 'succeeded',
+          reference:
+            dto.reference !== undefined ? dto.reference : (p.reference ?? null),
+          receivedAt: new Date(),
+          confirmedAt: new Date(),
+          confirmedByUserId: userId,
+          updatedAt: new Date(),
+        } as any)
+        .where(eq(payments.id, p.id))
+        .execute();
+
+      // 5) mark order paid
+      await tx
+        .update(orders)
+        .set({
+          status: 'paid',
+          paidAt: new Date(),
+          updatedAt: new Date(),
+        } as any)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, order.id)))
+        .execute();
+
+      // 6) create receipt
+      const receipt = await this.createReceiptForPaymentTx(tx, {
+        companyId,
+        paymentId: p.id,
+        invoiceId: null,
+        orderId: order.id,
+        invoiceNumber: null,
+        orderNumber: order.order_number ?? order.orderNumber ?? null,
+        currency: p.currency ?? order.currency ?? 'NGN',
+        amountMinor: Number(p.amount_minor ?? 0),
+        method: 'bank_transfer',
+        reference: dto.reference ?? p.reference ?? null,
+        customerSnapshot: null,
+        storeSnapshot: null,
+        meta: p.meta ?? null,
+        createdByUserId: userId,
+      });
+
+      return {
+        paymentId: p.id,
+        receiptId: receipt.id,
+        receipt,
+        alreadyConfirmed: false,
+      };
+    });
+
+    // ✅ After transaction commits
+    if (!result.alreadyConfirmed) {
+      this.notifications
+        .create({
+          companyId,
+          type: 'payment_received',
+          title: 'Bank transfer confirmed',
+          body: `Order #${result.receipt?.orderNumber ?? ''} — bank transfer confirmed`,
+          data: {
+            paymentId: result.paymentId,
+            receiptId: result.receiptId,
+            orderId: result.receipt?.orderId ?? null,
+            orderNumber: result.receipt?.orderNumber ?? null,
+          },
+          channel: 'in_app',
+        })
+        .catch(console.error);
+    }
+
+    return result;
+  }
 
   async finalizeGatewayPaymentForOrder(params: {
     companyId: string;
@@ -1146,151 +1336,6 @@ export class PaymentService {
         receipt,
         receiptId: receipt.id,
         alreadyProcessed: false,
-      };
-    });
-  }
-
-  // ----- Admin/Storefront: pending bank transfer review flow -----
-
-  async finalizePendingOrderBankTransferPayment(
-    dto: {
-      paymentId: string;
-      reference?: string | null;
-      evidenceRequired?: boolean;
-    },
-    companyId: string,
-    userId: string,
-  ) {
-    return this.db.transaction(async (tx) => {
-      // 1) lock payment
-      const payRes = await tx.execute(
-        sql`
-      SELECT * FROM payments
-      WHERE id = ${dto.paymentId} AND company_id = ${companyId}
-      FOR UPDATE
-    ` as any,
-      );
-
-      const p = (payRes as any)?.rows?.[0] ?? null;
-      if (!p) throw new NotFoundException('Payment not found');
-
-      if (p.method !== 'bank_transfer') {
-        throw new BadRequestException('Payment is not a bank transfer');
-      }
-
-      if (p.status === 'succeeded') {
-        const [existingReceipt] = await tx
-          .select()
-          .from(paymentReceipts)
-          .where(
-            and(
-              eq(paymentReceipts.companyId, companyId),
-              eq(paymentReceipts.paymentId, p.id),
-            ),
-          )
-          .execute();
-
-        return {
-          paymentId: p.id,
-          receipt: existingReceipt ?? null,
-          alreadyConfirmed: true,
-        };
-      }
-
-      if (p.status !== 'pending') {
-        throw new BadRequestException(
-          `Payment must be pending (got ${p.status})`,
-        );
-      }
-
-      if (!p.order_id) {
-        throw new BadRequestException('Payment is not linked to an order');
-      }
-
-      // 2) lock order
-      const orderRes = await tx.execute(
-        sql`
-      SELECT * FROM orders
-      WHERE id = ${p.order_id} AND company_id = ${companyId}
-      FOR UPDATE
-    ` as any,
-      );
-
-      const order = (orderRes as any)?.rows?.[0] ?? null;
-      if (!order) throw new NotFoundException('Order not found');
-
-      // 3) optionally require evidence
-      if (dto.evidenceRequired) {
-        const [file] = await tx
-          .select({ id: paymentFiles.id })
-          .from(paymentFiles)
-          .where(
-            and(
-              eq(paymentFiles.companyId, companyId),
-              eq(paymentFiles.paymentId, p.id),
-            ),
-          )
-          .execute();
-
-        if (!file) {
-          throw new BadRequestException('No payment proof uploaded');
-        }
-      }
-
-      // 4) mark payment succeeded
-      await tx
-        .update(payments)
-        .set({
-          status: 'succeeded',
-          reference:
-            dto.reference !== undefined ? dto.reference : (p.reference ?? null),
-          receivedAt: new Date(),
-          confirmedAt: new Date(),
-          confirmedByUserId: userId,
-          updatedAt: new Date(),
-        } as any)
-        .where(eq(payments.id, p.id))
-        .execute();
-
-      // 5) mark order paid
-      await tx
-        .update(orders)
-        .set({
-          status: 'paid',
-          paidAt: new Date(),
-          updatedAt: new Date(),
-        } as any)
-        .where(and(eq(orders.companyId, companyId), eq(orders.id, order.id)))
-        .execute();
-
-      // 6) create receipt
-      const receipt = await this.createReceiptForPaymentTx(tx, {
-        companyId,
-        paymentId: p.id,
-
-        invoiceId: null,
-        orderId: order.id,
-
-        invoiceNumber: null,
-        orderNumber: order.order_number ?? order.orderNumber ?? null,
-
-        currency: p.currency ?? order.currency ?? 'NGN',
-        amountMinor: Number(p.amount_minor ?? 0),
-        method: 'bank_transfer',
-        reference: dto.reference ?? p.reference ?? null,
-
-        customerSnapshot: null,
-        storeSnapshot: null,
-        meta: p.meta ?? null,
-
-        createdByUserId: userId,
-      });
-
-      return {
-        paymentId: p.id,
-        receiptId: receipt.id,
-        receipt,
-        alreadyConfirmed: false,
       };
     });
   }

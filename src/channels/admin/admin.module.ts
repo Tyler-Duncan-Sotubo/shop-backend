@@ -20,6 +20,8 @@ import { AdminReviewsModule } from './reviews/reviews.module';
 import { GuardsModule } from './common/guards/guards.module';
 import { AdminAnalyticsModule } from './analytics/analytics.module';
 import { SearchController } from './search/search.controller';
+import { SupportModule } from './support/support.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -42,6 +44,8 @@ import { SearchController } from './search/search.controller';
     AdminSetupModule,
     AdminStorefrontConfigModule,
     AdminReviewsModule,
+    SupportModule,
+    NotificationsModule,
   ],
   providers: [AwsService],
   exports: [AwsService],

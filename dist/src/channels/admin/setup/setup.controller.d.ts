@@ -44,13 +44,13 @@ export declare class SetupController {
             companyId: string;
             storeId: string;
             type: string;
-            city: string | null;
-            postalCode: string | null;
             isDefault: boolean;
             code: string | null;
             addressLine1: string | null;
             addressLine2: string | null;
+            city: string | null;
             region: string | null;
+            postalCode: string | null;
         };
         domains: {
             id: string;

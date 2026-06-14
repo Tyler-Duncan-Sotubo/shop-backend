@@ -10,6 +10,8 @@ import { QuoteNotificationService } from './services/quote-notification.service'
 import { ResendProvider } from './resend.provider';
 import { OrderPaidAdminNotificationService } from './services/order-paid.service';
 import { DispatchNotificationService } from './services/dispatch-notification.service';
+import { FeedbackNotificationService } from './services/feedback-notification.service';
+import { NotificationsService } from './services/notifications.service';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import { DispatchNotificationService } from './services/dispatch-notification.se
   providers: [
     ResendProvider,
     EmailQueueProcessor,
+    NotificationsService,
     PasswordResetEmailService,
     InvitationService,
     EmailVerificationService,
@@ -29,8 +32,10 @@ import { DispatchNotificationService } from './services/dispatch-notification.se
     QuoteNotificationService,
     OrderPaidAdminNotificationService,
     DispatchNotificationService,
+    FeedbackNotificationService,
   ],
   exports: [
+    NotificationsService,
     PasswordResetEmailService,
     InvitationService,
     EmailVerificationService,
@@ -38,6 +43,7 @@ import { DispatchNotificationService } from './services/dispatch-notification.se
     QuoteNotificationService,
     OrderPaidAdminNotificationService,
     DispatchNotificationService,
+    FeedbackNotificationService,
   ],
 })
 export class NotificationModule {}

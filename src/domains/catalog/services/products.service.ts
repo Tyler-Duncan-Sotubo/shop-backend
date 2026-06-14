@@ -44,6 +44,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InventoryStockService } from 'src/domains/commerce/inventory/services/inventory-stock.service';
 import { toCdnUrl } from 'src/infrastructure/cdn/to-cdn-url';
+import { BarcodeService } from './barcode.service';
 
 type CollectionCategory = {
   id: string;
@@ -73,9 +74,38 @@ export class ProductsService {
     private readonly aws: AwsService,
     private readonly configService: ConfigService,
     private readonly inventoryService: InventoryStockService,
+    private readonly barcodeService: BarcodeService,
   ) {}
 
   // ----------------- Helpers -----------------
+
+  private generateVariantSku(
+    productId: string,
+    variantId: string,
+    options?: {
+      option1?: string | null;
+      option2?: string | null;
+      option3?: string | null;
+    },
+  ): string {
+    const productPrefix = productId.replace(/-/g, '').slice(0, 6).toUpperCase();
+
+    const optionPart = [options?.option1, options?.option2, options?.option3]
+      .filter(Boolean)
+      .join('-')
+      .trim();
+
+    const sanitizedOptions = optionPart
+      ? optionPart
+          .replace(/[^A-Za-z0-9-]/g, '-') // replace special chars with -
+          .replace(/-{2,}/g, '-') // collapse multiple dashes
+          .toUpperCase()
+      : 'VAR';
+
+    const variantSuffix = variantId.replace(/-/g, '').slice(-6).toUpperCase();
+
+    return `${productPrefix}-${sanitizedOptions}-${variantSuffix}`;
+  }
 
   async assertCompanyExists(companyId: string) {
     const company = await this.db.query.companies.findFirst({
@@ -393,7 +423,7 @@ export class ProductsService {
             storeId: dto.storeId,
             imageId: defaultImageId,
             // Simple product default variant
-            title: 'Default',
+            title: null,
             sku: dto.sku?.trim() ? dto.sku.trim() : null,
             barcode: dto.barcode?.trim() ? dto.barcode.trim() : null,
 
@@ -418,6 +448,16 @@ export class ProductsService {
           })
           .returning()
           .execute();
+
+        // ✅ Auto-generate SKU if not provided
+        if (!variant.sku) {
+          const autoSku = this.generateVariantSku(product.id, variant.id);
+          await tx
+            .update(productVariants)
+            .set({ sku: autoSku, updatedAt: new Date() })
+            .where(eq(productVariants.id, variant.id))
+            .execute();
+        }
 
         // Inventory is managed via inventoryService in your system
         // Use the same semantics as updateVariant: stockQuantity + safetyStock
@@ -460,6 +500,25 @@ export class ProductsService {
     }
 
     await this.cache.bumpCompanyVersion(companyId);
+
+    // ✅ Auto-generate barcode for simple product after TX + cache bump
+    if (productType === 'simple') {
+      // Load the variant we just created to get its ID
+      const variant = await this.db.query.productVariants.findFirst({
+        where: and(
+          eq(productVariants.companyId, companyId),
+          eq(productVariants.productId, created.id),
+        ),
+        columns: { id: true },
+      });
+
+      if (variant) {
+        // Non-blocking — barcode failure never affects product creation
+        this.barcodeService
+          .generateForVariant(companyId, variant.id)
+          .catch(console.error);
+      }
+    }
 
     if (user && ip) {
       await this.auditService.logAction({
@@ -1208,7 +1267,7 @@ export class ProductsService {
             and(
               eq(productVariants.companyId, companyId),
               eq(productVariants.productId, productId),
-              eq(productVariants.title, 'Default'),
+              isNull(productVariants.title),
             ),
           )
           .limit(1)
@@ -1475,7 +1534,7 @@ export class ProductsService {
               and(
                 eq(productVariants.companyId, companyId),
                 eq(productVariants.productId, productId),
-                eq(productVariants.title, 'Default'),
+                isNull(productVariants.title),
               ),
             )
             .limit(1)
@@ -1606,7 +1665,7 @@ export class ProductsService {
             and(
               eq(productVariants.companyId, companyId),
               eq(productVariants.productId, productId),
-              eq(productVariants.title, 'Default'),
+              isNull(productVariants.title),
             ),
           )
           .limit(1)
@@ -1726,7 +1785,7 @@ export class ProductsService {
               productId,
               storeId: p.storeId,
               imageId: productRow?.defaultImageId ?? null,
-              title: 'Default',
+              title: null,
               sku: incomingSku ?? null,
               barcode: dto.barcode?.trim() ? dto.barcode.trim() : null,
               option1: null,

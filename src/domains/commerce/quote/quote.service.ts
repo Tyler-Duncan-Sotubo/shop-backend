@@ -41,6 +41,7 @@ import { ManualOrdersService } from '../orders/manual-orders.service';
 import { QuoteNotificationService } from 'src/domains/notification/services/quote-notification.service';
 import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
+import { NotificationsService } from 'src/domains/notification/services/notifications.service';
 
 @Injectable()
 export class QuoteService {
@@ -50,6 +51,7 @@ export class QuoteService {
     private readonly auditService: AuditService,
     private readonly manualOrdersService: ManualOrdersService,
     private readonly quoteNotification: QuoteNotificationService,
+    private readonly notifications: NotificationsService,
     private readonly zohoBooks: ZohoBooksService,
     private readonly stock: InventoryStockService,
   ) {}
@@ -252,6 +254,24 @@ export class QuoteService {
         })),
       });
     }
+
+    // ✅ In-app notification after email
+    this.notifications
+      .create({
+        companyId,
+        type: 'new_quote',
+        title: 'New quote request',
+        body: `${created.customerName ?? created.customerEmail ?? 'A customer'} submitted a quote with ${items.length} item${items.length !== 1 ? 's' : ''}`,
+        data: {
+          quoteId: created.id,
+          quoteNumber: (created as any).quoteNumber ?? null,
+          customerEmail: created.customerEmail ?? null,
+          customerName: created.customerName ?? null,
+          itemsCount: items.length,
+        },
+        channel: 'in_app',
+      })
+      .catch(console.error);
 
     await this.bumpCompany(companyId);
 
@@ -1150,7 +1170,7 @@ export class QuoteService {
     actor?: User,
     ip?: string,
   ) {
-    return this.db.transaction(async (tx) => {
+    const result = await this.db.transaction(async (tx) => {
       const res = await this.convertToManualOrderTx(
         tx,
         companyId,
@@ -1162,8 +1182,26 @@ export class QuoteService {
 
       await this.bumpCompany(companyId);
 
-      return { orderId: res.orderId };
+      return { orderId: res.orderId, quote: res.quote };
     });
+
+    // ✅ After transaction commits
+    this.notifications
+      .create({
+        companyId,
+        type: 'new_order',
+        title: 'Quote converted to order',
+        body: `Quote ${(result.quote as any).quoteNumber ?? result.quote.id} has been converted to an order`,
+        data: {
+          quoteId,
+          orderId: result.orderId,
+          quoteNumber: (result.quote as any).quoteNumber ?? null,
+        },
+        channel: 'in_app',
+      })
+      .catch(console.error);
+
+    return { orderId: result.orderId };
   }
 
   async sendToZoho(

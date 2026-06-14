@@ -24,6 +24,7 @@ exports.productVariants = (0, pg_core_1.pgTable)('product_variants', {
     }),
     sku: (0, pg_core_1.varchar)('sku', { length: 64 }),
     barcode: (0, pg_core_1.varchar)('barcode', { length: 64 }),
+    barcodeImageUrl: (0, pg_core_1.text)('barcode_image_url'),
     title: (0, pg_core_1.text)('title'),
     option1: (0, pg_core_1.varchar)('option1', { length: 255 }),
     option2: (0, pg_core_1.varchar)('option2', { length: 255 }),

@@ -20,12 +20,14 @@ const schema_1 = require("../../../infrastructure/drizzle/schema");
 const inventory_stock_service_1 = require("../inventory/services/inventory-stock.service");
 const cache_service_1 = require("../../../infrastructure/cache/cache.service");
 const dispatch_notification_service_1 = require("../../notification/services/dispatch-notification.service");
+const notifications_service_1 = require("../../notification/services/notifications.service");
 let OrderDispatchService = class OrderDispatchService {
-    constructor(db, stock, cache, dispatchNotification) {
+    constructor(db, stock, cache, dispatchNotification, notifications) {
         this.db = db;
         this.stock = stock;
         this.cache = cache;
         this.dispatchNotification = dispatchNotification;
+        this.notifications = notifications;
     }
     async requestDispatch(companyId, storeId, orderId, actor, note) {
         const dispatch = await this.db.transaction(async (tx) => {
@@ -127,6 +129,21 @@ let OrderDispatchService = class OrderDispatchService {
                     }
                     : null,
             })));
+            this.notifications
+                .create({
+                companyId,
+                type: 'dispatch_requested',
+                title: 'Dispatch requested',
+                body: `Order #${orderRow?.orderNumber ?? orderId} has been sent to the warehouse`,
+                data: {
+                    orderId,
+                    orderNumber: orderRow?.orderNumber ?? null,
+                    dispatchId: dispatch.id,
+                    itemCount: itemCountRow,
+                },
+                channel: 'in_app',
+            })
+                .catch(console.error);
         }
         catch (err) {
             console.error('Failed to send request dispatch emails:', err);
@@ -251,6 +268,22 @@ let OrderDispatchService = class OrderDispatchService {
                     }
                     : null,
             })));
+            this.notifications
+                .create({
+                companyId,
+                type: 'order_fulfilled',
+                title: 'Order fulfilled',
+                body: `Order #${result.order.orderNumber ?? orderId} has been dispatched and fulfilled`,
+                data: {
+                    orderId,
+                    orderNumber: result.order.orderNumber ?? null,
+                    dispatchId: result.dispatch.id,
+                    dispatchedAt: result.dispatch.dispatchedAt?.toISOString() ?? null,
+                    itemCount: itemCountRow,
+                },
+                channel: 'in_app',
+            })
+                .catch(console.error);
         }
         catch (err) {
             console.error('Failed to send confirm dispatch emails:', err);
@@ -416,6 +449,7 @@ exports.OrderDispatchService = OrderDispatchService = __decorate([
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [Object, inventory_stock_service_1.InventoryStockService,
         cache_service_1.CacheService,
-        dispatch_notification_service_1.DispatchNotificationService])
+        dispatch_notification_service_1.DispatchNotificationService,
+        notifications_service_1.NotificationsService])
 ], OrderDispatchService);
 //# sourceMappingURL=order-dispatch.service.js.map

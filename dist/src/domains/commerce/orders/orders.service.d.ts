@@ -6,6 +6,7 @@ import { InventoryStockService } from '../inventory/services/inventory-stock.ser
 import { ZohoBooksService } from "../../integration/zoho/zoho-books.service";
 import { ShippingZonesService } from "../../fulfillment/shipping/services/shipping-zones.service";
 import { ShippingRatesService } from "../../fulfillment/shipping/services/shipping-rates.service";
+import { NotificationsService } from "../../notification/services/notifications.service";
 export declare class OrdersService {
     private readonly db;
     private readonly cache;
@@ -13,7 +14,8 @@ export declare class OrdersService {
     private readonly zohoBooks;
     private readonly shippingZonesService;
     private readonly shippingRatesService;
-    constructor(db: db, cache: CacheService, stock: InventoryStockService, zohoBooks: ZohoBooksService, shippingZonesService: ShippingZonesService, shippingRatesService: ShippingRatesService);
+    private readonly notifications;
+    constructor(db: db, cache: CacheService, stock: InventoryStockService, zohoBooks: ZohoBooksService, shippingZonesService: ShippingZonesService, shippingRatesService: ShippingRatesService, notifications: NotificationsService);
     getOrder(companyId: string, orderId: string): Promise<{
         items: {
             imageUrl: any;

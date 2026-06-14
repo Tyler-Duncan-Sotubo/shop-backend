@@ -132,3 +132,9 @@ export * from './schema/mail/contact-messages.schema';
 // Integrations
 export * from './schema/integrations/analytics/analytics-integration.schema';
 export * from './schema/integrations/zoho/zoho-connections.schema';
+
+// Support
+export * from './schema/support/feedback.schema';
+
+// Notifications
+export * from './schema/notifications/notifications.schema';

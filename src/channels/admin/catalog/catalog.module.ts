@@ -5,6 +5,7 @@ import { AdminLinkedProductsModule } from './linked-products/linked-products.mod
 import { AdminVariantOptionsModule } from './variant-options/variant-options.module';
 import { AdminVariantsModule } from './variants/variants.module';
 import { AdminProductsModule } from './products/products.module';
+import { BarcodeModule } from './barcode/barcode.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AdminProductsModule } from './products/products.module';
     AdminLinkedProductsModule,
     AdminVariantOptionsModule,
     AdminVariantsModule,
+    BarcodeModule,
   ],
 })
 export class AdminCatalogModule {}

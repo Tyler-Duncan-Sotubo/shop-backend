@@ -1,0 +1,1 @@
+ALTER TABLE "product_variants" ADD COLUMN "barcode_image_url" text;

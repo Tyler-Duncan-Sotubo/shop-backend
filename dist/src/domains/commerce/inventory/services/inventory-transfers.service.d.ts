@@ -29,8 +29,8 @@ export declare class InventoryTransfersService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        notes: string | null;
         status: string;
+        notes: string | null;
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
@@ -72,8 +72,8 @@ export declare class InventoryTransfersService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        notes: string | null;
         status: string;
+        notes: string | null;
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;

@@ -29,6 +29,8 @@ const reviews_module_1 = require("./reviews/reviews.module");
 const guards_module_1 = require("./common/guards/guards.module");
 const analytics_module_1 = require("./analytics/analytics.module");
 const search_controller_1 = require("./search/search.controller");
+const support_module_1 = require("./support/support.module");
+const notifications_module_1 = require("./notifications/notifications.module");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
@@ -54,6 +56,8 @@ exports.AdminModule = AdminModule = __decorate([
             setup_module_1.AdminSetupModule,
             storefront_config_module_1.AdminStorefrontConfigModule,
             reviews_module_1.AdminReviewsModule,
+            support_module_1.SupportModule,
+            notifications_module_1.NotificationsModule,
         ],
         providers: [aws_service_1.AwsService],
         exports: [aws_service_1.AwsService],

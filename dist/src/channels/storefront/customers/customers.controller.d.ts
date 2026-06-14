@@ -105,13 +105,13 @@ export declare class CustomersController {
         companyName: string | null;
         phone: string | null;
         customerId: string;
+        city: string;
+        postalCode: string | null;
+        state: string | null;
         label: string | null;
         addressee: string | null;
         line1: string;
         line2: string | null;
-        city: string;
-        state: string | null;
-        postalCode: string | null;
         isDefaultBilling: boolean;
         isDefaultShipping: boolean;
     }>;
@@ -140,14 +140,21 @@ export declare class CustomersController {
         success: boolean;
     }>;
     getCustomerActivity(customer: AuthCustomer, storeId: string): Promise<{
-        orders: {
-            id: string;
-            orderNumber: string;
-            status: string;
-            createdAt: Date | null;
+        orders: ({
+            id: any;
+            orderNumber: any;
+            status: any;
+            createdAt: any;
             currency: any;
             totalMinor: any;
-        }[];
+        } | {
+            id: any;
+            orderNumber: any;
+            status: any;
+            createdAt: any;
+            currency: any;
+            totalMinor: any;
+        })[];
         products: {
             id: string;
             name: string;
@@ -211,6 +218,18 @@ export declare class CustomersController {
         offset?: string;
     }): Promise<{
         items: ({
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: any;
+            lastOrderedAt: any;
+        } | {
+            id: any;
+            name: any;
+            slug: any;
+            imageUrl: any;
+            lastOrderedAt: any;
+        } | {
             id: any;
             name: any;
             slug: any;

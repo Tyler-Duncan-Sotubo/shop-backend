@@ -11,8 +11,8 @@ export declare class PublicInvoicesController {
             companyId: string;
             expiresAt: Date | null;
             meta: unknown;
-            token: string;
             invoiceId: string;
+            token: string;
             enabled: boolean;
             viewCount: number;
             lastViewedAt: Date | null;

@@ -22,14 +22,16 @@ const inventory_stock_service_1 = require("../inventory/services/inventory-stock
 const zoho_books_service_1 = require("../../integration/zoho/zoho-books.service");
 const shipping_zones_service_1 = require("../../fulfillment/shipping/services/shipping-zones.service");
 const shipping_rates_service_1 = require("../../fulfillment/shipping/services/shipping-rates.service");
+const notifications_service_1 = require("../../notification/services/notifications.service");
 let OrdersService = class OrdersService {
-    constructor(db, cache, stock, zohoBooks, shippingZonesService, shippingRatesService) {
+    constructor(db, cache, stock, zohoBooks, shippingZonesService, shippingRatesService, notifications) {
         this.db = db;
         this.cache = cache;
         this.stock = stock;
         this.zohoBooks = zohoBooks;
         this.shippingZonesService = shippingZonesService;
         this.shippingRatesService = shippingRatesService;
+        this.notifications = notifications;
     }
     async getOrder(companyId, orderId) {
         const order = await this.db
@@ -221,6 +223,19 @@ let OrdersService = class OrdersService {
             return after;
         });
         await this.cache.bumpCompanyVersion(companyId);
+        this.notifications
+            .create({
+            companyId,
+            type: 'payment_received',
+            title: 'Order marked as paid',
+            body: `Order #${result.orderNumber ?? orderId} has been marked as paid`,
+            data: {
+                orderId,
+                orderNumber: result.orderNumber ?? null,
+            },
+            channel: 'in_app',
+        })
+            .catch(console.error);
         return result;
     }
     async cancel(companyId, orderId, user, ip, opts) {
@@ -328,6 +343,22 @@ let OrdersService = class OrdersService {
             return after;
         });
         await this.cache.bumpCompanyVersion(companyId);
+        this.notifications
+            .create({
+            companyId,
+            type: 'order_cancelled',
+            title: result.status === 'refunded'
+                ? 'Order cancelled & refunded'
+                : 'Order cancelled',
+            body: `Order #${result.orderNumber ?? orderId} has been ${result.status === 'refunded' ? 'cancelled and flagged for refund' : 'cancelled'}`,
+            data: {
+                orderId,
+                orderNumber: result.orderNumber ?? null,
+                status: result.status,
+            },
+            channel: 'in_app',
+        })
+            .catch(console.error);
         return result;
     }
     async convertToLayBuy(companyId, orderId, user, ip) {
@@ -663,6 +694,7 @@ exports.OrdersService = OrdersService = __decorate([
         inventory_stock_service_1.InventoryStockService,
         zoho_books_service_1.ZohoBooksService,
         shipping_zones_service_1.ShippingZonesService,
-        shipping_rates_service_1.ShippingRatesService])
+        shipping_rates_service_1.ShippingRatesService,
+        notifications_service_1.NotificationsService])
 ], OrdersService);
 //# sourceMappingURL=orders.service.js.map

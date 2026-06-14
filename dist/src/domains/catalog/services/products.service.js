@@ -27,8 +27,9 @@ const product_mapper_1 = require("../mappers/product.mapper");
 const config_1 = require("@nestjs/config");
 const inventory_stock_service_1 = require("../../commerce/inventory/services/inventory-stock.service");
 const to_cdn_url_1 = require("../../../infrastructure/cdn/to-cdn-url");
+const barcode_service_1 = require("./barcode.service");
 let ProductsService = class ProductsService {
-    constructor(db, cache, auditService, categoryService, linkedProductsService, aws, configService, inventoryService) {
+    constructor(db, cache, auditService, categoryService, linkedProductsService, aws, configService, inventoryService, barcodeService) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
@@ -37,6 +38,22 @@ let ProductsService = class ProductsService {
         this.aws = aws;
         this.configService = configService;
         this.inventoryService = inventoryService;
+        this.barcodeService = barcodeService;
+    }
+    generateVariantSku(productId, variantId, options) {
+        const productPrefix = productId.replace(/-/g, '').slice(0, 6).toUpperCase();
+        const optionPart = [options?.option1, options?.option2, options?.option3]
+            .filter(Boolean)
+            .join('-')
+            .trim();
+        const sanitizedOptions = optionPart
+            ? optionPart
+                .replace(/[^A-Za-z0-9-]/g, '-')
+                .replace(/-{2,}/g, '-')
+                .toUpperCase()
+            : 'VAR';
+        const variantSuffix = variantId.replace(/-/g, '').slice(-6).toUpperCase();
+        return `${productPrefix}-${sanitizedOptions}-${variantSuffix}`;
     }
     async assertCompanyExists(companyId) {
         const company = await this.db.query.companies.findFirst({
@@ -251,7 +268,7 @@ let ProductsService = class ProductsService {
                     productId: product.id,
                     storeId: dto.storeId,
                     imageId: defaultImageId,
-                    title: 'Default',
+                    title: null,
                     sku: dto.sku?.trim() ? dto.sku.trim() : null,
                     barcode: dto.barcode?.trim() ? dto.barcode.trim() : null,
                     option1: null,
@@ -269,6 +286,14 @@ let ProductsService = class ProductsService {
                 })
                     .returning()
                     .execute();
+                if (!variant.sku) {
+                    const autoSku = this.generateVariantSku(product.id, variant.id);
+                    await tx
+                        .update(schema_1.productVariants)
+                        .set({ sku: autoSku, updatedAt: new Date() })
+                        .where((0, drizzle_orm_1.eq)(schema_1.productVariants.id, variant.id))
+                        .execute();
+                }
                 const stockQty = dto.stockQuantity !== undefined &&
                     String(dto.stockQuantity).trim() !== ''
                     ? Number(dto.stockQuantity)
@@ -289,6 +314,17 @@ let ProductsService = class ProductsService {
             });
         }
         await this.cache.bumpCompanyVersion(companyId);
+        if (productType === 'simple') {
+            const variant = await this.db.query.productVariants.findFirst({
+                where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.productId, created.id)),
+                columns: { id: true },
+            });
+            if (variant) {
+                this.barcodeService
+                    .generateForVariant(companyId, variant.id)
+                    .catch(console.error);
+            }
+        }
         if (user && ip) {
             await this.auditService.logAction({
                 action: 'create',
@@ -773,7 +809,7 @@ let ProductsService = class ProductsService {
             })
                 .from(schema_1.productVariants)
                 .leftJoin(schema_1.inventoryItems, (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, schema_1.productVariants.id))
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.productId, productId), (0, drizzle_orm_1.eq)(schema_1.productVariants.title, 'Default')))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.productId, productId), (0, drizzle_orm_1.isNull)(schema_1.productVariants.title)))
                 .limit(1)
                 .execute();
             return {
@@ -946,7 +982,7 @@ let ProductsService = class ProductsService {
                     const defaultVariant = await tx
                         .select({ id: schema_1.productVariants.id })
                         .from(schema_1.productVariants)
-                        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.productId, productId), (0, drizzle_orm_1.eq)(schema_1.productVariants.title, 'Default')))
+                        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.productId, productId), (0, drizzle_orm_1.isNull)(schema_1.productVariants.title)))
                         .limit(1)
                         .execute()
                         .then((r) => r[0]);
@@ -1018,7 +1054,7 @@ let ProductsService = class ProductsService {
                     sku: schema_1.productVariants.sku,
                 })
                     .from(schema_1.productVariants)
-                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.productId, productId), (0, drizzle_orm_1.eq)(schema_1.productVariants.title, 'Default')))
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.productId, productId), (0, drizzle_orm_1.isNull)(schema_1.productVariants.title)))
                     .limit(1)
                     .execute()
                     .then((r) => r[0]);
@@ -1100,7 +1136,7 @@ let ProductsService = class ProductsService {
                         productId,
                         storeId: p.storeId,
                         imageId: productRow?.defaultImageId ?? null,
-                        title: 'Default',
+                        title: null,
                         sku: incomingSku ?? null,
                         barcode: dto.barcode?.trim() ? dto.barcode.trim() : null,
                         option1: null,
@@ -1760,6 +1796,7 @@ exports.ProductsService = ProductsService = __decorate([
         linked_products_service_1.LinkedProductsService,
         aws_service_1.AwsService,
         config_1.ConfigService,
-        inventory_stock_service_1.InventoryStockService])
+        inventory_stock_service_1.InventoryStockService,
+        barcode_service_1.BarcodeService])
 ], ProductsService);
 //# sourceMappingURL=products.service.js.map

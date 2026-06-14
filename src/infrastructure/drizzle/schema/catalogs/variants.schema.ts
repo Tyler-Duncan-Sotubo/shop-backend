@@ -42,7 +42,7 @@ export const productVariants = pgTable(
     // SKU is unique per company (nullable allowed)
     sku: varchar('sku', { length: 64 }),
     barcode: varchar('barcode', { length: 64 }),
-
+    barcodeImageUrl: text('barcode_image_url'),
     // Human-friendly variant title, e.g. "Red / M"
     title: text('title'),
 

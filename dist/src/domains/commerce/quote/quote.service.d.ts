@@ -9,15 +9,17 @@ import { ManualOrdersService } from '../orders/manual-orders.service';
 import { QuoteNotificationService } from "../../notification/services/quote-notification.service";
 import { ZohoBooksService } from "../../integration/zoho/zoho-books.service";
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
+import { NotificationsService } from "../../notification/services/notifications.service";
 export declare class QuoteService {
     private readonly db;
     private readonly cache;
     private readonly auditService;
     private readonly manualOrdersService;
     private readonly quoteNotification;
+    private readonly notifications;
     private readonly zohoBooks;
     private readonly stock;
-    constructor(db: db, cache: CacheService, auditService: AuditService, manualOrdersService: ManualOrdersService, quoteNotification: QuoteNotificationService, zohoBooks: ZohoBooksService, stock: InventoryStockService);
+    constructor(db: db, cache: CacheService, auditService: AuditService, manualOrdersService: ManualOrdersService, quoteNotification: QuoteNotificationService, notifications: NotificationsService, zohoBooks: ZohoBooksService, stock: InventoryStockService);
     private findQuoteByIdOrThrow;
     private bumpCompany;
     private formatQuoteNumber;

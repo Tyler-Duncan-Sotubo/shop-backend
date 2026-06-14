@@ -18,6 +18,7 @@ import {
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
 import { DispatchNotificationService } from 'src/domains/notification/services/dispatch-notification.service';
+import { NotificationsService } from 'src/domains/notification/services/notifications.service';
 
 type Actor = {
   id: string;
@@ -31,6 +32,7 @@ export class OrderDispatchService {
     private readonly stock: InventoryStockService,
     private readonly cache: CacheService,
     private readonly dispatchNotification: DispatchNotificationService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ─────────────────────────────────────────────
@@ -179,6 +181,23 @@ export class OrderDispatchService {
           }),
         ),
       );
+
+      // ✅ Add notification
+      this.notifications
+        .create({
+          companyId,
+          type: 'dispatch_requested',
+          title: 'Dispatch requested',
+          body: `Order #${orderRow?.orderNumber ?? orderId} has been sent to the warehouse`,
+          data: {
+            orderId,
+            orderNumber: orderRow?.orderNumber ?? null,
+            dispatchId: dispatch.id,
+            itemCount: itemCountRow,
+          },
+          channel: 'in_app',
+        })
+        .catch(console.error);
     } catch (err) {
       console.error('Failed to send request dispatch emails:', err);
     }
@@ -374,6 +393,24 @@ export class OrderDispatchService {
           }),
         ),
       );
+
+      // ✅ Add notification
+      this.notifications
+        .create({
+          companyId,
+          type: 'order_fulfilled',
+          title: 'Order fulfilled',
+          body: `Order #${(result.order as any).orderNumber ?? orderId} has been dispatched and fulfilled`,
+          data: {
+            orderId,
+            orderNumber: (result.order as any).orderNumber ?? null,
+            dispatchId: result.dispatch.id,
+            dispatchedAt: result.dispatch.dispatchedAt?.toISOString() ?? null,
+            itemCount: itemCountRow,
+          },
+          channel: 'in_app',
+        })
+        .catch(console.error);
     } catch (err) {
       console.error('Failed to send confirm dispatch emails:', err);
     }

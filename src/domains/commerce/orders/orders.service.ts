@@ -27,6 +27,7 @@ import { InventoryStockService } from '../inventory/services/inventory-stock.ser
 import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
 import { ShippingZonesService } from 'src/domains/fulfillment/shipping/services/shipping-zones.service';
 import { ShippingRatesService } from 'src/domains/fulfillment/shipping/services/shipping-rates.service';
+import { NotificationsService } from 'src/domains/notification/services/notifications.service';
 
 @Injectable()
 export class OrdersService {
@@ -37,6 +38,7 @@ export class OrdersService {
     private readonly zohoBooks: ZohoBooksService,
     private readonly shippingZonesService: ShippingZonesService,
     private readonly shippingRatesService: ShippingRatesService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // -----------------------
@@ -366,6 +368,22 @@ export class OrdersService {
     });
 
     await this.cache.bumpCompanyVersion(companyId);
+
+    // ✅ notification
+    this.notifications
+      .create({
+        companyId,
+        type: 'payment_received',
+        title: 'Order marked as paid',
+        body: `Order #${(result as any).orderNumber ?? orderId} has been marked as paid`,
+        data: {
+          orderId,
+          orderNumber: (result as any).orderNumber ?? null,
+        },
+        channel: 'in_app',
+      })
+      .catch(console.error);
+
     return result;
   }
 
@@ -530,6 +548,26 @@ export class OrdersService {
     });
 
     await this.cache.bumpCompanyVersion(companyId);
+
+    // ✅ notification
+    this.notifications
+      .create({
+        companyId,
+        type: 'order_cancelled',
+        title:
+          result.status === 'refunded'
+            ? 'Order cancelled & refunded'
+            : 'Order cancelled',
+        body: `Order #${(result as any).orderNumber ?? orderId} has been ${result.status === 'refunded' ? 'cancelled and flagged for refund' : 'cancelled'}`,
+        data: {
+          orderId,
+          orderNumber: (result as any).orderNumber ?? null,
+          status: result.status,
+        },
+        channel: 'in_app',
+      })
+      .catch(console.error);
+
     return result;
   }
 

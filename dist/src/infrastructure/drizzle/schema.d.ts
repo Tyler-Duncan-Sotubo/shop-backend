@@ -77,3 +77,5 @@ export * from './schema/mail/subscribers.schema';
 export * from './schema/mail/contact-messages.schema';
 export * from './schema/integrations/analytics/analytics-integration.schema';
 export * from './schema/integrations/zoho/zoho-connections.schema';
+export * from './schema/support/feedback.schema';
+export * from './schema/notifications/notifications.schema';

@@ -9,6 +9,7 @@ import { AwsService } from "../../../infrastructure/aws/aws.service";
 import { mapProductToCollectionListResponse } from '../mappers/product.mapper';
 import { ConfigService } from '@nestjs/config';
 import { InventoryStockService } from "../../commerce/inventory/services/inventory-stock.service";
+import { BarcodeService } from './barcode.service';
 type CollectionCategory = {
     id: string;
     name: string;
@@ -33,7 +34,9 @@ export declare class ProductsService {
     private readonly aws;
     private readonly configService;
     private readonly inventoryService;
-    constructor(db: db, cache: CacheService, auditService: AuditService, categoryService: CategoriesService, linkedProductsService: LinkedProductsService, aws: AwsService, configService: ConfigService, inventoryService: InventoryStockService);
+    private readonly barcodeService;
+    constructor(db: db, cache: CacheService, auditService: AuditService, categoryService: CategoriesService, linkedProductsService: LinkedProductsService, aws: AwsService, configService: ConfigService, inventoryService: InventoryStockService, barcodeService: BarcodeService);
+    private generateVariantSku;
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;
@@ -60,8 +63,8 @@ export declare class ProductsService {
     findProductByIdOrThrow(companyId: string, productId: string): Promise<{
         [x: string]: any;
         productCategories: any;
-        images: any;
         variants: any;
+        images: any;
     }>;
     ensureSlugUnique(companyId: string, slug: string, excludeId?: string): Promise<void>;
     private sanitizeFileName;
@@ -105,34 +108,34 @@ export declare class ProductsService {
     }): Promise<{
         [x: string]: any;
         productCategories: any;
+        variants: any;
         images: any;
         defaultVariant: any;
-        variants: any;
         options: any;
     }[]>;
     getProductById(companyId: string, productId: string): Promise<{
         [x: string]: any;
         productCategories: any;
-        images: any;
         variants: any;
+        images: any;
     }>;
     getProductWithRelations(companyId: string, productId: string): Promise<{
         [x: string]: any;
         productCategories: any;
+        variants: any;
         images: any;
         defaultVariant: any;
-        variants: any;
         options: any;
     }>;
     getProductWithRelationsBySlug(companyId: string, slug: string): Promise<{
         rating_count: number;
         average_rating: number;
         productCategories: any;
-        defaultImage: any;
+        variants: any;
         images: any;
         defaultVariant: any;
-        variants: any;
         options: any;
+        defaultImage: any;
     }>;
     getProductForEdit(companyId: string, productId: string): Promise<{
         id: any;
@@ -239,6 +242,10 @@ export declare class ProductsService {
         })[];
     }>;
     listProductsGroupedUnderParentCategorySlug(companyId: string, storeId: string, parentSlug: string, query: ProductQueryDto): Promise<{
+        parent: null;
+        groups: never[];
+        exploreMore: never[];
+    } | {
         parent: {
             id: any;
             name: any;
@@ -291,10 +298,6 @@ export declare class ProductsService {
             slug: any;
             imageUrl: string | null;
         })[];
-    } | {
-        parent: null;
-        groups: never[];
-        exploreMore: never[];
     }>;
     private ensureSkuUnique;
 }

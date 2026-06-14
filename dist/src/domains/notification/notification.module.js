@@ -19,6 +19,8 @@ const quote_notification_service_1 = require("./services/quote-notification.serv
 const resend_provider_1 = require("./resend.provider");
 const order_paid_service_1 = require("./services/order-paid.service");
 const dispatch_notification_service_1 = require("./services/dispatch-notification.service");
+const feedback_notification_service_1 = require("./services/feedback-notification.service");
+const notifications_service_1 = require("./services/notifications.service");
 let NotificationModule = class NotificationModule {
 };
 exports.NotificationModule = NotificationModule;
@@ -32,6 +34,7 @@ exports.NotificationModule = NotificationModule = __decorate([
         providers: [
             resend_provider_1.ResendProvider,
             email_queue_processor_1.EmailQueueProcessor,
+            notifications_service_1.NotificationsService,
             password_reset_service_1.PasswordResetEmailService,
             invitation_service_1.InvitationService,
             email_verification_service_1.EmailVerificationService,
@@ -41,8 +44,10 @@ exports.NotificationModule = NotificationModule = __decorate([
             quote_notification_service_1.QuoteNotificationService,
             order_paid_service_1.OrderPaidAdminNotificationService,
             dispatch_notification_service_1.DispatchNotificationService,
+            feedback_notification_service_1.FeedbackNotificationService,
         ],
         exports: [
+            notifications_service_1.NotificationsService,
             password_reset_service_1.PasswordResetEmailService,
             invitation_service_1.InvitationService,
             email_verification_service_1.EmailVerificationService,
@@ -50,6 +55,7 @@ exports.NotificationModule = NotificationModule = __decorate([
             quote_notification_service_1.QuoteNotificationService,
             order_paid_service_1.OrderPaidAdminNotificationService,
             dispatch_notification_service_1.DispatchNotificationService,
+            feedback_notification_service_1.FeedbackNotificationService,
         ],
     })
 ], NotificationModule);

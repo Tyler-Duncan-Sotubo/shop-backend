@@ -365,6 +365,27 @@
       "when": 1781170353135,
       "tag": "0051_young_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1781365334599,
+      "tag": "0052_organic_silverclaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1781424796461,
+      "tag": "0053_flowery_sunspot",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1781429989067,
+      "tag": "0054_fixed_mach_iv",
+      "breakpoints": true
     }
   ]
 }

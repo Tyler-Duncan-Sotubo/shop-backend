@@ -24,13 +24,15 @@ const manual_orders_service_1 = require("../orders/manual-orders.service");
 const quote_notification_service_1 = require("../../notification/services/quote-notification.service");
 const zoho_books_service_1 = require("../../integration/zoho/zoho-books.service");
 const inventory_stock_service_1 = require("../inventory/services/inventory-stock.service");
+const notifications_service_1 = require("../../notification/services/notifications.service");
 let QuoteService = class QuoteService {
-    constructor(db, cache, auditService, manualOrdersService, quoteNotification, zohoBooks, stock) {
+    constructor(db, cache, auditService, manualOrdersService, quoteNotification, notifications, zohoBooks, stock) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
         this.manualOrdersService = manualOrdersService;
         this.quoteNotification = quoteNotification;
+        this.notifications = notifications;
         this.zohoBooks = zohoBooks;
         this.stock = stock;
     }
@@ -173,6 +175,22 @@ let QuoteService = class QuoteService {
                 })),
             });
         }
+        this.notifications
+            .create({
+            companyId,
+            type: 'new_quote',
+            title: 'New quote request',
+            body: `${created.customerName ?? created.customerEmail ?? 'A customer'} submitted a quote with ${items.length} item${items.length !== 1 ? 's' : ''}`,
+            data: {
+                quoteId: created.id,
+                quoteNumber: created.quoteNumber ?? null,
+                customerEmail: created.customerEmail ?? null,
+                customerName: created.customerName ?? null,
+                itemsCount: items.length,
+            },
+            channel: 'in_app',
+        })
+            .catch(console.error);
         await this.bumpCompany(companyId);
         if (user && ip) {
             await this.auditService.logAction({
@@ -709,11 +727,26 @@ let QuoteService = class QuoteService {
         return { orderId: order.id, quote };
     }
     async convertToManualOrder(companyId, quoteId, input, actor, ip) {
-        return this.db.transaction(async (tx) => {
+        const result = await this.db.transaction(async (tx) => {
             const res = await this.convertToManualOrderTx(tx, companyId, quoteId, input, actor, ip);
             await this.bumpCompany(companyId);
-            return { orderId: res.orderId };
+            return { orderId: res.orderId, quote: res.quote };
         });
+        this.notifications
+            .create({
+            companyId,
+            type: 'new_order',
+            title: 'Quote converted to order',
+            body: `Quote ${result.quote.quoteNumber ?? result.quote.id} has been converted to an order`,
+            data: {
+                quoteId,
+                orderId: result.orderId,
+                quoteNumber: result.quote.quoteNumber ?? null,
+            },
+            channel: 'in_app',
+        })
+            .catch(console.error);
+        return { orderId: result.orderId };
     }
     async sendToZoho(companyId, quoteId, actor, ip) {
         return this.db.transaction(async (tx) => {
@@ -745,6 +778,7 @@ exports.QuoteService = QuoteService = __decorate([
         audit_service_1.AuditService,
         manual_orders_service_1.ManualOrdersService,
         quote_notification_service_1.QuoteNotificationService,
+        notifications_service_1.NotificationsService,
         zoho_books_service_1.ZohoBooksService,
         inventory_stock_service_1.InventoryStockService])
 ], QuoteService);

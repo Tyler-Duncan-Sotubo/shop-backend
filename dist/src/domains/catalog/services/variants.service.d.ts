@@ -8,6 +8,7 @@ import { InventoryStockService } from "../../commerce/inventory/services/invento
 import { StoreVariantQueryDto } from '../dtos/variants/store-vairants.dto';
 import { CategoriesService } from './categories.service';
 import { CompanySettingsService } from "../../company-settings/company-settings.service";
+import { BarcodeService } from './barcode.service';
 export declare class VariantsService {
     private readonly db;
     private readonly cache;
@@ -16,7 +17,9 @@ export declare class VariantsService {
     private readonly inventoryService;
     private readonly categoriesService;
     private readonly companySettings;
-    constructor(db: db, cache: CacheService, auditService: AuditService, imagesService: ImagesService, inventoryService: InventoryStockService, categoriesService: CategoriesService, companySettings: CompanySettingsService);
+    private readonly barcodeService;
+    constructor(db: db, cache: CacheService, auditService: AuditService, imagesService: ImagesService, inventoryService: InventoryStockService, categoriesService: CategoriesService, companySettings: CompanySettingsService, barcodeService: BarcodeService);
+    private generateVariantSku;
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;

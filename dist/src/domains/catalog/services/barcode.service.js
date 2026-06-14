@@ -20,6 +20,7 @@ const schema_1 = require("../../../infrastructure/drizzle/schema");
 const aws_service_1 = require("../../../infrastructure/aws/aws.service");
 const cache_service_1 = require("../../../infrastructure/cache/cache.service");
 const bwipjs = require("bwip-js");
+const drizzle_orm_2 = require("drizzle-orm");
 let BarcodeService = class BarcodeService {
     constructor(db, aws, cache) {
         this.db = db;
@@ -111,27 +112,38 @@ let BarcodeService = class BarcodeService {
             title: schema_1.productVariants.title,
             sku: schema_1.productVariants.sku,
             barcode: schema_1.productVariants.barcode,
+            barcodeImageUrl: schema_1.productVariants.barcodeImageUrl,
             regularPrice: schema_1.productVariants.regularPrice,
             currency: schema_1.productVariants.currency,
             productName: schema_1.products.name,
         })
             .from(schema_1.productVariants)
             .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productVariants.productId)))
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_2.inArray)(schema_1.productVariants.id, variantIds)))
             .execute();
-        const filtered = rows.filter((r) => variantIds.includes(r.id));
-        if (!filtered.length)
+        if (!rows.length)
             throw new common_1.NotFoundException('No variants found');
-        const labels = await Promise.all(filtered.map(async (v) => {
-            const barcodeValue = this.generateBarcodeValue(v);
-            const result = await this.generateForVariant(companyId, v.id, format);
+        const labels = await Promise.all(rows.map(async (v) => {
+            if (!v.barcodeImageUrl) {
+                const result = await this.generateForVariant(companyId, v.id, format);
+                return {
+                    variantId: v.id,
+                    productName: v.productName ?? 'Product',
+                    variantTitle: v.title ?? null,
+                    sku: v.sku ?? null,
+                    barcode: result.barcode,
+                    barcodeImageUrl: result.barcodeImageUrl,
+                    regularPrice: v.regularPrice ?? null,
+                    currency: v.currency ?? null,
+                };
+            }
             return {
                 variantId: v.id,
                 productName: v.productName ?? 'Product',
                 variantTitle: v.title ?? null,
                 sku: v.sku ?? null,
-                barcode: barcodeValue,
-                barcodeImageUrl: result.barcodeImageUrl,
+                barcode: v.barcode ?? this.generateBarcodeValue(v),
+                barcodeImageUrl: v.barcodeImageUrl,
                 regularPrice: v.regularPrice ?? null,
                 currency: v.currency ?? null,
             };

@@ -31,6 +31,7 @@ import { InventoryStockService } from 'src/domains/commerce/inventory/services/i
 import { StoreVariantQueryDto } from '../dtos/variants/store-vairants.dto';
 import { CategoriesService } from './categories.service';
 import { CompanySettingsService } from 'src/domains/company-settings/company-settings.service';
+import { BarcodeService } from './barcode.service';
 
 @Injectable()
 export class VariantsService {
@@ -42,9 +43,38 @@ export class VariantsService {
     private readonly inventoryService: InventoryStockService,
     private readonly categoriesService: CategoriesService,
     private readonly companySettings: CompanySettingsService,
+    private readonly barcodeService: BarcodeService,
   ) {}
 
   // ----------------- Helpers -----------------
+
+  private generateVariantSku(
+    productId: string,
+    variantId: string,
+    options?: {
+      option1?: string | null;
+      option2?: string | null;
+      option3?: string | null;
+    },
+  ): string {
+    const productPrefix = productId.replace(/-/g, '').slice(0, 6).toUpperCase();
+
+    const optionPart = [options?.option1, options?.option2, options?.option3]
+      .filter(Boolean)
+      .join('-')
+      .trim();
+
+    const sanitizedOptions = optionPart
+      ? optionPart
+          .replace(/[^A-Za-z0-9-]/g, '-') // replace special chars with -
+          .replace(/-{2,}/g, '-') // collapse multiple dashes
+          .toUpperCase()
+      : 'VAR';
+
+    const variantSuffix = variantId.replace(/-/g, '').slice(-6).toUpperCase();
+
+    return `${productPrefix}-${sanitizedOptions}-${variantSuffix}`;
+  }
 
   async assertCompanyExists(companyId: string) {
     const company = await this.db.query.companies.findFirst({
@@ -647,47 +677,31 @@ export class VariantsService {
     user?: User,
     ip?: string,
   ) {
-    // Ensure product exists for this company
     const product = await this.assertProductBelongsToCompany(
       companyId,
       productId,
     );
 
-    // 1. Load options + values for this product
     const opts = await this.db.query.productOptions.findMany({
       where: (fields, { and, eq }) =>
         and(eq(fields.companyId, companyId), eq(fields.productId, productId)),
-      with: {
-        values: true,
-      },
+      with: { values: true },
     });
 
-    // Filter out options with no values
     const optionsWithValues: ProductOptionWithValues[] = opts
       .filter((opt) => opt.values && opt.values.length > 0)
       .map((opt) => ({
         id: opt.id,
         name: opt.name,
         position: opt.position,
-        values: opt.values.map((v) => ({
-          id: v.id,
-          value: v.value,
-        })),
+        values: opt.values.map((v) => ({ id: v.id, value: v.value })),
       }));
 
-    if (optionsWithValues.length === 0) {
-      // No options => nothing to generate
-      return [];
-    }
+    if (optionsWithValues.length === 0) return [];
 
-    // 2. Generate all theoretical combinations
     const combinations = generateVariantCombinations(optionsWithValues);
+    if (combinations.length === 0) return [];
 
-    if (combinations.length === 0) {
-      return [];
-    }
-
-    // 3. Load existing variants to avoid duplicates
     const existingVariants = await this.db.query.productVariants.findMany({
       where: (fields, { and, eq }) =>
         and(eq(fields.companyId, companyId), eq(fields.productId, productId)),
@@ -703,16 +717,12 @@ export class VariantsService {
       existingVariants.map((v) => makeKey(v.option1, v.option2, v.option3)),
     );
 
-    // 4. Filter combinations to only those that don't exist yet
     const newCombinations = combinations.filter((combo) => {
       const key = makeKey(combo.option1, combo.option2, combo.option3);
       return !existingKeys.has(key);
     });
 
-    if (newCombinations.length === 0) {
-      // Everything already exists
-      return [];
-    }
+    if (newCombinations.length === 0) return [];
 
     // 5. Insert missing variants
     const inserted = await this.db
@@ -722,29 +732,55 @@ export class VariantsService {
           companyId,
           productId,
           storeId: product.storeId,
-          regularPrice: '0', // default price; user can update later
-
+          regularPrice: '0',
           title: combo.title,
-          // NOTE: SKU/barcode not set here; you can fill them later or generate
           sku: null,
           barcode: null,
-
           option1: combo.option1 ?? null,
           option2: combo.option2 ?? null,
           option3: combo.option3 ?? null,
-
           isActive: true,
-
           weight: null,
           length: null,
           width: null,
           height: null,
-
           metadata: {},
         })),
       )
       .returning()
       .execute();
+
+    // ✅ Auto-generate SKUs now that we have variant IDs
+    const withSkus = await Promise.all(
+      inserted.map(async (variant) => {
+        const autoSku = this.generateVariantSku(productId, variant.id, {
+          option1: variant.option1,
+          option2: variant.option2,
+          option3: variant.option3,
+        });
+
+        const [updated] = await this.db
+          .update(productVariants)
+          .set({ sku: autoSku, updatedAt: new Date() })
+          .where(
+            and(
+              eq(productVariants.companyId, companyId),
+              eq(productVariants.id, variant.id),
+            ),
+          )
+          .returning()
+          .execute();
+
+        return updated;
+      }),
+    );
+
+    // ✅ Auto-generate barcodes non-blocking — after SKUs are set
+    for (const variant of withSkus) {
+      this.barcodeService
+        .generateForVariant(companyId, variant.id)
+        .catch(console.error);
+    }
 
     await this.cache.bumpCompanyVersion(companyId);
 
@@ -764,6 +800,6 @@ export class VariantsService {
       });
     }
 
-    return inserted;
+    return withSkus;
   }
 }

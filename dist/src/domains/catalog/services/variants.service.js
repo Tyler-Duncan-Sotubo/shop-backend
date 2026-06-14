@@ -24,8 +24,9 @@ const images_service_1 = require("./images.service");
 const inventory_stock_service_1 = require("../../commerce/inventory/services/inventory-stock.service");
 const categories_service_1 = require("./categories.service");
 const company_settings_service_1 = require("../../company-settings/company-settings.service");
+const barcode_service_1 = require("./barcode.service");
 let VariantsService = class VariantsService {
-    constructor(db, cache, auditService, imagesService, inventoryService, categoriesService, companySettings) {
+    constructor(db, cache, auditService, imagesService, inventoryService, categoriesService, companySettings, barcodeService) {
         this.db = db;
         this.cache = cache;
         this.auditService = auditService;
@@ -33,6 +34,22 @@ let VariantsService = class VariantsService {
         this.inventoryService = inventoryService;
         this.categoriesService = categoriesService;
         this.companySettings = companySettings;
+        this.barcodeService = barcodeService;
+    }
+    generateVariantSku(productId, variantId, options) {
+        const productPrefix = productId.replace(/-/g, '').slice(0, 6).toUpperCase();
+        const optionPart = [options?.option1, options?.option2, options?.option3]
+            .filter(Boolean)
+            .join('-')
+            .trim();
+        const sanitizedOptions = optionPart
+            ? optionPart
+                .replace(/[^A-Za-z0-9-]/g, '-')
+                .replace(/-{2,}/g, '-')
+                .toUpperCase()
+            : 'VAR';
+        const variantSuffix = variantId.replace(/-/g, '').slice(-6).toUpperCase();
+        return `${productPrefix}-${sanitizedOptions}-${variantSuffix}`;
     }
     async assertCompanyExists(companyId) {
         const company = await this.db.query.companies.findFirst({
@@ -407,9 +424,7 @@ let VariantsService = class VariantsService {
         const product = await this.assertProductBelongsToCompany(companyId, productId);
         const opts = await this.db.query.productOptions.findMany({
             where: (fields, { and, eq }) => and(eq(fields.companyId, companyId), eq(fields.productId, productId)),
-            with: {
-                values: true,
-            },
+            with: { values: true },
         });
         const optionsWithValues = opts
             .filter((opt) => opt.values && opt.values.length > 0)
@@ -417,18 +432,13 @@ let VariantsService = class VariantsService {
             id: opt.id,
             name: opt.name,
             position: opt.position,
-            values: opt.values.map((v) => ({
-                id: v.id,
-                value: v.value,
-            })),
+            values: opt.values.map((v) => ({ id: v.id, value: v.value })),
         }));
-        if (optionsWithValues.length === 0) {
+        if (optionsWithValues.length === 0)
             return [];
-        }
         const combinations = (0, option_combinations_1.generateVariantCombinations)(optionsWithValues);
-        if (combinations.length === 0) {
+        if (combinations.length === 0)
             return [];
-        }
         const existingVariants = await this.db.query.productVariants.findMany({
             where: (fields, { and, eq }) => and(eq(fields.companyId, companyId), eq(fields.productId, productId)),
         });
@@ -438,9 +448,8 @@ let VariantsService = class VariantsService {
             const key = makeKey(combo.option1, combo.option2, combo.option3);
             return !existingKeys.has(key);
         });
-        if (newCombinations.length === 0) {
+        if (newCombinations.length === 0)
             return [];
-        }
         const inserted = await this.db
             .insert(schema_1.productVariants)
             .values(newCombinations.map((combo) => ({
@@ -463,6 +472,25 @@ let VariantsService = class VariantsService {
         })))
             .returning()
             .execute();
+        const withSkus = await Promise.all(inserted.map(async (variant) => {
+            const autoSku = this.generateVariantSku(productId, variant.id, {
+                option1: variant.option1,
+                option2: variant.option2,
+                option3: variant.option3,
+            });
+            const [updated] = await this.db
+                .update(schema_1.productVariants)
+                .set({ sku: autoSku, updatedAt: new Date() })
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.id, variant.id)))
+                .returning()
+                .execute();
+            return updated;
+        }));
+        for (const variant of withSkus) {
+            this.barcodeService
+                .generateForVariant(companyId, variant.id)
+                .catch(console.error);
+        }
         await this.cache.bumpCompanyVersion(companyId);
         if (user && ip) {
             await this.auditService.logAction({
@@ -479,7 +507,7 @@ let VariantsService = class VariantsService {
                 },
             });
         }
-        return inserted;
+        return withSkus;
     }
 };
 exports.VariantsService = VariantsService;
@@ -491,6 +519,7 @@ exports.VariantsService = VariantsService = __decorate([
         images_service_1.ImagesService,
         inventory_stock_service_1.InventoryStockService,
         categories_service_1.CategoriesService,
-        company_settings_service_1.CompanySettingsService])
+        company_settings_service_1.CompanySettingsService,
+        barcode_service_1.BarcodeService])
 ], VariantsService);
 //# sourceMappingURL=variants.service.js.map

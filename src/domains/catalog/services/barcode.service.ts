@@ -6,6 +6,7 @@ import { productVariants, products } from 'src/infrastructure/drizzle/schema';
 import { AwsService } from 'src/infrastructure/aws/aws.service';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
 import * as bwipjs from 'bwip-js';
+import { inArray } from 'drizzle-orm';
 
 export type BarcodeFormat = 'code128' | 'ean13' | 'qrcode';
 
@@ -178,16 +179,16 @@ export class BarcodeService {
     companyId: string,
     variantIds: string[],
     format: BarcodeFormat = 'code128',
-  ): Promise<{ pdfUrl: string; storageKey: string; count: number }> {
+  ) {
     if (!variantIds.length) throw new NotFoundException('No variants provided');
 
-    // 1) load variants + product names
     const rows = await this.db
       .select({
         id: productVariants.id,
         title: productVariants.title,
         sku: productVariants.sku,
         barcode: productVariants.barcode,
+        barcodeImageUrl: productVariants.barcodeImageUrl, // ← use saved URL
         regularPrice: productVariants.regularPrice,
         currency: productVariants.currency,
         productName: products.name,
@@ -200,38 +201,49 @@ export class BarcodeService {
           eq(products.id, productVariants.productId),
         ),
       )
-      .where(and(eq(productVariants.companyId, companyId)))
+      .where(
+        and(
+          eq(productVariants.companyId, companyId),
+          inArray(productVariants.id, variantIds),
+        ),
+      )
       .execute();
 
-    const filtered = rows.filter((r) => variantIds.includes(r.id));
-    if (!filtered.length) throw new NotFoundException('No variants found');
+    if (!rows.length) throw new NotFoundException('No variants found');
 
-    // 2) generate barcode images for each, upload individually
     const labels: BarcodeLabelData[] = await Promise.all(
-      filtered.map(async (v) => {
-        const barcodeValue = this.generateBarcodeValue(v);
-        const result = await this.generateForVariant(companyId, v.id, format);
+      rows.map(async (v) => {
+        // Only generate if no image URL saved yet
+        if (!v.barcodeImageUrl) {
+          const result = await this.generateForVariant(companyId, v.id, format);
+          return {
+            variantId: v.id,
+            productName: v.productName ?? 'Product',
+            variantTitle: v.title ?? null,
+            sku: v.sku ?? null,
+            barcode: result.barcode,
+            barcodeImageUrl: result.barcodeImageUrl,
+            regularPrice: v.regularPrice ?? null,
+            currency: v.currency ?? null,
+          };
+        }
 
         return {
           variantId: v.id,
           productName: v.productName ?? 'Product',
           variantTitle: v.title ?? null,
           sku: v.sku ?? null,
-          barcode: barcodeValue,
-          barcodeImageUrl: result.barcodeImageUrl,
+          barcode: v.barcode ?? this.generateBarcodeValue(v),
+          barcodeImageUrl: v.barcodeImageUrl, // ← use saved URL directly
           regularPrice: v.regularPrice ?? null,
           currency: v.currency ?? null,
         };
       }),
     );
 
-    // 3) build HTML label sheet
     const html = this.buildLabelSheetHtml(labels);
-
-    // 4) render to PDF via Playwright
     const pdfBuffer = await this.htmlToPdf(html);
 
-    // 5) upload PDF
     const stamp = Date.now();
     const key = `companies/${companyId}/barcodes/label-sheets/labels-${stamp}.pdf`;
 

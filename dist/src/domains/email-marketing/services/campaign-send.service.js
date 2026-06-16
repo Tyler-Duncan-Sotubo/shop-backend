@@ -107,14 +107,14 @@ let CampaignSendService = CampaignSendService_1 = class CampaignSendService {
                     html,
                 }));
                 const result = await this.resend.client.batch.send(batch);
-                const ids = Array.isArray(result?.data)
-                    ? result.data
+                const ids = Array.isArray(result?.data?.data)
+                    ? result.data.data
                         .map((r) => r.id)
                         .filter((id) => !!id)
                     : [];
                 allMessageIds.push(...ids);
             }
-            if (allMessageIds.length > 0) {
+            if (emails.length > 0) {
                 const eventRows = emails.map((email, i) => ({
                     companyId,
                     campaignId,

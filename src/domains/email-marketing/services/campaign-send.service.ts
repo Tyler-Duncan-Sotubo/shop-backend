@@ -157,8 +157,9 @@ export class CampaignSendService {
 
         const result = await (this.resend.client.batch as any).send(batch);
 
-        const ids = Array.isArray(result?.data)
-          ? result.data
+        // Resend v6 returns { data: { data: [...] } }
+        const ids = Array.isArray(result?.data?.data)
+          ? result.data.data
               .map((r: { id?: string }) => r.id)
               .filter((id): id is string => !!id)
           : [];
@@ -167,7 +168,8 @@ export class CampaignSendService {
       }
 
       // ── Write sent events ──────────────────────────────────
-      if (allMessageIds.length > 0) {
+      // Always insert even if IDs are missing
+      if (emails.length > 0) {
         const eventRows = emails.map((email, i) => ({
           companyId,
           campaignId,

@@ -42,6 +42,21 @@ async function bootstrap() {
     secret: process.env.COOKIE_SECRET, // if you need signed cookies
   });
 
+  // main.ts — add after: const fastify = app.getHttpAdapter().getInstance();
+
+  fastify.addContentTypeParser(
+    'application/json',
+    { parseAs: 'buffer' },
+    (req: any, body: Buffer, done: any) => {
+      req.rawBody = body; // ← attach raw buffer for webhook signature verification
+      try {
+        done(null, JSON.parse(body.toString()));
+      } catch (err) {
+        done(err);
+      }
+    },
+  );
+
   // CORS, cookie parser, pipes, etc.
   const extraAllowed = (process.env.EXTRA_ALLOWED_ORIGINS ?? '')
     .split(',')

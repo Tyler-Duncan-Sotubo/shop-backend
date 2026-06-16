@@ -27,6 +27,15 @@ async function bootstrap() {
     await fastify.register(cookie_1.default, {
         secret: process.env.COOKIE_SECRET,
     });
+    fastify.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
+        req.rawBody = body;
+        try {
+            done(null, JSON.parse(body.toString()));
+        }
+        catch (err) {
+            done(err);
+        }
+    });
     const extraAllowed = (process.env.EXTRA_ALLOWED_ORIGINS ?? '')
         .split(',')
         .map((s) => s.trim().toLowerCase())

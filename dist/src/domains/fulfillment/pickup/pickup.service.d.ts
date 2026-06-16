@@ -32,13 +32,13 @@ export declare class PickupService {
     get(companyId: string, id: string): Promise<{
         id: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         companyId: string;
         storeId: string;
-        inventoryLocationId: string;
         state: string;
+        inventoryLocationId: string;
         address: Record<string, any>;
         instructions: string | null;
         leadTimeMinutes: number | null;
@@ -46,13 +46,13 @@ export declare class PickupService {
     create(companyId: string, dto: CreatePickupLocationDto, user?: User, ip?: string): Promise<{
         id: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         companyId: string;
         storeId: string;
-        inventoryLocationId: string;
         state: string;
+        inventoryLocationId: string;
         address: Record<string, any>;
         instructions: string | null;
         leadTimeMinutes: number | null;

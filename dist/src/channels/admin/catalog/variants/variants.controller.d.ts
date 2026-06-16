@@ -3,6 +3,7 @@ import { VariantsService } from "../../../../domains/catalog/services/variants.s
 import { BaseController } from "../../../../infrastructure/interceptor/base.controller";
 import { CreateVariantDto, UpdateVariantDto, VariantQueryDto } from './dto';
 import { StoreVariantQueryDto } from './dto/store-vairants.dto';
+import { POSVariantQueryDto } from './dto/pos-variant-query.dto';
 export declare class VariantsController extends BaseController {
     private readonly variantsService;
     constructor(variantsService: VariantsService);
@@ -17,6 +18,7 @@ export declare class VariantsController extends BaseController {
         available: number;
         label: string;
     }[]>;
+    listVariantsForPOS(user: User, query: POSVariantQueryDto): Promise<import("../../../../domains/catalog/input/pos-variant.type").POSVariant[]>;
     getVariant(user: User, variantId: string): Promise<import("src/domains/catalog/mappers/variant.mapper").VariantResponse>;
     createVariant(user: User, productId: string, dto: CreateVariantDto, ip: string): Promise<import("src/domains/catalog/mappers/variant.mapper").VariantResponse>;
     generateVariantsForProduct(user: User, productId: string, ip: string): Promise<any>;

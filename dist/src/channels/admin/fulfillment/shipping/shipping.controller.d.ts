@@ -24,12 +24,12 @@ export declare class ShippingController extends BaseController {
     createZone(user: User, dto: CreateZoneDto, ip: string): Promise<{
         id: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         companyId: string;
-        storeId: string;
         description: string | null;
+        storeId: string;
         metadata: Record<string, any> | null;
         priority: number;
     }>;
@@ -91,9 +91,9 @@ export declare class ShippingController extends BaseController {
     createCarrier(user: User, dto: CreateCarrierDto, ip: string): Promise<{
         id: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         companyId: string;
         providerKey: string;
         settings: Record<string, any> | null;
@@ -125,13 +125,13 @@ export declare class ShippingController extends BaseController {
     createRate(user: User, dto: CreateRateDto, ip: string): Promise<{
         id: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         companyId: string;
-        metadata: Record<string, any> | null;
         type: "weight" | "flat" | "price";
         isDefault: boolean;
+        metadata: Record<string, any> | null;
         priority: number;
         zoneId: string;
         flatAmount: string | null;
@@ -220,12 +220,12 @@ export declare class ShippingController extends BaseController {
         zone: {
             id: string;
             name: string;
-            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             companyId: string;
-            storeId: string;
             description: string | null;
+            storeId: string;
             metadata: Record<string, any> | null;
             priority: number;
         };

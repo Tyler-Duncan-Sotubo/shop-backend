@@ -27,6 +27,8 @@ import {
   ConfirmDispatchDto,
   RequestDispatchDto,
 } from './dto/request-dispatch.dto';
+import { POSService } from 'src/domains/commerce/orders/pos.service';
+import { POSCheckoutDto } from './dto/pos-checkout.dto';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
@@ -35,6 +37,7 @@ export class OrdersController extends BaseController {
     private readonly orders: OrdersService,
     private readonly manualOrdersService: ManualOrdersService,
     private readonly dispatch: OrderDispatchService,
+    private readonly posService: POSService,
   ) {
     super();
   }
@@ -70,6 +73,14 @@ export class OrdersController extends BaseController {
       user.companyId,
       orderId,
     );
+  }
+
+  // ─────────────────────────────────────────────
+  // POS
+  // ─────────────────────────────────────────────
+  @Post('pos-checkout')
+  async checkout(@CurrentUser() user: User, @Body() dto: POSCheckoutDto) {
+    return this.posService.checkout(user.companyId, dto, user);
   }
 
   @Get(':id')

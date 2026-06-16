@@ -9,6 +9,7 @@ import { StoreVariantQueryDto } from '../dtos/variants/store-vairants.dto';
 import { CategoriesService } from './categories.service';
 import { CompanySettingsService } from "../../company-settings/company-settings.service";
 import { BarcodeService } from './barcode.service';
+import { POSVariant, POSVariantQuery } from '../input/pos-variant.type';
 export declare class VariantsService {
     private readonly db;
     private readonly cache;
@@ -23,6 +24,8 @@ export declare class VariantsService {
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         legalName: string | null;
         country: string | null;
@@ -39,8 +42,6 @@ export declare class VariantsService {
         useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     assertProductBelongsToCompany(companyId: string, productId: string): Promise<{
@@ -93,6 +94,7 @@ export declare class VariantsService {
         available: number;
         label: string;
     }[]>;
+    listVariantsForPOS(companyId: string, query: POSVariantQuery): Promise<POSVariant[]>;
     getVariantById(companyId: string, variantId: string): Promise<{
         [x: string]: any;
     }>;

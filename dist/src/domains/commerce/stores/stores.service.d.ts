@@ -16,12 +16,12 @@ export declare class StoresService {
     createStore(companyId: string, payload: CreateStoreDto, user?: User, ip?: string): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         imageUrl: string | null;
@@ -50,12 +50,12 @@ export declare class StoresService {
     getStoreById(companyId: string, storeId: string): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         imageUrl: string | null;

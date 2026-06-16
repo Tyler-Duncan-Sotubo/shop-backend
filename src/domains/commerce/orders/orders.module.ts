@@ -14,11 +14,13 @@ import { ZohoService } from 'src/domains/integration/zoho/zoho.service';
 import { ZohoCommonHelper } from 'src/domains/integration/zoho/helpers/zoho-common.helper';
 import { OrderDispatchService } from './order-dispatch.service';
 import { NotificationModule } from 'src/domains/notification/notification.module';
+import { POSService } from './pos.service';
 
 @Module({
   imports: [NotificationModule],
   providers: [
     OrdersService,
+    POSService,
     OrderDispatchService,
     InventoryStockService,
     InventoryLocationsService,
@@ -33,6 +35,11 @@ import { NotificationModule } from 'src/domains/notification/notification.module
     ZohoService,
     ZohoCommonHelper,
   ],
-  exports: [OrdersService, ManualOrdersService, OrderDispatchService],
+  exports: [
+    OrdersService,
+    ManualOrdersService,
+    OrderDispatchService,
+    POSService,
+  ],
 })
 export class OrdersModule {}

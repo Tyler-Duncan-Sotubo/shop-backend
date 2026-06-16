@@ -21,19 +21,19 @@ export declare class InventoryTransfersService {
         items: {
             id: string;
             createdAt: Date;
-            quantity: number;
             transferId: string;
             productVariantId: string;
+            quantity: number;
         }[];
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
+        status: string;
         completedAt: Date | null;
     }>;
     listTransfers(companyId: string, storeId?: string): Promise<{
@@ -64,19 +64,19 @@ export declare class InventoryTransfersService {
         items: {
             id: string;
             createdAt: Date;
-            quantity: number;
             transferId: string;
             productVariantId: string;
+            quantity: number;
         }[];
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
+        status: string;
         completedAt: Date | null;
     }>;
     updateTransferStatus(companyId: string, transferId: string, dto: UpdateTransferStatusDto, user?: User, ip?: string): Promise<{

@@ -21,6 +21,7 @@ const jwt_auth_guard_1 = require("../../common/guards/jwt-auth.guard");
 const dto_1 = require("./dto");
 const variant_mapper_1 = require("../../../../domains/catalog/mappers/variant.mapper");
 const store_vairants_dto_1 = require("./dto/store-vairants.dto");
+const pos_variant_query_dto_1 = require("./dto/pos-variant-query.dto");
 let VariantsController = class VariantsController extends base_controller_1.BaseController {
     constructor(variantsService) {
         super();
@@ -35,6 +36,10 @@ let VariantsController = class VariantsController extends base_controller_1.Base
     }
     async listForStore(user, query) {
         const data = await this.variantsService.listStoreVariantsForCombobox(user.companyId, query);
+        return data;
+    }
+    async listVariantsForPOS(user, query) {
+        const data = await this.variantsService.listVariantsForPOS(user.companyId, query);
         return data;
     }
     async getVariant(user, variantId) {
@@ -78,6 +83,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, store_vairants_dto_1.StoreVariantQueryDto]),
     __metadata("design:returntype", Promise)
 ], VariantsController.prototype, "listForStore", null);
+__decorate([
+    (0, common_1.Get)('/products/variants/pos-store'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['products.read']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, pos_variant_query_dto_1.POSVariantQueryDto]),
+    __metadata("design:returntype", Promise)
+], VariantsController.prototype, "listVariantsForPOS", null);
 __decorate([
     (0, common_1.Get)('variants/:variantId'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

@@ -386,6 +386,20 @@
       "when": 1781429989067,
       "tag": "0054_fixed_mach_iv",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1781475008716,
+      "tag": "0055_small_frank_castle",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1781560178065,
+      "tag": "0056_naive_white_queen",
+      "breakpoints": true
     }
   ]
 }

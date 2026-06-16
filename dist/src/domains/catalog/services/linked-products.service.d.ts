@@ -11,6 +11,8 @@ export declare class LinkedProductsService {
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         legalName: string | null;
         country: string | null;
@@ -27,8 +29,6 @@ export declare class LinkedProductsService {
         useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     assertProductBelongsToCompany(companyId: string, productId: string): Promise<{

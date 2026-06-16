@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.allocationStatusEnum = exports.paymentStatusEnum = exports.paymentMethodEnum = exports.invoiceTypeEnum = exports.invoiceStatusEnum = exports.productLinkTypeEnum = exports.productTypeEnum = exports.productStatusEnum = exports.customerTypeEnum = exports.companyRoleEnum = void 0;
+exports.creditTransactionTypeEnum = exports.creditChannelEnum = exports.campaignEventTypeEnum = exports.campaignAudienceTypeEnum = exports.campaignStatusEnum = exports.campaignTemplateTypeEnum = exports.allocationStatusEnum = exports.paymentStatusEnum = exports.paymentMethodEnum = exports.invoiceTypeEnum = exports.invoiceStatusEnum = exports.productLinkTypeEnum = exports.productTypeEnum = exports.productStatusEnum = exports.customerTypeEnum = exports.companyRoleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 exports.companyRoleEnum = (0, pg_core_1.pgEnum)('company_role_enum', [
     'owner',
@@ -50,5 +50,37 @@ exports.paymentStatusEnum = (0, pg_core_1.pgEnum)('payment_status', [
 exports.allocationStatusEnum = (0, pg_core_1.pgEnum)('allocation_status', [
     'applied',
     'reversed',
+]);
+exports.campaignTemplateTypeEnum = (0, pg_core_1.pgEnum)('campaign_template_type', [
+    'new_arrival',
+    'promotion',
+    'newsletter',
+]);
+exports.campaignStatusEnum = (0, pg_core_1.pgEnum)('campaign_status', [
+    'draft',
+    'scheduled',
+    'sending',
+    'sent',
+    'failed',
+]);
+exports.campaignAudienceTypeEnum = (0, pg_core_1.pgEnum)('campaign_audience_type', [
+    'all',
+    'customers',
+    'subscribers',
+]);
+exports.campaignEventTypeEnum = (0, pg_core_1.pgEnum)('campaign_event_type', [
+    'sent',
+    'opened',
+    'clicked',
+    'unsubscribed',
+    'bounced',
+    'complained',
+]);
+exports.creditChannelEnum = (0, pg_core_1.pgEnum)('credit_channel', ['email', 'sms']);
+exports.creditTransactionTypeEnum = (0, pg_core_1.pgEnum)('credit_transaction_type', [
+    'topup',
+    'send',
+    'refund',
+    'adjustment',
 ]);
 //# sourceMappingURL=enum.schema.js.map

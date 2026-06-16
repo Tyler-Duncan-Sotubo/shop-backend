@@ -38,6 +38,8 @@ const integration_module_1 = require("./integration/integration.module");
 const setup_module_1 = require("./setup/setup.module");
 const search_module_1 = require("./search/search.module");
 const support_module_1 = require("./support/support.module");
+const credits_module_1 = require("./credits/credits.module");
+const email_marketing_module_1 = require("./email-marketing/email-marketing.module");
 let DomainsModule = class DomainsModule {
 };
 exports.DomainsModule = DomainsModule;
@@ -75,6 +77,8 @@ exports.DomainsModule = DomainsModule = __decorate([
             setup_module_1.SetupModule,
             search_module_1.SearchModule,
             support_module_1.SupportModule,
+            credits_module_1.CreditModule,
+            email_marketing_module_1.EmailMarketingModule,
         ],
         exports: [
             audit_module_1.AuditModule,
@@ -106,6 +110,8 @@ exports.DomainsModule = DomainsModule = __decorate([
             setup_module_1.SetupModule,
             search_module_1.SearchModule,
             support_module_1.SupportModule,
+            credits_module_1.CreditModule,
+            email_marketing_module_1.EmailMarketingModule,
         ],
     })
 ], DomainsModule);

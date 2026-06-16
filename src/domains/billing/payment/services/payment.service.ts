@@ -145,7 +145,13 @@ export class PaymentService {
       invoiceId: string;
       amount: number;
       currency: string;
-      method: 'bank_transfer' | 'cash' | 'card_manual' | 'other';
+      method:
+        | 'bank_transfer'
+        | 'cash'
+        | 'card_manual'
+        | 'other'
+        | 'gateway'
+        | 'pos';
       reference?: string | null;
       meta?: any;
       evidenceDataUrl?: string;

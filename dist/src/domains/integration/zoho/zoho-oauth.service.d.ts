@@ -16,9 +16,9 @@ export declare class ZohoOAuthService {
     }): Promise<{
         connection: {
             id: string;
-            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             companyId: string;
             storeId: string;
             region: string;

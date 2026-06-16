@@ -37,6 +37,19 @@ export declare class BarcodeService {
         currency: any;
         isActive: any;
     }>;
+    lookupByBarcodeForPOS(companyId: string, storeId: string, locationId: string, value: string): Promise<{
+        id: any;
+        title: any;
+        sku: any;
+        barcode: any;
+        productName: any;
+        regularPrice: any;
+        salePrice: any;
+        suggestedUnitPrice: number;
+        currency: any;
+        isActive: any;
+        available: number;
+    }>;
     generateLabelsPdf(companyId: string, variantIds: string[], format?: BarcodeFormat): Promise<{
         pdfUrl: string;
         storageKey: string;

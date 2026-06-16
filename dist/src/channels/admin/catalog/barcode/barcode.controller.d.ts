@@ -16,6 +16,19 @@ export declare class BarcodeController extends BaseController {
         currency: any;
         isActive: any;
     }>;
+    lookupByBarcodeForPOS(user: User, value: string, storeId: string, locationId: string): Promise<{
+        id: any;
+        title: any;
+        sku: any;
+        barcode: any;
+        productName: any;
+        regularPrice: any;
+        salePrice: any;
+        suggestedUnitPrice: number;
+        currency: any;
+        isActive: any;
+        available: number;
+    }>;
     generateLabelsPdf(user: User, variantIds: string[], format?: BarcodeFormat): Promise<{
         pdfUrl: string;
         storageKey: string;

@@ -1,0 +1,9 @@
+export type UpsertEmailSenderConfigDto = {
+  fromEmail: string;
+  fromName: string;
+  logoUrl?: string | null;
+  brandColor?: string | null;
+  companyAddress?: string | null;
+  socialLinks?: string | null; // ← was socialLinksJson
+  footerTagline?: string | null;
+};

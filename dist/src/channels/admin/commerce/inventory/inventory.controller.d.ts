@@ -31,21 +31,21 @@ export declare class InventoryController extends BaseController {
     createLocation(user: User, dto: CreateLocationDto, ip: string): Promise<{
         id: string;
         name: string;
-        country: string | null;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        country: string | null;
+        isActive: boolean;
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
         type: string;
-        isDefault: boolean;
+        city: string | null;
+        postalCode: string | null;
         code: string | null;
+        isDefault: boolean;
         addressLine1: string | null;
         addressLine2: string | null;
-        city: string | null;
         region: string | null;
-        postalCode: string | null;
     }>;
     updateLocation(user: User, locationId: string, dto: UpdateLocationDto, ip: string): Promise<{
         id: string;
@@ -93,8 +93,8 @@ export declare class InventoryController extends BaseController {
         updatedAt: Date;
     }[]>;
     updateStoreLocations(user: User, storeId: string, dto: UpdateStoreLocationsDto, ip: string): Promise<{
-        isActive: boolean;
         createdAt: Date;
+        isActive: boolean;
         storeId: string;
         isPrimary: boolean;
         locationId: string;
@@ -179,38 +179,38 @@ export declare class InventoryController extends BaseController {
         items: {
             id: string;
             createdAt: Date;
-            quantity: number;
             transferId: string;
             productVariantId: string;
+            quantity: number;
         }[];
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
+        status: string;
         completedAt: Date | null;
     }>;
     createTransfer(user: User, dto: CreateTransferDto, ip: string): Promise<{
         items: {
             id: string;
             createdAt: Date;
-            quantity: number;
             transferId: string;
             productVariantId: string;
+            quantity: number;
         }[];
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        status: string;
         notes: string | null;
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
+        status: string;
         completedAt: Date | null;
     }>;
     updateTransferStatus(user: User, transferId: string, dto: UpdateTransferStatusDto, ip: string): Promise<{

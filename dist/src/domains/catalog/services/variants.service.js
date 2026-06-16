@@ -248,9 +248,17 @@ let VariantsService = class VariantsService {
                 });
                 where.push((0, drizzle_orm_1.and)(...tokenConditions));
             }
-            const suggestedUnitPriceExpr = schema_1.productVariants.price
-                ? (0, drizzle_orm_1.sql) `COALESCE(${schema_1.productVariants.price}, 0)`
-                : (0, drizzle_orm_1.sql) `NULL`;
+            const suggestedUnitPriceExpr = (0, drizzle_orm_1.sql) `
+  COALESCE(
+    CASE
+      WHEN ${schema_1.productVariants.salePrice} IS NOT NULL
+        AND NULLIF(TRIM(${schema_1.productVariants.salePrice}::text), '')::numeric > 0
+      THEN NULLIF(TRIM(${schema_1.productVariants.salePrice}::text), '')::numeric
+      ELSE NULLIF(TRIM(${schema_1.productVariants.regularPrice}::text), '')::numeric
+    END,
+    0
+  )
+`;
             const availableExpr = (0, drizzle_orm_1.sql) `COALESCE(SUM(${schema_1.inventoryItems.available}), 0)`;
             const rows = await this.db
                 .select({
@@ -267,7 +275,7 @@ let VariantsService = class VariantsService {
                 .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productVariants.productId)))
                 .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.variantId, schema_1.productVariants.id)))
                 .where((0, drizzle_orm_1.and)(...where))
-                .groupBy(schema_1.productVariants.id, schema_1.productVariants.title, schema_1.productVariants.sku, schema_1.products.name, schema_1.productImages.url)
+                .groupBy(schema_1.productVariants.id, schema_1.productVariants.title, schema_1.productVariants.sku, schema_1.productVariants.regularPrice, schema_1.productVariants.salePrice, schema_1.products.name, schema_1.productImages.url)
                 .$dynamic()
                 .having(requireStock ? (0, drizzle_orm_1.gt)(availableExpr, 0) : (0, drizzle_orm_1.sql) `1=1`)
                 .limit(limit)
@@ -277,6 +285,96 @@ let VariantsService = class VariantsService {
                 id: r.id,
                 title: r.title,
                 sku: r.sku ?? null,
+                productName: r.productName ?? null,
+                imageUrl: r.imageUrl ?? null,
+                suggestedUnitPrice: r.suggestedUnitPrice ?? null,
+                available: Number(r.available ?? 0),
+                label: `${r.productName ?? 'Product'} • ${r.title}${r.sku ? ` • ${r.sku}` : ''} • ${Number(r.available ?? 0)} in stock`,
+            }));
+        });
+    }
+    async listVariantsForPOS(companyId, query) {
+        const { storeId, locationId, search, limit = 50, offset = 0 } = query;
+        const normalizedSearch = (search ?? '').trim();
+        const cacheKey = [
+            'products',
+            'variants',
+            'pos-search',
+            'store',
+            storeId,
+            'location',
+            locationId,
+            'search',
+            normalizedSearch || 'none',
+            'limit',
+            String(limit),
+            'offset',
+            String(offset),
+        ];
+        return this.cache.getOrSetVersioned(companyId, cacheKey, async () => {
+            const where = [
+                (0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId),
+                (0, drizzle_orm_1.eq)(schema_1.productVariants.storeId, storeId),
+                (0, drizzle_orm_1.eq)(schema_1.productVariants.isActive, true),
+            ];
+            if (normalizedSearch) {
+                const tokens = normalizedSearch
+                    .split(/\s+/)
+                    .map((t) => t.trim())
+                    .filter(Boolean);
+                const tokenConditions = tokens.map((token) => {
+                    const q = `%${token}%`;
+                    return (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(schema_1.productVariants.sku, q), (0, drizzle_orm_1.ilike)(schema_1.productVariants.title, q), (0, drizzle_orm_1.ilike)(schema_1.products.name, q), (0, drizzle_orm_1.sql) `concat_ws(' ', ${schema_1.products.name}, ${schema_1.productVariants.title}, ${schema_1.productVariants.sku}) ILIKE ${q}`);
+                });
+                where.push((0, drizzle_orm_1.and)(...tokenConditions));
+            }
+            const suggestedUnitPriceExpr = (0, drizzle_orm_1.sql) `
+      COALESCE(
+        CASE
+          WHEN ${schema_1.productVariants.salePrice} IS NOT NULL
+            AND NULLIF(TRIM(${schema_1.productVariants.salePrice}::text), '')::numeric > 0
+          THEN NULLIF(TRIM(${schema_1.productVariants.salePrice}::text), '')::numeric
+          ELSE NULLIF(TRIM(${schema_1.productVariants.regularPrice}::text), '')::numeric
+        END,
+        0
+      )
+    `;
+            const availableAtLocationExpr = (0, drizzle_orm_1.sql) `
+      COALESCE(
+        MAX(
+          CASE WHEN ${schema_1.inventoryItems.locationId} = ${locationId}
+          THEN ${schema_1.inventoryItems.available}
+          ELSE NULL END
+        ),
+        0
+      )
+    `;
+            const rows = await this.db
+                .select({
+                id: schema_1.productVariants.id,
+                title: schema_1.productVariants.title,
+                sku: schema_1.productVariants.sku,
+                barcode: schema_1.productVariants.barcode,
+                productName: schema_1.products.name,
+                imageUrl: schema_1.productImages.url,
+                suggestedUnitPrice: suggestedUnitPriceExpr,
+                available: availableAtLocationExpr,
+            })
+                .from(schema_1.productVariants)
+                .innerJoin(schema_1.inventoryItems, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, schema_1.productVariants.id), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, locationId)))
+                .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productVariants.productId)))
+                .leftJoin(schema_1.productImages, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productImages.companyId, schema_1.productVariants.companyId), (0, drizzle_orm_1.eq)(schema_1.productImages.variantId, schema_1.productVariants.id)))
+                .where((0, drizzle_orm_1.and)(...where))
+                .groupBy(schema_1.productVariants.id, schema_1.productVariants.title, schema_1.productVariants.sku, schema_1.productVariants.barcode, schema_1.productVariants.regularPrice, schema_1.productVariants.salePrice, schema_1.products.name, schema_1.productImages.url)
+                .having((0, drizzle_orm_1.sql) `1=1`)
+                .limit(limit)
+                .offset(offset)
+                .execute();
+            return rows.map((r) => ({
+                id: r.id,
+                title: r.title,
+                sku: r.sku ?? null,
+                barcode: r.barcode ?? null,
                 productName: r.productName ?? null,
                 imageUrl: r.imageUrl ?? null,
                 suggestedUnitPrice: r.suggestedUnitPrice ?? null,

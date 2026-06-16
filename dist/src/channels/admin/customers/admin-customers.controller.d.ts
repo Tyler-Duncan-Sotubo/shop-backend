@@ -36,22 +36,22 @@ export declare class AdminCustomersController extends BaseController {
     }>;
     createAddress(user: User, customerId: string, dto: CreateCustomerAddressAdminDto): Promise<{
         id: string;
-        country: string;
         createdAt: Date;
         updatedAt: Date;
+        country: string;
         companyId: string;
         firstName: string | null;
         lastName: string | null;
         companyName: string | null;
         phone: string | null;
         customerId: string;
-        city: string;
-        postalCode: string | null;
-        state: string | null;
         label: string | null;
         addressee: string | null;
         line1: string;
         line2: string | null;
+        city: string;
+        state: string | null;
+        postalCode: string | null;
         isDefaultBilling: boolean;
         isDefaultShipping: boolean;
     }>;

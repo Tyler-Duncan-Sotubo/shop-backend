@@ -72,12 +72,12 @@ export declare class StoresController extends BaseController {
     createStore(user: User, dto: CreateStoreDto, ip: string): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         imageUrl: string | null;
@@ -88,12 +88,12 @@ export declare class StoresController extends BaseController {
     getStoreById(user: User, storeId: string): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         imageUrl: string | null;

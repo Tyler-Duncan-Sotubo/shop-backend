@@ -109,10 +109,6 @@ export class ManualOrdersService {
         const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
         orderNo = `ORD-${String(nextNo).padStart(6, '0')}`;
 
-        console.log(
-          `Allocating order number: got nextNo=${nextNo}, generated orderNo=${orderNo}`,
-        );
-
         const [exists] = await tx
           .select({ id: orders.id })
           .from(orders)

@@ -22,6 +22,7 @@ import {
   mapVariantToResponseWithImage,
 } from 'src/domains/catalog/mappers/variant.mapper';
 import { StoreVariantQueryDto } from './dto/store-vairants.dto';
+import { POSVariantQueryDto } from './dto/pos-variant-query.dto';
 
 @Controller('catalog')
 @UseGuards(JwtAuthGuard)
@@ -60,6 +61,20 @@ export class VariantsController extends BaseController {
     @Query() query: StoreVariantQueryDto,
   ) {
     const data = await this.variantsService.listStoreVariantsForCombobox(
+      user.companyId,
+      query,
+    );
+    return data;
+  }
+
+  @Get('/products/variants/pos-store')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['products.read'])
+  async listVariantsForPOS(
+    @CurrentUser() user: User,
+    @Query() query: POSVariantQueryDto,
+  ) {
+    const data = await this.variantsService.listVariantsForPOS(
       user.companyId,
       query,
     );

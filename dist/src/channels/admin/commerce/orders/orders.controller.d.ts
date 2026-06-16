@@ -8,11 +8,14 @@ import { OrdersService } from "../../../../domains/commerce/orders/orders.servic
 import { ManualOrdersService } from "../../../../domains/commerce/orders/manual-orders.service";
 import { OrderDispatchService } from "../../../../domains/commerce/orders/order-dispatch.service";
 import { CancelDispatchDto, ConfirmDispatchDto, RequestDispatchDto } from './dto/request-dispatch.dto';
+import { POSService } from "../../../../domains/commerce/orders/pos.service";
+import { POSCheckoutDto } from './dto/pos-checkout.dto';
 export declare class OrdersController extends BaseController {
     private readonly orders;
     private readonly manualOrdersService;
     private readonly dispatch;
-    constructor(orders: OrdersService, manualOrdersService: ManualOrdersService, dispatch: OrderDispatchService);
+    private readonly posService;
+    constructor(orders: OrdersService, manualOrdersService: ManualOrdersService, dispatch: OrderDispatchService, posService: POSService);
     list(user: User, q: ListOrdersDto): Promise<{
         rows: {
             itemCount: number;
@@ -63,6 +66,17 @@ export declare class OrdersController extends BaseController {
             shortfall: number;
         } | null)[];
         fulfilled?: undefined;
+    }>;
+    checkout(user: User, dto: POSCheckoutDto): Promise<{
+        orderId: any;
+        orderNumber: any;
+        invoiceId: any;
+        paymentId: string;
+        receiptId: any;
+        receiptNumber: any;
+        totalMinor: number;
+        totalMajor: number;
+        currency: string;
     }>;
     get(user: User, id: string): Promise<{
         items: {
@@ -157,8 +171,8 @@ export declare class OrdersController extends BaseController {
         companyId: string;
         storeId: string;
         status: "pending" | "dispatched" | "cancelled";
-        orderId: string;
         note: string | null;
+        orderId: string;
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         dispatchedAt: Date | null;

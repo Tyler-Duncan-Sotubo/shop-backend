@@ -32,13 +32,13 @@ export declare class ShippingRatesService {
     createRate(companyId: string, dto: CreateRateDto, user?: User, ip?: string): Promise<{
         id: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         companyId: string;
-        metadata: Record<string, any> | null;
         type: "weight" | "flat" | "price";
         isDefault: boolean;
+        metadata: Record<string, any> | null;
         priority: number;
         zoneId: string;
         flatAmount: string | null;
@@ -127,12 +127,12 @@ export declare class ShippingRatesService {
         zone: {
             id: string;
             name: string;
-            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             companyId: string;
-            storeId: string;
             description: string | null;
+            storeId: string;
             metadata: Record<string, any> | null;
             priority: number;
         };

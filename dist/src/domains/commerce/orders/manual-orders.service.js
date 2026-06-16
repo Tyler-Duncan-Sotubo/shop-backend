@@ -79,7 +79,6 @@ let ManualOrdersService = class ManualOrdersService {
             while (true) {
                 const nextNo = await this.allocateOrderNumberInTx(tx, companyId);
                 orderNo = `ORD-${String(nextNo).padStart(6, '0')}`;
-                console.log(`Allocating order number: got nextNo=${nextNo}, generated orderNo=${orderNo}`);
                 const [exists] = await tx
                     .select({ id: schema_1.orders.id })
                     .from(schema_1.orders)

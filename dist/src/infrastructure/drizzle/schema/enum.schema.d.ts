@@ -8,6 +8,12 @@ export declare const invoiceTypeEnum: import("drizzle-orm/pg-core").PgEnum<["inv
 export declare const paymentMethodEnum: import("drizzle-orm/pg-core").PgEnum<["bank_transfer", "pos", "cash", "manual", "gateway"]>;
 export declare const paymentStatusEnum: import("drizzle-orm/pg-core").PgEnum<["pending", "succeeded", "reversed"]>;
 export declare const allocationStatusEnum: import("drizzle-orm/pg-core").PgEnum<["applied", "reversed"]>;
+export declare const campaignTemplateTypeEnum: import("drizzle-orm/pg-core").PgEnum<["new_arrival", "promotion", "newsletter"]>;
+export declare const campaignStatusEnum: import("drizzle-orm/pg-core").PgEnum<["draft", "scheduled", "sending", "sent", "failed"]>;
+export declare const campaignAudienceTypeEnum: import("drizzle-orm/pg-core").PgEnum<["all", "customers", "subscribers"]>;
+export declare const campaignEventTypeEnum: import("drizzle-orm/pg-core").PgEnum<["sent", "opened", "clicked", "unsubscribed", "bounced", "complained"]>;
+export declare const creditChannelEnum: import("drizzle-orm/pg-core").PgEnum<["email", "sms"]>;
+export declare const creditTransactionTypeEnum: import("drizzle-orm/pg-core").PgEnum<["topup", "send", "refund", "adjustment"]>;
 export type ProductLinkType = (typeof productLinkTypeEnum.enumValues)[number];
 export type ProductType = (typeof productTypeEnum.enumValues)[number];
 export type ProductStatus = (typeof productStatusEnum.enumValues)[number];

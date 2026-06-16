@@ -29,6 +29,15 @@ let BarcodeController = class BarcodeController extends base_controller_1.BaseCo
     async lookup(user, value, storeId) {
         return this.barcodes.lookupByBarcode(user.companyId, storeId, value);
     }
+    async lookupByBarcodeForPOS(user, value, storeId, locationId) {
+        if (!value)
+            throw new common_1.BadRequestException('value is required');
+        if (!storeId)
+            throw new common_1.BadRequestException('storeId is required');
+        if (!locationId)
+            throw new common_1.BadRequestException('locationId is required');
+        return this.barcodes.lookupByBarcodeForPOS(user.companyId, storeId, locationId, value);
+    }
     async generateLabelsPdf(user, variantIds, format) {
         return this.barcodes.generateLabelsPdf(user.companyId, variantIds, format ?? 'code128');
     }
@@ -59,6 +68,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], BarcodeController.prototype, "lookup", null);
+__decorate([
+    (0, common_1.Get)('lookup/pos'),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)('value')),
+    __param(2, (0, common_1.Query)('storeId')),
+    __param(3, (0, common_1.Query)('locationId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String]),
+    __metadata("design:returntype", Promise)
+], BarcodeController.prototype, "lookupByBarcodeForPOS", null);
 __decorate([
     (0, common_1.Post)('labels/pdf'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),

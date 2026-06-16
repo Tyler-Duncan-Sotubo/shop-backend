@@ -11,6 +11,8 @@ export declare class OptionsService {
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         legalName: string | null;
         country: string | null;
@@ -27,8 +29,6 @@ export declare class OptionsService {
         useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     assertProductBelongsToCompany(companyId: string, productId: string): Promise<{
@@ -50,8 +50,8 @@ export declare class OptionsService {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        position: number;
         value: string;
+        position: number;
         productOptionId: string;
     }>;
     getOptionsWithValues(companyId: string, productId: string): Promise<{
@@ -95,8 +95,8 @@ export declare class OptionsService {
         updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
-        position: number;
         value: string;
+        position: number;
         productOptionId: string;
     }>;
     updateOptionValue(companyId: string, valueId: string, dto: UpdateOptionValueDto, user?: User, ip?: string): Promise<{

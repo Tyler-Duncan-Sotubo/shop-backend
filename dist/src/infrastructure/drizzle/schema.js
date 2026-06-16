@@ -61,6 +61,7 @@ __exportStar(require("./schema/commerce/checkout/checkout-items.schema"), export
 __exportStar(require("./schema/commerce/checkout/pickup-locations.schema"), exports);
 __exportStar(require("./schema/commerce/orders/orders.schema"), exports);
 __exportStar(require("./schema/commerce/orders/order-items.schema"), exports);
+__exportStar(require("./schema/commerce/orders/order-custom-items.schema"), exports);
 __exportStar(require("./schema/commerce/orders/inventory-reservations.schema"), exports);
 __exportStar(require("./schema/commerce/orders/order-events.schema"), exports);
 __exportStar(require("./schema/commerce/orders/order-dispatch.schema"), exports);
@@ -95,4 +96,9 @@ __exportStar(require("./schema/integrations/analytics/analytics-integration.sche
 __exportStar(require("./schema/integrations/zoho/zoho-connections.schema"), exports);
 __exportStar(require("./schema/support/feedback.schema"), exports);
 __exportStar(require("./schema/notifications/notifications.schema"), exports);
+__exportStar(require("./schema/credits/credit-balance.schema"), exports);
+__exportStar(require("./schema/credits/credit-transactions.schema"), exports);
+__exportStar(require("./schema/email-marketing/campaigns.schema"), exports);
+__exportStar(require("./schema/email-marketing/campaign-events.schema"), exports);
+__exportStar(require("./schema/email-marketing/email-sender-config.schema"), exports);
 //# sourceMappingURL=schema.js.map

@@ -28,9 +28,9 @@ export declare class BlogController extends BaseController {
     }>;
     getBySlugPublic(storeId: string, slug: string): Promise<{
         id: string;
-        slug: string;
         createdAt: Date;
         updatedAt: Date;
+        slug: string;
         storeId: string;
         status: string;
         seoTitle: string | null;

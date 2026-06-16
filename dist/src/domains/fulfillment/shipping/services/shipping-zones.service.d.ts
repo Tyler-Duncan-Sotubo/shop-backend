@@ -23,12 +23,12 @@ export declare class ShippingZonesService {
     createZone(companyId: string, dto: CreateZoneDto, user?: User, ip?: string): Promise<{
         id: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         companyId: string;
-        storeId: string;
         description: string | null;
+        storeId: string;
         metadata: Record<string, any> | null;
         priority: number;
     }>;
@@ -84,12 +84,12 @@ export declare class ShippingZonesService {
     resolveZone(companyId: string, storeId: string, countryCode: string, state?: string, area?: string): Promise<{
         id: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         companyId: string;
-        storeId: string;
         description: string | null;
+        storeId: string;
         metadata: Record<string, any> | null;
         priority: number;
     } | null | undefined>;

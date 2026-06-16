@@ -8,6 +8,7 @@ import {
   UseGuards,
   SetMetadata,
   Res,
+  BadRequestException,
 } from '@nestjs/common';
 import { BaseController } from 'src/infrastructure/interceptor/base.controller';
 import { User } from 'src/channels/admin/common/types/user.type';
@@ -50,6 +51,25 @@ export class BarcodeController extends BaseController {
     @Query('storeId') storeId: string,
   ) {
     return this.barcodes.lookupByBarcode(user.companyId, storeId, value);
+  }
+
+  @Get('lookup/pos')
+  async lookupByBarcodeForPOS(
+    @CurrentUser() user: User,
+    @Query('value') value: string,
+    @Query('storeId') storeId: string,
+    @Query('locationId') locationId: string,
+  ) {
+    if (!value) throw new BadRequestException('value is required');
+    if (!storeId) throw new BadRequestException('storeId is required');
+    if (!locationId) throw new BadRequestException('locationId is required');
+
+    return this.barcodes.lookupByBarcodeForPOS(
+      user.companyId,
+      storeId,
+      locationId,
+      value,
+    );
   }
 
   // Generate PDF label sheet for multiple variants

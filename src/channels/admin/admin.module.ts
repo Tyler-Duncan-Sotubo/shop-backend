@@ -22,6 +22,8 @@ import { AdminAnalyticsModule } from './analytics/analytics.module';
 import { SearchController } from './search/search.controller';
 import { SupportModule } from './support/support.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { AdminCreditsModule } from './credits/credits.module';
+import { EmailMarketingAdminModule } from './email-marketing/email-marketing-admin.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { NotificationsModule } from './notifications/notifications.module';
     AdminReviewsModule,
     SupportModule,
     NotificationsModule,
+    AdminCreditsModule,
+    EmailMarketingAdminModule,
   ],
   providers: [AwsService],
   exports: [AwsService],

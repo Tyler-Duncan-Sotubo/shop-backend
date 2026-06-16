@@ -25,12 +25,15 @@ const manual_orders_service_1 = require("../../../../domains/commerce/orders/man
 const current_user_decorator_1 = require("../../common/decorator/current-user.decorator");
 const order_dispatch_service_1 = require("../../../../domains/commerce/orders/order-dispatch.service");
 const request_dispatch_dto_1 = require("./dto/request-dispatch.dto");
+const pos_service_1 = require("../../../../domains/commerce/orders/pos.service");
+const pos_checkout_dto_1 = require("./dto/pos-checkout.dto");
 let OrdersController = class OrdersController extends base_controller_1.BaseController {
-    constructor(orders, manualOrdersService, dispatch) {
+    constructor(orders, manualOrdersService, dispatch, posService) {
         super();
         this.orders = orders;
         this.manualOrdersService = manualOrdersService;
         this.dispatch = dispatch;
+        this.posService = posService;
     }
     list(user, q) {
         return this.orders.listOrders(user.companyId, q);
@@ -40,6 +43,9 @@ let OrdersController = class OrdersController extends base_controller_1.BaseCont
     }
     async checkStock(orderId, user) {
         return this.manualOrdersService.checkStockAvailability(user.companyId, orderId);
+    }
+    async checkout(user, dto) {
+        return this.posService.checkout(user.companyId, dto, user);
     }
     get(user, id) {
         return this.orders.getOrder(user.companyId, id);
@@ -142,6 +148,14 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "checkStock", null);
+__decorate([
+    (0, common_1.Post)('pos-checkout'),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, pos_checkout_dto_1.POSCheckoutDto]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "checkout", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, common_1.SetMetadata)('permissions', ['orders.read']),
@@ -345,6 +359,7 @@ exports.OrdersController = OrdersController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [orders_service_1.OrdersService,
         manual_orders_service_1.ManualOrdersService,
-        order_dispatch_service_1.OrderDispatchService])
+        order_dispatch_service_1.OrderDispatchService,
+        pos_service_1.POSService])
 ], OrdersController);
 //# sourceMappingURL=orders.controller.js.map

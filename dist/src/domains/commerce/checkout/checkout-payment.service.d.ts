@@ -11,7 +11,7 @@ export declare class CheckoutPaymentsService {
         payment: {
             id: string;
             status: "pending" | "succeeded" | "reversed";
-            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
             currency: string;
             amountMinor: number;
         };

@@ -29,12 +29,12 @@ export declare class SetupService {
         store: {
             id: string;
             name: string;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
             defaultCurrency: string;
             defaultLocale: string;
             isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
             deletedAt: Date | null;
             companyId: string;
             imageUrl: string | null;
@@ -45,21 +45,21 @@ export declare class SetupService {
         warehouse: {
             id: string;
             name: string;
-            country: string | null;
-            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            country: string | null;
+            isActive: boolean;
             deletedAt: Date | null;
             companyId: string;
             storeId: string;
             type: string;
-            isDefault: boolean;
+            city: string | null;
+            postalCode: string | null;
             code: string | null;
+            isDefault: boolean;
             addressLine1: string | null;
             addressLine2: string | null;
-            city: string | null;
             region: string | null;
-            postalCode: string | null;
         };
         domains: {
             id: string;

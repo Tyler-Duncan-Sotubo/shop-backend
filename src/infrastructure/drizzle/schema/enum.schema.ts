@@ -60,6 +60,44 @@ export const allocationStatusEnum = pgEnum('allocation_status', [
   'reversed',
 ]);
 
+export const campaignTemplateTypeEnum = pgEnum('campaign_template_type', [
+  'new_arrival',
+  'promotion',
+  'newsletter',
+]);
+
+export const campaignStatusEnum = pgEnum('campaign_status', [
+  'draft',
+  'scheduled',
+  'sending',
+  'sent',
+  'failed',
+]);
+
+export const campaignAudienceTypeEnum = pgEnum('campaign_audience_type', [
+  'all', // customers + subscribers
+  'customers', // customers with email only
+  'subscribers', // subscribers table only
+]);
+
+export const campaignEventTypeEnum = pgEnum('campaign_event_type', [
+  'sent',
+  'opened',
+  'clicked',
+  'unsubscribed',
+  'bounced',
+  'complained', // spam report
+]);
+
+export const creditChannelEnum = pgEnum('credit_channel', ['email', 'sms']);
+
+export const creditTransactionTypeEnum = pgEnum('credit_transaction_type', [
+  'topup',
+  'send', // generic — covers email campaign send, sms blast, etc
+  'refund',
+  'adjustment', // manual admin correction
+]);
+
 export type ProductLinkType = (typeof productLinkTypeEnum.enumValues)[number];
 export type ProductType = (typeof productTypeEnum.enumValues)[number];
 export type ProductStatus = (typeof productStatusEnum.enumValues)[number];

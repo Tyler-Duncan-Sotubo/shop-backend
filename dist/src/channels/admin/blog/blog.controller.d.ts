@@ -11,9 +11,9 @@ export declare class BlogController extends BaseController {
     constructor(blogService: BlogService, blogPostsReportService: BlogPostsReportService);
     create(user: User, dto: CreateBlogPostDto, ip: string): Promise<{
         id: string;
-        slug: string;
         createdAt: Date;
         updatedAt: Date;
+        slug: string;
         storeId: string;
         status: string;
         seoTitle: string | null;
@@ -48,9 +48,9 @@ export declare class BlogController extends BaseController {
     }>;
     getByIdAdmin(user: User, params: BlogPostIdParamDto): Promise<{
         id: string;
-        slug: string;
         createdAt: Date;
         updatedAt: Date;
+        slug: string;
         storeId: string;
         status: string;
         seoTitle: string | null;

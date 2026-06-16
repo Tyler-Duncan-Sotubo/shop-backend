@@ -21,8 +21,8 @@ export declare class OrderDispatchService {
         companyId: string;
         storeId: string;
         status: "pending" | "dispatched" | "cancelled";
-        orderId: string;
         note: string | null;
+        orderId: string;
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         dispatchedAt: Date | null;

@@ -37,7 +37,7 @@ export declare class StorefrontOrdersController {
             evidenceCount: number;
             lastEvidenceUrl: string | null;
             id: string;
-            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
             status: "pending" | "succeeded" | "reversed";
             provider: string | null;
             amountMinor: number;

@@ -103,6 +103,48 @@ let BarcodeService = class BarcodeService {
             isActive: variant.isActive,
         };
     }
+    async lookupByBarcodeForPOS(companyId, storeId, locationId, value) {
+        const trimmed = value.trim();
+        const variant = await this.db.query.productVariants.findFirst({
+            where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.productVariants.storeId, storeId), (0, drizzle_orm_1.or)((0, drizzle_orm_1.eq)(schema_1.productVariants.barcode, trimmed), (0, drizzle_orm_1.eq)(schema_1.productVariants.sku, trimmed))),
+        });
+        if (!variant)
+            throw new common_1.NotFoundException(`No variant found for barcode: ${trimmed}`);
+        const product = await this.db.query.products.findFirst({
+            where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.products.id, variant.productId)),
+            columns: { name: true },
+        });
+        const [inventoryRow] = await this.db
+            .select({
+            available: schema_1.inventoryItems.available,
+        })
+            .from(schema_1.inventoryItems)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.productVariantId, variant.id), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, locationId)))
+            .limit(1)
+            .execute();
+        const suggestedUnitPrice = (() => {
+            const sale = Number(variant.salePrice ?? 0);
+            const regular = Number(variant.regularPrice ?? 0);
+            if (sale > 0)
+                return sale;
+            if (regular > 0)
+                return regular;
+            return 0;
+        })();
+        return {
+            id: variant.id,
+            title: variant.title,
+            sku: variant.sku ?? null,
+            barcode: variant.barcode ?? null,
+            productName: product?.name ?? null,
+            regularPrice: variant.regularPrice ?? null,
+            salePrice: variant.salePrice ?? null,
+            suggestedUnitPrice,
+            currency: variant.currency ?? null,
+            isActive: variant.isActive,
+            available: Number(inventoryRow?.available ?? 0),
+        };
+    }
     async generateLabelsPdf(companyId, variantIds, format = 'code128') {
         if (!variantIds.length)
             throw new common_1.NotFoundException('No variants provided');

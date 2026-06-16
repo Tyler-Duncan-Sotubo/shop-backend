@@ -11,6 +11,8 @@ export declare class InventoryLocationsService {
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         legalName: string | null;
         country: string | null;
@@ -27,38 +29,36 @@ export declare class InventoryLocationsService {
         useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     findLocationByIdOrThrow(companyId: string, locationId: string): Promise<{
         id: string;
         name: string;
-        country: string | null;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        country: string | null;
+        isActive: boolean;
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
         type: string;
-        isDefault: boolean;
+        city: string | null;
+        postalCode: string | null;
         code: string | null;
+        isDefault: boolean;
         addressLine1: string | null;
         addressLine2: string | null;
-        city: string | null;
         region: string | null;
-        postalCode: string | null;
     }>;
     assertStoreBelongsToCompany(companyId: string, storeId: string): Promise<{
         id: string;
         name: string;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         defaultCurrency: string;
         defaultLocale: string;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         deletedAt: Date | null;
         companyId: string;
         imageUrl: string | null;
@@ -69,21 +69,21 @@ export declare class InventoryLocationsService {
     createLocation(companyId: string, dto: CreateLocationDto, user?: User, ip?: string): Promise<{
         id: string;
         name: string;
-        country: string | null;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        country: string | null;
+        isActive: boolean;
         deletedAt: Date | null;
         companyId: string;
         storeId: string;
         type: string;
-        isDefault: boolean;
+        city: string | null;
+        postalCode: string | null;
         code: string | null;
+        isDefault: boolean;
         addressLine1: string | null;
         addressLine2: string | null;
-        city: string | null;
         region: string | null;
-        postalCode: string | null;
     }>;
     getLocationsByCompany(companyId: string): Promise<{
         id: string;
@@ -165,8 +165,8 @@ export declare class InventoryLocationsService {
         type: string;
     }[]>;
     updateStoreLocations(companyId: string, storeId: string, dto: UpdateStoreLocationsDto, user?: User, ip?: string): Promise<{
-        isActive: boolean;
         createdAt: Date;
+        isActive: boolean;
         storeId: string;
         isPrimary: boolean;
         locationId: string;

@@ -82,6 +82,7 @@ export * from './schema/commerce/checkout/pickup-locations.schema';
 // ---------------------------------------------------------
 export * from './schema/commerce/orders/orders.schema';
 export * from './schema/commerce/orders/order-items.schema';
+export * from './schema/commerce/orders/order-custom-items.schema';
 export * from './schema/commerce/orders/inventory-reservations.schema';
 export * from './schema/commerce/orders/order-events.schema';
 export * from './schema/commerce/orders/order-dispatch.schema';
@@ -138,3 +139,12 @@ export * from './schema/support/feedback.schema';
 
 // Notifications
 export * from './schema/notifications/notifications.schema';
+
+// Credits
+export * from './schema/credits/credit-balance.schema';
+export * from './schema/credits/credit-transactions.schema';
+
+// Email Marketing
+export * from './schema/email-marketing/campaigns.schema';
+export * from './schema/email-marketing/campaign-events.schema';
+export * from './schema/email-marketing/email-sender-config.schema';

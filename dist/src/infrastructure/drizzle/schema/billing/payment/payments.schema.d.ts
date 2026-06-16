@@ -92,7 +92,7 @@ export declare const payments: import("drizzle-orm/pg-core").PgTableWithColumns<
             tableName: "payments";
             dataType: "string";
             columnType: "PgEnumColumn";
-            data: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            data: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
             driverParam: string;
             notNull: true;
             hasDefault: false;

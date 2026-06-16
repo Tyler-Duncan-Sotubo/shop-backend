@@ -12,9 +12,9 @@ export declare class ZohoService {
     isEnabled(companyId: string, storeId: string): Promise<boolean>;
     upsertForStore(companyId: string, storeId: string, dto: UpsertZohoConnectionDto, user: User, ip: string): Promise<{
         id: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         companyId: string;
         storeId: string;
         region: string;
@@ -103,9 +103,9 @@ export declare class ZohoService {
     }>;
     remove(companyId: string, storeId: string, user: User, ip: string): Promise<{
         id: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         companyId: string;
         storeId: string;
         region: string;

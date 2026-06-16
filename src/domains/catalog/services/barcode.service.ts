@@ -2,7 +2,11 @@ import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { and, eq, or } from 'drizzle-orm';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import { productVariants, products } from 'src/infrastructure/drizzle/schema';
+import {
+  inventoryItems,
+  productVariants,
+  products,
+} from 'src/infrastructure/drizzle/schema';
 import { AwsService } from 'src/infrastructure/aws/aws.service';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
 import * as bwipjs from 'bwip-js';
@@ -167,6 +171,75 @@ export class BarcodeService {
       salePrice: variant.salePrice ?? null,
       currency: variant.currency ?? null,
       isActive: variant.isActive,
+    };
+  }
+
+  async lookupByBarcodeForPOS(
+    companyId: string,
+    storeId: string,
+    locationId: string,
+    value: string,
+  ) {
+    const trimmed = value.trim();
+
+    const variant = await this.db.query.productVariants.findFirst({
+      where: and(
+        eq(productVariants.companyId, companyId),
+        eq(productVariants.storeId, storeId),
+        or(
+          eq(productVariants.barcode, trimmed),
+          eq(productVariants.sku, trimmed),
+        ),
+      ),
+    });
+
+    if (!variant)
+      throw new NotFoundException(`No variant found for barcode: ${trimmed}`);
+
+    const product = await this.db.query.products.findFirst({
+      where: and(
+        eq(products.companyId, companyId),
+        eq(products.id, variant.productId),
+      ),
+      columns: { name: true },
+    });
+
+    // ← stock at this specific location only
+    const [inventoryRow] = await this.db
+      .select({
+        available: inventoryItems.available,
+      })
+      .from(inventoryItems)
+      .where(
+        and(
+          eq(inventoryItems.companyId, companyId),
+          eq(inventoryItems.productVariantId, variant.id),
+          eq(inventoryItems.locationId, locationId),
+        ),
+      )
+      .limit(1)
+      .execute();
+
+    const suggestedUnitPrice = (() => {
+      const sale = Number(variant.salePrice ?? 0);
+      const regular = Number(variant.regularPrice ?? 0);
+      if (sale > 0) return sale;
+      if (regular > 0) return regular;
+      return 0;
+    })();
+
+    return {
+      id: variant.id,
+      title: variant.title,
+      sku: variant.sku ?? null,
+      barcode: variant.barcode ?? null,
+      productName: product?.name ?? null,
+      regularPrice: variant.regularPrice ?? null,
+      salePrice: variant.salePrice ?? null,
+      suggestedUnitPrice,
+      currency: variant.currency ?? null,
+      isActive: variant.isActive,
+      available: Number(inventoryRow?.available ?? 0), // ← location stock
     };
   }
 

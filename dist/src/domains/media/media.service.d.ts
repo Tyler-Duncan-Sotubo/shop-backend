@@ -48,11 +48,11 @@ export declare class MediaService {
         storeId: string;
         fileName: string;
         mimeType: string;
+        url: string;
+        storageKey: string | null;
         width: number | null;
         height: number | null;
-        url: string;
         altText: string | null;
-        storageKey: string | null;
         folder: string | null;
         tag: string | null;
     }>;
@@ -66,11 +66,11 @@ export declare class MediaService {
         storeId: string;
         fileName: string;
         mimeType: string;
+        url: string;
+        storageKey: string | null;
         width: number | null;
         height: number | null;
-        url: string;
         altText: string | null;
-        storageKey: string | null;
         folder: string | null;
         tag: string | null;
     }>;

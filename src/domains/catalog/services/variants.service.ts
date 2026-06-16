@@ -32,6 +32,7 @@ import { StoreVariantQueryDto } from '../dtos/variants/store-vairants.dto';
 import { CategoriesService } from './categories.service';
 import { CompanySettingsService } from 'src/domains/company-settings/company-settings.service';
 import { BarcodeService } from './barcode.service';
+import { POSVariant, POSVariantQuery } from '../input/pos-variant.type';
 
 @Injectable()
 export class VariantsService {
@@ -380,9 +381,17 @@ export class VariantsService {
         where.push(and(...tokenConditions));
       }
 
-      const suggestedUnitPriceExpr = (productVariants as any).price
-        ? sql<number>`COALESCE(${(productVariants as any).price}, 0)`
-        : sql<number | null>`NULL`;
+      const suggestedUnitPriceExpr = sql<number>`
+  COALESCE(
+    CASE
+      WHEN ${productVariants.salePrice} IS NOT NULL
+        AND NULLIF(TRIM(${productVariants.salePrice}::text), '')::numeric > 0
+      THEN NULLIF(TRIM(${productVariants.salePrice}::text), '')::numeric
+      ELSE NULLIF(TRIM(${productVariants.regularPrice}::text), '')::numeric
+    END,
+    0
+  )
+`;
 
       // use 0 as fallback so variants without inventory rows show available: 0
       const availableExpr = sql<number>`COALESCE(SUM(${inventoryItems.available}), 0)`;
@@ -426,6 +435,8 @@ export class VariantsService {
           productVariants.id,
           productVariants.title,
           productVariants.sku,
+          productVariants.regularPrice, // ← add
+          productVariants.salePrice, // ← add
           products.name,
           productImages.url,
         )
@@ -445,6 +456,145 @@ export class VariantsService {
         suggestedUnitPrice: r.suggestedUnitPrice ?? null,
         available: Number(r.available ?? 0),
         // show "0 in stock" label when requireStock is false so user knows
+        label: `${r.productName ?? 'Product'} • ${r.title}${r.sku ? ` • ${r.sku}` : ''} • ${Number(r.available ?? 0)} in stock`,
+      }));
+    });
+  }
+
+  async listVariantsForPOS(
+    companyId: string,
+    query: POSVariantQuery,
+  ): Promise<POSVariant[]> {
+    const { storeId, locationId, search, limit = 50, offset = 0 } = query;
+
+    const normalizedSearch = (search ?? '').trim();
+
+    const cacheKey = [
+      'products',
+      'variants',
+      'pos-search',
+      'store',
+      storeId,
+      'location',
+      locationId,
+      'search',
+      normalizedSearch || 'none',
+      'limit',
+      String(limit),
+      'offset',
+      String(offset),
+    ];
+
+    return this.cache.getOrSetVersioned(companyId, cacheKey, async () => {
+      const where: any[] = [
+        eq(productVariants.companyId, companyId),
+        eq(productVariants.storeId, storeId),
+        eq(productVariants.isActive, true),
+      ];
+
+      if (normalizedSearch) {
+        const tokens = normalizedSearch
+          .split(/\s+/)
+          .map((t) => t.trim())
+          .filter(Boolean);
+
+        const tokenConditions = tokens.map((token) => {
+          const q = `%${token}%`;
+          return or(
+            ilike(productVariants.sku, q),
+            ilike(productVariants.title, q),
+            ilike(products.name, q),
+            sql`concat_ws(' ', ${products.name}, ${productVariants.title}, ${productVariants.sku}) ILIKE ${q}`,
+          );
+        });
+
+        where.push(and(...tokenConditions));
+      }
+
+      const suggestedUnitPriceExpr = sql<number>`
+      COALESCE(
+        CASE
+          WHEN ${productVariants.salePrice} IS NOT NULL
+            AND NULLIF(TRIM(${productVariants.salePrice}::text), '')::numeric > 0
+          THEN NULLIF(TRIM(${productVariants.salePrice}::text), '')::numeric
+          ELSE NULLIF(TRIM(${productVariants.regularPrice}::text), '')::numeric
+        END,
+        0
+      )
+    `;
+
+      // ← available at THIS location only, not global
+      const availableAtLocationExpr = sql<number>`
+      COALESCE(
+        MAX(
+          CASE WHEN ${inventoryItems.locationId} = ${locationId}
+          THEN ${inventoryItems.available}
+          ELSE NULL END
+        ),
+        0
+      )
+    `;
+
+      const rows = await this.db
+        .select({
+          id: productVariants.id,
+          title: productVariants.title,
+          sku: productVariants.sku,
+          barcode: productVariants.barcode,
+          productName: products.name,
+          imageUrl: productImages.url,
+          suggestedUnitPrice: suggestedUnitPriceExpr,
+          available: availableAtLocationExpr,
+        })
+        .from(productVariants)
+        // ← innerJoin to only return variants that EXIST at this location
+        .innerJoin(
+          inventoryItems,
+          and(
+            eq(inventoryItems.companyId, productVariants.companyId),
+            eq(inventoryItems.productVariantId, productVariants.id),
+            eq(inventoryItems.locationId, locationId), // ← key filter
+          ),
+        )
+        .leftJoin(
+          products,
+          and(
+            eq(products.companyId, productVariants.companyId),
+            eq(products.id, productVariants.productId),
+          ),
+        )
+        .leftJoin(
+          productImages,
+          and(
+            eq(productImages.companyId, productVariants.companyId),
+            eq(productImages.variantId, productVariants.id),
+          ),
+        )
+        .where(and(...where))
+        .groupBy(
+          productVariants.id,
+          productVariants.title,
+          productVariants.sku,
+          productVariants.barcode,
+          productVariants.regularPrice,
+          productVariants.salePrice,
+          products.name,
+          productImages.url,
+        )
+        .having(sql`1=1`) // show all — including 0 stock, UI will warn
+        .limit(limit)
+        .offset(offset)
+        .execute();
+
+      return rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        sku: r.sku ?? null,
+        barcode: r.barcode ?? null,
+        productName: r.productName ?? null,
+        imageUrl: r.imageUrl ?? null,
+        suggestedUnitPrice: r.suggestedUnitPrice ?? null,
+        available: Number(r.available ?? 0),
         label: `${r.productName ?? 'Product'} • ${r.title}${r.sku ? ` • ${r.sku}` : ''} • ${Number(r.available ?? 0)} in stock`,
       }));
     });

@@ -14,9 +14,9 @@ export declare class BlogService {
     constructor(db: db, cache: CacheService, auditService: AuditService, aws: AwsService);
     create(user: User, dto: CreateBlogPostDto, ip: string): Promise<{
         id: string;
-        slug: string;
         createdAt: Date;
         updatedAt: Date;
+        slug: string;
         storeId: string;
         status: string;
         seoTitle: string | null;
@@ -51,9 +51,9 @@ export declare class BlogService {
     }>;
     getByIdAdmin(user: User, id: string): Promise<{
         id: string;
-        slug: string;
         createdAt: Date;
         updatedAt: Date;
+        slug: string;
         storeId: string;
         status: string;
         seoTitle: string | null;
@@ -95,9 +95,9 @@ export declare class BlogService {
     }>;
     getBySlugPublic(storeId: string, slug: string): Promise<{
         id: string;
-        slug: string;
         createdAt: Date;
         updatedAt: Date;
+        slug: string;
         storeId: string;
         status: string;
         seoTitle: string | null;

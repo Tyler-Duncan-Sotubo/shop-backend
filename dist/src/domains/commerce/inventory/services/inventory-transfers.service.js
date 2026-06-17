@@ -59,33 +59,54 @@ let InventoryTransfersService = class InventoryTransfersService {
             throw new common_1.BadRequestException('Transfer must have at least one item');
         }
         const variantIds = normalized.map((i) => i.productVariantId);
-        const rows = await this.db
-            .select({
-            productVariantId: schema_1.inventoryItems.productVariantId,
-            available: schema_1.inventoryItems.available,
-            reserved: schema_1.inventoryItems.reserved,
-            safetyStock: schema_1.inventoryItems.safetyStock,
-        })
-            .from(schema_1.inventoryItems)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, fromLocationId), (0, drizzle_orm_1.inArray)(schema_1.inventoryItems.productVariantId, variantIds)))
-            .execute();
+        const [rows, variantRows] = await Promise.all([
+            this.db
+                .select({
+                productVariantId: schema_1.inventoryItems.productVariantId,
+                available: schema_1.inventoryItems.available,
+                reserved: schema_1.inventoryItems.reserved,
+                safetyStock: schema_1.inventoryItems.safetyStock,
+            })
+                .from(schema_1.inventoryItems)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, fromLocationId), (0, drizzle_orm_1.inArray)(schema_1.inventoryItems.productVariantId, variantIds)))
+                .execute(),
+            this.db
+                .select({
+                id: schema_1.productVariants.id,
+                title: schema_1.productVariants.title,
+                sku: schema_1.productVariants.sku,
+                productName: schema_1.products.name,
+            })
+                .from(schema_1.productVariants)
+                .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productVariants.productId), (0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId)))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.productVariants.id, variantIds)))
+                .execute(),
+        ]);
         const byVariant = new Map(rows.map((r) => [r.productVariantId, r]));
+        const variantById = new Map(variantRows.map((v) => [v.id, v]));
         const errors = [];
         for (const line of normalized) {
             const row = byVariant.get(line.productVariantId);
             const sellable = this.computeSellable(row);
             if (sellable < line.quantity) {
+                const v = variantById.get(line.productVariantId);
                 errors.push({
                     productVariantId: line.productVariantId,
                     requested: line.quantity,
-                    sellable,
+                    available: sellable,
+                    shortage: line.quantity - sellable,
+                    productName: v?.productName ?? null,
+                    variantTitle: v?.title ?? null,
+                    sku: v?.sku ?? null,
+                    label: [v?.productName, v?.title].filter(Boolean).join(' — '),
                 });
             }
         }
         if (errors.length) {
             throw new common_1.BadRequestException({
-                message: 'Insufficient stock to create transfer',
-                errors,
+                message: errors
+                    .map((e) => `${e.label || e.productName || e.productVariantId}: requested ${e.requested}, only ${e.available} available (short by ${e.shortage})`)
+                    .join(' | '),
             });
         }
         return normalized;
@@ -352,15 +373,51 @@ let InventoryTransfersService = class InventoryTransfersService {
         if (existing.status !== 'pending') {
             throw new common_1.BadRequestException('Items can only be edited on pending transfers');
         }
-        const normalizedItems = await this.assertEnoughStockForTransfer(companyId, existing.fromLocationId, dto.items ?? []);
+        const variantIds = (dto.items ?? []).map((i) => i.productVariantId);
+        const variantRows = await this.db
+            .select({
+            id: schema_1.productVariants.id,
+            title: schema_1.productVariants.title,
+            sku: schema_1.productVariants.sku,
+            productName: schema_1.products.name,
+        })
+            .from(schema_1.productVariants)
+            .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productVariants.productId), (0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId), (0, drizzle_orm_1.inArray)(schema_1.productVariants.id, variantIds)))
+            .execute();
+        const variantById = new Map(variantRows.map((v) => [v.id, v]));
+        try {
+            await this.assertEnoughStockForTransfer(companyId, existing.fromLocationId, dto.items ?? []);
+        }
+        catch (err) {
+            if (err instanceof common_1.BadRequestException &&
+                err.getResponse()?.errors) {
+                const response = err.getResponse();
+                throw new common_1.BadRequestException({
+                    message: response.message,
+                    errors: response.errors.map((e) => {
+                        const v = variantById.get(e.productVariantId);
+                        return {
+                            ...e,
+                            productName: v?.productName ?? null,
+                            variantTitle: v?.title ?? null,
+                            sku: v?.sku ?? null,
+                            label: [v?.productName, v?.title].filter(Boolean).join(' — '),
+                        };
+                    }),
+                });
+            }
+            throw err;
+        }
         const result = await this.db.transaction(async (tx) => {
             await tx
                 .delete(schema_1.inventoryTransferItems)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryTransferItems.transferId, transferId)))
                 .execute();
+            const normalized = this.normalizeTransferItems(dto.items ?? []);
             await tx
                 .insert(schema_1.inventoryTransferItems)
-                .values(normalizedItems.map((item) => ({
+                .values(normalized.map((item) => ({
                 companyId,
                 transferId,
                 productVariantId: item.productVariantId,
@@ -383,11 +440,11 @@ let InventoryTransfersService = class InventoryTransfersService {
                 changes: {
                     companyId,
                     transferId,
-                    items: normalizedItems,
+                    items: dto.items,
                 },
             });
         }
-        return { ...existing, items: result };
+        return result;
     }
     async getStoreTransferHistory(companyId, storeId) {
         return this.cache.getOrSetVersioned(companyId, ['inventory', 'stores', storeId, 'transfers', 'history', 'v2'], async () => {

@@ -76,51 +76,91 @@ export class InventoryTransfersService {
 
     const variantIds = normalized.map((i) => i.productVariantId);
 
-    const rows = await this.db
-      .select({
-        productVariantId: inventoryItems.productVariantId,
-        available: inventoryItems.available,
-        reserved: inventoryItems.reserved,
-        safetyStock: inventoryItems.safetyStock,
-      })
-      .from(inventoryItems)
-      .where(
-        and(
-          eq(inventoryItems.companyId, companyId),
-          eq(inventoryItems.locationId, fromLocationId),
-          inArray(inventoryItems.productVariantId, variantIds),
-        ),
-      )
-      .execute();
+    const [rows, variantRows] = await Promise.all([
+      this.db
+        .select({
+          productVariantId: inventoryItems.productVariantId,
+          available: inventoryItems.available,
+          reserved: inventoryItems.reserved,
+          safetyStock: inventoryItems.safetyStock,
+        })
+        .from(inventoryItems)
+        .where(
+          and(
+            eq(inventoryItems.companyId, companyId),
+            eq(inventoryItems.locationId, fromLocationId),
+            inArray(inventoryItems.productVariantId, variantIds),
+          ),
+        )
+        .execute(),
+
+      this.db
+        .select({
+          id: productVariants.id,
+          title: productVariants.title,
+          sku: productVariants.sku,
+          productName: products.name,
+        })
+        .from(productVariants)
+        .leftJoin(
+          products,
+          and(
+            eq(products.id, productVariants.productId),
+            eq(products.companyId, companyId),
+          ),
+        )
+        .where(
+          and(
+            eq(productVariants.companyId, companyId),
+            inArray(productVariants.id, variantIds),
+          ),
+        )
+        .execute(),
+    ]);
 
     const byVariant = new Map(rows.map((r) => [r.productVariantId, r]));
+    const variantById = new Map(variantRows.map((v) => [v.id, v]));
 
     const errors: Array<{
       productVariantId: string;
       requested: number;
-      sellable: number;
+      available: number;
+      shortage: number;
+      productName: string | null;
+      variantTitle: string | null;
+      sku: string | null;
+      label: string;
     }> = [];
 
     for (const line of normalized) {
       const row = byVariant.get(line.productVariantId);
       const sellable = this.computeSellable(row);
+
       if (sellable < line.quantity) {
+        const v = variantById.get(line.productVariantId);
         errors.push({
           productVariantId: line.productVariantId,
           requested: line.quantity,
-          sellable,
+          available: sellable,
+          shortage: line.quantity - sellable,
+          productName: v?.productName ?? null,
+          variantTitle: v?.title ?? null,
+          sku: v?.sku ?? null,
+          label: [v?.productName, v?.title].filter(Boolean).join(' — '),
         });
       }
     }
 
     if (errors.length) {
-      // Keep message readable for UI
       throw new BadRequestException({
-        message: 'Insufficient stock to create transfer',
-        errors,
+        message: errors
+          .map(
+            (e) =>
+              `${e.label || e.productName || e.productVariantId}: requested ${e.requested}, only ${e.available} available (short by ${e.shortage})`,
+          )
+          .join(' | '),
       });
     }
-
     return normalized;
   }
 
@@ -548,7 +588,6 @@ export class InventoryTransfersService {
     user?: User,
     ip?: string,
   ) {
-    // 1. Fetch the transfer and guard against completed/cancelled ones
     const existing = await this.db.query.inventoryTransfers.findFirst({
       where: and(
         eq(inventoryTransfers.companyId, companyId),
@@ -564,24 +603,74 @@ export class InventoryTransfersService {
       );
     }
 
-    // 2. Validate stock at the source location (reuses your existing guard)
-    const normalizedItems = await this.assertEnoughStockForTransfer(
-      companyId,
-      existing.fromLocationId,
-      dto.items ?? [],
-    );
+    const variantIds = (dto.items ?? []).map((i) => i.productVariantId);
 
-    // 3. Replace items atomically
+    const variantRows = await this.db
+      .select({
+        id: productVariants.id,
+        title: productVariants.title,
+        sku: productVariants.sku,
+        productName: products.name,
+      })
+      .from(productVariants)
+      .leftJoin(
+        products,
+        and(
+          eq(products.id, productVariants.productId),
+          eq(products.companyId, companyId),
+        ),
+      )
+      .where(
+        and(
+          eq(productVariants.companyId, companyId),
+          inArray(productVariants.id, variantIds),
+        ),
+      )
+      .execute();
+
+    const variantById = new Map(variantRows.map((v) => [v.id, v]));
+
+    try {
+      await this.assertEnoughStockForTransfer(
+        companyId,
+        existing.fromLocationId,
+        dto.items ?? [],
+      );
+    } catch (err) {
+      if (
+        err instanceof BadRequestException &&
+        (err.getResponse() as any)?.errors
+      ) {
+        const response = err.getResponse() as any;
+        throw new BadRequestException({
+          message: response.message,
+          errors: response.errors.map((e: any) => {
+            const v = variantById.get(e.productVariantId);
+            return {
+              ...e,
+              productName: v?.productName ?? null,
+              variantTitle: v?.title ?? null,
+              sku: v?.sku ?? null,
+              label: [v?.productName, v?.title].filter(Boolean).join(' — '),
+            };
+          }),
+        });
+      }
+      throw err;
+    }
+
     const result = await this.db.transaction(async (tx) => {
       await tx
         .delete(inventoryTransferItems)
         .where(and(eq(inventoryTransferItems.transferId, transferId)))
         .execute();
 
+      const normalized = this.normalizeTransferItems(dto.items ?? []);
+
       await tx
         .insert(inventoryTransferItems)
         .values(
-          normalizedItems.map((item) => ({
+          normalized.map((item) => ({
             companyId,
             transferId,
             productVariantId: item.productVariantId,
@@ -608,12 +697,12 @@ export class InventoryTransfersService {
         changes: {
           companyId,
           transferId,
-          items: normalizedItems,
+          items: dto.items,
         },
       });
     }
 
-    return { ...existing, items: result };
+    return result;
   }
 
   async getStoreTransferHistory(companyId: string, storeId: string) {

@@ -241,24 +241,12 @@ export declare class InventoryController extends BaseController {
         completedAt: Date | null;
     }>;
     updateTransferItems(user: User, transferId: string, dto: UpdateTransferItemsDto, ip: string): Promise<{
-        items: {
-            id: string;
-            createdAt: Date;
-            transferId: string;
-            productVariantId: string;
-            quantity: number;
-        }[];
         id: string;
         createdAt: Date;
-        updatedAt: Date;
-        companyId: string;
-        fromLocationId: string;
-        toLocationId: string;
-        reference: string | null;
-        status: string;
-        notes: string | null;
-        completedAt: Date | null;
-    }>;
+        transferId: string;
+        productVariantId: string;
+        quantity: number;
+    }[]>;
     getStoreTransferHistory(user: User, storeId: string): Promise<{
         id: string;
         timestamp: Date;

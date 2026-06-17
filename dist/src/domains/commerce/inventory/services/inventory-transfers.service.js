@@ -22,6 +22,7 @@ const audit_service_1 = require("../../../audit/audit.service");
 const inventory_locations_service_1 = require("./inventory-locations.service");
 const inventory_stock_service_1 = require("./inventory-stock.service");
 const inventory_ledger_service_1 = require("./inventory-ledger.service");
+const pg_core_1 = require("drizzle-orm/pg-core");
 let InventoryTransfersService = class InventoryTransfersService {
     constructor(db, cache, auditService, locationsService, stockService, ledger) {
         this.db = db;
@@ -217,15 +218,47 @@ let InventoryTransfersService = class InventoryTransfersService {
         });
     }
     async getTransferById(companyId, transferId) {
-        const transfer = await this.db.query.inventoryTransfers.findFirst({
-            where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryTransfers.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryTransfers.id, transferId)),
-        });
+        const fromLocation = (0, pg_core_1.alias)(schema_1.inventoryLocations, 'from_location');
+        const toLocation = (0, pg_core_1.alias)(schema_1.inventoryLocations, 'to_location');
+        const [transfer] = await this.db
+            .select({
+            id: schema_1.inventoryTransfers.id,
+            companyId: schema_1.inventoryTransfers.companyId,
+            fromLocationId: schema_1.inventoryTransfers.fromLocationId,
+            toLocationId: schema_1.inventoryTransfers.toLocationId,
+            reference: schema_1.inventoryTransfers.reference,
+            status: schema_1.inventoryTransfers.status,
+            notes: schema_1.inventoryTransfers.notes,
+            createdAt: schema_1.inventoryTransfers.createdAt,
+            updatedAt: schema_1.inventoryTransfers.updatedAt,
+            completedAt: schema_1.inventoryTransfers.completedAt,
+            fromLocationName: fromLocation.name,
+            toLocationName: toLocation.name,
+        })
+            .from(schema_1.inventoryTransfers)
+            .leftJoin(fromLocation, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(fromLocation.id, schema_1.inventoryTransfers.fromLocationId), (0, drizzle_orm_1.eq)(fromLocation.companyId, companyId)))
+            .leftJoin(toLocation, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(toLocation.id, schema_1.inventoryTransfers.toLocationId), (0, drizzle_orm_1.eq)(toLocation.companyId, companyId)))
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryTransfers.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryTransfers.id, transferId)))
+            .execute();
         if (!transfer) {
             throw new common_1.NotFoundException('Transfer not found');
         }
-        const items = await this.db.query.inventoryTransferItems.findMany({
-            where: (0, drizzle_orm_1.eq)(schema_1.inventoryTransferItems.transferId, transfer.id),
-        });
+        const items = await this.db
+            .select({
+            id: schema_1.inventoryTransferItems.id,
+            transferId: schema_1.inventoryTransferItems.transferId,
+            productVariantId: schema_1.inventoryTransferItems.productVariantId,
+            quantity: schema_1.inventoryTransferItems.quantity,
+            createdAt: schema_1.inventoryTransferItems.createdAt,
+            productName: schema_1.products.name,
+            variantTitle: schema_1.productVariants.title,
+            sku: schema_1.productVariants.sku,
+        })
+            .from(schema_1.inventoryTransferItems)
+            .leftJoin(schema_1.productVariants, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.productVariants.id, schema_1.inventoryTransferItems.productVariantId), (0, drizzle_orm_1.eq)(schema_1.productVariants.companyId, companyId)))
+            .leftJoin(schema_1.products, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.products.id, schema_1.productVariants.productId), (0, drizzle_orm_1.eq)(schema_1.products.companyId, companyId)))
+            .where((0, drizzle_orm_1.eq)(schema_1.inventoryTransferItems.transferId, transferId))
+            .execute();
         return { ...transfer, items };
     }
     async updateTransferStatus(companyId, transferId, dto, user, ip) {
@@ -309,6 +342,52 @@ let InventoryTransfersService = class InventoryTransfersService {
             });
         }
         return updated;
+    }
+    async updateTransferItems(companyId, transferId, dto, user, ip) {
+        const existing = await this.db.query.inventoryTransfers.findFirst({
+            where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryTransfers.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryTransfers.id, transferId)),
+        });
+        if (!existing)
+            throw new common_1.NotFoundException('Transfer not found');
+        if (existing.status !== 'pending') {
+            throw new common_1.BadRequestException('Items can only be edited on pending transfers');
+        }
+        const normalizedItems = await this.assertEnoughStockForTransfer(companyId, existing.fromLocationId, dto.items ?? []);
+        const result = await this.db.transaction(async (tx) => {
+            await tx
+                .delete(schema_1.inventoryTransferItems)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryTransferItems.transferId, transferId)))
+                .execute();
+            await tx
+                .insert(schema_1.inventoryTransferItems)
+                .values(normalizedItems.map((item) => ({
+                companyId,
+                transferId,
+                productVariantId: item.productVariantId,
+                quantity: item.quantity,
+            })))
+                .execute();
+            return tx.query.inventoryTransferItems.findMany({
+                where: (0, drizzle_orm_1.eq)(schema_1.inventoryTransferItems.transferId, transferId),
+            });
+        });
+        await this.cache.bumpCompanyVersion(companyId);
+        if (user && ip) {
+            await this.auditService.logAction({
+                action: 'update',
+                entity: 'inventory_transfer',
+                entityId: transferId,
+                userId: user.id,
+                ipAddress: ip,
+                details: 'Updated transfer items',
+                changes: {
+                    companyId,
+                    transferId,
+                    items: normalizedItems,
+                },
+            });
+        }
+        return { ...existing, items: result };
     }
     async getStoreTransferHistory(companyId, storeId) {
         return this.cache.getOrSetVersioned(companyId, ['inventory', 'stores', storeId, 'transfers', 'history', 'v2'], async () => {

@@ -6,6 +6,7 @@ import { CreateTransferDto, UpdateTransferStatusDto } from '../dto';
 import { InventoryLocationsService } from './inventory-locations.service';
 import { InventoryStockService } from './inventory-stock.service';
 import { InventoryLedgerService } from './inventory-ledger.service';
+import { UpdateTransferItemsDto } from '../dto/update-transfer-items.dto';
 export declare class InventoryTransfersService {
     private readonly db;
     private readonly cache;
@@ -29,11 +30,11 @@ export declare class InventoryTransfersService {
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        notes: string | null;
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
         status: string;
+        notes: string | null;
         completedAt: Date | null;
     }>;
     listTransfers(companyId: string, storeId?: string): Promise<{
@@ -61,23 +62,37 @@ export declare class InventoryTransfersService {
         completedAt: Date | null;
     }[]>;
     getTransferById(companyId: string, transferId: string): Promise<{
-        items: {
+        items: ({
             id: string;
-            createdAt: Date;
             transferId: string;
             productVariantId: string;
             quantity: number;
-        }[];
+            createdAt: Date;
+            productName: any;
+            variantTitle: any;
+            sku: any;
+        } | {
+            id: string;
+            transferId: string;
+            productVariantId: string;
+            quantity: number;
+            createdAt: Date;
+            productName: any;
+            variantTitle: any;
+            sku: any;
+        })[];
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         companyId: string;
-        notes: string | null;
         fromLocationId: string;
         toLocationId: string;
         reference: string | null;
         status: string;
+        notes: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         completedAt: Date | null;
+        fromLocationName: string | null;
+        toLocationName: string | null;
     }>;
     updateTransferStatus(companyId: string, transferId: string, dto: UpdateTransferStatusDto, user?: User, ip?: string): Promise<{
         id: string;
@@ -89,6 +104,25 @@ export declare class InventoryTransfersService {
         notes: string | null;
         createdAt: Date;
         updatedAt: Date;
+        completedAt: Date | null;
+    }>;
+    updateTransferItems(companyId: string, transferId: string, dto: UpdateTransferItemsDto, user?: User, ip?: string): Promise<{
+        items: {
+            id: string;
+            createdAt: Date;
+            transferId: string;
+            productVariantId: string;
+            quantity: number;
+        }[];
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        fromLocationId: string;
+        toLocationId: string;
+        reference: string | null;
+        status: string;
+        notes: string | null;
         completedAt: Date | null;
     }>;
     getStoreTransferHistory(companyId: string, storeId: string): Promise<{

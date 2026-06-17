@@ -25,6 +25,8 @@ import { CreateTransferDto, UpdateTransferStatusDto } from '../dto';
 import { InventoryLocationsService } from './inventory-locations.service';
 import { InventoryStockService } from './inventory-stock.service';
 import { InventoryLedgerService } from './inventory-ledger.service';
+import { UpdateTransferItemsDto } from '../dto/update-transfer-items.dto';
+import { alias } from 'drizzle-orm/pg-core';
 
 type QtyLine = { productVariantId: string; quantity: number };
 
@@ -330,20 +332,78 @@ export class InventoryTransfersService {
   }
 
   async getTransferById(companyId: string, transferId: string) {
-    const transfer = await this.db.query.inventoryTransfers.findFirst({
-      where: and(
-        eq(inventoryTransfers.companyId, companyId),
-        eq(inventoryTransfers.id, transferId),
-      ),
-    });
+    const fromLocation = alias(inventoryLocations, 'from_location');
+    const toLocation = alias(inventoryLocations, 'to_location');
+    const [transfer] = await this.db
+      .select({
+        id: inventoryTransfers.id,
+        companyId: inventoryTransfers.companyId,
+        fromLocationId: inventoryTransfers.fromLocationId,
+        toLocationId: inventoryTransfers.toLocationId,
+        reference: inventoryTransfers.reference,
+        status: inventoryTransfers.status,
+        notes: inventoryTransfers.notes,
+        createdAt: inventoryTransfers.createdAt,
+        updatedAt: inventoryTransfers.updatedAt,
+        completedAt: inventoryTransfers.completedAt,
+        fromLocationName: fromLocation.name,
+        toLocationName: toLocation.name,
+      })
+      .from(inventoryTransfers)
+      .leftJoin(
+        fromLocation,
+        and(
+          eq(fromLocation.id, inventoryTransfers.fromLocationId),
+          eq(fromLocation.companyId, companyId),
+        ),
+      )
+      .leftJoin(
+        toLocation,
+        and(
+          eq(toLocation.id, inventoryTransfers.toLocationId),
+          eq(toLocation.companyId, companyId),
+        ),
+      )
+      .where(
+        and(
+          eq(inventoryTransfers.companyId, companyId),
+          eq(inventoryTransfers.id, transferId),
+        ),
+      )
+      .execute();
 
     if (!transfer) {
       throw new NotFoundException('Transfer not found');
     }
 
-    const items = await this.db.query.inventoryTransferItems.findMany({
-      where: eq(inventoryTransferItems.transferId, transfer.id),
-    });
+    const items = await this.db
+      .select({
+        id: inventoryTransferItems.id,
+        transferId: inventoryTransferItems.transferId,
+        productVariantId: inventoryTransferItems.productVariantId,
+        quantity: inventoryTransferItems.quantity,
+        createdAt: inventoryTransferItems.createdAt,
+        productName: products.name,
+        variantTitle: productVariants.title,
+        sku: productVariants.sku,
+      })
+      .from(inventoryTransferItems)
+      .leftJoin(
+        productVariants,
+        and(
+          eq(productVariants.id, inventoryTransferItems.productVariantId),
+          eq(productVariants.companyId, companyId),
+        ),
+      )
+      .leftJoin(
+        products,
+        and(
+          eq(products.id, productVariants.productId),
+          eq(products.companyId, companyId),
+        ),
+      )
+      .where(eq(inventoryTransferItems.transferId, transferId))
+      .execute();
 
     return { ...transfer, items };
   }
@@ -479,6 +539,81 @@ export class InventoryTransfersService {
     }
 
     return updated;
+  }
+
+  async updateTransferItems(
+    companyId: string,
+    transferId: string,
+    dto: UpdateTransferItemsDto,
+    user?: User,
+    ip?: string,
+  ) {
+    // 1. Fetch the transfer and guard against completed/cancelled ones
+    const existing = await this.db.query.inventoryTransfers.findFirst({
+      where: and(
+        eq(inventoryTransfers.companyId, companyId),
+        eq(inventoryTransfers.id, transferId),
+      ),
+    });
+
+    if (!existing) throw new NotFoundException('Transfer not found');
+
+    if (existing.status !== 'pending') {
+      throw new BadRequestException(
+        'Items can only be edited on pending transfers',
+      );
+    }
+
+    // 2. Validate stock at the source location (reuses your existing guard)
+    const normalizedItems = await this.assertEnoughStockForTransfer(
+      companyId,
+      existing.fromLocationId,
+      dto.items ?? [],
+    );
+
+    // 3. Replace items atomically
+    const result = await this.db.transaction(async (tx) => {
+      await tx
+        .delete(inventoryTransferItems)
+        .where(and(eq(inventoryTransferItems.transferId, transferId)))
+        .execute();
+
+      await tx
+        .insert(inventoryTransferItems)
+        .values(
+          normalizedItems.map((item) => ({
+            companyId,
+            transferId,
+            productVariantId: item.productVariantId,
+            quantity: item.quantity,
+          })),
+        )
+        .execute();
+
+      return tx.query.inventoryTransferItems.findMany({
+        where: eq(inventoryTransferItems.transferId, transferId),
+      });
+    });
+
+    await this.cache.bumpCompanyVersion(companyId);
+
+    if (user && ip) {
+      await this.auditService.logAction({
+        action: 'update',
+        entity: 'inventory_transfer',
+        entityId: transferId,
+        userId: user.id,
+        ipAddress: ip,
+        details: 'Updated transfer items',
+        changes: {
+          companyId,
+          transferId,
+          items: normalizedItems,
+        },
+      });
+    }
+
+    return { ...existing, items: result };
   }
 
   async getStoreTransferHistory(companyId: string, storeId: string) {

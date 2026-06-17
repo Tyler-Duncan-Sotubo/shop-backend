@@ -31,6 +31,7 @@ import { CurrentUser } from '../../common/decorator/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ListInventoryMovementsDto } from './dto/list-invertory-movements.dto';
 import { InventoryReportService } from 'src/domains/commerce/inventory/reports/inventory-report.service';
+import { UpdateTransferItemsDto } from './dto/update-transfer-items.dto';
 
 @Controller('inventory')
 @UseGuards(JwtAuthGuard)
@@ -246,6 +247,24 @@ export class InventoryController extends BaseController {
     @Ip() ip: string,
   ) {
     return this.transfersService.updateTransferStatus(
+      user.companyId,
+      transferId,
+      dto,
+      user,
+      ip,
+    );
+  }
+
+  @Patch('transfers/:transferId/items')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['inventory.transfers.update'])
+  updateTransferItems(
+    @CurrentUser() user: User,
+    @Param('transferId') transferId: string,
+    @Body() dto: UpdateTransferItemsDto,
+    @Ip() ip: string,
+  ) {
+    return this.transfersService.updateTransferItems(
       user.companyId,
       transferId,
       dto,

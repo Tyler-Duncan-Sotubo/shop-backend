@@ -24,6 +24,7 @@ const current_user_decorator_1 = require("../../common/decorator/current-user.de
 const jwt_auth_guard_1 = require("../../common/guards/jwt-auth.guard");
 const list_invertory_movements_dto_1 = require("./dto/list-invertory-movements.dto");
 const inventory_report_service_1 = require("../../../../domains/commerce/inventory/reports/inventory-report.service");
+const update_transfer_items_dto_1 = require("./dto/update-transfer-items.dto");
 let InventoryController = class InventoryController extends base_controller_1.BaseController {
     constructor(locationsService, stockService, transfersService, svc, inventoryReportService) {
         super();
@@ -84,6 +85,9 @@ let InventoryController = class InventoryController extends base_controller_1.Ba
     }
     updateTransferStatus(user, transferId, dto, ip) {
         return this.transfersService.updateTransferStatus(user.companyId, transferId, dto, user, ip);
+    }
+    updateTransferItems(user, transferId, dto, ip) {
+        return this.transfersService.updateTransferItems(user.companyId, transferId, dto, user, ip);
     }
     getStoreTransferHistory(user, storeId) {
         return this.transfersService.getStoreTransferHistory(user.companyId, storeId);
@@ -297,6 +301,18 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, dto_1.UpdateTransferStatusDto, String]),
     __metadata("design:returntype", void 0)
 ], InventoryController.prototype, "updateTransferStatus", null);
+__decorate([
+    (0, common_1.Patch)('transfers/:transferId/items'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.SetMetadata)('permissions', ['inventory.transfers.update']),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('transferId')),
+    __param(2, (0, common_1.Body)()),
+    __param(3, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, update_transfer_items_dto_1.UpdateTransferItemsDto, String]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "updateTransferItems", null);
 __decorate([
     (0, common_1.Get)('stores/:storeId/transfers/history'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

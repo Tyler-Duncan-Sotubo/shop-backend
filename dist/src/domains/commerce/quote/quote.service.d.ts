@@ -25,6 +25,7 @@ export declare class QuoteService {
     private formatQuoteNumber;
     private getNextQuoteNumberTx;
     create(companyId: string, dto: CreateQuoteDto, user?: User, ip?: string): Promise<{
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -32,7 +33,6 @@ export declare class QuoteService {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
-        status: string;
         currency: string | null;
         meta: Record<string, unknown> | null;
         quoteNumber: string | null;
@@ -62,6 +62,7 @@ export declare class QuoteService {
         syncError: string | null;
     }>;
     createFromStorefront(storeId: string, dto: CreateQuoteDto, ip?: string): Promise<{
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -69,7 +70,6 @@ export declare class QuoteService {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
-        status: string;
         currency: string | null;
         meta: Record<string, unknown> | null;
         quoteNumber: string | null;
@@ -275,6 +275,7 @@ export declare class QuoteService {
             createdAt: Date;
             deletedAt: Date | null;
         }[];
+        status: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -282,7 +283,6 @@ export declare class QuoteService {
         companyId: string;
         expiresAt: Date | null;
         storeId: string;
-        status: string;
         currency: string | null;
         meta: Record<string, unknown> | null;
         quoteNumber: string | null;

@@ -40,8 +40,6 @@ export declare class ProductsService {
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;
-        createdAt: Date;
-        updatedAt: Date;
         slug: string;
         legalName: string | null;
         country: string | null;
@@ -58,13 +56,15 @@ export declare class ProductsService {
         useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     findProductByIdOrThrow(companyId: string, productId: string): Promise<{
         [x: string]: any;
         productCategories: any;
-        images: any;
         variants: any;
+        images: any;
     }>;
     ensureSlugUnique(companyId: string, slug: string, excludeId?: string): Promise<void>;
     private sanitizeFileName;
@@ -108,33 +108,33 @@ export declare class ProductsService {
     }): Promise<{
         [x: string]: any;
         productCategories: any;
-        options: any;
-        images: any;
         variants: any;
+        images: any;
         defaultVariant: any;
+        options: any;
     }[]>;
     getProductById(companyId: string, productId: string): Promise<{
         [x: string]: any;
         productCategories: any;
-        images: any;
         variants: any;
+        images: any;
     }>;
     getProductWithRelations(companyId: string, productId: string): Promise<{
         [x: string]: any;
         productCategories: any;
-        options: any;
-        images: any;
         variants: any;
+        images: any;
         defaultVariant: any;
+        options: any;
     }>;
     getProductWithRelationsBySlug(companyId: string, slug: string): Promise<{
         rating_count: number;
         average_rating: number;
         productCategories: any;
-        options: any;
-        images: any;
         variants: any;
+        images: any;
         defaultVariant: any;
+        options: any;
         defaultImage: any;
     }>;
     getProductForEdit(companyId: string, productId: string): Promise<{

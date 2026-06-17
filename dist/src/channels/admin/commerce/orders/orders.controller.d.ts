@@ -38,7 +38,7 @@ export declare class OrdersController extends BaseController {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "dispatched" | "cancelled";
+        status: "pending" | "cancelled" | "dispatched";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;
@@ -125,7 +125,7 @@ export declare class OrdersController extends BaseController {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "dispatched" | "cancelled";
+        status: "pending" | "cancelled" | "dispatched";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;
@@ -165,12 +165,12 @@ export declare class OrdersController extends BaseController {
         [x: string]: any;
     }>;
     requestDispatch(user: User, id: string, ip: string, dto: RequestDispatchDto): Promise<{
+        status: "pending" | "cancelled" | "dispatched";
         id: string;
         createdAt: Date | null;
         updatedAt: Date | null;
         companyId: string;
         storeId: string;
-        status: "pending" | "dispatched" | "cancelled";
         note: string | null;
         orderId: string;
         requestedByUserId: string | null;
@@ -186,7 +186,7 @@ export declare class OrdersController extends BaseController {
             companyId: string;
             storeId: string;
             orderId: string;
-            status: "pending" | "dispatched" | "cancelled";
+            status: "pending" | "cancelled" | "dispatched";
             requestedByUserId: string | null;
             confirmedByUserId: string | null;
             note: string | null;
@@ -200,7 +200,7 @@ export declare class OrdersController extends BaseController {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "dispatched" | "cancelled";
+        status: "pending" | "cancelled" | "dispatched";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;

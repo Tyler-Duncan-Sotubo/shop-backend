@@ -18,12 +18,14 @@ const subscription_cron_service_1 = require("./services/subscription-cron.servic
 const billing_paystack_service_1 = require("./services/billing-paystack.service");
 const subscription_invoices_service_1 = require("./services/subscription-invoices.service");
 const subscription_payment_service_1 = require("./services/subscription-payment.service");
+const billing_summary_service_1 = require("./services/billing-summary.service");
+const notification_module_1 = require("../notification/notification.module");
 let SubscriptionsModule = class SubscriptionsModule {
 };
 exports.SubscriptionsModule = SubscriptionsModule;
 exports.SubscriptionsModule = SubscriptionsModule = __decorate([
     (0, common_1.Module)({
-        imports: [axios_1.HttpModule, credits_module_1.CreditModule],
+        imports: [axios_1.HttpModule, credits_module_1.CreditModule, notification_module_1.NotificationModule],
         providers: [
             subscription_plans_service_1.SubscriptionPlansService,
             company_subscriptions_service_1.CompanySubscriptionsService,
@@ -33,6 +35,7 @@ exports.SubscriptionsModule = SubscriptionsModule = __decorate([
             billing_paystack_service_1.BillingPaystackService,
             subscription_invoices_service_1.SubscriptionInvoicesService,
             subscription_payment_service_1.SubscriptionPaymentService,
+            billing_summary_service_1.BillingSummaryService,
         ],
         exports: [
             subscription_plans_service_1.SubscriptionPlansService,
@@ -42,6 +45,7 @@ exports.SubscriptionsModule = SubscriptionsModule = __decorate([
             billing_paystack_service_1.BillingPaystackService,
             subscription_invoices_service_1.SubscriptionInvoicesService,
             subscription_payment_service_1.SubscriptionPaymentService,
+            billing_summary_service_1.BillingSummaryService,
         ],
     })
 ], SubscriptionsModule);

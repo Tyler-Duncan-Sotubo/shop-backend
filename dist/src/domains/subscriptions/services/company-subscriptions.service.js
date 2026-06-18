@@ -19,11 +19,18 @@ const drizzle_orm_1 = require("drizzle-orm");
 const drizzle_module_1 = require("../../../infrastructure/drizzle/drizzle.module");
 const schema_1 = require("../../../infrastructure/drizzle/schema");
 const subscription_plans_service_1 = require("./subscription-plans.service");
+const cache_service_1 = require("../../../infrastructure/cache/cache.service");
+const SUB_CACHE_KEY = 'subscription:with-plan';
+const SUB_TTL = 60 * 5;
 let CompanySubscriptionsService = CompanySubscriptionsService_1 = class CompanySubscriptionsService {
-    constructor(db, plans) {
+    constructor(db, plans, cache) {
         this.db = db;
         this.plans = plans;
+        this.cache = cache;
         this.logger = new common_1.Logger(CompanySubscriptionsService_1.name);
+    }
+    async bust(companyId) {
+        await this.cache.bumpCompanyVersion(companyId);
     }
     async startTrial(companyId) {
         const freePlan = await this.plans.getFreePlan();
@@ -45,6 +52,7 @@ let CompanySubscriptionsService = CompanySubscriptionsService_1 = class CompanyS
         })
             .onConflictDoNothing()
             .execute();
+        await this.bust(companyId);
         this.logger.log(`[Subscriptions] Trial started for company ${companyId} — ends ${trialEndsAt.toISOString()}`);
     }
     async getByCompany(companyId) {
@@ -62,9 +70,22 @@ let CompanySubscriptionsService = CompanySubscriptionsService_1 = class CompanyS
             throw new common_1.NotFoundException('No subscription found.');
         return sub;
     }
+    async getWithPlan(companyId) {
+        return this.cache.getOrSetVersioned(companyId, [SUB_CACHE_KEY], async () => {
+            const sub = await this.getByCompany(companyId);
+            if (!sub)
+                return null;
+            const plan = await this.plans.getById(sub.planId);
+            return { ...sub, plan };
+        }, { ttlSeconds: SUB_TTL });
+    }
     async activate(companyId, planId, billingCycle, paystackSubscriptionCode, paystackCustomerCode, paystackEmailToken) {
         const now = new Date();
-        const periodEnd = new Date();
+        const existing = await this.getByCompany(companyId);
+        const baseDate = existing?.currentPeriodEnd && new Date(existing.currentPeriodEnd) < now
+            ? new Date(existing.currentPeriodEnd)
+            : now;
+        const periodEnd = new Date(baseDate);
         if (billingCycle === 'annual') {
             periodEnd.setFullYear(periodEnd.getFullYear() + 1);
         }
@@ -87,12 +108,16 @@ let CompanySubscriptionsService = CompanySubscriptionsService_1 = class CompanyS
         })
             .where((0, drizzle_orm_1.eq)(schema_1.companySubscriptions.companyId, companyId))
             .execute();
-        this.logger.log(`[Subscriptions] Activated plan ${planId} for company ${companyId}`);
+        await this.bust(companyId);
+        this.logger.log(`[Subscriptions] Activated plan ${planId} for company ${companyId} — next due ${periodEnd.toISOString()}`);
     }
     async renew(companyId) {
         const sub = await this.getByCompanyOrThrow(companyId);
         const now = new Date();
-        const periodEnd = new Date();
+        const baseDate = sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) < now
+            ? new Date(sub.currentPeriodEnd)
+            : now;
+        const periodEnd = new Date(baseDate);
         if (sub.billingCycle === 'annual') {
             periodEnd.setFullYear(periodEnd.getFullYear() + 1);
         }
@@ -109,7 +134,8 @@ let CompanySubscriptionsService = CompanySubscriptionsService_1 = class CompanyS
         })
             .where((0, drizzle_orm_1.eq)(schema_1.companySubscriptions.companyId, companyId))
             .execute();
-        this.logger.log(`[Subscriptions] Renewed subscription for company ${companyId}`);
+        await this.bust(companyId);
+        this.logger.log(`[Subscriptions] Renewed for company ${companyId} — next due ${periodEnd.toISOString()}`);
     }
     async markPastDue(companyId) {
         await this.db
@@ -117,6 +143,7 @@ let CompanySubscriptionsService = CompanySubscriptionsService_1 = class CompanyS
             .set({ status: 'past_due', updatedAt: new Date() })
             .where((0, drizzle_orm_1.eq)(schema_1.companySubscriptions.companyId, companyId))
             .execute();
+        await this.bust(companyId);
     }
     async markExpired(companyId) {
         await this.db
@@ -124,6 +151,7 @@ let CompanySubscriptionsService = CompanySubscriptionsService_1 = class CompanyS
             .set({ status: 'expired', updatedAt: new Date() })
             .where((0, drizzle_orm_1.eq)(schema_1.companySubscriptions.companyId, companyId))
             .execute();
+        await this.bust(companyId);
     }
     async cancel(companyId, reason) {
         await this.db
@@ -136,6 +164,7 @@ let CompanySubscriptionsService = CompanySubscriptionsService_1 = class CompanyS
         })
             .where((0, drizzle_orm_1.eq)(schema_1.companySubscriptions.companyId, companyId))
             .execute();
+        await this.bust(companyId);
         this.logger.log(`[Subscriptions] Cancelled subscription for company ${companyId}`);
     }
     async assignCustomPlan(companyId) {
@@ -174,14 +203,8 @@ let CompanySubscriptionsService = CompanySubscriptionsService_1 = class CompanyS
             })
                 .execute();
         }
+        await this.bust(companyId);
         this.logger.log(`[Subscriptions] Custom plan assigned to company ${companyId}`);
-    }
-    async getWithPlan(companyId) {
-        const sub = await this.getByCompany(companyId);
-        if (!sub)
-            return null;
-        const plan = await this.plans.getById(sub.planId);
-        return { ...sub, plan };
     }
     async isActive(companyId) {
         const sub = await this.getByCompany(companyId);
@@ -194,6 +217,7 @@ exports.CompanySubscriptionsService = CompanySubscriptionsService;
 exports.CompanySubscriptionsService = CompanySubscriptionsService = CompanySubscriptionsService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)(drizzle_module_1.DRIZZLE)),
-    __metadata("design:paramtypes", [Object, subscription_plans_service_1.SubscriptionPlansService])
+    __metadata("design:paramtypes", [Object, subscription_plans_service_1.SubscriptionPlansService,
+        cache_service_1.CacheService])
 ], CompanySubscriptionsService);
 //# sourceMappingURL=company-subscriptions.service.js.map

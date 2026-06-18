@@ -10,9 +10,11 @@ import { SubscriptionCronService } from './services/subscription-cron.service';
 import { BillingPaystackService } from './services/billing-paystack.service';
 import { SubscriptionInvoicesService } from './services/subscription-invoices.service';
 import { SubscriptionPaymentService } from './services/subscription-payment.service';
+import { BillingSummaryService } from './services/billing-summary.service';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [HttpModule, CreditModule],
+  imports: [HttpModule, CreditModule, NotificationModule],
   providers: [
     SubscriptionPlansService,
     CompanySubscriptionsService,
@@ -22,6 +24,7 @@ import { SubscriptionPaymentService } from './services/subscription-payment.serv
     BillingPaystackService,
     SubscriptionInvoicesService,
     SubscriptionPaymentService, // ← new
+    BillingSummaryService,
   ],
   exports: [
     SubscriptionPlansService,
@@ -31,6 +34,7 @@ import { SubscriptionPaymentService } from './services/subscription-payment.serv
     BillingPaystackService,
     SubscriptionInvoicesService,
     SubscriptionPaymentService, // ← new
+    BillingSummaryService,
   ],
 })
 export class SubscriptionsModule {}

@@ -28,6 +28,7 @@ import {
   VerifyTopupDto,
 } from './dto/subscriptions.dto';
 import { Request } from 'express';
+import { BillingSummaryService } from 'src/domains/subscriptions/services/billing-summary.service';
 
 @Controller('subscriptions')
 @UseGuards(JwtAuthGuard)
@@ -38,6 +39,7 @@ export class SubscriptionsController extends BaseController {
     private readonly topup: CreditTopupService,
     private readonly invoices: SubscriptionInvoicesService,
     private readonly subscriptionPayment: SubscriptionPaymentService,
+    private readonly billingSummary: BillingSummaryService,
   ) {
     super();
   }
@@ -122,6 +124,11 @@ export class SubscriptionsController extends BaseController {
   @Get('credits/history')
   getTopupHistory(@CurrentUser() user: User) {
     return this.topup.getHistory(user.companyId);
+  }
+
+  @Get('billing-summary')
+  getBillingSummary(@CurrentUser() user: User) {
+    return this.billingSummary.get(user.companyId);
   }
 }
 

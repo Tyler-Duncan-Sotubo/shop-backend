@@ -30,7 +30,6 @@ export declare class CompaniesService {
         company: {
             id: string;
             name: string;
-            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             slug: string;
@@ -48,6 +47,7 @@ export declare class CompaniesService {
             industry: string | null;
             useCase: string | null;
             trialEndsAt: Date | null;
+            isActive: boolean;
             deletedAt: Date | null;
         };
     }>;

@@ -12,6 +12,7 @@ import { OrderPaidAdminNotificationService } from './services/order-paid.service
 import { DispatchNotificationService } from './services/dispatch-notification.service';
 import { FeedbackNotificationService } from './services/feedback-notification.service';
 import { NotificationsService } from './services/notifications.service';
+import { SubscriptionNotificationService } from './services/subscription-notification.service';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { NotificationsService } from './services/notifications.service';
     OrderPaidAdminNotificationService,
     DispatchNotificationService,
     FeedbackNotificationService,
+    SubscriptionNotificationService,
   ],
   exports: [
     NotificationsService,
@@ -44,6 +46,7 @@ import { NotificationsService } from './services/notifications.service';
     OrderPaidAdminNotificationService,
     DispatchNotificationService,
     FeedbackNotificationService,
+    SubscriptionNotificationService,
   ],
 })
 export class NotificationModule {}

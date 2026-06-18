@@ -9,13 +9,15 @@ import { SubscriptionInvoicesService } from "../../../domains/subscriptions/serv
 import { SubscriptionPaymentService } from "../../../domains/subscriptions/services/subscription-payment.service";
 import { CancelSubscriptionDto, InitiateTopupDto, InitiateSubscriptionDto, VerifyTopupDto } from './dto/subscriptions.dto';
 import { Request } from 'express';
+import { BillingSummaryService } from "../../../domains/subscriptions/services/billing-summary.service";
 export declare class SubscriptionsController extends BaseController {
     private readonly plans;
     private readonly subscriptions;
     private readonly topup;
     private readonly invoices;
     private readonly subscriptionPayment;
-    constructor(plans: SubscriptionPlansService, subscriptions: CompanySubscriptionsService, topup: CreditTopupService, invoices: SubscriptionInvoicesService, subscriptionPayment: SubscriptionPaymentService);
+    private readonly billingSummary;
+    constructor(plans: SubscriptionPlansService, subscriptions: CompanySubscriptionsService, topup: CreditTopupService, invoices: SubscriptionInvoicesService, subscriptionPayment: SubscriptionPaymentService, billingSummary: BillingSummaryService);
     getPlans(): Promise<{
         id: string;
         createdAt: Date;
@@ -128,6 +130,81 @@ export declare class SubscriptionsController extends BaseController {
         paidAt: Date | null;
         metadata: unknown;
     }[]>;
+    getBillingSummary(user: User): Promise<{
+        subscription: {
+            plan: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                name: string;
+                description: string | null;
+                monthlyPriceNGN: number;
+                annualPriceNGN: number;
+                monthlyCredits: number;
+                features: import("../../../infrastructure/drizzle/schema").PlanFeatures;
+                paystackMonthlyPlanCode: string | null;
+                paystackAnnualPlanCode: string | null;
+                isActive: boolean;
+                sortOrder: number;
+            };
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            planId: string;
+            status: "trialing" | "active" | "past_due" | "cancelled" | "expired";
+            billingCycle: "monthly" | "annual";
+            currentPeriodStart: Date | null;
+            currentPeriodEnd: Date | null;
+            trialEndsAt: Date | null;
+            cancelledAt: Date | null;
+            cancelReason: string | null;
+            paystackCustomerCode: string | null;
+            paystackSubscriptionCode: string | null;
+            paystackEmailToken: string | null;
+        } | null;
+        plans: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            description: string | null;
+            monthlyPriceNGN: number;
+            annualPriceNGN: number;
+            monthlyCredits: number;
+            features: import("../../../infrastructure/drizzle/schema").PlanFeatures;
+            paystackMonthlyPlanCode: string | null;
+            paystackAnnualPlanCode: string | null;
+            isActive: boolean;
+            sortOrder: number;
+        }[];
+        topups: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            credits: number;
+            amountNGN: number;
+            status: "pending" | "paid" | "failed" | "refunded";
+            paystackReference: string;
+            paystackAccessCode: string | null;
+            paidAt: Date | null;
+            metadata: unknown;
+        }[];
+        invoices: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            subscriptionId: string | null;
+            topupRequestId: string | null;
+            type: "subscription" | "credit_topup";
+            status: "paid" | "failed" | "refunded";
+            amountNGN: number;
+            paystackReference: string | null;
+            paidAt: Date | null;
+        }[];
+    }>;
 }
 export declare class BillingWebhookController extends BaseController {
     private readonly webhookService;

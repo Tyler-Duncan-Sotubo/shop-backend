@@ -1,10 +1,13 @@
 import { db } from "../../../infrastructure/drizzle/types/drizzle";
 import { SubscriptionPlansService } from './subscription-plans.service';
+import { CacheService } from "../../../infrastructure/cache/cache.service";
 export declare class CompanySubscriptionsService {
     private readonly db;
     private readonly plans;
+    private readonly cache;
     private readonly logger;
-    constructor(db: db, plans: SubscriptionPlansService);
+    constructor(db: db, plans: SubscriptionPlansService, cache: CacheService);
+    private bust;
     startTrial(companyId: string): Promise<void>;
     getByCompany(companyId: string): Promise<{
         id: string;
@@ -40,12 +43,6 @@ export declare class CompanySubscriptionsService {
         paystackSubscriptionCode: string | null;
         paystackEmailToken: string | null;
     }>;
-    activate(companyId: string, planId: string, billingCycle: 'monthly' | 'annual', paystackSubscriptionCode?: string, paystackCustomerCode?: string, paystackEmailToken?: string): Promise<void>;
-    renew(companyId: string): Promise<void>;
-    markPastDue(companyId: string): Promise<void>;
-    markExpired(companyId: string): Promise<void>;
-    cancel(companyId: string, reason?: string): Promise<void>;
-    assignCustomPlan(companyId: string): Promise<void>;
     getWithPlan(companyId: string): Promise<{
         plan: {
             id: string;
@@ -78,5 +75,11 @@ export declare class CompanySubscriptionsService {
         paystackSubscriptionCode: string | null;
         paystackEmailToken: string | null;
     } | null>;
+    activate(companyId: string, planId: string, billingCycle: 'monthly' | 'annual', paystackSubscriptionCode?: string, paystackCustomerCode?: string, paystackEmailToken?: string): Promise<void>;
+    renew(companyId: string): Promise<void>;
+    markPastDue(companyId: string): Promise<void>;
+    markExpired(companyId: string): Promise<void>;
+    cancel(companyId: string, reason?: string): Promise<void>;
+    assignCustomPlan(companyId: string): Promise<void>;
     isActive(companyId: string): Promise<boolean>;
 }

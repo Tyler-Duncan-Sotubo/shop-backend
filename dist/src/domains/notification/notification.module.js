@@ -21,6 +21,7 @@ const order_paid_service_1 = require("./services/order-paid.service");
 const dispatch_notification_service_1 = require("./services/dispatch-notification.service");
 const feedback_notification_service_1 = require("./services/feedback-notification.service");
 const notifications_service_1 = require("./services/notifications.service");
+const subscription_notification_service_1 = require("./services/subscription-notification.service");
 let NotificationModule = class NotificationModule {
 };
 exports.NotificationModule = NotificationModule;
@@ -45,6 +46,7 @@ exports.NotificationModule = NotificationModule = __decorate([
             order_paid_service_1.OrderPaidAdminNotificationService,
             dispatch_notification_service_1.DispatchNotificationService,
             feedback_notification_service_1.FeedbackNotificationService,
+            subscription_notification_service_1.SubscriptionNotificationService,
         ],
         exports: [
             notifications_service_1.NotificationsService,
@@ -56,6 +58,7 @@ exports.NotificationModule = NotificationModule = __decorate([
             order_paid_service_1.OrderPaidAdminNotificationService,
             dispatch_notification_service_1.DispatchNotificationService,
             feedback_notification_service_1.FeedbackNotificationService,
+            subscription_notification_service_1.SubscriptionNotificationService,
         ],
     })
 ], NotificationModule);

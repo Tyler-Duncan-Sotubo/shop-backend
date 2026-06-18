@@ -5,6 +5,10 @@ import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import { companySubscriptions } from 'src/infrastructure/drizzle/schema';
 import { SubscriptionPlansService } from './subscription-plans.service';
+import { CacheService } from 'src/infrastructure/cache/cache.service';
+
+const SUB_CACHE_KEY = 'subscription:with-plan';
+const SUB_TTL = 60 * 5; // 5 minutes
 
 @Injectable()
 export class CompanySubscriptionsService {
@@ -13,9 +17,15 @@ export class CompanySubscriptionsService {
   constructor(
     @Inject(DRIZZLE) private readonly db: db,
     private readonly plans: SubscriptionPlansService,
+    private readonly cache: CacheService,
   ) {}
 
-  // ── Start trial — called when company registers ───────────
+  // ── Invalidate subscription cache ─────────────────────────
+  private async bust(companyId: string): Promise<void> {
+    await this.cache.bumpCompanyVersion(companyId);
+  }
+
+  // ── Start trial ───────────────────────────────────────────
   async startTrial(companyId: string): Promise<void> {
     const freePlan = await this.plans.getFreePlan();
 
@@ -37,8 +47,10 @@ export class CompanySubscriptionsService {
         currentPeriodEnd: periodEnd,
         trialEndsAt,
       })
-      .onConflictDoNothing() // safe to call multiple times
+      .onConflictDoNothing()
       .execute();
+
+    await this.bust(companyId);
 
     this.logger.log(
       `[Subscriptions] Trial started for company ${companyId} — ends ${trialEndsAt.toISOString()}`,
@@ -63,6 +75,21 @@ export class CompanySubscriptionsService {
     return sub;
   }
 
+  // ── Get with plan — cached ────────────────────────────────
+  async getWithPlan(companyId: string) {
+    return this.cache.getOrSetVersioned(
+      companyId,
+      [SUB_CACHE_KEY],
+      async () => {
+        const sub = await this.getByCompany(companyId);
+        if (!sub) return null;
+        const plan = await this.plans.getById(sub.planId);
+        return { ...sub, plan };
+      },
+      { ttlSeconds: SUB_TTL },
+    );
+  }
+
   // ── Activate subscription after payment ──────────────────
   async activate(
     companyId: string,
@@ -73,7 +100,19 @@ export class CompanySubscriptionsService {
     paystackEmailToken?: string,
   ): Promise<void> {
     const now = new Date();
-    const periodEnd = new Date();
+
+    // ── Get existing sub to check original period end ─────────
+    const existing = await this.getByCompany(companyId);
+
+    // ── Calculate next period end from original due date ──────
+    // If they paid late, next billing is still from the original date
+    // e.g. due June 1, paid June 19 → next due July 1
+    const baseDate =
+      existing?.currentPeriodEnd && new Date(existing.currentPeriodEnd) < now
+        ? new Date(existing.currentPeriodEnd) // ← use original due date
+        : now; // ← new sub, use today
+
+    const periodEnd = new Date(baseDate);
 
     if (billingCycle === 'annual') {
       periodEnd.setFullYear(periodEnd.getFullYear() + 1);
@@ -87,8 +126,8 @@ export class CompanySubscriptionsService {
         planId,
         status: 'active',
         billingCycle,
-        currentPeriodStart: now,
-        currentPeriodEnd: periodEnd,
+        currentPeriodStart: now, // ← when they actually paid
+        currentPeriodEnd: periodEnd, // ← next due from original date
         trialEndsAt: null,
         paystackSubscriptionCode: paystackSubscriptionCode ?? null,
         paystackCustomerCode: paystackCustomerCode ?? null,
@@ -98,17 +137,25 @@ export class CompanySubscriptionsService {
       .where(eq(companySubscriptions.companyId, companyId))
       .execute();
 
+    await this.bust(companyId);
+
     this.logger.log(
-      `[Subscriptions] Activated plan ${planId} for company ${companyId}`,
+      `[Subscriptions] Activated plan ${planId} for company ${companyId} — next due ${periodEnd.toISOString()}`,
     );
   }
 
-  // ── Renew subscription (called by Paystack webhook) ───────
+  // ── Renew subscription ────────────────────────────────────
   async renew(companyId: string): Promise<void> {
     const sub = await this.getByCompanyOrThrow(companyId);
-
     const now = new Date();
-    const periodEnd = new Date();
+
+    // ── Base from original period end, not today ──────────────
+    const baseDate =
+      sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) < now
+        ? new Date(sub.currentPeriodEnd)
+        : now;
+
+    const periodEnd = new Date(baseDate);
 
     if (sub.billingCycle === 'annual') {
       periodEnd.setFullYear(periodEnd.getFullYear() + 1);
@@ -127,8 +174,10 @@ export class CompanySubscriptionsService {
       .where(eq(companySubscriptions.companyId, companyId))
       .execute();
 
+    await this.bust(companyId);
+
     this.logger.log(
-      `[Subscriptions] Renewed subscription for company ${companyId}`,
+      `[Subscriptions] Renewed for company ${companyId} — next due ${periodEnd.toISOString()}`,
     );
   }
 
@@ -139,6 +188,8 @@ export class CompanySubscriptionsService {
       .set({ status: 'past_due', updatedAt: new Date() })
       .where(eq(companySubscriptions.companyId, companyId))
       .execute();
+
+    await this.bust(companyId);
   }
 
   // ── Mark expired ──────────────────────────────────────────
@@ -148,6 +199,8 @@ export class CompanySubscriptionsService {
       .set({ status: 'expired', updatedAt: new Date() })
       .where(eq(companySubscriptions.companyId, companyId))
       .execute();
+
+    await this.bust(companyId);
   }
 
   // ── Cancel ────────────────────────────────────────────────
@@ -163,19 +216,19 @@ export class CompanySubscriptionsService {
       .where(eq(companySubscriptions.companyId, companyId))
       .execute();
 
+    await this.bust(companyId);
+
     this.logger.log(
       `[Subscriptions] Cancelled subscription for company ${companyId}`,
     );
   }
 
-  // ── Assign custom plan (for Godfather/enterprise) ─────────
+  // ── Assign custom plan (Godfather/enterprise) ─────────────
   async assignCustomPlan(companyId: string): Promise<void> {
     const customPlan = await this.plans.getByName('Custom');
     if (!customPlan) throw new NotFoundException('Custom plan not found.');
 
     const now = new Date();
-
-    // Set period end 100 years out — effectively never expires
     const periodEnd = new Date();
     periodEnd.setFullYear(periodEnd.getFullYear() + 100);
 
@@ -209,22 +262,14 @@ export class CompanySubscriptionsService {
         .execute();
     }
 
+    await this.bust(companyId);
+
     this.logger.log(
       `[Subscriptions] Custom plan assigned to company ${companyId}`,
     );
   }
 
-  // ── Get with plan details ─────────────────────────────────
-  async getWithPlan(companyId: string) {
-    const sub = await this.getByCompany(companyId);
-    if (!sub) return null;
-
-    const plan = await this.plans.getById(sub.planId);
-
-    return { ...sub, plan };
-  }
-
-  // ── Check if company has active subscription ──────────────
+  // ── Check if active ───────────────────────────────────────
   async isActive(companyId: string): Promise<boolean> {
     const sub = await this.getByCompany(companyId);
     if (!sub) return false;

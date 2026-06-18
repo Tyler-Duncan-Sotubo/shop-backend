@@ -24,14 +24,16 @@ const subscription_webhook_service_1 = require("../../../domains/subscriptions/s
 const subscription_invoices_service_1 = require("../../../domains/subscriptions/services/subscription-invoices.service");
 const subscription_payment_service_1 = require("../../../domains/subscriptions/services/subscription-payment.service");
 const subscriptions_dto_1 = require("./dto/subscriptions.dto");
+const billing_summary_service_1 = require("../../../domains/subscriptions/services/billing-summary.service");
 let SubscriptionsController = class SubscriptionsController extends base_controller_1.BaseController {
-    constructor(plans, subscriptions, topup, invoices, subscriptionPayment) {
+    constructor(plans, subscriptions, topup, invoices, subscriptionPayment, billingSummary) {
         super();
         this.plans = plans;
         this.subscriptions = subscriptions;
         this.topup = topup;
         this.invoices = invoices;
         this.subscriptionPayment = subscriptionPayment;
+        this.billingSummary = billingSummary;
     }
     getPlans() {
         return this.plans.getAll();
@@ -65,6 +67,9 @@ let SubscriptionsController = class SubscriptionsController extends base_control
     }
     getTopupHistory(user) {
         return this.topup.getHistory(user.companyId);
+    }
+    getBillingSummary(user) {
+        return this.billingSummary.get(user.companyId);
     }
 };
 exports.SubscriptionsController = SubscriptionsController;
@@ -148,6 +153,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], SubscriptionsController.prototype, "getTopupHistory", null);
+__decorate([
+    (0, common_1.Get)('billing-summary'),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], SubscriptionsController.prototype, "getBillingSummary", null);
 exports.SubscriptionsController = SubscriptionsController = __decorate([
     (0, common_1.Controller)('subscriptions'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
@@ -155,7 +167,8 @@ exports.SubscriptionsController = SubscriptionsController = __decorate([
         company_subscriptions_service_1.CompanySubscriptionsService,
         credit_topup_service_1.CreditTopupService,
         subscription_invoices_service_1.SubscriptionInvoicesService,
-        subscription_payment_service_1.SubscriptionPaymentService])
+        subscription_payment_service_1.SubscriptionPaymentService,
+        billing_summary_service_1.BillingSummaryService])
 ], SubscriptionsController);
 let BillingWebhookController = class BillingWebhookController extends base_controller_1.BaseController {
     constructor(webhookService) {

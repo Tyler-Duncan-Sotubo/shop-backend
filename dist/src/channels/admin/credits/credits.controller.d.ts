@@ -40,13 +40,13 @@ export declare class CreditsController extends BaseController {
             id: string;
             createdAt: Date;
             companyId: string;
-            channel: "email" | "sms";
             type: "topup" | "send" | "refund" | "adjustment";
+            note: string | null;
             amount: number;
+            channel: "email" | "sms";
             balanceAfter: number;
             referenceType: string | null;
             referenceId: string | null;
-            note: string | null;
         };
     }>;
     adjust(user: User, body: AdjustDto): Promise<{
@@ -55,13 +55,13 @@ export declare class CreditsController extends BaseController {
             id: string;
             createdAt: Date;
             companyId: string;
-            channel: "email" | "sms";
             type: "topup" | "send" | "refund" | "adjustment";
+            note: string | null;
             amount: number;
+            channel: "email" | "sms";
             balanceAfter: number;
             referenceType: string | null;
             referenceId: string | null;
-            note: string | null;
         };
     }>;
 }

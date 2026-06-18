@@ -6,10 +6,10 @@ export declare class SupportFeedbackService {
     private readonly mailer;
     constructor(db: db, mailer: FeedbackNotificationService);
     create(dto: CreateFeedbackInput, companyId: string): Promise<{
+        message: string;
         id: string;
         createdAt: Date;
         companyId: string;
-        message: string;
         category: string;
         platform: string;
     }>;

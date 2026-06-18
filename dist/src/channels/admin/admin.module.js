@@ -32,7 +32,8 @@ const search_controller_1 = require("./search/search.controller");
 const support_module_1 = require("./support/support.module");
 const notifications_module_1 = require("./notifications/notifications.module");
 const credits_module_1 = require("./credits/credits.module");
-const email_marketing_admin_module_1 = require("./email-marketing/email-marketing-admin.module");
+const campaigns_admin_module_1 = require("./campaigns/campaigns-admin.module");
+const subscriptions_module_1 = require("./subscriptions/subscriptions.module");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
@@ -61,7 +62,8 @@ exports.AdminModule = AdminModule = __decorate([
             support_module_1.SupportModule,
             notifications_module_1.NotificationsModule,
             credits_module_1.AdminCreditsModule,
-            email_marketing_admin_module_1.EmailMarketingAdminModule,
+            campaigns_admin_module_1.CampaignsAdminModule,
+            subscriptions_module_1.AdminSubscriptionsModule,
         ],
         providers: [aws_service_1.AwsService],
         exports: [aws_service_1.AwsService],

@@ -23,7 +23,8 @@ import { SearchController } from './search/search.controller';
 import { SupportModule } from './support/support.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminCreditsModule } from './credits/credits.module';
-import { EmailMarketingAdminModule } from './email-marketing/email-marketing-admin.module';
+import { CampaignsAdminModule } from './campaigns/campaigns-admin.module';
+import { AdminSubscriptionsModule } from './subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -49,7 +50,8 @@ import { EmailMarketingAdminModule } from './email-marketing/email-marketing-adm
     SupportModule,
     NotificationsModule,
     AdminCreditsModule,
-    EmailMarketingAdminModule,
+    CampaignsAdminModule,
+    AdminSubscriptionsModule,
   ],
   providers: [AwsService],
   exports: [AwsService],

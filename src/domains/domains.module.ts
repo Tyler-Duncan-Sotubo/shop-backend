@@ -30,7 +30,8 @@ import { SetupModule } from './setup/setup.module';
 import { SearchModule } from './search/search.module';
 import { SupportModule } from './support/support.module';
 import { CreditModule } from './credits/credits.module';
-import { EmailMarketingModule } from './email-marketing/email-marketing.module';
+import { CampaignsModule } from './campaigns/campaigns.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 @Global()
 @Module({
@@ -66,7 +67,8 @@ import { EmailMarketingModule } from './email-marketing/email-marketing.module';
     SearchModule,
     SupportModule,
     CreditModule,
-    EmailMarketingModule,
+    CampaignsModule,
+    SubscriptionsModule,
   ],
   exports: [
     AuditModule,
@@ -99,7 +101,8 @@ import { EmailMarketingModule } from './email-marketing/email-marketing.module';
     SearchModule,
     SupportModule,
     CreditModule,
-    EmailMarketingModule,
+    CampaignsModule,
+    SubscriptionsModule,
   ],
 })
 export class DomainsModule {}

@@ -27,12 +27,12 @@ export declare class BlogController extends BaseController {
         totalPages: number;
     }>;
     getBySlugPublic(storeId: string, slug: string): Promise<{
+        status: string;
         id: string;
+        slug: string;
         createdAt: Date;
         updatedAt: Date;
-        slug: string;
         storeId: string;
-        status: string;
         seoTitle: string | null;
         seoDescription: string | null;
         title: string;

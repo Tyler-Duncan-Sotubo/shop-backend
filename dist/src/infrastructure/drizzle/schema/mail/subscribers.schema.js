@@ -17,6 +17,7 @@ exports.subscribers = (0, pg_core_1.pgTable)('subscribers', {
     status: (0, pg_core_1.varchar)('status', { length: 32 }).notNull().default('subscribed'),
     source: (0, pg_core_1.varchar)('source', { length: 64 }).default('form'),
     metadata: (0, pg_core_1.jsonb)('metadata').$type(),
+    phone: (0, pg_core_1.varchar)('phone', { length: 32 }),
     createdAt: (0, pg_core_1.timestamp)('created_at', { withTimezone: true })
         .notNull()
         .defaultNow(),

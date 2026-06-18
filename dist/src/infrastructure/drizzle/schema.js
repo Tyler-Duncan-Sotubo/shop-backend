@@ -98,7 +98,11 @@ __exportStar(require("./schema/support/feedback.schema"), exports);
 __exportStar(require("./schema/notifications/notifications.schema"), exports);
 __exportStar(require("./schema/credits/credit-balance.schema"), exports);
 __exportStar(require("./schema/credits/credit-transactions.schema"), exports);
-__exportStar(require("./schema/email-marketing/campaigns.schema"), exports);
-__exportStar(require("./schema/email-marketing/campaign-events.schema"), exports);
-__exportStar(require("./schema/email-marketing/email-sender-config.schema"), exports);
+__exportStar(require("./schema/campaigns/campaigns.schema"), exports);
+__exportStar(require("./schema/campaigns/campaign-events.schema"), exports);
+__exportStar(require("./schema/campaigns/email-sender-config.schema"), exports);
+__exportStar(require("./schema/subscriptions/subscription-plans.schema"), exports);
+__exportStar(require("./schema/subscriptions/company-subscriptions.schema"), exports);
+__exportStar(require("./schema/subscriptions/credit-topup-requests.schema"), exports);
+__exportStar(require("./schema/subscriptions/subscription-invoices.schema"), exports);
 //# sourceMappingURL=schema.js.map

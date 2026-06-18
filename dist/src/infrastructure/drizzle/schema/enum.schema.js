@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.creditTransactionTypeEnum = exports.creditChannelEnum = exports.campaignEventTypeEnum = exports.campaignAudienceTypeEnum = exports.campaignStatusEnum = exports.campaignTemplateTypeEnum = exports.allocationStatusEnum = exports.paymentStatusEnum = exports.paymentMethodEnum = exports.invoiceTypeEnum = exports.invoiceStatusEnum = exports.productLinkTypeEnum = exports.productTypeEnum = exports.productStatusEnum = exports.customerTypeEnum = exports.companyRoleEnum = void 0;
+exports.subscriptionInvoiceStatusEnum = exports.subscriptionInvoiceTypeEnum = exports.topupStatusEnum = exports.billingCycleEnum = exports.subscriptionStatusEnum = exports.creditTransactionTypeEnum = exports.creditChannelEnum = exports.campaignEventTypeEnum = exports.campaignAudienceTypeEnum = exports.campaignStatusEnum = exports.campaignTemplateTypeEnum = exports.allocationStatusEnum = exports.paymentStatusEnum = exports.paymentMethodEnum = exports.invoiceTypeEnum = exports.invoiceStatusEnum = exports.productLinkTypeEnum = exports.productTypeEnum = exports.productStatusEnum = exports.customerTypeEnum = exports.companyRoleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 exports.companyRoleEnum = (0, pg_core_1.pgEnum)('company_role_enum', [
     'owner',
@@ -83,4 +83,23 @@ exports.creditTransactionTypeEnum = (0, pg_core_1.pgEnum)('credit_transaction_ty
     'refund',
     'adjustment',
 ]);
+exports.subscriptionStatusEnum = (0, pg_core_1.pgEnum)('subscription_status', [
+    'trialing',
+    'active',
+    'past_due',
+    'cancelled',
+    'expired',
+]);
+exports.billingCycleEnum = (0, pg_core_1.pgEnum)('billing_cycle', ['monthly', 'annual']);
+exports.topupStatusEnum = (0, pg_core_1.pgEnum)('topup_status', [
+    'pending',
+    'paid',
+    'failed',
+    'refunded',
+]);
+exports.subscriptionInvoiceTypeEnum = (0, pg_core_1.pgEnum)('subscription_invoice_type', [
+    'subscription',
+    'credit_topup',
+]);
+exports.subscriptionInvoiceStatusEnum = (0, pg_core_1.pgEnum)('subscription_invoice_status', ['paid', 'failed', 'refunded']);
 //# sourceMappingURL=enum.schema.js.map

@@ -23,9 +23,9 @@ export declare class ShippingZonesService {
     createZone(companyId: string, dto: CreateZoneDto, user?: User, ip?: string): Promise<{
         id: string;
         name: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         companyId: string;
         description: string | null;
         storeId: string;
@@ -84,9 +84,9 @@ export declare class ShippingZonesService {
     resolveZone(companyId: string, storeId: string, countryCode: string, state?: string, area?: string): Promise<{
         id: string;
         name: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         companyId: string;
         description: string | null;
         storeId: string;

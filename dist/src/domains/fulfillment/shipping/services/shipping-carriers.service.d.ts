@@ -21,9 +21,9 @@ export declare class ShippingCarriersService {
     createCarrier(companyId: string, dto: CreateCarrierDto, user?: User, ip?: string): Promise<{
         id: string;
         name: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         companyId: string;
         providerKey: string;
         settings: Record<string, any> | null;

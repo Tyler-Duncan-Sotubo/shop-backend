@@ -75,7 +75,7 @@ export declare const orderDispatches: import("drizzle-orm/pg-core").PgTableWithC
             tableName: "order_dispatches";
             dataType: "string";
             columnType: "PgVarchar";
-            data: "pending" | "dispatched" | "cancelled";
+            data: "pending" | "cancelled" | "dispatched";
             driverParam: string;
             notNull: true;
             hasDefault: true;
@@ -88,7 +88,7 @@ export declare const orderDispatches: import("drizzle-orm/pg-core").PgTableWithC
             generated: undefined;
         }, {}, {
             length: 32;
-            $type: "pending" | "dispatched" | "cancelled";
+            $type: "pending" | "cancelled" | "dispatched";
         }>;
         requestedByUserId: import("drizzle-orm/pg-core").PgColumn<{
             name: "requested_by_user_id";

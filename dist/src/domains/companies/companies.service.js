@@ -23,14 +23,16 @@ const company_settings_service_1 = require("../company-settings/company-settings
 const services_1 = require("../auth/services");
 const invoice_service_1 = require("../billing/invoice/invoice.service");
 const manual_orders_service_1 = require("../commerce/orders/manual-orders.service");
+const company_subscriptions_service_1 = require("../subscriptions/services/company-subscriptions.service");
 let CompaniesService = class CompaniesService {
-    constructor(db, verificationService, permissionService, companySettingsService, invoiceService, manualOrdersService) {
+    constructor(db, verificationService, permissionService, companySettingsService, invoiceService, manualOrdersService, subscriptions) {
         this.db = db;
         this.verificationService = verificationService;
         this.permissionService = permissionService;
         this.companySettingsService = companySettingsService;
         this.invoiceService = invoiceService;
         this.manualOrdersService = manualOrdersService;
+        this.subscriptions = subscriptions;
     }
     async checkCompanySlugAvailable(slug, companyIdToIgnore) {
         const existing = await this.db
@@ -61,7 +63,7 @@ let CompaniesService = class CompaniesService {
             name: dto.companyName,
             country: dto.country,
             slug: dto.slug.toLowerCase(),
-            trialEndsAt: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+            trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         })
             .returning()
             .execute();
@@ -106,6 +108,7 @@ let CompaniesService = class CompaniesService {
         await this.permissionService.seedDefaultPermissionsForCompany(company.id);
         await this.invoiceService.seedDefaultInvoiceSeriesForCompany(company.id);
         await this.manualOrdersService.seedOrderCounterForCompany(company.id);
+        await this.subscriptions.startTrial(company.id);
     }
     async register(dto) {
         await this.checkCompanySlugAvailable(dto.slug);
@@ -115,10 +118,7 @@ let CompaniesService = class CompaniesService {
             return this.createUserAndBootstrapCompany(trx, company, dto);
         });
         await this.postRegistration(company, user);
-        return {
-            user,
-            company,
-        };
+        return { user, company };
     }
     async getCompanyById(companyId) {
         const [company] = await this.db
@@ -174,6 +174,7 @@ exports.CompaniesService = CompaniesService = __decorate([
         permissions_service_1.PermissionsService,
         company_settings_service_1.CompanySettingsService,
         invoice_service_1.InvoiceService,
-        manual_orders_service_1.ManualOrdersService])
+        manual_orders_service_1.ManualOrdersService,
+        company_subscriptions_service_1.CompanySubscriptionsService])
 ], CompaniesService);
 //# sourceMappingURL=companies.service.js.map

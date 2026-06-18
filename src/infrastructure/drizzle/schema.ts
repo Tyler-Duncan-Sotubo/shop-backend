@@ -145,6 +145,12 @@ export * from './schema/credits/credit-balance.schema';
 export * from './schema/credits/credit-transactions.schema';
 
 // Email Marketing
-export * from './schema/email-marketing/campaigns.schema';
-export * from './schema/email-marketing/campaign-events.schema';
-export * from './schema/email-marketing/email-sender-config.schema';
+export * from './schema/campaigns/campaigns.schema';
+export * from './schema/campaigns/campaign-events.schema';
+export * from './schema/campaigns/email-sender-config.schema';
+
+// src/infrastructure/drizzle/schema.ts — add these exports
+export * from './schema/subscriptions/subscription-plans.schema';
+export * from './schema/subscriptions/company-subscriptions.schema';
+export * from './schema/subscriptions/credit-topup-requests.schema';
+export * from './schema/subscriptions/subscription-invoices.schema';

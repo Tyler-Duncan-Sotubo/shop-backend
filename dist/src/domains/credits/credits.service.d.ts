@@ -45,13 +45,13 @@ export declare class CreditService {
             id: string;
             createdAt: Date;
             companyId: string;
-            channel: "email" | "sms";
             type: "topup" | "send" | "refund" | "adjustment";
+            note: string | null;
             amount: number;
+            channel: "email" | "sms";
             balanceAfter: number;
             referenceType: string | null;
             referenceId: string | null;
-            note: string | null;
         };
     }>;
     debit(companyId: string, amount: number, channel: CreditChannel, referenceType: string, referenceId: string): Promise<{
@@ -60,13 +60,13 @@ export declare class CreditService {
             id: string;
             createdAt: Date;
             companyId: string;
-            channel: "email" | "sms";
             type: "topup" | "send" | "refund" | "adjustment";
+            note: string | null;
             amount: number;
+            channel: "email" | "sms";
             balanceAfter: number;
             referenceType: string | null;
             referenceId: string | null;
-            note: string | null;
         };
     }>;
     refund(companyId: string, amount: number, channel: CreditChannel, referenceType: string, referenceId: string, note?: string): Promise<{
@@ -75,13 +75,13 @@ export declare class CreditService {
             id: string;
             createdAt: Date;
             companyId: string;
-            channel: "email" | "sms";
             type: "topup" | "send" | "refund" | "adjustment";
+            note: string | null;
             amount: number;
+            channel: "email" | "sms";
             balanceAfter: number;
             referenceType: string | null;
             referenceId: string | null;
-            note: string | null;
         };
     }>;
     adjust(companyId: string, amount: number, channel: CreditChannel, note: string): Promise<{
@@ -90,13 +90,13 @@ export declare class CreditService {
             id: string;
             createdAt: Date;
             companyId: string;
-            channel: "email" | "sms";
             type: "topup" | "send" | "refund" | "adjustment";
+            note: string | null;
             amount: number;
+            channel: "email" | "sms";
             balanceAfter: number;
             referenceType: string | null;
             referenceId: string | null;
-            note: string | null;
         };
     }>;
 }

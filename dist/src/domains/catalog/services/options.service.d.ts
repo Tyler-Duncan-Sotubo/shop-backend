@@ -11,8 +11,6 @@ export declare class OptionsService {
     assertCompanyExists(companyId: string): Promise<{
         id: string;
         name: string;
-        createdAt: Date;
-        updatedAt: Date;
         slug: string;
         legalName: string | null;
         country: string | null;
@@ -29,6 +27,8 @@ export declare class OptionsService {
         useCase: string | null;
         trialEndsAt: Date | null;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
         deletedAt: Date | null;
     }>;
     assertProductBelongsToCompany(companyId: string, productId: string): Promise<{

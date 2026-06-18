@@ -35,9 +35,9 @@ export declare class ZohoController extends BaseController {
     isEnabled(user: User, storeId: string): Promise<boolean>;
     upsertAdmin(user: User, storeId: string, dto: CreateZohoDto, ip: string): Promise<{
         id: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         companyId: string;
         storeId: string;
         region: string;
@@ -89,9 +89,9 @@ export declare class ZohoController extends BaseController {
     }>;
     removeAdmin(user: User, storeId: string, ip: string): Promise<{
         id: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         companyId: string;
         storeId: string;
         region: string;

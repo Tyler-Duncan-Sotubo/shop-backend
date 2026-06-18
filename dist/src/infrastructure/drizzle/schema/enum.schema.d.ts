@@ -14,7 +14,17 @@ export declare const campaignAudienceTypeEnum: import("drizzle-orm/pg-core").PgE
 export declare const campaignEventTypeEnum: import("drizzle-orm/pg-core").PgEnum<["sent", "opened", "clicked", "unsubscribed", "bounced", "complained"]>;
 export declare const creditChannelEnum: import("drizzle-orm/pg-core").PgEnum<["email", "sms"]>;
 export declare const creditTransactionTypeEnum: import("drizzle-orm/pg-core").PgEnum<["topup", "send", "refund", "adjustment"]>;
+export declare const subscriptionStatusEnum: import("drizzle-orm/pg-core").PgEnum<["trialing", "active", "past_due", "cancelled", "expired"]>;
+export declare const billingCycleEnum: import("drizzle-orm/pg-core").PgEnum<["monthly", "annual"]>;
+export declare const topupStatusEnum: import("drizzle-orm/pg-core").PgEnum<["pending", "paid", "failed", "refunded"]>;
+export declare const subscriptionInvoiceTypeEnum: import("drizzle-orm/pg-core").PgEnum<["subscription", "credit_topup"]>;
+export declare const subscriptionInvoiceStatusEnum: import("drizzle-orm/pg-core").PgEnum<["paid", "failed", "refunded"]>;
 export type ProductLinkType = (typeof productLinkTypeEnum.enumValues)[number];
 export type ProductType = (typeof productTypeEnum.enumValues)[number];
 export type ProductStatus = (typeof productStatusEnum.enumValues)[number];
 export type CompanyRoleName = (typeof companyRoleEnum.enumValues)[number];
+export type SubscriptionStatus = (typeof subscriptionStatusEnum.enumValues)[number];
+export type BillingCycle = (typeof billingCycleEnum.enumValues)[number];
+export type TopupStatus = (typeof topupStatusEnum.enumValues)[number];
+export type SubscriptionInvoiceType = (typeof subscriptionInvoiceTypeEnum.enumValues)[number];
+export type SubscriptionInvoiceStatus = (typeof subscriptionInvoiceStatusEnum.enumValues)[number];

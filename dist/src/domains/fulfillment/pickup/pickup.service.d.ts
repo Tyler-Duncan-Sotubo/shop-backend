@@ -32,9 +32,9 @@ export declare class PickupService {
     get(companyId: string, id: string): Promise<{
         id: string;
         name: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         companyId: string;
         storeId: string;
         state: string;
@@ -46,9 +46,9 @@ export declare class PickupService {
     create(companyId: string, dto: CreatePickupLocationDto, user?: User, ip?: string): Promise<{
         id: string;
         name: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         companyId: string;
         storeId: string;
         state: string;

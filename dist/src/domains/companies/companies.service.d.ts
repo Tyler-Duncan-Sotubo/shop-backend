@@ -6,6 +6,7 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { InvoiceService } from '../billing/invoice/invoice.service';
 import { ManualOrdersService } from '../commerce/orders/manual-orders.service';
+import { CompanySubscriptionsService } from '../subscriptions/services/company-subscriptions.service';
 export declare class CompaniesService {
     private readonly db;
     private readonly verificationService;
@@ -13,7 +14,8 @@ export declare class CompaniesService {
     private readonly companySettingsService;
     private readonly invoiceService;
     private readonly manualOrdersService;
-    constructor(db: db, verificationService: VerificationService, permissionService: PermissionsService, companySettingsService: CompanySettingsService, invoiceService: InvoiceService, manualOrdersService: ManualOrdersService);
+    private readonly subscriptions;
+    constructor(db: db, verificationService: VerificationService, permissionService: PermissionsService, companySettingsService: CompanySettingsService, invoiceService: InvoiceService, manualOrdersService: ManualOrdersService, subscriptions: CompanySubscriptionsService);
     private checkCompanySlugAvailable;
     private checkUserNotExists;
     private createCompany;
@@ -28,6 +30,9 @@ export declare class CompaniesService {
         company: {
             id: string;
             name: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
             legalName: string | null;
             country: string | null;
@@ -43,9 +48,6 @@ export declare class CompaniesService {
             industry: string | null;
             useCase: string | null;
             trialEndsAt: Date | null;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
             deletedAt: Date | null;
         };
     }>;

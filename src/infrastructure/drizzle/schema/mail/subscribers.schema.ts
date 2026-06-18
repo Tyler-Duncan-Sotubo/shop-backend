@@ -28,6 +28,7 @@ export const subscribers = pgTable(
     status: varchar('status', { length: 32 }).notNull().default('subscribed'), // subscribed | unsubscribed | pending
     source: varchar('source', { length: 64 }).default('form'), // form | checkout | popup | import | api
     metadata: jsonb('metadata').$type<Record<string, any>>(), // any extra (utm, page, ip, userAgent)
+    phone: varchar('phone', { length: 32 }),
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

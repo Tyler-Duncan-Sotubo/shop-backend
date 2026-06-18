@@ -1,3 +1,4 @@
+// src/domains/companies/companies.service.ts
 import {
   Injectable,
   Inject,
@@ -16,6 +17,7 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { InvoiceService } from '../billing/invoice/invoice.service';
 import { ManualOrdersService } from '../commerce/orders/manual-orders.service';
+import { CompanySubscriptionsService } from '../subscriptions/services/company-subscriptions.service';
 
 @Injectable()
 export class CompaniesService {
@@ -26,9 +28,10 @@ export class CompaniesService {
     private readonly companySettingsService: CompanySettingsService,
     private readonly invoiceService: InvoiceService,
     private readonly manualOrdersService: ManualOrdersService,
+    private readonly subscriptions: CompanySubscriptionsService, // ← add
   ) {}
 
-  // ------ helpers ------
+  // ── Helpers ───────────────────────────────────────────────
   private async checkCompanySlugAvailable(
     slug: string,
     companyIdToIgnore?: string,
@@ -66,9 +69,9 @@ export class CompaniesService {
         name: dto.companyName,
         country: dto.country,
         slug: dto.slug.toLowerCase(),
-        trialEndsAt: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000), // 21 days
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
       })
-      .returning() // return all columns
+      .returning()
       .execute();
 
     if (!company) {
@@ -85,10 +88,8 @@ export class CompaniesService {
   ) {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    // Seed default roles (owner, manager, staff, support) for this company
     const roles = await this.permissionService.createDefaultRoles(company.id);
 
-    // Choose the role from DTO or fall back to "owner"
     const role =
       roles.find((r) => r.name === dto.role) ??
       roles.find((r) => r.name.toLowerCase() === 'owner');
@@ -121,7 +122,6 @@ export class CompaniesService {
       throw new BadRequestException('User creation failed.');
     }
 
-    // Seed core company settings (general, checkout, payments, tax, security)
     await this.companySettingsService.setCoreSettings(company.id);
 
     return user;
@@ -137,14 +137,18 @@ export class CompaniesService {
       company.name,
     );
 
-    // 2) enqueue permission seeding for this company (async)
+    // 2) seed permissions
     await this.permissionService.seedDefaultPermissionsForCompany(company.id);
 
+    // 3) seed invoice series + order counter
     await this.invoiceService.seedDefaultInvoiceSeriesForCompany(company.id);
     await this.manualOrdersService.seedOrderCounterForCompany(company.id);
+
+    // 4) start 14-day trial ← new
+    await this.subscriptions.startTrial(company.id);
   }
 
-  // ------ public: registration ------
+  // ── Registration ──────────────────────────────────────────
   async register(dto: CreateCompanyDto) {
     await this.checkCompanySlugAvailable(dto.slug);
     await this.checkUserNotExists(dto.email);
@@ -157,13 +161,10 @@ export class CompaniesService {
 
     await this.postRegistration(company, user);
 
-    return {
-      user,
-      company, // you now have all company fields here
-    };
+    return { user, company };
   }
 
-  // ------ public: get company ------
+  // ── Get company ───────────────────────────────────────────
   async getCompanyById(companyId: string) {
     const [company] = await this.db
       .select()
@@ -179,9 +180,8 @@ export class CompaniesService {
     return company;
   }
 
-  // ------ public: update company ------
+  // ── Update company ────────────────────────────────────────
   async updateCompany(companyId: string, dto: UpdateCompanyDto) {
-    // If slug is being updated, make sure it’s free
     if (dto.slug) {
       await this.checkCompanySlugAvailable(dto.slug, companyId);
     }

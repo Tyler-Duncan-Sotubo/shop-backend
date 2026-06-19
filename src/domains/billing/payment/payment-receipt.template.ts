@@ -1,5 +1,4 @@
 export function paymentReceiptThermalTemplate() {
-  // Handlebars template string
   return `
   <div class="rct">
     <div class="center">
@@ -68,9 +67,10 @@ export function paymentReceiptThermalTemplate() {
 
     <div class="hr"></div>
 
-    <div class="center muted">
-      {{#if branding.footerNote}}{{branding.footerNote}}{{else}}Thank you.{{/if}}
+    <div class="terms">
+      <p>Thanks for your business.</p>
     </div>
+
   </div>
   `;
 }
@@ -78,10 +78,12 @@ export function paymentReceiptThermalTemplate() {
 export function paymentReceiptThermalCss() {
   return `
   @page { size: 80mm auto; margin: 6mm; }
-  body { font-family: Arial, sans-serif; font-size: 11px; color: #111; }
-  .rct { width: 68mm; } /* inside margins */
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #111; margin: 0; padding: 0; }
+  p { margin: 0; }
+  .rct { width: 68mm; }
   .center { text-align: center; }
-  .logo { max-width: 40mm; max-height: 18mm; margin: 0 auto 6px auto; display: block; }
+  .logo { max-width: 28mm; max-height: 12mm; margin: 0 auto 4px auto; display: block; }
   .title { font-weight: 700; font-size: 14px; }
   .muted { color: #555; }
   .strong { font-weight: 700; }
@@ -89,5 +91,7 @@ export function paymentReceiptThermalCss() {
   .row { display: flex; justify-content: space-between; gap: 8px; margin: 4px 0; }
   .label { color: #555; flex: 0 0 auto; }
   .value { text-align: right; flex: 1 1 auto; word-break: break-word; }
+  .terms { color: #555; font-size: 10px; }
+  .terms p { margin: 3px 0; }
   `;
 }

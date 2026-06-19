@@ -271,7 +271,15 @@ let PaymentReceiptService = class PaymentReceiptService {
                         img.addEventListener('error', () => res(true));
                     })));
             });
-            const pdfBuffer = await page.pdf({ printBackground: true });
+            const height = await page.evaluate(() => {
+                const el = document.querySelector('.rct');
+                return el ? el.offsetHeight + 100 : document.body.scrollHeight + 100;
+            });
+            const pdfBuffer = await page.pdf({
+                width: '80mm',
+                height: `${height}px`,
+                printBackground: true,
+            });
             await browser.close();
             return pdfBuffer;
         }

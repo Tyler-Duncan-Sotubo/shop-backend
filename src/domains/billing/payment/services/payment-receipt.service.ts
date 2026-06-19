@@ -378,7 +378,6 @@ export class PaymentReceiptService {
 
       await page.setContent(html, { waitUntil: 'networkidle' });
 
-      // wait for images (logo) to load
       await page.evaluate(async () => {
         const imgs = Array.from(document.images);
         await Promise.all(
@@ -393,7 +392,16 @@ export class PaymentReceiptService {
         );
       });
 
-      const pdfBuffer = await page.pdf({ printBackground: true });
+      const height = await page.evaluate(() => {
+        const el = document.querySelector('.rct') as HTMLElement;
+        return el ? el.offsetHeight + 100 : document.body.scrollHeight + 100;
+      });
+
+      const pdfBuffer = await page.pdf({
+        width: '80mm',
+        height: `${height}px`,
+        printBackground: true,
+      });
 
       await browser.close();
       return pdfBuffer;

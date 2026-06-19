@@ -10,20 +10,20 @@ export declare class CampaignsController extends BaseController {
     private readonly audienceService;
     constructor(campaignService: CampaignService, campaignSendService: CampaignSendService, audienceService: CampaignAudienceService);
     create(user: User, body: CreateCampaignDto): Promise<{
-        status: "draft" | "scheduled" | "sending" | "sent" | "failed";
         id: string;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
         storeId: string;
         channel: "email" | "sms";
-        sentAt: Date | null;
-        subject: string;
         templateType: "new_arrival" | "promotion" | "newsletter";
+        status: "draft" | "scheduled" | "sending" | "sent" | "failed";
         audienceType: "all" | "customers" | "subscribers";
+        subject: string;
         previewText: string | null;
         contentJson: string | null;
         scheduledAt: Date | null;
+        sentAt: Date | null;
         sentCount: number;
         openCount: number;
         clickCount: number;

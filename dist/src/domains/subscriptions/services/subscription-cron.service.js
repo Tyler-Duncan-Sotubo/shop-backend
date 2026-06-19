@@ -88,11 +88,12 @@ let SubscriptionCronService = SubscriptionCronService_1 = class SubscriptionCron
                     trialEndsAt: new Date(row.trialEndsAt),
                 });
                 trialRemindersSent++;
+                this.logger.log(`[SubscriptionCron] Trial reminder sent to ${owner.email} — ${days} days left`);
             }
         }
         const pastDueReminderDays = [1, 4, 7, 10, 13, 16, 18, 19];
-        for (const days of pastDueReminderDays) {
-            const windowStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+        for (const daysSince of pastDueReminderDays) {
+            const windowStart = new Date(now.getTime() - daysSince * 24 * 60 * 60 * 1000);
             windowStart.setHours(0, 0, 0, 0);
             const windowEnd = new Date(windowStart);
             windowEnd.setHours(23, 59, 59, 999);
@@ -104,13 +105,13 @@ let SubscriptionCronService = SubscriptionCronService_1 = class SubscriptionCron
             })
                 .from(schema_1.companySubscriptions)
                 .innerJoin(schema_1.subscriptionPlans, (0, drizzle_orm_1.eq)(schema_1.companySubscriptions.planId, schema_1.subscriptionPlans.id))
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.companySubscriptions.status, 'past_due'), (0, drizzle_orm_1.gte)(schema_1.companySubscriptions.currentPeriodEnd, windowStart), (0, drizzle_orm_1.lte)(schema_1.companySubscriptions.currentPeriodEnd, windowEnd), (0, drizzle_orm_1.ne)(schema_1.subscriptionPlans.name, 'Custom')))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.companySubscriptions.status, 'past_due'), (0, drizzle_orm_1.gte)(schema_1.companySubscriptions.currentPeriodEnd, windowStart), (0, drizzle_orm_1.lte)(schema_1.companySubscriptions.currentPeriodEnd, windowEnd)))
                 .execute();
             for (const row of pastDueRows) {
                 const owner = await this.getCompanyOwner(row.companyId);
                 if (!owner)
                     continue;
-                const daysUntilExpiry = 20 - days;
+                const daysUntilExpiry = 20 - daysSince;
                 await this.notifications.sendPastDue({
                     email: owner.email,
                     ownerName: `${owner.firstName} ${owner.lastName}`.trim(),
@@ -119,6 +120,7 @@ let SubscriptionCronService = SubscriptionCronService_1 = class SubscriptionCron
                     daysUntilExpiry,
                 });
                 pastDueRemindersSent++;
+                this.logger.log(`[SubscriptionCron] Past due reminder sent to ${owner.email} — ${daysUntilExpiry} days until expiry`);
             }
         }
         this.logger.log(`[SubscriptionCron] Reminders sent — ${trialRemindersSent} trial + ${pastDueRemindersSent} past_due`);
@@ -148,7 +150,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], SubscriptionCronService.prototype, "processExpiredSubscriptions", null);
 __decorate([
-    (0, schedule_1.Cron)('0 8 * * *'),
+    (0, schedule_1.Cron)('0 9 * * *'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)

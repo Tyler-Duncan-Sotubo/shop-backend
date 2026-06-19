@@ -83,7 +83,7 @@ export class SubscriptionCronService {
   }
 
   // ── Run daily at 9am WAT (8am UTC) ───────────────────────
-  @Cron('0 8 * * *')
+  @Cron('0 9 * * *')
   async sendSubscriptionReminders() {
     const now = new Date();
     this.logger.log('[SubscriptionCron] Sending subscription reminders...');
@@ -92,10 +92,10 @@ export class SubscriptionCronService {
     let pastDueRemindersSent = 0;
 
     // ── Trial reminders: 7 days, 3 days, 1 day ───────────────
+    // Custom plan excluded — they don't have trials
     const reminderDays = [7, 3, 1];
 
     for (const days of reminderDays) {
-      // window: between start of target day and end of target day
       const windowStart = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
       windowStart.setHours(0, 0, 0, 0);
 
@@ -118,7 +118,7 @@ export class SubscriptionCronService {
             eq(companySubscriptions.status, 'trialing'),
             gte(companySubscriptions.trialEndsAt, windowStart),
             lte(companySubscriptions.trialEndsAt, windowEnd),
-            ne(subscriptionPlans.name, 'Custom'),
+            ne(subscriptionPlans.name, 'Custom'), // ← Custom can't be trialing anyway
           ),
         )
         .execute();
@@ -136,14 +136,20 @@ export class SubscriptionCronService {
         });
 
         trialRemindersSent++;
+        this.logger.log(
+          `[SubscriptionCron] Trial reminder sent to ${owner.email} — ${days} days left`,
+        );
       }
     }
 
-    // ── Past due reminders: day 1, day 7 ─────────────────────
+    // ── Past due reminders every 3 days + urgent final days ───
+    // Custom plan INCLUDED — they should still get payment reminders
     const pastDueReminderDays = [1, 4, 7, 10, 13, 16, 18, 19];
 
-    for (const days of pastDueReminderDays) {
-      const windowStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    for (const daysSince of pastDueReminderDays) {
+      const windowStart = new Date(
+        now.getTime() - daysSince * 24 * 60 * 60 * 1000,
+      );
       windowStart.setHours(0, 0, 0, 0);
 
       const windowEnd = new Date(windowStart);
@@ -165,7 +171,7 @@ export class SubscriptionCronService {
             eq(companySubscriptions.status, 'past_due'),
             gte(companySubscriptions.currentPeriodEnd, windowStart),
             lte(companySubscriptions.currentPeriodEnd, windowEnd),
-            ne(subscriptionPlans.name, 'Custom'),
+            // ← no Custom exclusion here — everyone gets payment reminders
           ),
         )
         .execute();
@@ -174,7 +180,7 @@ export class SubscriptionCronService {
         const owner = await this.getCompanyOwner(row.companyId);
         if (!owner) continue;
 
-        const daysUntilExpiry = 20 - days; // 20 day grace period
+        const daysUntilExpiry = 20 - daysSince;
 
         await this.notifications.sendPastDue({
           email: owner.email,
@@ -185,6 +191,9 @@ export class SubscriptionCronService {
         });
 
         pastDueRemindersSent++;
+        this.logger.log(
+          `[SubscriptionCron] Past due reminder sent to ${owner.email} — ${daysUntilExpiry} days until expiry`,
+        );
       }
     }
 

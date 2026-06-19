@@ -26,7 +26,7 @@ export declare class BillingSummaryService {
             updatedAt: Date;
             companyId: string;
             planId: string;
-            status: "trialing" | "active" | "past_due" | "cancelled" | "expired";
+            status: "active" | "trialing" | "past_due" | "cancelled" | "expired";
             billingCycle: "monthly" | "annual";
             currentPeriodStart: Date | null;
             currentPeriodEnd: Date | null;
@@ -59,7 +59,7 @@ export declare class BillingSummaryService {
             companyId: string;
             credits: number;
             amountNGN: number;
-            status: "pending" | "paid" | "failed" | "refunded";
+            status: "paid" | "pending" | "failed" | "refunded";
             paystackReference: string;
             paystackAccessCode: string | null;
             paidAt: Date | null;

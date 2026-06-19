@@ -54,7 +54,7 @@ export declare class SubscriptionsController extends BaseController {
         updatedAt: Date;
         companyId: string;
         planId: string;
-        status: "trialing" | "active" | "past_due" | "cancelled" | "expired";
+        status: "active" | "trialing" | "past_due" | "cancelled" | "expired";
         billingCycle: "monthly" | "annual";
         currentPeriodStart: Date | null;
         currentPeriodEnd: Date | null;
@@ -113,7 +113,7 @@ export declare class SubscriptionsController extends BaseController {
         reference: string;
         authorizationUrl: any;
         accessCode: any;
-        credits: 1000 | 5000 | 10000 | 25000;
+        credits: 10000 | 5000 | 1000 | 25000;
         amountNGN: 3000 | 12500 | 22000 | 50000;
     }>;
     verifyTopup(user: User, body: VerifyTopupDto): Promise<void>;
@@ -124,7 +124,7 @@ export declare class SubscriptionsController extends BaseController {
         companyId: string;
         credits: number;
         amountNGN: number;
-        status: "pending" | "paid" | "failed" | "refunded";
+        status: "paid" | "pending" | "failed" | "refunded";
         paystackReference: string;
         paystackAccessCode: string | null;
         paidAt: Date | null;
@@ -152,7 +152,7 @@ export declare class SubscriptionsController extends BaseController {
             updatedAt: Date;
             companyId: string;
             planId: string;
-            status: "trialing" | "active" | "past_due" | "cancelled" | "expired";
+            status: "active" | "trialing" | "past_due" | "cancelled" | "expired";
             billingCycle: "monthly" | "annual";
             currentPeriodStart: Date | null;
             currentPeriodEnd: Date | null;
@@ -185,7 +185,7 @@ export declare class SubscriptionsController extends BaseController {
             companyId: string;
             credits: number;
             amountNGN: number;
-            status: "pending" | "paid" | "failed" | "refunded";
+            status: "paid" | "pending" | "failed" | "refunded";
             paystackReference: string;
             paystackAccessCode: string | null;
             paidAt: Date | null;

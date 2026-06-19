@@ -46,7 +46,7 @@ export declare class CreditTopupService {
         reference: string;
         authorizationUrl: any;
         accessCode: any;
-        credits: 1000 | 5000 | 10000 | 25000;
+        credits: 10000 | 5000 | 1000 | 25000;
         amountNGN: 3000 | 12500 | 22000 | 50000;
     }>;
     confirm(paystackReference: string): Promise<void>;
@@ -58,7 +58,7 @@ export declare class CreditTopupService {
         companyId: string;
         credits: number;
         amountNGN: number;
-        status: "pending" | "paid" | "failed" | "refunded";
+        status: "paid" | "pending" | "failed" | "refunded";
         paystackReference: string;
         paystackAccessCode: string | null;
         paidAt: Date | null;
@@ -71,7 +71,7 @@ export declare class CreditTopupService {
         companyId: string;
         credits: number;
         amountNGN: number;
-        status: "pending" | "paid" | "failed" | "refunded";
+        status: "paid" | "pending" | "failed" | "refunded";
         paystackReference: string;
         paystackAccessCode: string | null;
         paidAt: Date | null;

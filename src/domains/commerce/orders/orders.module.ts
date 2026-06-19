@@ -15,6 +15,7 @@ import { ZohoCommonHelper } from 'src/domains/integration/zoho/helpers/zoho-comm
 import { OrderDispatchService } from './order-dispatch.service';
 import { NotificationModule } from 'src/domains/notification/notification.module';
 import { POSService } from './pos.service';
+import { OrderInvoiceCronService } from './order-invoice.cron.service';
 
 @Module({
   imports: [NotificationModule],
@@ -34,6 +35,7 @@ import { POSService } from './pos.service';
     ZohoBooksService,
     ZohoService,
     ZohoCommonHelper,
+    OrderInvoiceCronService,
   ],
   exports: [
     OrdersService,

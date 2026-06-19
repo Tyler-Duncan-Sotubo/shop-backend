@@ -24,6 +24,7 @@ const zoho_common_helper_1 = require("../../integration/zoho/helpers/zoho-common
 const order_dispatch_service_1 = require("./order-dispatch.service");
 const notification_module_1 = require("../../notification/notification.module");
 const pos_service_1 = require("./pos.service");
+const order_invoice_cron_service_1 = require("./order-invoice.cron.service");
 let OrdersModule = class OrdersModule {
 };
 exports.OrdersModule = OrdersModule;
@@ -46,6 +47,7 @@ exports.OrdersModule = OrdersModule = __decorate([
             zoho_books_service_1.ZohoBooksService,
             zoho_service_1.ZohoService,
             zoho_common_helper_1.ZohoCommonHelper,
+            order_invoice_cron_service_1.OrderInvoiceCronService,
         ],
         exports: [
             orders_service_1.OrdersService,

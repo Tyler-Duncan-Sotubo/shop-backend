@@ -30,10 +30,10 @@ export class PermissionsController extends BaseController {
     return this.permissionsService.create();
   }
 
-  // @Post('seed-new-roles')
-  // seedNewSystemRolesForAllCompanies() {
-  //   return this.permissionsService.seedNewSystemRolesForAllCompanies();
-  // }
+  @Post('seed-new-roles')
+  seedNewSystemRolesForAllCompanies() {
+    return this.permissionsService.seedNewSystemRolesForAllCompanies();
+  }
 
   @Post('sync')
   syncAllCompanyPermissions() {

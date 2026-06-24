@@ -113,7 +113,7 @@ export declare class SubscriptionsController extends BaseController {
         reference: string;
         authorizationUrl: any;
         accessCode: any;
-        credits: 10000 | 5000 | 1000 | 25000;
+        credits: 1000 | 5000 | 10000 | 25000;
         amountNGN: 3000 | 12500 | 22000 | 50000;
     }>;
     verifyTopup(user: User, body: VerifyTopupDto): Promise<void>;

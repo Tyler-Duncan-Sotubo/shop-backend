@@ -8,6 +8,9 @@ export declare class PermissionsController extends BaseController {
     private readonly permissionsService;
     constructor(permissionsService: PermissionsService);
     seedPermissions(): Promise<string>;
+    seedNewSystemRolesForAllCompanies(): Promise<{
+        success: boolean;
+    }>;
     syncAllCompanyPermissions(): Promise<void>;
     findAllPermissions(): Promise<{
         id: string;

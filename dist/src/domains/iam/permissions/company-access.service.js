@@ -22,6 +22,7 @@ const audit_service_1 = require("../../audit/audit.service");
 const roles_1 = require("./roles");
 const warehouse_staff_permissions_1 = require("./roles/warehouse-staff.permissions");
 const inventory_manager_permission_1 = require("./roles/inventory-manager.permission");
+const sales_permissions_1 = require("./roles/sales.permissions");
 let CompanyAccessService = class CompanyAccessService {
     constructor(db, cache, auditService) {
         this.db = db;
@@ -358,6 +359,11 @@ let CompanyAccessService = class CompanyAccessService {
                 name: 'inventory_manager',
                 displayName: 'Inventory Manager',
                 permissions: inventory_manager_permission_1.InventoryManagerPermissions,
+            },
+            {
+                name: 'sales',
+                displayName: 'Sales',
+                permissions: sales_permissions_1.SalesPermissions,
             },
         ];
         for (const roleDef of systemRolesToEnsure) {

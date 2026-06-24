@@ -168,12 +168,12 @@ export declare class OrdersController extends BaseController {
         [x: string]: any;
     }>;
     requestDispatch(user: User, id: string, ip: string, dto: RequestDispatchDto): Promise<{
-        status: "pending" | "cancelled" | "dispatched";
         id: string;
         createdAt: Date | null;
         updatedAt: Date | null;
         companyId: string;
         storeId: string;
+        status: "pending" | "cancelled" | "dispatched";
         note: string | null;
         orderId: string;
         requestedByUserId: string | null;

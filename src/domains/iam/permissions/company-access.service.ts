@@ -21,6 +21,7 @@ import { DefaultRolePermissions } from './roles';
 import { User } from 'src/channels/admin/common/types/user.type';
 import { WarehouseStaffPermissions } from './roles/warehouse-staff.permissions';
 import { InventoryManagerPermissions } from './roles/inventory-manager.permission';
+import { SalesPermissions } from './roles/sales.permissions';
 
 @Injectable()
 export class CompanyAccessService {
@@ -521,6 +522,11 @@ export class CompanyAccessService {
         name: 'inventory_manager',
         displayName: 'Inventory Manager',
         permissions: InventoryManagerPermissions,
+      },
+      {
+        name: 'sales',
+        displayName: 'Sales',
+        permissions: SalesPermissions,
       },
     ];
 

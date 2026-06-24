@@ -28,6 +28,9 @@ let PermissionsController = class PermissionsController extends base_controller_
     seedPermissions() {
         return this.permissionsService.create();
     }
+    seedNewSystemRolesForAllCompanies() {
+        return this.permissionsService.seedNewSystemRolesForAllCompanies();
+    }
     syncAllCompanyPermissions() {
         return this.permissionsService.syncAllCompanyPermissions();
     }
@@ -70,6 +73,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], PermissionsController.prototype, "seedPermissions", null);
+__decorate([
+    (0, common_1.Post)('seed-new-roles'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], PermissionsController.prototype, "seedNewSystemRolesForAllCompanies", null);
 __decorate([
     (0, common_1.Post)('sync'),
     __metadata("design:type", Function),

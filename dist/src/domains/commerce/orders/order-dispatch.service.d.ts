@@ -20,11 +20,11 @@ export declare class OrderDispatchService {
         updatedAt: Date | null;
         companyId: string;
         storeId: string;
-        status: "pending" | "dispatched" | "cancelled";
+        status: "pending" | "cancelled" | "dispatched";
         orderId: string;
+        note: string | null;
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
-        note: string | null;
         dispatchedAt: Date | null;
     }>;
     confirmDispatch(companyId: string, storeId: string, orderId: string, actor: Actor, note?: string): Promise<{
@@ -36,7 +36,7 @@ export declare class OrderDispatchService {
             companyId: string;
             storeId: string;
             orderId: string;
-            status: "pending" | "dispatched" | "cancelled";
+            status: "pending" | "cancelled" | "dispatched";
             requestedByUserId: string | null;
             confirmedByUserId: string | null;
             note: string | null;
@@ -50,7 +50,7 @@ export declare class OrderDispatchService {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "dispatched" | "cancelled";
+        status: "pending" | "cancelled" | "dispatched";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;
@@ -71,7 +71,7 @@ export declare class OrderDispatchService {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "dispatched" | "cancelled";
+        status: "pending" | "cancelled" | "dispatched";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;
@@ -96,7 +96,7 @@ export declare class OrderDispatchService {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "dispatched" | "cancelled";
+        status: "pending" | "cancelled" | "dispatched";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;

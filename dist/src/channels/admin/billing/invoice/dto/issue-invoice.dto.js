@@ -16,7 +16,7 @@ class IssueInvoiceDto {
 exports.IssueInvoiceDto = IssueInvoiceDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsUUID)('4'),
+    (0, class_validator_1.IsUUID)('all'),
     __metadata("design:type", Object)
 ], IssueInvoiceDto.prototype, "storeId", void 0);
 __decorate([
@@ -30,4 +30,9 @@ __decorate([
     (0, class_validator_1.Length)(1, 64),
     __metadata("design:type", String)
 ], IssueInvoiceDto.prototype, "seriesName", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUUID)('all'),
+    __metadata("design:type", Object)
+], IssueInvoiceDto.prototype, "bankAccountId", void 0);
 //# sourceMappingURL=issue-invoice.dto.js.map

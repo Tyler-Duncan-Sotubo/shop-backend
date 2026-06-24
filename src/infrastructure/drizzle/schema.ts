@@ -101,6 +101,7 @@ export * from './schema/billing/invoice/invoice-documents.schema';
 export * from './schema/billing/invoice/invoice-branding.schema';
 export * from './schema/billing/invoice/invoice-templates.schema';
 export * from './schema/billing/invoice/invoice-public-links.schema';
+export * from './schema/billing/company-bank-accounts.schema';
 
 // PAYMENTS
 export * from './schema/billing/payment/payments.schema';

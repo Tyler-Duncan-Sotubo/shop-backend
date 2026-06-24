@@ -6,10 +6,10 @@ export declare class SupportFeedbackController extends BaseController {
     private readonly feedback;
     constructor(feedback: SupportFeedbackService);
     create(user: User, dto: CreateFeedbackDto): Promise<{
-        message: string;
         id: string;
         createdAt: Date;
         companyId: string;
+        message: string;
         category: string;
         platform: string;
     }>;

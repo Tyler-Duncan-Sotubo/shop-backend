@@ -20,10 +20,10 @@ export declare class NotificationsService {
         data: unknown;
         createdAt: Date;
         companyId: string;
-        userId: string | null;
         type: string;
-        title: string;
         channel: string;
+        title: string;
+        userId: string | null;
         readAt: Date | null;
         body: string | null;
     }>;

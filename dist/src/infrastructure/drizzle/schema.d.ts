@@ -59,6 +59,7 @@ export * from './schema/billing/invoice/invoice-documents.schema';
 export * from './schema/billing/invoice/invoice-branding.schema';
 export * from './schema/billing/invoice/invoice-templates.schema';
 export * from './schema/billing/invoice/invoice-public-links.schema';
+export * from './schema/billing/company-bank-accounts.schema';
 export * from './schema/billing/payment/payments.schema';
 export * from './schema/billing/payment/payment-allocations.schema';
 export * from './schema/billing/payment/payment-files.schema';

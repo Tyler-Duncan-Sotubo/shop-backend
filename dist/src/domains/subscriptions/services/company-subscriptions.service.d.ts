@@ -15,7 +15,7 @@ export declare class CompanySubscriptionsService {
         updatedAt: Date;
         companyId: string;
         planId: string;
-        status: "active" | "trialing" | "past_due" | "cancelled" | "expired";
+        status: "active" | "expired" | "trialing" | "past_due" | "cancelled";
         billingCycle: "monthly" | "annual";
         currentPeriodStart: Date | null;
         currentPeriodEnd: Date | null;
@@ -32,7 +32,7 @@ export declare class CompanySubscriptionsService {
         updatedAt: Date;
         companyId: string;
         planId: string;
-        status: "active" | "trialing" | "past_due" | "cancelled" | "expired";
+        status: "active" | "expired" | "trialing" | "past_due" | "cancelled";
         billingCycle: "monthly" | "annual";
         currentPeriodStart: Date | null;
         currentPeriodEnd: Date | null;
@@ -64,7 +64,7 @@ export declare class CompanySubscriptionsService {
         updatedAt: Date;
         companyId: string;
         planId: string;
-        status: "active" | "trialing" | "past_due" | "cancelled" | "expired";
+        status: "active" | "expired" | "trialing" | "past_due" | "cancelled";
         billingCycle: "monthly" | "annual";
         currentPeriodStart: Date | null;
         currentPeriodEnd: Date | null;

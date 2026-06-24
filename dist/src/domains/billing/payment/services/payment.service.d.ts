@@ -378,9 +378,9 @@ export declare class PaymentService {
         fileName: string;
         mimeType: string;
         url: string;
-        paymentId: string;
         note: string | null;
         kind: string;
+        paymentId: string;
         sizeBytes: number | null;
         uploadedByUserId: string | null;
     }>;

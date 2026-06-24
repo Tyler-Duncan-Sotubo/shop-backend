@@ -46,9 +46,9 @@ export declare class CreditService {
             createdAt: Date;
             companyId: string;
             type: "topup" | "send" | "refund" | "adjustment";
+            channel: "email" | "sms";
             note: string | null;
             amount: number;
-            channel: "email" | "sms";
             balanceAfter: number;
             referenceType: string | null;
             referenceId: string | null;
@@ -61,9 +61,9 @@ export declare class CreditService {
             createdAt: Date;
             companyId: string;
             type: "topup" | "send" | "refund" | "adjustment";
+            channel: "email" | "sms";
             note: string | null;
             amount: number;
-            channel: "email" | "sms";
             balanceAfter: number;
             referenceType: string | null;
             referenceId: string | null;
@@ -76,9 +76,9 @@ export declare class CreditService {
             createdAt: Date;
             companyId: string;
             type: "topup" | "send" | "refund" | "adjustment";
+            channel: "email" | "sms";
             note: string | null;
             amount: number;
-            channel: "email" | "sms";
             balanceAfter: number;
             referenceType: string | null;
             referenceId: string | null;
@@ -91,9 +91,9 @@ export declare class CreditService {
             createdAt: Date;
             companyId: string;
             type: "topup" | "send" | "refund" | "adjustment";
+            channel: "email" | "sms";
             note: string | null;
             amount: number;
-            channel: "email" | "sms";
             balanceAfter: number;
             referenceType: string | null;
             referenceId: string | null;

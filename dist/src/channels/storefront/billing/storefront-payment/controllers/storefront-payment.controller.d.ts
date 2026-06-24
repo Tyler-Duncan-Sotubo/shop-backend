@@ -27,9 +27,9 @@ export declare class PaymentController extends BaseController {
             fileName: string;
             mimeType: string;
             url: string;
-            paymentId: string;
             note: string | null;
             kind: string;
+            paymentId: string;
             sizeBytes: number | null;
             uploadedByUserId: string | null;
         };

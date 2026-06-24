@@ -493,13 +493,41 @@ let InvoiceService = class InvoiceService {
                 .orderBy((0, drizzle_orm_1.sql) `${schema_1.invoiceBranding.storeId} IS NULL ASC`)
                 .execute();
             const branding = brandingRows[0];
+            let chosenBankAccount = null;
+            if (dto?.bankAccountId) {
+                const [acc] = await tx
+                    .select()
+                    .from(schema_1.companyBankAccounts)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.companyBankAccounts.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.companyBankAccounts.id, dto.bankAccountId)))
+                    .limit(1)
+                    .execute();
+                chosenBankAccount = acc ?? null;
+            }
+            if (!chosenBankAccount) {
+                const [acc] = await tx
+                    .select()
+                    .from(schema_1.companyBankAccounts)
+                    .where((0, drizzle_orm_1.eq)(schema_1.companyBankAccounts.companyId, companyId))
+                    .orderBy(schema_1.companyBankAccounts.sortOrder, schema_1.companyBankAccounts.createdAt)
+                    .limit(1)
+                    .execute();
+                chosenBankAccount = acc ?? null;
+            }
             const supplierSnapshot = {
                 name: branding?.supplierName ?? 'Your Company',
                 address: branding?.supplierAddress ?? '',
                 email: branding?.supplierEmail ?? '',
                 phone: branding?.supplierPhone ?? '',
-                taxId: branding?.supplierTaxId ?? '',
-                bankDetails: branding?.bankDetails ?? null,
+                taxId: chosenBankAccount?.tin ?? branding?.supplierTaxId ?? '',
+                bankDetails: chosenBankAccount
+                    ? {
+                        label: chosenBankAccount.label,
+                        bankName: chosenBankAccount.bankName,
+                        accountName: chosenBankAccount.accountName,
+                        accountNumber: chosenBankAccount.accountNumber,
+                        tin: chosenBankAccount.tin ?? null,
+                    }
+                    : (branding?.bankDetails ?? null),
                 footerNote: branding?.footerNote ?? null,
             };
             let customerSnapshot = inv.customer_snapshot ?? null;

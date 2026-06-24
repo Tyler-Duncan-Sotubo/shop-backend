@@ -8,7 +8,7 @@ import {
 
 export class IssueInvoiceDto {
   @IsOptional()
-  @IsUUID('4')
+  @IsUUID('all')
   storeId?: string | null;
 
   @IsOptional()
@@ -19,4 +19,8 @@ export class IssueInvoiceDto {
   @IsString()
   @Length(1, 64)
   seriesName?: string;
+
+  @IsOptional()
+  @IsUUID('all')
+  bankAccountId?: string | null;
 }

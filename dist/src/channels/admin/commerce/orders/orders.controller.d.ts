@@ -39,7 +39,7 @@ export declare class OrdersController extends BaseController {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "dispatched" | "cancelled";
+        status: "pending" | "cancelled" | "dispatched";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;
@@ -128,7 +128,7 @@ export declare class OrdersController extends BaseController {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "dispatched" | "cancelled";
+        status: "pending" | "cancelled" | "dispatched";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;
@@ -173,11 +173,11 @@ export declare class OrdersController extends BaseController {
         updatedAt: Date | null;
         companyId: string;
         storeId: string;
-        status: "pending" | "dispatched" | "cancelled";
+        status: "pending" | "cancelled" | "dispatched";
         orderId: string;
-        confirmedByUserId: string | null;
-        requestedByUserId: string | null;
         note: string | null;
+        requestedByUserId: string | null;
+        confirmedByUserId: string | null;
         dispatchedAt: Date | null;
     }>;
     confirmDispatch(user: User, id: string, ip: string, dto: ConfirmDispatchDto): Promise<{
@@ -189,7 +189,7 @@ export declare class OrdersController extends BaseController {
             companyId: string;
             storeId: string;
             orderId: string;
-            status: "pending" | "dispatched" | "cancelled";
+            status: "pending" | "cancelled" | "dispatched";
             requestedByUserId: string | null;
             confirmedByUserId: string | null;
             note: string | null;
@@ -203,7 +203,7 @@ export declare class OrdersController extends BaseController {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "dispatched" | "cancelled";
+        status: "pending" | "cancelled" | "dispatched";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;

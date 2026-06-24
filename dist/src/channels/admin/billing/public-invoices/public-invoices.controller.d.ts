@@ -6,13 +6,13 @@ export declare class PublicInvoicesController {
     createOrGet(user: User, invoiceId: string): Promise<{
         data: {
             id: string;
-            meta: unknown;
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
             expiresAt: Date | null;
-            invoiceId: string;
+            meta: unknown;
             token: string;
+            invoiceId: string;
             enabled: boolean;
             viewCount: number;
             lastViewedAt: Date | null;

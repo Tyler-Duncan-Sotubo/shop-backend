@@ -75,6 +75,7 @@ __exportStar(require("./schema/billing/invoice/invoice-documents.schema"), expor
 __exportStar(require("./schema/billing/invoice/invoice-branding.schema"), exports);
 __exportStar(require("./schema/billing/invoice/invoice-templates.schema"), exports);
 __exportStar(require("./schema/billing/invoice/invoice-public-links.schema"), exports);
+__exportStar(require("./schema/billing/company-bank-accounts.schema"), exports);
 __exportStar(require("./schema/billing/payment/payments.schema"), exports);
 __exportStar(require("./schema/billing/payment/payment-allocations.schema"), exports);
 __exportStar(require("./schema/billing/payment/payment-files.schema"), exports);

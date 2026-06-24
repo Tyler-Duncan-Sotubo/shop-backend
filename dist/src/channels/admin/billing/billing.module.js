@@ -12,12 +12,13 @@ const invoice_module_1 = require("./invoice/invoice.module");
 const payment_module_1 = require("./payment/payment.module");
 const tax_module_1 = require("./tax/tax.module");
 const public_invoices_module_1 = require("./public-invoices/public-invoices.module");
+const bank_accounts_module_1 = require("./bank-accounts/bank-accounts.module");
 let BillingModule = class BillingModule {
 };
 exports.BillingModule = BillingModule;
 exports.BillingModule = BillingModule = __decorate([
     (0, common_1.Module)({
-        imports: [public_invoices_module_1.PublicInvoicesModule, tax_module_1.TaxModule, payment_module_1.PaymentModule, invoice_module_1.InvoiceModule],
+        imports: [public_invoices_module_1.PublicInvoicesModule, tax_module_1.TaxModule, payment_module_1.PaymentModule, invoice_module_1.InvoiceModule, bank_accounts_module_1.BankAccountsModule],
     })
 ], BillingModule);
 //# sourceMappingURL=billing.module.js.map

@@ -71,7 +71,7 @@ export declare class PaymentController extends BaseController {
         companyId: string;
         orderId: string | null;
         invoiceId: string | null;
-        method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+        method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
         status: "pending" | "succeeded" | "reversed";
         currency: string;
         amountMinor: number;
@@ -99,7 +99,7 @@ export declare class PaymentController extends BaseController {
             orderId: string | null;
             amountMinor: number;
             currency: string;
-            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
             status: "pending" | "succeeded" | "reversed";
             reference: string | null;
             createdAt: Date;
@@ -110,7 +110,7 @@ export declare class PaymentController extends BaseController {
             orderId: string | null;
             amountMinor: number;
             currency: string;
-            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
             status: "pending" | "succeeded" | "reversed";
             reference: string | null;
             createdAt: Date;
@@ -124,7 +124,7 @@ export declare class PaymentController extends BaseController {
             orderId: string | null;
             amountMinor: number;
             currency: string;
-            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
             status: "pending" | "succeeded" | "reversed";
             reference: string | null;
             createdAt: Date;
@@ -135,7 +135,7 @@ export declare class PaymentController extends BaseController {
             orderId: string | null;
             amountMinor: number;
             currency: string;
-            method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+            method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
             status: "pending" | "succeeded" | "reversed";
             reference: string | null;
             createdAt: Date;
@@ -179,7 +179,7 @@ export declare class PaymentController extends BaseController {
                 amountMinor: number;
                 pdfUrl: string | null;
                 pdfStorageKey: string | null;
-                method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+                method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
                 reference: string | null;
                 customerSnapshot: unknown;
                 storeSnapshot: unknown;
@@ -215,7 +215,7 @@ export declare class PaymentController extends BaseController {
                 amountMinor: number;
                 pdfUrl: string | null;
                 pdfStorageKey: string | null;
-                method: "pos" | "manual" | "bank_transfer" | "cash" | "gateway";
+                method: "bank_transfer" | "pos" | "cash" | "manual" | "gateway";
                 reference: string | null;
                 customerSnapshot: unknown;
                 storeSnapshot: unknown;

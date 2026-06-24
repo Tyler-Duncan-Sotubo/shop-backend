@@ -54,7 +54,7 @@ export declare class SubscriptionsController extends BaseController {
         updatedAt: Date;
         companyId: string;
         planId: string;
-        status: "active" | "expired" | "trialing" | "past_due" | "cancelled";
+        status: "active" | "trialing" | "past_due" | "cancelled" | "expired";
         billingCycle: "monthly" | "annual";
         currentPeriodStart: Date | null;
         currentPeriodEnd: Date | null;
@@ -113,7 +113,7 @@ export declare class SubscriptionsController extends BaseController {
         reference: string;
         authorizationUrl: any;
         accessCode: any;
-        credits: 1000 | 5000 | 10000 | 25000;
+        credits: 10000 | 5000 | 1000 | 25000;
         amountNGN: 3000 | 12500 | 22000 | 50000;
     }>;
     verifyTopup(user: User, body: VerifyTopupDto): Promise<void>;
@@ -152,7 +152,7 @@ export declare class SubscriptionsController extends BaseController {
             updatedAt: Date;
             companyId: string;
             planId: string;
-            status: "active" | "expired" | "trialing" | "past_due" | "cancelled";
+            status: "active" | "trialing" | "past_due" | "cancelled" | "expired";
             billingCycle: "monthly" | "annual";
             currentPeriodStart: Date | null;
             currentPeriodEnd: Date | null;

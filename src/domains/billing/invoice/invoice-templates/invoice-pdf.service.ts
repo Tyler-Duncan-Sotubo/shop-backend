@@ -389,6 +389,7 @@ export class InvoicePdfService {
       bankName: '',
       accountName: '',
       accountNumber: '',
+      tin: '',
       ...(branding?.bankDetails ?? {}),
     };
 
@@ -472,8 +473,14 @@ export class InvoicePdfService {
         primaryColor: branding?.primaryColor,
         // Prefer frozen snapshot values so changing company details never
         // retroactively alters already-issued invoices.
-        bankDetails:
-          (inv.supplierSnapshot as any)?.bankDetails ?? branding?.bankDetails,
+        bankDetails: {
+          bankName: '',
+          accountName: '',
+          accountNumber: '',
+          tin: '',
+          label: '',
+          ...((inv.supplierSnapshot as any)?.bankDetails ?? branding?.bankDetails ?? {}),
+        },
         footerNote:
           (inv.supplierSnapshot as any)?.footerNote ?? branding?.footerNote,
       },

@@ -107,11 +107,11 @@ export declare class ProductsService {
         offset?: number;
     }): Promise<{
         [x: string]: any;
+        options: any;
         productCategories: any;
         images: any;
-        defaultVariant: any;
         variants: any;
-        options: any;
+        defaultVariant: any;
     }[]>;
     getProductById(companyId: string, productId: string): Promise<{
         [x: string]: any;
@@ -121,21 +121,21 @@ export declare class ProductsService {
     }>;
     getProductWithRelations(companyId: string, productId: string): Promise<{
         [x: string]: any;
+        options: any;
         productCategories: any;
         images: any;
-        defaultVariant: any;
         variants: any;
-        options: any;
+        defaultVariant: any;
     }>;
     getProductWithRelationsBySlug(companyId: string, slug: string): Promise<{
         rating_count: number;
         average_rating: number;
-        productCategories: any;
-        defaultImage: any;
-        images: any;
-        defaultVariant: any;
-        variants: any;
         options: any;
+        productCategories: any;
+        images: any;
+        variants: any;
+        defaultVariant: any;
+        defaultImage: any;
     }>;
     getProductForEdit(companyId: string, productId: string): Promise<{
         id: any;
@@ -242,6 +242,10 @@ export declare class ProductsService {
         })[];
     }>;
     listProductsGroupedUnderParentCategorySlug(companyId: string, storeId: string, parentSlug: string, query: ProductQueryDto): Promise<{
+        parent: null;
+        groups: never[];
+        exploreMore: never[];
+    } | {
         parent: {
             id: any;
             name: any;
@@ -294,10 +298,6 @@ export declare class ProductsService {
             slug: any;
             imageUrl: string | null;
         })[];
-    } | {
-        parent: null;
-        groups: never[];
-        exploreMore: never[];
     }>;
     private ensureSkuUnique;
 }

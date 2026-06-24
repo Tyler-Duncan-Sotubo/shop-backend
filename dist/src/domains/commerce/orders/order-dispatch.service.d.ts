@@ -15,14 +15,14 @@ export declare class OrderDispatchService {
     private readonly notifications;
     constructor(db: db, stock: InventoryStockService, cache: CacheService, dispatchNotification: DispatchNotificationService, notifications: NotificationsService);
     requestDispatch(companyId: string, storeId: string, orderId: string, actor: Actor, note?: string): Promise<{
+        status: "pending" | "cancelled" | "dispatched";
         id: string;
         createdAt: Date | null;
         updatedAt: Date | null;
         companyId: string;
         storeId: string;
-        status: "pending" | "cancelled" | "dispatched";
-        orderId: string;
         note: string | null;
+        orderId: string;
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         dispatchedAt: Date | null;

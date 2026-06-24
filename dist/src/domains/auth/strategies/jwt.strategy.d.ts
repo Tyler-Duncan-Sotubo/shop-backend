@@ -9,7 +9,7 @@ export declare class JwtStrategy extends JwtStrategy_base {
     validate(payload: {
         sub: number;
         email: string;
-    }): Promise<UnauthorizedException | {
+    }): Promise<{
         email: string;
         id: string;
         role: string;
@@ -17,6 +17,6 @@ export declare class JwtStrategy extends JwtStrategy_base {
         firstName: string | null;
         lastName: string | null;
         company_id: string;
-    }>;
+    } | UnauthorizedException>;
 }
 export {};

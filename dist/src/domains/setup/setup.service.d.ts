@@ -55,8 +55,8 @@ export declare class SetupService {
             type: string;
             city: string | null;
             postalCode: string | null;
-            isDefault: boolean;
             code: string | null;
+            isDefault: boolean;
             addressLine1: string | null;
             addressLine2: string | null;
             region: string | null;
@@ -71,12 +71,12 @@ export declare class SetupService {
             isPrimary: boolean;
         }[];
         draftOverride: {
+            status: "draft" | "published";
             id: string;
             createdAt: Date;
             updatedAt: Date;
             companyId: string;
             storeId: string;
-            status: "draft" | "published";
             publishedAt: Date | null;
             theme: unknown;
             header: unknown;

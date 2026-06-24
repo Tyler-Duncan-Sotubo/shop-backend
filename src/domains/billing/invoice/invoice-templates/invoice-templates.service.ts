@@ -457,6 +457,8 @@ export class InvoiceTemplatesService {
       bankName: '',
       accountName: '',
       accountNumber: '',
+      tin: '',
+      label: '',
       ...(branding?.bankDetails ?? {}),
     };
 

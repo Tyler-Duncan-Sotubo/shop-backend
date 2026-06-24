@@ -257,6 +257,7 @@ let InvoicePdfService = class InvoicePdfService {
             bankName: '',
             accountName: '',
             accountNumber: '',
+            tin: '',
             ...(branding?.bankDetails ?? {}),
         };
         const logoUrl = branding?.logoUrl && branding.logoUrl.trim().length > 0
@@ -318,7 +319,14 @@ let InvoicePdfService = class InvoicePdfService {
             branding: {
                 logoUrl: branding?.logoUrl,
                 primaryColor: branding?.primaryColor,
-                bankDetails: inv.supplierSnapshot?.bankDetails ?? branding?.bankDetails,
+                bankDetails: {
+                    bankName: '',
+                    accountName: '',
+                    accountNumber: '',
+                    tin: '',
+                    label: '',
+                    ...(inv.supplierSnapshot?.bankDetails ?? branding?.bankDetails ?? {}),
+                },
                 footerNote: inv.supplierSnapshot?.footerNote ?? branding?.footerNote,
             },
             lines: lines

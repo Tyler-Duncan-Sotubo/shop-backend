@@ -15,16 +15,16 @@ export declare class OrderDispatchService {
     private readonly notifications;
     constructor(db: db, stock: InventoryStockService, cache: CacheService, dispatchNotification: DispatchNotificationService, notifications: NotificationsService);
     requestDispatch(companyId: string, storeId: string, orderId: string, actor: Actor, note?: string): Promise<{
-        status: "pending" | "cancelled" | "dispatched";
         id: string;
         createdAt: Date | null;
         updatedAt: Date | null;
         companyId: string;
         storeId: string;
-        note: string | null;
+        status: "pending" | "dispatched" | "cancelled";
         orderId: string;
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
+        note: string | null;
         dispatchedAt: Date | null;
     }>;
     confirmDispatch(companyId: string, storeId: string, orderId: string, actor: Actor, note?: string): Promise<{
@@ -36,7 +36,7 @@ export declare class OrderDispatchService {
             companyId: string;
             storeId: string;
             orderId: string;
-            status: "pending" | "cancelled" | "dispatched";
+            status: "pending" | "dispatched" | "cancelled";
             requestedByUserId: string | null;
             confirmedByUserId: string | null;
             note: string | null;
@@ -50,7 +50,7 @@ export declare class OrderDispatchService {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "cancelled" | "dispatched";
+        status: "pending" | "dispatched" | "cancelled";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;
@@ -63,6 +63,7 @@ export declare class OrderDispatchService {
         orderStatus: any;
         currency: any;
         total: any;
+        originLocationName: string | null;
         itemCount: number;
         customerName: string | null;
         shippingAddress: any;
@@ -70,7 +71,7 @@ export declare class OrderDispatchService {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "cancelled" | "dispatched";
+        status: "pending" | "dispatched" | "cancelled";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;
@@ -79,6 +80,8 @@ export declare class OrderDispatchService {
         updatedAt: Date | null;
     }[]>;
     getDispatch(companyId: string, orderId: string): Promise<{
+        originInventoryLocationId: any;
+        originLocationName: string | null;
         items: {
             id: string;
             name: string;
@@ -93,7 +96,7 @@ export declare class OrderDispatchService {
         companyId: string;
         storeId: string;
         orderId: string;
-        status: "pending" | "cancelled" | "dispatched";
+        status: "pending" | "dispatched" | "cancelled";
         requestedByUserId: string | null;
         confirmedByUserId: string | null;
         note: string | null;
@@ -101,6 +104,7 @@ export declare class OrderDispatchService {
         createdAt: Date | null;
         updatedAt: Date | null;
     }>;
+    private assertEnoughStockForDispatch;
     private getUserEmailsByRoles;
     private getActorName;
 }

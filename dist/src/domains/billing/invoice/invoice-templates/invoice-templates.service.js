@@ -303,8 +303,11 @@ let InvoiceTemplatesService = class InvoiceTemplatesService {
             },
             customer: {
                 name: 'Sample Customer',
+                companyName: 'Sample Company',
                 address: 'Customer Address',
                 taxId: '',
+                email: '',
+                phone: '',
             },
             branding: this.normalizeBranding(branding),
             lines: [
@@ -323,7 +326,10 @@ let InvoiceTemplatesService = class InvoiceTemplatesService {
             ],
             totals: {
                 subtotal: '₦25,000',
+                discount: '₦0',
+                hasDiscount: false,
                 tax: '₦1,875',
+                shipping: '₦0',
                 total: '₦26,875',
                 paid: '₦0',
                 balance: '₦26,875',

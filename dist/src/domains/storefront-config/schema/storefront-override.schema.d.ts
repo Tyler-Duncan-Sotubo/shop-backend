@@ -64,13 +64,13 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             appleTouch: z.ZodOptional<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
             png?: string | undefined;
-            ico?: string | undefined;
             svg?: string | undefined;
+            ico?: string | undefined;
             appleTouch?: string | undefined;
         }, {
             png?: string | undefined;
-            ico?: string | undefined;
             svg?: string | undefined;
+            ico?: string | undefined;
             appleTouch?: string | undefined;
         }>>;
         ogImage: z.ZodOptional<z.ZodObject<{
@@ -88,8 +88,8 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         title?: string | undefined;
         favicon?: {
             png?: string | undefined;
-            ico?: string | undefined;
             svg?: string | undefined;
+            ico?: string | undefined;
             appleTouch?: string | undefined;
         } | undefined;
         ogImage?: {
@@ -101,8 +101,8 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         title?: string | undefined;
         favicon?: {
             png?: string | undefined;
-            ico?: string | undefined;
             svg?: string | undefined;
+            ico?: string | undefined;
             appleTouch?: string | undefined;
         } | undefined;
         ogImage?: {
@@ -208,16 +208,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
             } | undefined;
         }>>;
     }, "strict", z.ZodTypeAny, {
-        topBar?: {
-            enabled?: boolean | undefined;
-            autoplay?: {
-                enabled?: boolean | undefined;
-                intervalMs?: number | undefined;
-            } | undefined;
-            slides?: {
-                text: string;
-            }[] | undefined;
-        } | undefined;
         nav?: {
             enabled?: boolean | undefined;
             items?: {
@@ -231,18 +221,18 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             } | undefined;
+        } | undefined;
+        topBar?: {
+            enabled?: boolean | undefined;
+            autoplay?: {
+                enabled?: boolean | undefined;
+                intervalMs?: number | undefined;
+            } | undefined;
+            slides?: {
+                text: string;
+            }[] | undefined;
         } | undefined;
     }, {
-        topBar?: {
-            enabled?: boolean | undefined;
-            autoplay?: {
-                enabled?: boolean | undefined;
-                intervalMs?: number | undefined;
-            } | undefined;
-            slides?: {
-                text: string;
-            }[] | undefined;
-        } | undefined;
         nav?: {
             enabled?: boolean | undefined;
             items?: {
@@ -256,6 +246,16 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             } | undefined;
+        } | undefined;
+        topBar?: {
+            enabled?: boolean | undefined;
+            autoplay?: {
+                enabled?: boolean | undefined;
+                intervalMs?: number | undefined;
+            } | undefined;
+            slides?: {
+                text: string;
+            }[] | undefined;
         } | undefined;
     }>>;
     footer: z.ZodOptional<z.ZodObject<{
@@ -633,16 +633,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         }>>;
     }, z.ZodTypeAny, "passthrough"> | undefined;
     header?: {
-        topBar?: {
-            enabled?: boolean | undefined;
-            autoplay?: {
-                enabled?: boolean | undefined;
-                intervalMs?: number | undefined;
-            } | undefined;
-            slides?: {
-                text: string;
-            }[] | undefined;
-        } | undefined;
         nav?: {
             enabled?: boolean | undefined;
             items?: {
@@ -656,6 +646,16 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             } | undefined;
+        } | undefined;
+        topBar?: {
+            enabled?: boolean | undefined;
+            autoplay?: {
+                enabled?: boolean | undefined;
+                intervalMs?: number | undefined;
+            } | undefined;
+            slides?: {
+                text: string;
+            }[] | undefined;
         } | undefined;
     } | undefined;
     pages?: {
@@ -710,8 +710,8 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         title?: string | undefined;
         favicon?: {
             png?: string | undefined;
-            ico?: string | undefined;
             svg?: string | undefined;
+            ico?: string | undefined;
             appleTouch?: string | undefined;
         } | undefined;
         ogImage?: {
@@ -750,16 +750,6 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         }>>;
     }, z.ZodTypeAny, "passthrough"> | undefined;
     header?: {
-        topBar?: {
-            enabled?: boolean | undefined;
-            autoplay?: {
-                enabled?: boolean | undefined;
-                intervalMs?: number | undefined;
-            } | undefined;
-            slides?: {
-                text: string;
-            }[] | undefined;
-        } | undefined;
         nav?: {
             enabled?: boolean | undefined;
             items?: {
@@ -773,6 +763,16 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
                 account?: boolean | undefined;
                 wishlist?: boolean | undefined;
             } | undefined;
+        } | undefined;
+        topBar?: {
+            enabled?: boolean | undefined;
+            autoplay?: {
+                enabled?: boolean | undefined;
+                intervalMs?: number | undefined;
+            } | undefined;
+            slides?: {
+                text: string;
+            }[] | undefined;
         } | undefined;
     } | undefined;
     pages?: {
@@ -827,8 +827,8 @@ export declare const StorefrontOverridesV1Schema: z.ZodObject<{
         title?: string | undefined;
         favicon?: {
             png?: string | undefined;
-            ico?: string | undefined;
             svg?: string | undefined;
+            ico?: string | undefined;
             appleTouch?: string | undefined;
         } | undefined;
         ogImage?: {

@@ -186,6 +186,7 @@ let OrderDispatchService = class OrderDispatchService {
                     .from(schema_1.orderItems)
                     .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
                     .execute();
+                await this.assertEnoughStockForDispatch(companyId, origin, items);
                 for (const it of items) {
                     if (!it.variantId)
                         continue;
@@ -350,6 +351,7 @@ let OrderDispatchService = class OrderDispatchService {
             shippingAddress: schema_1.orders.shippingAddress,
             total: schema_1.orders.total,
             currency: schema_1.orders.currency,
+            originLocationName: schema_1.inventoryLocations.name,
             itemCount: (0, drizzle_orm_1.sql) `
         (SELECT COUNT(*) FROM order_items oi
          WHERE oi.order_id = ${schema_1.orderDispatches.orderId}
@@ -358,6 +360,7 @@ let OrderDispatchService = class OrderDispatchService {
         })
             .from(schema_1.orderDispatches)
             .leftJoin(schema_1.orders, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, schema_1.orderDispatches.orderId)))
+            .leftJoin(schema_1.inventoryLocations, (0, drizzle_orm_1.eq)(schema_1.inventoryLocations.id, schema_1.orders.originInventoryLocationId))
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderDispatches.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderDispatches.storeId, storeId), status ? (0, drizzle_orm_1.eq)(schema_1.orderDispatches.status, status) : undefined))
             .orderBy((0, drizzle_orm_1.desc)(schema_1.orderDispatches.createdAt))
             .execute();
@@ -367,6 +370,7 @@ let OrderDispatchService = class OrderDispatchService {
             orderStatus: r.orderStatus ?? null,
             currency: r.currency ?? null,
             total: r.total ?? null,
+            originLocationName: r.originLocationName ?? null,
             itemCount: Number(r.itemCount ?? 0),
             customerName: r.shippingAddress
                 ? [
@@ -380,14 +384,20 @@ let OrderDispatchService = class OrderDispatchService {
         }));
     }
     async getDispatch(companyId, orderId) {
-        const [dispatch] = await this.db
-            .select()
+        const [row] = await this.db
+            .select({
+            dispatch: schema_1.orderDispatches,
+            originInventoryLocationId: schema_1.orders.originInventoryLocationId,
+            originLocationName: schema_1.inventoryLocations.name,
+        })
             .from(schema_1.orderDispatches)
+            .leftJoin(schema_1.orders, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orders.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orders.id, orderId)))
+            .leftJoin(schema_1.inventoryLocations, (0, drizzle_orm_1.eq)(schema_1.inventoryLocations.id, schema_1.orders.originInventoryLocationId))
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderDispatches.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderDispatches.orderId, orderId)))
             .orderBy((0, drizzle_orm_1.desc)(schema_1.orderDispatches.createdAt))
             .limit(1)
             .execute();
-        if (!dispatch)
+        if (!row)
             throw new common_1.NotFoundException('Dispatch record not found');
         const items = await this.db
             .select({
@@ -404,7 +414,9 @@ let OrderDispatchService = class OrderDispatchService {
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.orderItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.orderItems.orderId, orderId)))
             .execute();
         return {
-            ...dispatch,
+            ...row.dispatch,
+            originInventoryLocationId: row.originInventoryLocationId ?? null,
+            originLocationName: row.originLocationName ?? null,
             items: items.map((it) => ({
                 id: it.id,
                 name: it.name,
@@ -416,6 +428,64 @@ let OrderDispatchService = class OrderDispatchService {
                 productId: it.productId ?? null,
             })),
         };
+    }
+    async assertEnoughStockForDispatch(companyId, locationId, items) {
+        const lines = items
+            .filter((i) => i.variantId && Number(i.quantity ?? 0) > 0)
+            .map((i) => ({
+            productVariantId: i.variantId,
+            quantity: Number(i.quantity),
+            name: i.name ?? null,
+            sku: i.sku ?? null,
+        }));
+        if (!lines.length) {
+            throw new common_1.BadRequestException('Order has no items to dispatch');
+        }
+        const normalized = new Map();
+        for (const l of lines) {
+            const existing = normalized.get(l.productVariantId);
+            if (existing) {
+                existing.quantity += l.quantity;
+            }
+            else {
+                normalized.set(l.productVariantId, {
+                    quantity: l.quantity,
+                    name: l.name,
+                    sku: l.sku,
+                });
+            }
+        }
+        const variantIds = Array.from(normalized.keys());
+        const stockRows = await this.db
+            .select({
+            productVariantId: schema_1.inventoryItems.productVariantId,
+            available: schema_1.inventoryItems.available,
+            reserved: schema_1.inventoryItems.reserved,
+            safetyStock: schema_1.inventoryItems.safetyStock,
+        })
+            .from(schema_1.inventoryItems)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.inventoryItems.companyId, companyId), (0, drizzle_orm_1.eq)(schema_1.inventoryItems.locationId, locationId), (0, drizzle_orm_1.inArray)(schema_1.inventoryItems.productVariantId, variantIds)))
+            .execute();
+        const byVariant = new Map(stockRows.map((r) => [r.productVariantId, r]));
+        const errors = [];
+        for (const [variantId, line] of normalized.entries()) {
+            const row = byVariant.get(variantId);
+            const available = Number(row?.available ?? 0);
+            const reserved = Number(row?.reserved ?? 0);
+            const safety = Number(row?.safetyStock ?? 0);
+            const sellable = available - reserved - safety;
+            if (sellable < line.quantity) {
+                const label = [line.name, line.sku ? `(${line.sku})` : null]
+                    .filter(Boolean)
+                    .join(' ') || variantId;
+                errors.push(`${label}: requested ${line.quantity}, only ${Math.max(0, sellable)} available`);
+            }
+        }
+        if (errors.length) {
+            throw new common_1.BadRequestException({
+                message: errors.join(' | '),
+            });
+        }
     }
     async getUserEmailsByRoles(companyId, roleNames) {
         const rows = await this.db

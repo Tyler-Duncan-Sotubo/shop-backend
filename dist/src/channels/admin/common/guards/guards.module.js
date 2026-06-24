@@ -11,14 +11,15 @@ const common_1 = require("@nestjs/common");
 const primary_guard_1 = require("./primary.guard");
 const jwt_1 = require("@nestjs/jwt");
 const jwt_auth_guard_1 = require("./jwt-auth.guard");
+const plan_guard_1 = require("./plan.guard");
 let GuardsModule = class GuardsModule {
 };
 exports.GuardsModule = GuardsModule;
 exports.GuardsModule = GuardsModule = __decorate([
     (0, common_1.Global)(),
     (0, common_1.Module)({
-        providers: [primary_guard_1.PrimaryGuard, jwt_1.JwtService, jwt_auth_guard_1.JwtAuthGuard],
-        exports: [primary_guard_1.PrimaryGuard, jwt_1.JwtService, jwt_auth_guard_1.JwtAuthGuard],
+        providers: [primary_guard_1.PrimaryGuard, jwt_1.JwtService, jwt_auth_guard_1.JwtAuthGuard, plan_guard_1.PlanGuard],
+        exports: [primary_guard_1.PrimaryGuard, jwt_1.JwtService, jwt_auth_guard_1.JwtAuthGuard, plan_guard_1.PlanGuard],
     })
 ], GuardsModule);
 //# sourceMappingURL=guards.module.js.map

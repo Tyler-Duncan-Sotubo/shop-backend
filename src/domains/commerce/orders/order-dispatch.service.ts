@@ -9,6 +9,8 @@ import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import {
   companyRoles,
+  inventoryItems,
+  inventoryLocations,
   orderDispatches,
   orderEvents,
   orderItems,
@@ -276,6 +278,8 @@ export class OrderDispatchService {
           )
           .execute();
 
+        await this.assertEnoughStockForDispatch(companyId, origin, items);
+
         for (const it of items) {
           if (!it.variantId) continue;
           const qty = Number(it.quantity ?? 0);
@@ -516,6 +520,7 @@ export class OrderDispatchService {
         shippingAddress: orders.shippingAddress,
         total: orders.total,
         currency: orders.currency,
+        originLocationName: inventoryLocations.name,
         itemCount: sql<number>`
         (SELECT COUNT(*) FROM order_items oi
          WHERE oi.order_id = ${orderDispatches.orderId}
@@ -529,6 +534,10 @@ export class OrderDispatchService {
           eq(orders.companyId, companyId),
           eq(orders.id, orderDispatches.orderId),
         ),
+      )
+      .leftJoin(
+        inventoryLocations,
+        eq(inventoryLocations.id, orders.originInventoryLocationId),
       )
       .where(
         and(
@@ -546,8 +555,8 @@ export class OrderDispatchService {
       orderStatus: r.orderStatus ?? null,
       currency: r.currency ?? null,
       total: r.total ?? null,
+      originLocationName: r.originLocationName ?? null,
       itemCount: Number(r.itemCount ?? 0),
-      // pull customer name from shipping address snapshot
       customerName: r.shippingAddress
         ? [
             (r.shippingAddress as any)?.firstName,
@@ -561,9 +570,21 @@ export class OrderDispatchService {
   }
 
   async getDispatch(companyId: string, orderId: string) {
-    const [dispatch] = await this.db
-      .select()
+    const [row] = await this.db
+      .select({
+        dispatch: orderDispatches,
+        originInventoryLocationId: orders.originInventoryLocationId,
+        originLocationName: inventoryLocations.name,
+      })
       .from(orderDispatches)
+      .leftJoin(
+        orders,
+        and(eq(orders.companyId, companyId), eq(orders.id, orderId)),
+      )
+      .leftJoin(
+        inventoryLocations,
+        eq(inventoryLocations.id, orders.originInventoryLocationId),
+      )
       .where(
         and(
           eq(orderDispatches.companyId, companyId),
@@ -574,7 +595,7 @@ export class OrderDispatchService {
       .limit(1)
       .execute();
 
-    if (!dispatch) throw new NotFoundException('Dispatch record not found');
+    if (!row) throw new NotFoundException('Dispatch record not found');
 
     const items = await this.db
       .select({
@@ -597,7 +618,9 @@ export class OrderDispatchService {
       .execute();
 
     return {
-      ...dispatch,
+      ...row.dispatch,
+      originInventoryLocationId: row.originInventoryLocationId ?? null,
+      originLocationName: row.originLocationName ?? null,
       items: items.map((it) => ({
         id: it.id,
         name: it.name,
@@ -609,6 +632,94 @@ export class OrderDispatchService {
         productId: it.productId ?? null,
       })),
     };
+  }
+
+  private async assertEnoughStockForDispatch(
+    companyId: string,
+    locationId: string,
+    items: Array<{
+      variantId: string | null;
+      quantity: number | string | null;
+      name?: string | null;
+      sku?: string | null;
+    }>,
+  ) {
+    const lines = items
+      .filter((i) => i.variantId && Number(i.quantity ?? 0) > 0)
+      .map((i) => ({
+        productVariantId: i.variantId as string,
+        quantity: Number(i.quantity),
+        name: i.name ?? null,
+        sku: i.sku ?? null,
+      }));
+
+    if (!lines.length) {
+      throw new BadRequestException('Order has no items to dispatch');
+    }
+
+    // Deduplicate — same variant can appear on multiple line items
+    const normalized = new Map<
+      string,
+      { quantity: number; name: string | null; sku: string | null }
+    >();
+    for (const l of lines) {
+      const existing = normalized.get(l.productVariantId);
+      if (existing) {
+        existing.quantity += l.quantity;
+      } else {
+        normalized.set(l.productVariantId, {
+          quantity: l.quantity,
+          name: l.name,
+          sku: l.sku,
+        });
+      }
+    }
+
+    const variantIds = Array.from(normalized.keys());
+
+    const stockRows = await this.db
+      .select({
+        productVariantId: inventoryItems.productVariantId,
+        available: inventoryItems.available,
+        reserved: inventoryItems.reserved,
+        safetyStock: inventoryItems.safetyStock,
+      })
+      .from(inventoryItems)
+      .where(
+        and(
+          eq(inventoryItems.companyId, companyId),
+          eq(inventoryItems.locationId, locationId),
+          inArray(inventoryItems.productVariantId, variantIds),
+        ),
+      )
+      .execute();
+
+    const byVariant = new Map(stockRows.map((r) => [r.productVariantId, r]));
+
+    const errors: string[] = [];
+    for (const [variantId, line] of normalized.entries()) {
+      const row = byVariant.get(variantId);
+      const available = Number(row?.available ?? 0);
+      const reserved = Number(row?.reserved ?? 0);
+      const safety = Number(row?.safetyStock ?? 0);
+      const sellable = available - reserved - safety;
+
+      if (sellable < line.quantity) {
+        const label =
+          [line.name, line.sku ? `(${line.sku})` : null]
+            .filter(Boolean)
+            .join(' ') || variantId;
+        errors.push(
+          `${label}: requested ${line.quantity}, only ${Math.max(0, sellable)} available`,
+        );
+      }
+    }
+
+    if (errors.length) {
+      throw new BadRequestException({
+        message: errors.join(' | '),
+      });
+    }
   }
 
   private async getUserEmailsByRoles(

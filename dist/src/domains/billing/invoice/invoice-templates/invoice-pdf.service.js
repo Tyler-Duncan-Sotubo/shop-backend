@@ -318,8 +318,8 @@ let InvoicePdfService = class InvoicePdfService {
             branding: {
                 logoUrl: branding?.logoUrl,
                 primaryColor: branding?.primaryColor,
-                bankDetails: branding?.bankDetails,
-                footerNote: branding?.footerNote,
+                bankDetails: inv.supplierSnapshot?.bankDetails ?? branding?.bankDetails,
+                footerNote: inv.supplierSnapshot?.footerNote ?? branding?.footerNote,
             },
             lines: lines
                 .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))

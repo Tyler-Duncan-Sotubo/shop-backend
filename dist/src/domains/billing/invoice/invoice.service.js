@@ -500,6 +500,7 @@ let InvoiceService = class InvoiceService {
                 phone: branding?.supplierPhone ?? '',
                 taxId: branding?.supplierTaxId ?? '',
                 bankDetails: branding?.bankDetails ?? null,
+                footerNote: branding?.footerNote ?? null,
             };
             let customerSnapshot = inv.customer_snapshot ?? null;
             if (!customerSnapshot) {

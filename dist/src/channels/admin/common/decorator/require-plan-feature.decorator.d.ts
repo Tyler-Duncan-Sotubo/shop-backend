@@ -1,0 +1,3 @@
+export type PlanFeatureKey = 'analyticsBasic' | 'analyticsDeep' | 'apiAccess' | 'bulkActions' | 'barcodes' | 'customDomain' | 'customOrders' | 'customerGroups' | 'dispatch' | 'emailCampaigns' | 'facebookPixel' | 'googleAnalytics' | 'invoicing' | 'multiLocation' | 'pos' | 'productReviews' | 'quotes' | 'revenueReports' | 'shippingIntegrations' | 'shippingZones' | 'sms' | 'staffActivityLogs' | 'subscriberManagement' | 'taxSettings' | 'webhooks' | 'zohoIntegration';
+export declare const PLAN_FEATURE_KEY = "planFeature";
+export declare const RequirePlanFeature: (feature: PlanFeatureKey) => import("@nestjs/common").CustomDecorator<string>;

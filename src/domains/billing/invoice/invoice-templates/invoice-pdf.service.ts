@@ -470,8 +470,12 @@ export class InvoicePdfService {
       branding: {
         logoUrl: branding?.logoUrl,
         primaryColor: branding?.primaryColor,
-        bankDetails: branding?.bankDetails,
-        footerNote: branding?.footerNote,
+        // Prefer frozen snapshot values so changing company details never
+        // retroactively alters already-issued invoices.
+        bankDetails:
+          (inv.supplierSnapshot as any)?.bankDetails ?? branding?.bankDetails,
+        footerNote:
+          (inv.supplierSnapshot as any)?.footerNote ?? branding?.footerNote,
       },
       lines: lines
         .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))

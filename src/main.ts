@@ -24,8 +24,6 @@ async function bootstrap() {
       bodyParser: false,
     },
   );
-
-  // must be before other bootstrapping logs
   app.useLogger(app.get(Logger));
 
   app.setGlobalPrefix('api');

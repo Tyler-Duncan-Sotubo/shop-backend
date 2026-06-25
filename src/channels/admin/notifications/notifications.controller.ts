@@ -5,7 +5,6 @@ import {
   Param,
   Query,
   UseGuards,
-  SetMetadata,
 } from '@nestjs/common';
 import { BaseController } from 'src/infrastructure/interceptor/base.controller';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';

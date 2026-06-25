@@ -1,6 +1,6 @@
 // src/domains/campaigns/services/campaign-audience.service.ts
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, isNotNull, ne } from 'drizzle-orm';
+import { and, eq, isNotNull } from 'drizzle-orm';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import { customers, subscribers } from 'src/infrastructure/drizzle/schema';

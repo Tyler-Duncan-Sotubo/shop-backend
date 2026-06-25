@@ -1,6 +1,6 @@
 // src/domains/campaigns/services/email-sender-config.service.ts
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import { emailSenderConfig } from 'src/infrastructure/drizzle/schema';

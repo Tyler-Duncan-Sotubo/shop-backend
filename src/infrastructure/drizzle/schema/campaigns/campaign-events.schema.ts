@@ -4,7 +4,6 @@ import {
   uuid,
   timestamp,
   index,
-  pgEnum,
   varchar,
   text,
 } from 'drizzle-orm/pg-core';

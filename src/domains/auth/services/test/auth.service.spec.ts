@@ -3,7 +3,7 @@ jest.mock('bcryptjs', () => ({ compare: jest.fn() }));
 import * as bcrypt from 'bcryptjs';
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PinoLogger } from 'nestjs-pino';
@@ -68,9 +68,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let userService: jest.Mocked<UserService>;
   let tokenGeneratorService: jest.Mocked<TokenGeneratorService>;
-  let auditService: jest.Mocked<AuditService>;
   let verifyLogin: jest.Mocked<LoginVerificationService>;
-  let configService: jest.Mocked<ConfigService>;
   let jwtService: jest.Mocked<JwtService>;
   let companySettingsService: jest.Mocked<CompanySettingsService>;
   let permissionsService: jest.Mocked<PermissionsService>;
@@ -165,9 +163,7 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     userService = module.get(UserService);
     tokenGeneratorService = module.get(TokenGeneratorService);
-    auditService = module.get(AuditService);
     verifyLogin = module.get(LoginVerificationService);
-    configService = module.get(ConfigService);
     jwtService = module.get(JwtService);
     companySettingsService = module.get(CompanySettingsService);
     permissionsService = module.get(PermissionsService);
@@ -204,9 +200,14 @@ describe('AuthService', () => {
     it('calls validateUser with lowercased email', async () => {
       setupSuccessfulLogin();
 
-      await service.login({ email: 'User@Example.COM', password: 'pass' }, '127.0.0.1');
+      await service.login(
+        { email: 'User@Example.COM', password: 'pass' },
+        '127.0.0.1',
+      );
 
-      expect(userService.findUserByEmail).toHaveBeenCalledWith('user@example.com');
+      expect(userService.findUserByEmail).toHaveBeenCalledWith(
+        'user@example.com',
+      );
     });
 
     it('throws BadRequestException when role not found', async () => {
@@ -215,7 +216,10 @@ describe('AuthService', () => {
       mockDb.execute.mockResolvedValue([]);
 
       await expect(
-        service.login({ email: 'user@example.com', password: 'pass' }, '127.0.0.1'),
+        service.login(
+          { email: 'user@example.com', password: 'pass' },
+          '127.0.0.1',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -242,7 +246,9 @@ describe('AuthService', () => {
         requiresVerification: true,
         tempToken: 'temp-token',
       });
-      expect(verifyLogin.generateVerificationToken).toHaveBeenCalledWith(oldLoginUser.id);
+      expect(verifyLogin.generateVerificationToken).toHaveBeenCalledWith(
+        oldLoginUser.id,
+      );
     });
 
     it('calls completeLogin when 2FA not needed', async () => {
@@ -310,7 +316,11 @@ describe('AuthService', () => {
       });
       permissionsService.getPermissionKeysForUser.mockResolvedValue([]);
 
-      const result = await service.verifyCode('temp-token', '123456', '127.0.0.1');
+      const result = await service.verifyCode(
+        'temp-token',
+        '123456',
+        '127.0.0.1',
+      );
 
       expect(mockDb.update).toHaveBeenCalled();
       expect(mockDb.set).toHaveBeenCalledWith(

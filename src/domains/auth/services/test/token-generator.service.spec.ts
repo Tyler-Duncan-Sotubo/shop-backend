@@ -54,7 +54,10 @@ describe('TokenGeneratorService', () => {
         .mockReturnValueOnce('access-token-value')
         .mockReturnValueOnce('refresh-token-value');
 
-      const result = await service.generateToken({ id: 'user-1', email: 'user@example.com' });
+      const result = await service.generateToken({
+        id: 'user-1',
+        email: 'user@example.com',
+      });
 
       expect(result).toEqual({
         accessToken: 'access-token-value',
@@ -109,7 +112,10 @@ describe('TokenGeneratorService', () => {
       });
       jwtService.sign.mockReturnValue('temp-token-value');
 
-      const result = await service.generateTempToken({ id: 'user-1', email: 'user@example.com' });
+      const result = await service.generateTempToken({
+        id: 'user-1',
+        email: 'user@example.com',
+      });
 
       expect(typeof result).toBe('string');
       expect(result).toBe('temp-token-value');

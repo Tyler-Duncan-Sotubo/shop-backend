@@ -6,6 +6,12 @@ import { PublicInvoicesModule } from './public-invoices/public-invoices.module';
 import { BankAccountsModule } from './bank-accounts/bank-accounts.module';
 
 @Module({
-  imports: [PublicInvoicesModule, TaxModule, PaymentModule, InvoiceModule, BankAccountsModule],
+  imports: [
+    PublicInvoicesModule,
+    TaxModule,
+    PaymentModule,
+    InvoiceModule,
+    BankAccountsModule,
+  ],
 })
 export class BillingModule {}

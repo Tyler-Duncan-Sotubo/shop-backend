@@ -11,7 +11,7 @@ import {
   companies,
   companyRoles,
 } from 'src/infrastructure/drizzle/schema';
-import { and, eq, lte, gte, ne, between } from 'drizzle-orm';
+import { and, eq, lte, gte, ne } from 'drizzle-orm';
 import { CompanySubscriptionsService } from './company-subscriptions.service';
 import { SubscriptionNotificationService } from 'src/domains/notification/services/subscription-notification.service';
 

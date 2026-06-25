@@ -40,7 +40,7 @@ export class InvitationsService {
    * - Token contains email + name + companyId + companyRoleId.
    */
   async inviteUser(dto: InviteUserInput, user: User) {
-    const { companyId, id: userId } = user;
+    const { companyId } = user;
     const [company] = await this.db
       .select({ name: companies.name })
       .from(companies)

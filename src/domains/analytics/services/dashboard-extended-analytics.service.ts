@@ -1,16 +1,14 @@
 // src/modules/analytics/services/dashboard-extended-analytics.service.ts
 import { Injectable, Inject } from '@nestjs/common';
-import { and, desc, eq, gte, lt, sql, inArray, min, count } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, sql, inArray, min } from 'drizzle-orm';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db as DbType } from 'src/infrastructure/drizzle/types/drizzle';
 import {
   orders,
   orderItems,
-  customers,
   products,
   productVariants,
   inventoryItems,
-  invoices,
 } from 'src/infrastructure/drizzle/schema';
 import { CacheService } from 'src/infrastructure/cache/cache.service';
 

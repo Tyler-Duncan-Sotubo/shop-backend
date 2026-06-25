@@ -555,7 +555,7 @@ export class BarcodeService {
     format: BarcodeFormat = 'code128',
     opts: { skipExisting?: boolean } = { skipExisting: true },
   ) {
-    let query = this.db
+    const query = this.db
       .select({
         id: productVariants.id,
         title: productVariants.title,

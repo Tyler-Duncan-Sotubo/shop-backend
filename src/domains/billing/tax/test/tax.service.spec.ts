@@ -67,7 +67,9 @@ describe('TaxService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    mockDb.transaction.mockImplementation(async (fn: (tx: typeof mockTx) => Promise<any>) => fn(mockTx));
+    mockDb.transaction.mockImplementation(
+      async (fn: (tx: typeof mockTx) => Promise<any>) => fn(mockTx),
+    );
 
     mockTx.select.mockReturnThis();
     mockTx.from.mockReturnThis();
@@ -96,12 +98,22 @@ describe('TaxService', () => {
     it('saves a tax to the DB and returns it', async () => {
       mockTx.execute.mockResolvedValueOnce([mockTaxRow]);
 
-      const dto = { storeId: 'store-1', name: 'GST', code: 'GST', rateBps: 750, isInclusive: false, isDefault: false, isActive: true };
+      const dto = {
+        storeId: 'store-1',
+        name: 'GST',
+        code: 'GST',
+        rateBps: 750,
+        isInclusive: false,
+        isDefault: false,
+        isActive: true,
+      };
       const result = await service.create(mockUser as any, dto);
 
       expect(mockDb.transaction).toHaveBeenCalled();
       expect(mockTx.insert).toHaveBeenCalled();
-      expect(mockTx.values).toHaveBeenCalledWith(expect.objectContaining({ name: 'GST', rateBps: 750 }));
+      expect(mockTx.values).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'GST', rateBps: 750 }),
+      );
       expect(result).toEqual(mockTaxRow);
     });
 
@@ -127,17 +139,23 @@ describe('TaxService', () => {
       const dto = { name: 'GST', rateBps: 750 };
       await service.create(mockUser as any, dto as any);
 
-      expect(mockCacheService.bumpCompanyVersion).toHaveBeenCalledWith(mockUser.companyId);
+      expect(mockCacheService.bumpCompanyVersion).toHaveBeenCalledWith(
+        mockUser.companyId,
+      );
     });
 
     it('throws BadRequestException when rateBps is negative', async () => {
       const dto = { name: 'GST', rateBps: -1 };
-      await expect(service.create(mockUser as any, dto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.create(mockUser as any, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('throws BadRequestException when name is empty', async () => {
       const dto = { name: '   ', rateBps: 750 };
-      await expect(service.create(mockUser as any, dto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.create(mockUser as any, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('unsets other defaults before inserting when isDefault is true', async () => {
@@ -148,14 +166,18 @@ describe('TaxService', () => {
       await service.create(mockUser as any, dto as any);
 
       expect(mockTx.update).toHaveBeenCalled();
-      expect(mockTx.set).toHaveBeenCalledWith(expect.objectContaining({ isDefault: false }));
+      expect(mockTx.set).toHaveBeenCalledWith(
+        expect.objectContaining({ isDefault: false }),
+      );
     });
 
     it('throws BadRequestException when insert throws (duplicate name)', async () => {
       mockTx.execute.mockRejectedValueOnce(new Error('unique constraint'));
 
       const dto = { name: 'GST', rateBps: 750 };
-      await expect(service.create(mockUser as any, dto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.create(mockUser as any, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -163,7 +185,9 @@ describe('TaxService', () => {
     it('modifies a tax in the DB and returns the updated row', async () => {
       const updatedRow = { ...mockTaxRow, name: 'VAT', rateBps: 1000 };
 
-      mockCacheService.getOrSetVersioned.mockImplementationOnce((_cId: any, _keys: any, fn: () => any) => fn());
+      mockCacheService.getOrSetVersioned.mockImplementationOnce(
+        (_cId: any, _keys: any, fn: () => any) => fn(),
+      );
       mockDb.select.mockReturnThis();
       mockDb.from.mockReturnThis();
       mockDb.where.mockReturnThis();
@@ -176,22 +200,30 @@ describe('TaxService', () => {
       const result = await service.update(mockUser as any, 'tax-1', dto as any);
 
       expect(mockTx.update).toHaveBeenCalled();
-      expect(mockTx.set).toHaveBeenCalledWith(expect.objectContaining({ name: 'VAT', rateBps: 1000 }));
+      expect(mockTx.set).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'VAT', rateBps: 1000 }),
+      );
       expect(result).toEqual(updatedRow);
     });
 
     it('throws NotFoundException when getById finds no tax', async () => {
-      mockCacheService.getOrSetVersioned.mockImplementationOnce((_cId: any, _keys: any, fn: () => any) => fn());
+      mockCacheService.getOrSetVersioned.mockImplementationOnce(
+        (_cId: any, _keys: any, fn: () => any) => fn(),
+      );
       mockDb.execute.mockResolvedValueOnce([]);
 
       const dto = { name: 'VAT' };
-      await expect(service.update(mockUser as any, 'nonexistent', dto as any)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update(mockUser as any, 'nonexistent', dto as any),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('calls auditService.logAction after updating', async () => {
       const updatedRow = { ...mockTaxRow, rateBps: 1000 };
 
-      mockCacheService.getOrSetVersioned.mockImplementationOnce((_cId: any, _keys: any, fn: () => any) => fn());
+      mockCacheService.getOrSetVersioned.mockImplementationOnce(
+        (_cId: any, _keys: any, fn: () => any) => fn(),
+      );
       mockDb.execute.mockResolvedValueOnce([mockTaxRow]);
       mockTx.execute.mockResolvedValueOnce([updatedRow]);
 
@@ -210,13 +242,21 @@ describe('TaxService', () => {
     it('forces isDefault false when isActive is set to false', async () => {
       const updatedRow = { ...mockTaxRow, isActive: false, isDefault: false };
 
-      mockCacheService.getOrSetVersioned.mockImplementationOnce((_cId: any, _keys: any, fn: () => any) => fn());
-      mockDb.execute.mockResolvedValueOnce([{ ...mockTaxRow, isDefault: true }]);
+      mockCacheService.getOrSetVersioned.mockImplementationOnce(
+        (_cId: any, _keys: any, fn: () => any) => fn(),
+      );
+      mockDb.execute.mockResolvedValueOnce([
+        { ...mockTaxRow, isDefault: true },
+      ]);
       mockTx.execute.mockResolvedValueOnce([updatedRow]);
 
-      await service.update(mockUser as any, 'tax-1', { isActive: false } as any);
+      await service.update(mockUser as any, 'tax-1', {
+        isActive: false,
+      } as any);
 
-      expect(mockTx.set).toHaveBeenCalledWith(expect.objectContaining({ isDefault: false }));
+      expect(mockTx.set).toHaveBeenCalledWith(
+        expect.objectContaining({ isDefault: false }),
+      );
     });
   });
 
@@ -238,7 +278,9 @@ describe('TaxService', () => {
 
     it('queries DB inside the cache factory when cache misses', async () => {
       const taxList = [mockTaxRow];
-      mockCacheService.getOrSetVersioned.mockImplementationOnce((_cId: any, _keys: any, fn: () => any) => fn());
+      mockCacheService.getOrSetVersioned.mockImplementationOnce(
+        (_cId: any, _keys: any, fn: () => any) => fn(),
+      );
       mockDb.execute.mockResolvedValueOnce(taxList);
 
       const result = await service.list('company-1');
@@ -249,7 +291,9 @@ describe('TaxService', () => {
 
     it('falls back to company defaults when no store taxes found', async () => {
       const companyTaxes = [mockTaxRow];
-      mockCacheService.getOrSetVersioned.mockImplementationOnce((_cId: any, _keys: any, fn: () => any) => fn());
+      mockCacheService.getOrSetVersioned.mockImplementationOnce(
+        (_cId: any, _keys: any, fn: () => any) => fn(),
+      );
       mockDb.execute
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce(companyTaxes);
@@ -262,7 +306,9 @@ describe('TaxService', () => {
 
     it('returns store taxes directly when store taxes exist', async () => {
       const storeTaxes = [{ ...mockTaxRow, storeId: 'store-1' }];
-      mockCacheService.getOrSetVersioned.mockImplementationOnce((_cId: any, _keys: any, fn: () => any) => fn());
+      mockCacheService.getOrSetVersioned.mockImplementationOnce(
+        (_cId: any, _keys: any, fn: () => any) => fn(),
+      );
       mockDb.execute.mockResolvedValueOnce(storeTaxes);
 
       const result = await service.list('company-1', { storeId: 'store-1' });
@@ -274,7 +320,9 @@ describe('TaxService', () => {
 
   describe('getById', () => {
     it('returns a tax row when found', async () => {
-      mockCacheService.getOrSetVersioned.mockImplementationOnce((_cId: any, _keys: any, fn: () => any) => fn());
+      mockCacheService.getOrSetVersioned.mockImplementationOnce(
+        (_cId: any, _keys: any, fn: () => any) => fn(),
+      );
       mockDb.execute.mockResolvedValueOnce([mockTaxRow]);
 
       const result = await service.getById('company-1', 'tax-1');
@@ -283,10 +331,14 @@ describe('TaxService', () => {
     });
 
     it('throws NotFoundException when tax does not exist', async () => {
-      mockCacheService.getOrSetVersioned.mockImplementationOnce((_cId: any, _keys: any, fn: () => any) => fn());
+      mockCacheService.getOrSetVersioned.mockImplementationOnce(
+        (_cId: any, _keys: any, fn: () => any) => fn(),
+      );
       mockDb.execute.mockResolvedValueOnce([]);
 
-      await expect(service.getById('company-1', 'nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.getById('company-1', 'nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('calls getOrSetVersioned with correct cache key structure', async () => {

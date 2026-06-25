@@ -1,7 +1,10 @@
 /// <reference types="jest" />
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
-import { InvoiceTotalsService, LineForCalc } from 'src/domains/billing/invoice/invoice-totals.service';
+import {
+  InvoiceTotalsService,
+  LineForCalc,
+} from 'src/domains/billing/invoice/invoice-totals.service';
 
 describe('InvoiceTotalsService', () => {
   let service: InvoiceTotalsService;
@@ -22,7 +25,11 @@ describe('InvoiceTotalsService', () => {
         tax: { taxRateBps: 750, taxInclusive: false, taxExempt: true },
       };
       const result = service.calcLine(line);
-      expect(result).toEqual({ lineNetMinor: 6000, taxMinor: 0, lineTotalMinor: 6000 });
+      expect(result).toEqual({
+        lineNetMinor: 6000,
+        taxMinor: 0,
+        lineTotalMinor: 6000,
+      });
     });
 
     it('returns zero tax when rateBps is 0', () => {
@@ -32,7 +39,11 @@ describe('InvoiceTotalsService', () => {
         tax: { taxRateBps: 0, taxInclusive: false, taxExempt: false },
       };
       const result = service.calcLine(line);
-      expect(result).toEqual({ lineNetMinor: 10000, taxMinor: 0, lineTotalMinor: 10000 });
+      expect(result).toEqual({
+        lineNetMinor: 10000,
+        taxMinor: 0,
+        lineTotalMinor: 10000,
+      });
     });
 
     it('returns zero tax when rateBps is negative', () => {
@@ -42,7 +53,11 @@ describe('InvoiceTotalsService', () => {
         tax: { taxRateBps: -100, taxInclusive: false, taxExempt: false },
       };
       const result = service.calcLine(line);
-      expect(result).toEqual({ lineNetMinor: 3000, taxMinor: 0, lineTotalMinor: 3000 });
+      expect(result).toEqual({
+        lineNetMinor: 3000,
+        taxMinor: 0,
+        lineTotalMinor: 3000,
+      });
     });
 
     it('calculates exclusive tax correctly (qty=2, unit=5000, rate=750bps)', () => {
@@ -52,7 +67,11 @@ describe('InvoiceTotalsService', () => {
         tax: { taxRateBps: 750, taxInclusive: false, taxExempt: false },
       };
       const result = service.calcLine(line);
-      expect(result).toEqual({ lineNetMinor: 10000, taxMinor: 750, lineTotalMinor: 10750 });
+      expect(result).toEqual({
+        lineNetMinor: 10000,
+        taxMinor: 750,
+        lineTotalMinor: 10750,
+      });
     });
 
     it('calculates inclusive tax correctly (qty=1, unit=10000, rate=750bps)', () => {
@@ -62,7 +81,11 @@ describe('InvoiceTotalsService', () => {
         tax: { taxRateBps: 750, taxInclusive: true, taxExempt: false },
       };
       const result = service.calcLine(line);
-      expect(result).toEqual({ lineNetMinor: 9302, taxMinor: 698, lineTotalMinor: 10000 });
+      expect(result).toEqual({
+        lineNetMinor: 9302,
+        taxMinor: 698,
+        lineTotalMinor: 10000,
+      });
     });
 
     it('inclusive tax: gross already contains tax so total equals gross', () => {
@@ -137,7 +160,11 @@ describe('InvoiceTotalsService', () => {
       const line = {
         quantity: 1,
         unitPriceMinor: 5000,
-        tax: { taxRateBps: 'high' as any, taxInclusive: false, taxExempt: false },
+        tax: {
+          taxRateBps: 'high' as any,
+          taxInclusive: false,
+          taxExempt: false,
+        },
       };
       expect(() => service.calcLine(line)).toThrow(BadRequestException);
     });
@@ -149,7 +176,11 @@ describe('InvoiceTotalsService', () => {
         tax: { taxRateBps: 750, taxInclusive: false, taxExempt: false },
       };
       const result = service.calcLine(line);
-      expect(result).toEqual({ lineNetMinor: 0, taxMinor: 0, lineTotalMinor: 0 });
+      expect(result).toEqual({
+        lineNetMinor: 0,
+        taxMinor: 0,
+        lineTotalMinor: 0,
+      });
     });
   });
 
@@ -187,7 +218,11 @@ describe('InvoiceTotalsService', () => {
         },
       ];
       const result = service.calcInvoice(lines);
-      expect(result).toEqual({ subtotalMinor: 10000, taxMinor: 750, totalMinor: 10750 });
+      expect(result).toEqual({
+        subtotalMinor: 10000,
+        taxMinor: 750,
+        totalMinor: 10750,
+      });
     });
 
     it('returns all-zero totals for exempt lines', () => {

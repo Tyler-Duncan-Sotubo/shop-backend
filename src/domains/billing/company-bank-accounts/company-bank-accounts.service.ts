@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Inject,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { and, asc, eq } from 'drizzle-orm';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
@@ -28,7 +24,10 @@ export class CompanyBankAccountsService {
       .select()
       .from(companyBankAccounts)
       .where(eq(companyBankAccounts.companyId, companyId))
-      .orderBy(asc(companyBankAccounts.sortOrder), asc(companyBankAccounts.createdAt))
+      .orderBy(
+        asc(companyBankAccounts.sortOrder),
+        asc(companyBankAccounts.createdAt),
+      )
       .execute();
   }
 
@@ -74,9 +73,15 @@ export class CompanyBankAccountsService {
       .update(companyBankAccounts)
       .set({
         ...(input.label !== undefined && { label: input.label.trim() }),
-        ...(input.bankName !== undefined && { bankName: input.bankName.trim() }),
-        ...(input.accountName !== undefined && { accountName: input.accountName.trim() }),
-        ...(input.accountNumber !== undefined && { accountNumber: input.accountNumber.trim() }),
+        ...(input.bankName !== undefined && {
+          bankName: input.bankName.trim(),
+        }),
+        ...(input.accountName !== undefined && {
+          accountName: input.accountName.trim(),
+        }),
+        ...(input.accountNumber !== undefined && {
+          accountNumber: input.accountNumber.trim(),
+        }),
         ...(input.tin !== undefined && { tin: input.tin?.trim() ?? null }),
         ...(input.sortOrder !== undefined && { sortOrder: input.sortOrder }),
         updatedAt: new Date(),

@@ -92,7 +92,9 @@ describe('CompanySubscriptionsService', () => {
       ],
     }).compile();
 
-    service = module.get<CompanySubscriptionsService>(CompanySubscriptionsService);
+    service = module.get<CompanySubscriptionsService>(
+      CompanySubscriptionsService,
+    );
   });
 
   describe('startTrial', () => {
@@ -125,7 +127,9 @@ describe('CompanySubscriptionsService', () => {
       const diffMs = trialEndsAt.getTime() - before;
 
       expect(diffMs).toBeGreaterThanOrEqual(expectedMs - 1000);
-      expect(trialEndsAt.getTime() - after).toBeLessThanOrEqual(expectedMs + 1000);
+      expect(trialEndsAt.getTime() - after).toBeLessThanOrEqual(
+        expectedMs + 1000,
+      );
     });
 
     it('calls cache.bumpCompanyVersion with companyId', async () => {
@@ -228,7 +232,9 @@ describe('CompanySubscriptionsService', () => {
       const expectedPeriodEnd = new Date(pastPeriodEnd);
       expectedPeriodEnd.setMonth(expectedPeriodEnd.getMonth() + 1);
 
-      expect(setArgs.currentPeriodEnd.getTime()).toBe(expectedPeriodEnd.getTime());
+      expect(setArgs.currentPeriodEnd.getTime()).toBe(
+        expectedPeriodEnd.getTime(),
+      );
     });
 
     it('uses now as base when no existing subscription', async () => {
@@ -244,13 +250,20 @@ describe('CompanySubscriptionsService', () => {
       const expectedBase = new Date(before);
       expectedBase.setMonth(expectedBase.getMonth() + 1);
 
-      expect(periodEnd.getTime()).toBeGreaterThanOrEqual(expectedBase.getTime() - 2000);
-      expect(periodEnd.getTime()).toBeLessThanOrEqual(new Date(after).setMonth(new Date(after).getMonth() + 1) + 1000);
+      expect(periodEnd.getTime()).toBeGreaterThanOrEqual(
+        expectedBase.getTime() - 2000,
+      );
+      expect(periodEnd.getTime()).toBeLessThanOrEqual(
+        new Date(after).setMonth(new Date(after).getMonth() + 1) + 1000,
+      );
     });
 
     it('sets period end 1 year from base for annual billing', async () => {
       const pastPeriodEnd = new Date('2026-06-01T00:00:00.000Z');
-      const sub = makeSubscription({ currentPeriodEnd: pastPeriodEnd, billingCycle: 'annual' });
+      const sub = makeSubscription({
+        currentPeriodEnd: pastPeriodEnd,
+        billingCycle: 'annual',
+      });
       mockDb.execute.mockResolvedValueOnce([sub]);
       mockDb.execute.mockResolvedValue([]);
 
@@ -260,7 +273,9 @@ describe('CompanySubscriptionsService', () => {
       const expectedPeriodEnd = new Date(pastPeriodEnd);
       expectedPeriodEnd.setFullYear(expectedPeriodEnd.getFullYear() + 1);
 
-      expect(setArgs.currentPeriodEnd.getTime()).toBe(expectedPeriodEnd.getTime());
+      expect(setArgs.currentPeriodEnd.getTime()).toBe(
+        expectedPeriodEnd.getTime(),
+      );
     });
 
     it('sets period end 1 month from base for monthly billing', async () => {
@@ -275,7 +290,9 @@ describe('CompanySubscriptionsService', () => {
       const expectedPeriodEnd = new Date(pastPeriodEnd);
       expectedPeriodEnd.setMonth(expectedPeriodEnd.getMonth() + 1);
 
-      expect(setArgs.currentPeriodEnd.getTime()).toBe(expectedPeriodEnd.getTime());
+      expect(setArgs.currentPeriodEnd.getTime()).toBe(
+        expectedPeriodEnd.getTime(),
+      );
     });
 
     it('busts cache after activation', async () => {
@@ -303,7 +320,9 @@ describe('CompanySubscriptionsService', () => {
       const expectedPeriodEnd = new Date(pastPeriodEnd);
       expectedPeriodEnd.setMonth(expectedPeriodEnd.getMonth() + 1);
 
-      expect(setArgs.currentPeriodEnd.getTime()).toBe(expectedPeriodEnd.getTime());
+      expect(setArgs.currentPeriodEnd.getTime()).toBe(
+        expectedPeriodEnd.getTime(),
+      );
       expect(setArgs.status).toBe('active');
     });
 

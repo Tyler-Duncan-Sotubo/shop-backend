@@ -1,9 +1,5 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
-import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { chromium } from 'playwright-chromium';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
@@ -144,7 +140,12 @@ export class InventoryReportService {
           primaryColor: invoiceBranding.primaryColor,
         })
         .from(invoiceBranding)
-        .where(and(eq(invoiceBranding.companyId, companyId), isNull(invoiceBranding.storeId)))
+        .where(
+          and(
+            eq(invoiceBranding.companyId, companyId),
+            isNull(invoiceBranding.storeId),
+          ),
+        )
         .limit(1)
         .execute(),
       this.db
@@ -202,7 +203,10 @@ export class InventoryReportService {
     try {
       const page = await (await browser.newContext()).newPage();
       await page.setContent(html, { waitUntil: 'networkidle' });
-      return await page.pdf({ format: 'A4', margin: { top: '10mm', bottom: '14mm', left: '10mm', right: '10mm' } }) as unknown as Buffer;
+      return (await page.pdf({
+        format: 'A4',
+        margin: { top: '10mm', bottom: '14mm', left: '10mm', right: '10mm' },
+      })) as unknown as Buffer;
     } finally {
       await browser.close();
     }
@@ -217,7 +221,8 @@ export class InventoryReportService {
     companyId: string,
     format: 'csv' | 'excel',
   ) {
-    if (!rows.length) throw new BadRequestException('No data available for this report');
+    if (!rows.length)
+      throw new BadRequestException('No data available for this report');
     const filePath =
       format === 'excel'
         ? await ExportUtil.exportToExcel(rows, columns, filename)
@@ -226,13 +231,19 @@ export class InventoryReportService {
   }
 
   private async uploadPdf(buffer: Buffer, filename: string, companyId: string) {
-    return this.aws.uploadPublicPdf({ key: `company-${companyId}/reports/${filename}.pdf`, pdfBuffer: buffer });
+    return this.aws.uploadPublicPdf({
+      key: `company-${companyId}/reports/${filename}.pdf`,
+      pdfBuffer: buffer,
+    });
   }
 
   private name(base: string, ...parts: (string | null | undefined)[]) {
-    const clean = parts
-      .filter(Boolean)
-      .map((p) => String(p).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, ''));
+    const clean = parts.filter(Boolean).map((p) =>
+      String(p)
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9\-]/g, ''),
+    );
     return [base, ...clean, today()].join('_');
   }
 
@@ -246,7 +257,8 @@ export class InventoryReportService {
   ) {
     const format = opts?.format ?? 'csv';
     const where: any[] = [eq(inventoryItems.companyId, companyId)];
-    if (opts?.locationId) where.push(eq(inventoryItems.locationId, opts.locationId));
+    if (opts?.locationId)
+      where.push(eq(inventoryItems.locationId, opts.locationId));
     if (opts?.storeId) where.push(eq(inventoryItems.storeId, opts.storeId));
 
     const raw = await this.db
@@ -262,9 +274,27 @@ export class InventoryReportService {
         status: products.status,
       })
       .from(inventoryItems)
-      .innerJoin(inventoryLocations, and(eq(inventoryLocations.companyId, companyId), eq(inventoryLocations.id, inventoryItems.locationId)))
-      .innerJoin(productVariants, and(eq(productVariants.companyId, companyId), eq(productVariants.id, inventoryItems.productVariantId)))
-      .innerJoin(products, and(eq(products.companyId, companyId), eq(products.id, productVariants.productId)))
+      .innerJoin(
+        inventoryLocations,
+        and(
+          eq(inventoryLocations.companyId, companyId),
+          eq(inventoryLocations.id, inventoryItems.locationId),
+        ),
+      )
+      .innerJoin(
+        productVariants,
+        and(
+          eq(productVariants.companyId, companyId),
+          eq(productVariants.id, inventoryItems.productVariantId),
+        ),
+      )
+      .innerJoin(
+        products,
+        and(
+          eq(products.companyId, companyId),
+          eq(products.id, productVariants.productId),
+        ),
+      )
       .where(and(...where))
       .orderBy(products.name, productVariants.title, inventoryLocations.name)
       .execute();
@@ -300,7 +330,9 @@ export class InventoryReportService {
     const filename = this.name('stock-snapshot');
 
     if (format === 'pdf') {
-      const pdfRows = rows.map((r) => cols.map((c) => (r as any)[c.field] ?? ''));
+      const pdfRows = rows.map((r) =>
+        cols.map((c) => (r as any)[c.field] ?? ''),
+      );
       const buf = await this.renderPdf(companyId, {
         reportTitle: 'Stock Snapshot',
         columns: cols.map((c) => c.title),
@@ -336,9 +368,27 @@ export class InventoryReportService {
         safetyStock: inventoryItems.safetyStock,
       })
       .from(inventoryItems)
-      .innerJoin(inventoryLocations, and(eq(inventoryLocations.companyId, companyId), eq(inventoryLocations.id, inventoryItems.locationId)))
-      .innerJoin(productVariants, and(eq(productVariants.companyId, companyId), eq(productVariants.id, inventoryItems.productVariantId)))
-      .innerJoin(products, and(eq(products.companyId, companyId), eq(products.id, productVariants.productId)))
+      .innerJoin(
+        inventoryLocations,
+        and(
+          eq(inventoryLocations.companyId, companyId),
+          eq(inventoryLocations.id, inventoryItems.locationId),
+        ),
+      )
+      .innerJoin(
+        productVariants,
+        and(
+          eq(productVariants.companyId, companyId),
+          eq(productVariants.id, inventoryItems.productVariantId),
+        ),
+      )
+      .innerJoin(
+        products,
+        and(
+          eq(products.companyId, companyId),
+          eq(products.id, productVariants.productId),
+        ),
+      )
       .where(and(...where))
       .orderBy(inventoryItems.available, products.name)
       .execute();
@@ -374,7 +424,9 @@ export class InventoryReportService {
     const filename = this.name('low-stock');
 
     if (format === 'pdf') {
-      const pdfRows = rows.map((r) => cols.map((c) => (r as any)[c.field] ?? ''));
+      const pdfRows = rows.map((r) =>
+        cols.map((c) => (r as any)[c.field] ?? ''),
+      );
       const buf = await this.renderPdf(companyId, {
         reportTitle: 'Low Stock / Out of Stock',
         columns: cols.map((c) => c.title),
@@ -391,7 +443,14 @@ export class InventoryReportService {
 
   async exportMovements(
     companyId: string,
-    opts?: { locationId?: string; storeId?: string; from?: string; to?: string; types?: string[]; format?: Format },
+    opts?: {
+      locationId?: string;
+      storeId?: string;
+      from?: string;
+      to?: string;
+      types?: string[];
+      format?: Format;
+    },
   ) {
     const format = opts?.format ?? 'csv';
     const fromDate = parseDate(opts?.from, 'from');
@@ -399,7 +458,8 @@ export class InventoryReportService {
 
     const where: any[] = [eq(inventoryMovements.companyId, companyId)];
     if (opts?.storeId) where.push(eq(inventoryMovements.storeId, opts.storeId));
-    if (opts?.locationId) where.push(eq(inventoryMovements.locationId, opts.locationId));
+    if (opts?.locationId)
+      where.push(eq(inventoryMovements.locationId, opts.locationId));
     if (fromDate) where.push(gte(inventoryMovements.createdAt, fromDate));
     if (toDate) where.push(lte(inventoryMovements.createdAt, toDate));
     if (opts?.types?.length) {
@@ -420,14 +480,33 @@ export class InventoryReportService {
         note: inventoryMovements.note,
       })
       .from(inventoryMovements)
-      .leftJoin(inventoryLocations, and(eq(inventoryLocations.companyId, companyId), eq(inventoryLocations.id, inventoryMovements.locationId)))
-      .leftJoin(productVariants, and(eq(productVariants.companyId, companyId), eq(productVariants.id, inventoryMovements.productVariantId)))
-      .leftJoin(products, and(eq(products.companyId, companyId), eq(products.id, productVariants.productId)))
+      .leftJoin(
+        inventoryLocations,
+        and(
+          eq(inventoryLocations.companyId, companyId),
+          eq(inventoryLocations.id, inventoryMovements.locationId),
+        ),
+      )
+      .leftJoin(
+        productVariants,
+        and(
+          eq(productVariants.companyId, companyId),
+          eq(productVariants.id, inventoryMovements.productVariantId),
+        ),
+      )
+      .leftJoin(
+        products,
+        and(
+          eq(products.companyId, companyId),
+          eq(products.id, productVariants.productId),
+        ),
+      )
       .where(and(...where))
       .orderBy(desc(inventoryMovements.createdAt))
       .execute();
 
-    if (!raw.length) throw new BadRequestException('No movements found for this period');
+    if (!raw.length)
+      throw new BadRequestException('No movements found for this period');
 
     const cols: Col[] = [
       { field: 'date', title: 'Date' },
@@ -458,14 +537,22 @@ export class InventoryReportService {
       };
     });
 
-    const dateRange = opts?.from || opts?.to
-      ? `${opts?.from ?? ''} → ${opts?.to ?? 'today'}`
-      : undefined;
+    const dateRange =
+      opts?.from || opts?.to
+        ? `${opts?.from ?? ''} → ${opts?.to ?? 'today'}`
+        : undefined;
     const filename = this.name('stock-movements', opts?.from, opts?.to);
 
     if (format === 'pdf') {
-      const pdfRows = rows.map((r) => cols.map((c) => (r as any)[c.field] ?? ''));
-      const buf = await this.renderPdf(companyId, { reportTitle: 'Stock Movement Report', dateRange, columns: cols.map((c) => c.title), rows: pdfRows });
+      const pdfRows = rows.map((r) =>
+        cols.map((c) => (r as any)[c.field] ?? ''),
+      );
+      const buf = await this.renderPdf(companyId, {
+        reportTitle: 'Stock Movement Report',
+        dateRange,
+        columns: cols.map((c) => c.title),
+        rows: pdfRows,
+      });
       return this.uploadPdf(buf, filename, companyId);
     }
     return this.uploadCsvExcel(rows, cols, filename, companyId, format);
@@ -500,7 +587,10 @@ export class InventoryReportService {
         toLocation: { name: sql<string>`tl.name` },
       })
       .from(inventoryTransfers)
-      .innerJoin(inventoryLocations, eq(inventoryLocations.id, inventoryTransfers.fromLocationId))
+      .innerJoin(
+        inventoryLocations,
+        eq(inventoryLocations.id, inventoryTransfers.fromLocationId),
+      )
       .innerJoin(
         sql`inventory_locations tl`,
         sql`tl.id = ${inventoryTransfers.toLocationId}`,
@@ -509,7 +599,8 @@ export class InventoryReportService {
       .orderBy(desc(inventoryTransfers.createdAt))
       .execute();
 
-    if (!transfers.length) throw new BadRequestException('No transfers found for this period');
+    if (!transfers.length)
+      throw new BadRequestException('No transfers found for this period');
 
     const transferIds = transfers.map((t) => t.id);
     const items = await this.db
@@ -521,7 +612,10 @@ export class InventoryReportService {
         quantity: inventoryTransferItems.quantity,
       })
       .from(inventoryTransferItems)
-      .innerJoin(productVariants, eq(productVariants.id, inventoryTransferItems.productVariantId))
+      .innerJoin(
+        productVariants,
+        eq(productVariants.id, inventoryTransferItems.productVariantId),
+      )
       .innerJoin(products, eq(products.id, productVariants.productId))
       .where(inArray(inventoryTransferItems.transferId, transferIds))
       .execute();
@@ -557,7 +651,10 @@ export class InventoryReportService {
           status: t.status,
           date: fmtDate(t.createdAt),
           completed: fmtDate(t.completedAt),
-          product: '', variant: '', sku: '', qty: '',
+          product: '',
+          variant: '',
+          sku: '',
+          qty: '',
         });
       } else {
         for (const item of tItems) {
@@ -577,7 +674,10 @@ export class InventoryReportService {
       }
     }
 
-    const dateRange = opts?.from || opts?.to ? `${opts?.from ?? ''} → ${opts?.to ?? 'today'}` : undefined;
+    const dateRange =
+      opts?.from || opts?.to
+        ? `${opts?.from ?? ''} → ${opts?.to ?? 'today'}`
+        : undefined;
     const filename = this.name('transfer-summary', opts?.from, opts?.to);
 
     if (format === 'pdf') {
@@ -585,7 +685,10 @@ export class InventoryReportService {
       const sections = transfers.map((t) => ({
         heading: `${t.reference ?? t.id.slice(0, 8)} · ${(t.fromLocation as any)?.name} → ${(t.toLocation as any)?.name} · ${t.status.toUpperCase()} · ${fmtDate(t.createdAt)}`,
         rows: (itemsByTransfer.get(t.id) ?? []).map((item) => [
-          item.product, item.variant ?? '', item.sku ?? '', String(item.quantity),
+          item.product,
+          item.variant ?? '',
+          item.sku ?? '',
+          String(item.quantity),
         ]),
       }));
       const buf = await this.renderPdf(companyId, {
@@ -609,7 +712,8 @@ export class InventoryReportService {
   ) {
     const format = opts?.format ?? 'csv';
     const where: any[] = [eq(inventoryItems.companyId, companyId)];
-    if (opts?.locationId) where.push(eq(inventoryItems.locationId, opts.locationId));
+    if (opts?.locationId)
+      where.push(eq(inventoryItems.locationId, opts.locationId));
     if (opts?.storeId) where.push(eq(inventoryItems.storeId, opts.storeId));
 
     const raw = await this.db
@@ -623,14 +727,33 @@ export class InventoryReportService {
         unitPrice: productVariants.regularPrice,
       })
       .from(inventoryItems)
-      .innerJoin(inventoryLocations, and(eq(inventoryLocations.companyId, companyId), eq(inventoryLocations.id, inventoryItems.locationId)))
-      .innerJoin(productVariants, and(eq(productVariants.companyId, companyId), eq(productVariants.id, inventoryItems.productVariantId)))
-      .innerJoin(products, and(eq(products.companyId, companyId), eq(products.id, productVariants.productId)))
+      .innerJoin(
+        inventoryLocations,
+        and(
+          eq(inventoryLocations.companyId, companyId),
+          eq(inventoryLocations.id, inventoryItems.locationId),
+        ),
+      )
+      .innerJoin(
+        productVariants,
+        and(
+          eq(productVariants.companyId, companyId),
+          eq(productVariants.id, inventoryItems.productVariantId),
+        ),
+      )
+      .innerJoin(
+        products,
+        and(
+          eq(products.companyId, companyId),
+          eq(products.id, productVariants.productId),
+        ),
+      )
       .where(and(...where))
       .orderBy(products.name, productVariants.title)
       .execute();
 
-    if (!raw.length) throw new BadRequestException('No inventory data available');
+    if (!raw.length)
+      throw new BadRequestException('No inventory data available');
 
     const cols: Col[] = [
       { field: 'product', title: 'Product' },
@@ -651,16 +774,28 @@ export class InventoryReportService {
         sku: r.sku ?? '',
         location: r.location,
         on_hand: String(onHand),
-        unit_price: price.toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
-        total_value: (onHand * price).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
+        unit_price: price.toLocaleString('en-NG', {
+          style: 'currency',
+          currency: 'NGN',
+        }),
+        total_value: (onHand * price).toLocaleString('en-NG', {
+          style: 'currency',
+          currency: 'NGN',
+        }),
       };
     });
 
     const filename = this.name('inventory-valuation');
 
     if (format === 'pdf') {
-      const pdfRows = rows.map((r) => cols.map((c) => (r as any)[c.field] ?? ''));
-      const buf = await this.renderPdf(companyId, { reportTitle: 'Inventory Valuation', columns: cols.map((c) => c.title), rows: pdfRows });
+      const pdfRows = rows.map((r) =>
+        cols.map((c) => (r as any)[c.field] ?? ''),
+      );
+      const buf = await this.renderPdf(companyId, {
+        reportTitle: 'Inventory Valuation',
+        columns: cols.map((c) => c.title),
+        rows: pdfRows,
+      });
       return this.uploadPdf(buf, filename, companyId);
     }
     return this.uploadCsvExcel(rows, cols, filename, companyId, format);
@@ -698,7 +833,8 @@ export class InventoryReportService {
       .orderBy(desc(orderDispatches.createdAt))
       .execute();
 
-    if (!dispatches.length) throw new BadRequestException('No dispatches found for this period');
+    if (!dispatches.length)
+      throw new BadRequestException('No dispatches found for this period');
 
     const orderIds = [...new Set(dispatches.map((d) => d.orderId))];
     const allItems = await this.db
@@ -733,23 +869,51 @@ export class InventoryReportService {
     for (const d of dispatches) {
       const dItems = itemsByOrder.get(d.orderId) ?? [];
       if (!dItems.length) {
-        flatRows.push({ date: fmtDate(d.createdAt), order: d.orderNumber ?? d.orderId.slice(0, 8), status: d.status, dispatched_at: fmtDate(d.dispatchedAt), product: '', sku: '', qty: '' });
+        flatRows.push({
+          date: fmtDate(d.createdAt),
+          order: d.orderNumber ?? d.orderId.slice(0, 8),
+          status: d.status,
+          dispatched_at: fmtDate(d.dispatchedAt),
+          product: '',
+          sku: '',
+          qty: '',
+        });
       } else {
         for (const item of dItems) {
-          flatRows.push({ date: fmtDate(d.createdAt), order: d.orderNumber ?? d.orderId.slice(0, 8), status: d.status, dispatched_at: fmtDate(d.dispatchedAt), product: item.name, sku: item.sku ?? '', qty: String(item.quantity) });
+          flatRows.push({
+            date: fmtDate(d.createdAt),
+            order: d.orderNumber ?? d.orderId.slice(0, 8),
+            status: d.status,
+            dispatched_at: fmtDate(d.dispatchedAt),
+            product: item.name,
+            sku: item.sku ?? '',
+            qty: String(item.quantity),
+          });
         }
       }
     }
 
-    const dateRange = opts?.from || opts?.to ? `${opts?.from ?? ''} → ${opts?.to ?? 'today'}` : undefined;
+    const dateRange =
+      opts?.from || opts?.to
+        ? `${opts?.from ?? ''} → ${opts?.to ?? 'today'}`
+        : undefined;
     const filename = this.name('dispatch-summary', opts?.from, opts?.to);
 
     if (format === 'pdf') {
       const sections = dispatches.map((d) => ({
         heading: `Order ${d.orderNumber ?? d.orderId.slice(0, 8)} · ${d.status.toUpperCase()} · ${fmtDate(d.createdAt)}`,
-        rows: (itemsByOrder.get(d.orderId) ?? []).map((item) => [item.name, item.sku ?? '', String(item.quantity)]),
+        rows: (itemsByOrder.get(d.orderId) ?? []).map((item) => [
+          item.name,
+          item.sku ?? '',
+          String(item.quantity),
+        ]),
       }));
-      const buf = await this.renderPdf(companyId, { reportTitle: 'Dispatch Summary', dateRange, columns: ['Product', 'SKU', 'Qty'], sections });
+      const buf = await this.renderPdf(companyId, {
+        reportTitle: 'Dispatch Summary',
+        dateRange,
+        columns: ['Product', 'SKU', 'Qty'],
+        sections,
+      });
       return this.uploadPdf(buf, filename, companyId);
     }
     return this.uploadCsvExcel(flatRows, cols, filename, companyId, format);
@@ -784,13 +948,37 @@ export class InventoryReportService {
         reserved: inventoryItems.reserved,
       })
       .from(inventoryItems)
-      .innerJoin(inventoryLocations, and(eq(inventoryLocations.companyId, companyId), eq(inventoryLocations.id, inventoryItems.locationId)))
-      .innerJoin(productVariants, and(eq(productVariants.companyId, companyId), eq(productVariants.id, inventoryItems.productVariantId)))
-      .innerJoin(products, and(eq(products.companyId, companyId), eq(products.id, productVariants.productId)))
-      .where(and(...where, sql`(${inventoryItems.available} + ${inventoryItems.reserved}) > 0`))
+      .innerJoin(
+        inventoryLocations,
+        and(
+          eq(inventoryLocations.companyId, companyId),
+          eq(inventoryLocations.id, inventoryItems.locationId),
+        ),
+      )
+      .innerJoin(
+        productVariants,
+        and(
+          eq(productVariants.companyId, companyId),
+          eq(productVariants.id, inventoryItems.productVariantId),
+        ),
+      )
+      .innerJoin(
+        products,
+        and(
+          eq(products.companyId, companyId),
+          eq(products.id, productVariants.productId),
+        ),
+      )
+      .where(
+        and(
+          ...where,
+          sql`(${inventoryItems.available} + ${inventoryItems.reserved}) > 0`,
+        ),
+      )
       .execute();
 
-    if (!stockRows.length) throw new BadRequestException('No inventory data available');
+    if (!stockRows.length)
+      throw new BadRequestException('No inventory data available');
 
     // Get last movement date per variant+location
     const lastMovements = await this.db
@@ -801,7 +989,10 @@ export class InventoryReportService {
       })
       .from(inventoryMovements)
       .where(eq(inventoryMovements.companyId, companyId))
-      .groupBy(inventoryMovements.productVariantId, inventoryMovements.locationId)
+      .groupBy(
+        inventoryMovements.productVariantId,
+        inventoryMovements.locationId,
+      )
       .execute();
 
     const movementMap = new Map<string, Date>();
@@ -811,16 +1002,22 @@ export class InventoryReportService {
 
     const deadRows = stockRows
       .map((r) => {
-        const lastMoved = movementMap.get(`${r.variantId}:${r.locationId}`) ?? null;
+        const lastMoved =
+          movementMap.get(`${r.variantId}:${r.locationId}`) ?? null;
         const daysInactive = lastMoved
-          ? Math.floor((Date.now() - new Date(lastMoved).getTime()) / 86_400_000)
+          ? Math.floor(
+              (Date.now() - new Date(lastMoved).getTime()) / 86_400_000,
+            )
           : 999;
         return { ...r, lastMoved, daysInactive };
       })
       .filter((r) => r.daysInactive >= days)
       .sort((a, b) => b.daysInactive - a.daysInactive);
 
-    if (!deadRows.length) throw new BadRequestException(`No items with zero movement in the last ${days} days`);
+    if (!deadRows.length)
+      throw new BadRequestException(
+        `No items with zero movement in the last ${days} days`,
+      );
 
     const cols: Col[] = [
       { field: 'product', title: 'Product' },
@@ -839,14 +1036,21 @@ export class InventoryReportService {
       location: r.location,
       on_hand: String(Number(r.available ?? 0) + Number(r.reserved ?? 0)),
       last_movement: r.lastMoved ? fmtDate(r.lastMoved) : 'Never',
-      days_inactive: r.daysInactive >= 999 ? 'Never moved' : String(r.daysInactive),
+      days_inactive:
+        r.daysInactive >= 999 ? 'Never moved' : String(r.daysInactive),
     }));
 
     const filename = this.name('dead-stock', `${days}d`);
 
     if (format === 'pdf') {
-      const pdfRows = rows.map((r) => cols.map((c) => (r as any)[c.field] ?? ''));
-      const buf = await this.renderPdf(companyId, { reportTitle: `Dead Stock Report (${days} days)`, columns: cols.map((c) => c.title), rows: pdfRows });
+      const pdfRows = rows.map((r) =>
+        cols.map((c) => (r as any)[c.field] ?? ''),
+      );
+      const buf = await this.renderPdf(companyId, {
+        reportTitle: `Dead Stock Report (${days} days)`,
+        columns: cols.map((c) => c.title),
+        rows: pdfRows,
+      });
       return this.uploadPdf(buf, filename, companyId);
     }
     return this.uploadCsvExcel(rows, cols, filename, companyId, format);
@@ -865,7 +1069,9 @@ export class InventoryReportService {
     const toDate = parseDate(opts?.to, 'to');
 
     if (!fromDate || !toDate) {
-      throw new BadRequestException('Both from and to dates are required for the stock period report');
+      throw new BadRequestException(
+        'Both from and to dates are required for the stock period report',
+      );
     }
 
     // Use raw SQL for conditional aggregation across the period
@@ -939,7 +1145,9 @@ export class InventoryReportService {
     const filename = this.name('stock-period', opts?.from, opts?.to);
 
     if (format === 'pdf') {
-      const pdfRows = rows.map((r) => cols.map((c) => (r as any)[c.field] ?? ''));
+      const pdfRows = rows.map((r) =>
+        cols.map((c) => (r as any)[c.field] ?? ''),
+      );
       const buf = await this.renderPdf(companyId, {
         reportTitle: 'Stock Period Report',
         dateRange,

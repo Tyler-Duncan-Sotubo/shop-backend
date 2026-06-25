@@ -723,7 +723,8 @@ export class InvoiceService {
 
       // Resolve bank account: prefer explicitly chosen account, fall back to
       // first on record for this company (sorted by sortOrder).
-      let chosenBankAccount: typeof companyBankAccounts.$inferSelect | null = null;
+      let chosenBankAccount: typeof companyBankAccounts.$inferSelect | null =
+        null;
       if (dto?.bankAccountId) {
         const [acc] = await tx
           .select()

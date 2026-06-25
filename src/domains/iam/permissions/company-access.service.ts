@@ -22,6 +22,7 @@ import { User } from 'src/channels/admin/common/types/user.type';
 import { WarehouseStaffPermissions } from './roles/warehouse-staff.permissions';
 import { InventoryManagerPermissions } from './roles/inventory-manager.permission';
 import { SalesPermissions } from './roles/sales.permissions';
+import { MarketingPermissions } from './roles/marketing.permissions';
 
 @Injectable()
 export class CompanyAccessService {
@@ -527,6 +528,11 @@ export class CompanyAccessService {
         name: 'sales',
         displayName: 'Sales',
         permissions: SalesPermissions,
+      },
+      {
+        name: 'marketing',
+        displayName: 'Marketing',
+        permissions: MarketingPermissions,
       },
     ];
 

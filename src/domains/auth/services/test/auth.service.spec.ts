@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 jest.mock('bcryptjs', () => ({ compare: jest.fn() }));
 import * as bcrypt from 'bcryptjs';
 

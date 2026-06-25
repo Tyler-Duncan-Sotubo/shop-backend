@@ -305,22 +305,28 @@ export class InventoryController extends BaseController {
   }
 
   // ----------------- Reports -----------------
-  @Get('reports/stock-levels')
+  @Get('reports/stock-snapshot')
   @UseGuards(JwtAuthGuard)
   @SetMetadata('permissions', ['inventory.read'])
-  exportStockLevels(
+  exportStockSnapshot(
     @CurrentUser() user: User,
-    @Query('storeId') storeId?: string,
     @Query('locationId') locationId?: string,
-    @Query('status') status?: 'active' | 'draft' | 'archived',
-    @Query('lowStockOnly') lowStockOnly?: string,
-    @Query('format') format?: 'csv' | 'excel',
+    @Query('format') format?: 'csv' | 'excel' | 'pdf',
   ) {
-    return this.inventoryReportService.exportStockLevels(user.companyId, {
-      storeId,
+    return this.inventoryReportService.exportStockSnapshot(user.companyId, {
       locationId,
-      status,
-      lowStockOnly: lowStockOnly === 'true',
+      format,
+    });
+  }
+
+  @Get('reports/low-stock')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['inventory.read'])
+  exportLowStock(
+    @CurrentUser() user: User,
+    @Query('format') format?: 'csv' | 'excel' | 'pdf',
+  ) {
+    return this.inventoryReportService.exportLowStock(user.companyId, {
       format,
     });
   }
@@ -330,86 +336,94 @@ export class InventoryController extends BaseController {
   @SetMetadata('permissions', ['inventory.read'])
   exportMovements(
     @CurrentUser() user: User,
-    @Query('storeId') storeId?: string,
-    @Query('locationId') locationId?: string,
-    @Query('types') types?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
-    @Query('format') format?: 'csv' | 'excel',
+    @Query('types') types?: string,
+    @Query('locationId') locationId?: string,
+    @Query('format') format?: 'csv' | 'excel' | 'pdf',
   ) {
     return this.inventoryReportService.exportMovements(user.companyId, {
-      storeId,
-      locationId,
+      from,
+      to,
       types: types ? types.split(',') : undefined,
+      locationId,
+      format,
+    });
+  }
+
+  @Get('reports/transfer-summary')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['inventory.read'])
+  exportTransferSummary(
+    @CurrentUser() user: User,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('format') format?: 'csv' | 'excel' | 'pdf',
+  ) {
+    return this.inventoryReportService.exportTransferSummary(user.companyId, {
       from,
       to,
       format,
     });
   }
 
-  @Get('reports/low-stock')
+  @Get('reports/valuation')
   @UseGuards(JwtAuthGuard)
   @SetMetadata('permissions', ['inventory.read'])
-  exportLowStockSummary(
+  exportValuation(
     @CurrentUser() user: User,
-    @Query('storeId') storeId?: string,
-    @Query('format') format?: 'csv' | 'excel',
+    @Query('locationId') locationId?: string,
+    @Query('format') format?: 'csv' | 'excel' | 'pdf',
   ) {
-    return this.inventoryReportService.exportLowStockSummary(user.companyId, {
-      storeId,
+    return this.inventoryReportService.exportValuation(user.companyId, {
+      locationId,
       format,
     });
   }
 
-  @Get('reports/products/:productId/stock-levels')
+  @Get('reports/dispatch-summary')
   @UseGuards(JwtAuthGuard)
   @SetMetadata('permissions', ['inventory.read'])
-  exportProductStockLevels(
+  exportDispatchSummary(
     @CurrentUser() user: User,
-    @Param('productId') productId: string,
-    @Query('storeId') storeId?: string,
-    @Query('locationId') locationId?: string,
-    @Query('status') status?: 'active' | 'draft' | 'archived',
-    @Query('lowStockOnly') lowStockOnly?: string,
-    @Query('format') format?: 'csv' | 'excel',
-  ) {
-    return this.inventoryReportService.exportProductStockLevels(
-      user.companyId,
-      productId,
-      {
-        storeId,
-        locationId,
-        status,
-        lowStockOnly: lowStockOnly === 'true',
-        format,
-      },
-    );
-  }
-
-  @Get('reports/products/:productId/movements')
-  @UseGuards(JwtAuthGuard)
-  @SetMetadata('permissions', ['inventory.read'])
-  exportProductMovements(
-    @CurrentUser() user: User,
-    @Param('productId') productId: string,
-    @Query('storeId') storeId?: string,
-    @Query('locationId') locationId?: string,
-    @Query('types') types?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
-    @Query('format') format?: 'csv' | 'excel',
+    @Query('format') format?: 'csv' | 'excel' | 'pdf',
   ) {
-    return this.inventoryReportService.exportProductMovements(
-      user.companyId,
-      productId,
-      {
-        storeId,
-        locationId,
-        types: types ? types.split(',') : undefined,
-        from,
-        to,
-        format,
-      },
-    );
+    return this.inventoryReportService.exportDispatchSummary(user.companyId, {
+      from,
+      to,
+      format,
+    });
+  }
+
+  @Get('reports/dead-stock')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['inventory.read'])
+  exportDeadStock(
+    @CurrentUser() user: User,
+    @Query('days') days?: string,
+    @Query('format') format?: 'csv' | 'excel' | 'pdf',
+  ) {
+    return this.inventoryReportService.exportDeadStock(user.companyId, {
+      days: days ? parseInt(days, 10) : undefined,
+      format,
+    });
+  }
+
+  @Get('reports/stock-period')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('permissions', ['inventory.read'])
+  exportStockPeriod(
+    @CurrentUser() user: User,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('format') format?: 'csv' | 'excel' | 'pdf',
+  ) {
+    return this.inventoryReportService.exportStockPeriod(user.companyId, {
+      from,
+      to,
+      format,
+    });
   }
 }

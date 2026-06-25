@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { Test, TestingModule } from '@nestjs/testing';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { SessionsService } from 'src/domains/auth/services/sessions.service';

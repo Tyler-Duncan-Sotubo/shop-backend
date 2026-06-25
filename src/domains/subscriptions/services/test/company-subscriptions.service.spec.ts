@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { CompanySubscriptionsService } from 'src/domains/subscriptions/services/company-subscriptions.service';

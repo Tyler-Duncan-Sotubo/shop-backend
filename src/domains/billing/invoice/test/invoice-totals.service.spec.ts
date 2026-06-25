@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { InvoiceTotalsService, LineForCalc } from 'src/domains/billing/invoice/invoice-totals.service';

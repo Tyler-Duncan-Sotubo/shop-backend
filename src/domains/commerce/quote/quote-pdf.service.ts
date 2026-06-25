@@ -7,14 +7,10 @@ import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import { AwsService } from 'src/infrastructure/aws/aws.service';
 import {
   invoiceBranding,
-  invoiceTemplates,
   quoteRequestItems,
   quoteRequests,
 } from 'src/infrastructure/drizzle/schema';
-import {
-  renderOfferLetter,
-  wrapInHtml,
-} from 'src/common/utils/renderOfferLetter';
+import { wrapInHtml } from 'src/common/utils/renderOfferLetter';
 import { AuditService } from 'src/domains/audit/audit.service';
 
 @Injectable()

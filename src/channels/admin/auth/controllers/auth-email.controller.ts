@@ -4,7 +4,6 @@ import {
   HttpCode,
   HttpStatus,
   Ip,
-  Param,
   Post,
   UseGuards,
   UseInterceptors,

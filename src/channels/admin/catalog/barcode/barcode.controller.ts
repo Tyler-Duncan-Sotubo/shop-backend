@@ -7,7 +7,6 @@ import {
   Query,
   UseGuards,
   SetMetadata,
-  Res,
   BadRequestException,
 } from '@nestjs/common';
 import { BaseController } from 'src/infrastructure/interceptor/base.controller';

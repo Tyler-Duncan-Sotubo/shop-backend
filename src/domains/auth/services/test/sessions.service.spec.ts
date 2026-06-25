@@ -77,7 +77,8 @@ describe('SessionsService', () => {
           refreshTokenHash: expect.any(String),
         }),
       );
-      const storedHash = (mockDb.values as jest.Mock).mock.calls[0][0].refreshTokenHash;
+      const storedHash = (mockDb.values as jest.Mock).mock.calls[0][0]
+        .refreshTokenHash;
       expect(storedHash).not.toBe('raw-refresh-token');
       expect(storedHash).toHaveLength(64);
     });

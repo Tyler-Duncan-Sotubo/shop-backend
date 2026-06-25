@@ -479,7 +479,9 @@ export class InvoicePdfService {
           accountNumber: '',
           tin: '',
           label: '',
-          ...((inv.supplierSnapshot as any)?.bankDetails ?? branding?.bankDetails ?? {}),
+          ...((inv.supplierSnapshot as any)?.bankDetails ??
+            branding?.bankDetails ??
+            {}),
         },
         footerNote:
           (inv.supplierSnapshot as any)?.footerNote ?? branding?.footerNote,

@@ -258,7 +258,7 @@ export class OrdersService {
     // ── Enrich with item count + first item name ──
     const orderIds = rows.map((o) => o.id);
 
-    let itemSummaryMap = new Map<
+    const itemSummaryMap = new Map<
       string,
       {
         itemCount: number;
@@ -733,7 +733,7 @@ export class OrdersService {
         throw new BadRequestException('Customer has no saved addresses');
       }
 
-      let shippingAddress = payload.shippingAddressId
+      const shippingAddress = payload.shippingAddressId
         ? (customerAddressRows.find(
             (a) => a.id === payload.shippingAddressId,
           ) ?? null)
@@ -1010,7 +1010,7 @@ export class OrdersService {
 
     const activeRates = allRates.filter((r: any) => r.isActive);
 
-    let selectedRate = args.shippingRateId
+    const selectedRate = args.shippingRateId
       ? activeRates.find((r: any) => r.id === args.shippingRateId)
       : (activeRates.find((r: any) => r.isDefault) ?? activeRates[0]);
 

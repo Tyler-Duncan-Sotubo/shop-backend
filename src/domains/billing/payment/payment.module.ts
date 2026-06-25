@@ -9,8 +9,6 @@ import { StoresService } from 'src/domains/commerce/stores/stores.service';
 import { PaymentMethodsService } from './services/payment-methods.service';
 import { PaystackService } from './services/paystack.service';
 import { HttpModule } from '@nestjs/axios';
-import { OrderPaidAdminNotificationService } from 'src/domains/notification/services/order-paid.service';
-import { ResendProvider } from 'src/domains/notification/resend.provider';
 import { NotificationModule } from 'src/domains/notification/notification.module';
 
 @Module({

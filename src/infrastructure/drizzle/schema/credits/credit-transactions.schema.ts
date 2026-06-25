@@ -5,7 +5,6 @@ import {
   text,
   timestamp,
   index,
-  pgEnum,
   varchar,
 } from 'drizzle-orm/pg-core';
 import { defaultId } from 'src/infrastructure/drizzle/id';

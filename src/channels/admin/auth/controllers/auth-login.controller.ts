@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
 import { LoginDto } from '../dto/login.dto';
-import { TokenDto, VerifyLoginDto } from '../dto/token.dto';
+import { VerifyLoginDto } from '../dto/token.dto';
 import { JwtType, User } from 'src/channels/admin/common/types/user.type';
 import { AuthService } from 'src/domains/auth/services';
 import { RefreshJwtGuard } from '../../common/guards/refresh.guard';

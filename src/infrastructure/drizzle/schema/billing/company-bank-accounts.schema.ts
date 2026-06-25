@@ -32,7 +32,5 @@ export const companyBankAccounts = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (t) => [
-    index('company_bank_accounts_company_idx').on(t.companyId),
-  ],
+  (t) => [index('company_bank_accounts_company_idx').on(t.companyId)],
 );

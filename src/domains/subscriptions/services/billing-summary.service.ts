@@ -5,7 +5,6 @@ import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
 import {
   companySubscriptions,
-  subscriptionPlans,
   creditTopupRequests,
   subscriptionInvoices,
 } from 'src/infrastructure/drizzle/schema';

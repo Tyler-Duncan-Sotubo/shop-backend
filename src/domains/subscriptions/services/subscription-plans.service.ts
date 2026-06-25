@@ -3,10 +3,7 @@ import { Injectable, Inject, NotFoundException, Logger } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
-import {
-  PlanFeatures,
-  subscriptionPlans,
-} from 'src/infrastructure/drizzle/schema';
+import { subscriptionPlans } from 'src/infrastructure/drizzle/schema';
 
 @Injectable()
 export class SubscriptionPlansService {

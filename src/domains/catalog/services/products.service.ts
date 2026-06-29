@@ -1575,8 +1575,7 @@ export class ProductsService {
 
         const safeIndex =
           nextProductType === 'variable' ? 0 : dto.defaultImageIndex;
-        const chosen =
-          existingImages[safeIndex] ?? existingImages[0] ?? null;
+        const chosen = existingImages[safeIndex] ?? existingImages[0] ?? null;
 
         if (chosen) {
           await tx

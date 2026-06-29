@@ -1499,16 +1499,16 @@ export class ProductsService {
           )
           .execute();
 
-        // Soft-delete old image rows
+        // Soft-delete old image rows by their captured IDs (not a broad isNull scan,
+        // which would also catch the rows we just inserted above)
         if (currentImages.length) {
           await tx
             .update(productImages)
             .set({ deletedAt: new Date() })
             .where(
-              and(
-                eq(productImages.companyId, companyId),
-                eq(productImages.productId, productId),
-                isNull(productImages.deletedAt),
+              inArray(
+                productImages.id,
+                currentImages.map((r) => r.id),
               ),
             )
             .execute();
@@ -1553,6 +1553,42 @@ export class ProductsService {
               )
               .execute();
           }
+        }
+      }
+
+      // ---------------------------------------------------------------------
+      // 1c) Change default image among existing images (no new upload needed)
+      // ---------------------------------------------------------------------
+      if (dto.defaultImageIndex !== undefined && !dto.images) {
+        const existingImages = await tx
+          .select({ id: productImages.id, position: productImages.position })
+          .from(productImages)
+          .where(
+            and(
+              eq(productImages.companyId, companyId),
+              eq(productImages.productId, productId),
+              isNull(productImages.deletedAt),
+            ),
+          )
+          .orderBy(productImages.position)
+          .execute();
+
+        const safeIndex =
+          nextProductType === 'variable' ? 0 : dto.defaultImageIndex;
+        const chosen =
+          existingImages[safeIndex] ?? existingImages[0] ?? null;
+
+        if (chosen) {
+          await tx
+            .update(products)
+            .set({ defaultImageId: chosen.id, updatedAt: new Date() })
+            .where(
+              and(
+                eq(products.companyId, companyId),
+                eq(products.id, productId),
+              ),
+            )
+            .execute();
         }
       }
 

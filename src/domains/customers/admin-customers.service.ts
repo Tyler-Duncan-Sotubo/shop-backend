@@ -230,7 +230,10 @@ export class AdminCustomersService {
           this.db
             .select({ email: customerCredentials.email })
             .from(customerCredentials)
-            .innerJoin(customers, eq(customerCredentials.customerId, customers.id))
+            .innerJoin(
+              customers,
+              eq(customerCredentials.customerId, customers.id),
+            )
             .where(
               and(
                 eq(customerCredentials.companyId, companyId),
@@ -287,7 +290,7 @@ export class AdminCustomersService {
             lastName: d.lastName ?? null,
             billingEmail: derived[i].rawEmail ?? null,
             phone: d.phone ?? null,
-            marketingOptIn: !!(derived[i].rawEmail),
+            marketingOptIn: !!derived[i].rawEmail,
             isActive: true,
           })),
         )

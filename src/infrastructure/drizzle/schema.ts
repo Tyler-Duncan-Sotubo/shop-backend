@@ -62,6 +62,7 @@ export * from './schema/shipping/shipping-zone-locations.schema';
 export * from './schema/shipping/carriers.schema';
 export * from './schema/shipping/shipping-rates.schema';
 export * from './schema/shipping/shipping-rate-tiers.schema';
+export * from './schema/shipping/shipping-options.schema';
 
 // ---------------------------------------------------------
 //  CARTS

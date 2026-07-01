@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CheckoutService } from '../checkout/checkout.service';
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
-import { ShippingRatesService } from '../../fulfillment/shipping/services/shipping-rates.service';
-import { ShippingZonesService } from '../../fulfillment/shipping/services/shipping-zones.service';
 import { InventoryLocationsService } from '../inventory/services/inventory-locations.service';
 import { JwtService } from '@nestjs/jwt';
 import { InventoryLedgerService } from '../inventory/services/inventory-ledger.service';
@@ -29,8 +27,6 @@ import { InventoryModule } from '../inventory/inventory.module';
     CartTotalsService,
     CheckoutService,
     InventoryStockService,
-    ShippingRatesService,
-    ShippingZonesService,
     InventoryLocationsService,
     JwtService,
     InventoryLedgerService,

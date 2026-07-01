@@ -14,8 +14,6 @@ import { AuditService } from 'src/domains/audit/audit.service';
 import { User } from 'src/channels/admin/common/types/user.type';
 import {
   carts,
-  shippingRates,
-  shippingRateTiers,
   pickupLocations,
   checkouts,
   checkoutItems,
@@ -27,8 +25,7 @@ import {
   payments,
 } from 'src/infrastructure/drizzle/schema'; // adjust barrel exports
 import { CartService } from 'src/domains/commerce/cart/cart.service';
-import { ShippingRatesService } from 'src/domains/fulfillment/shipping/services/shipping-rates.service';
-import { ShippingZonesService } from 'src/domains/fulfillment/shipping/services/shipping-zones.service';
+import { ShippingOptionsService } from 'src/domains/fulfillment/shipping/services/shipping-options.service';
 import { CreateCheckoutFromCartDto } from './dto/create-checkout-from-cart.dto';
 import { SetCheckoutShippingDto } from './dto/set-checkout-shipping.dto';
 import { SetCheckoutPickupDto } from './dto/set-checkout-pickup.dto';
@@ -54,8 +51,7 @@ export class CheckoutService {
     private readonly audit: AuditService,
     private readonly cartService: CartService,
     private readonly stock: InventoryStockService,
-    private readonly rates: ShippingRatesService,
-    private readonly zones: ShippingZonesService,
+    private readonly shippingOptions: ShippingOptionsService,
     private readonly invoiceService: InvoiceService,
   ) {}
 
@@ -612,10 +608,6 @@ export class CheckoutService {
   private assertMutableStatusOrThrow(row: any) {
     if (!row?.status) return;
 
-    console.log('[checkout] assertMutableStatusOrThrow', {
-      status: row.status,
-    });
-
     if (row.status === 'expired') {
       throw new GoneException({
         message: 'Checkout has expired',
@@ -656,158 +648,73 @@ export class CheckoutService {
     const checkout = await this.getCheckout(companyId, checkoutId);
     this.assertMutableStatusOrThrow(checkout);
 
-    // compute weight from checkout items (metadata.weightKg) OR use passed totalWeightGrams
-    const items = checkout.items as any[];
-    const totalWeightGrams =
-      dto.totalWeightGrams ??
-      this.computeTotalWeightGrams(
-        items.map((it) => ({
-          quantity: it.quantity,
-          weightKg: it.metadata?.weightKg ?? 0,
-        })),
+    // ---- Shipping Option (flat-list) path ----
+    if (dto.shippingOptionId) {
+      const option = await this.shippingOptions.getById(
+        dto.shippingOptionId,
+        companyId,
       );
 
-    const zone = await this.zones.resolveZone(
-      companyId,
-      checkout.storeId,
-      dto.countryCode,
-      dto.state,
-      dto.area,
-    );
+      const subtotal = this.toMoney(checkout.subtotal);
+      const discountTotal = this.toMoney(checkout.discountTotal);
+      const taxTotal = this.toMoney(checkout.taxTotal);
+      const shippingTotal = this.toMoney(option.price);
+      const total = this.addMoney(
+        this.addMoney(this.addMoney(subtotal, shippingTotal), taxTotal),
+        (-Number(discountTotal)).toFixed(2),
+      );
 
-    if (!zone) {
+      await this.db
+        .update(checkouts)
+        .set({
+          deliveryMethodType: 'shipping',
+          pickupLocationId: null,
+          shippingAddress: dto.shippingAddress,
+          shippingZoneId: null,
+          selectedShippingRateId: null,
+          shippingMethodLabel: option.name,
+          shippingTotal,
+          total,
+          shippingQuote: {
+            countryCode: dto.countryCode?.toUpperCase?.() ?? dto.countryCode,
+            state: dto.state ?? null,
+            area: dto.area ?? null,
+            totalWeightGrams: 0,
+            shippingOptionId: option.id,
+            computedAt: new Date().toISOString(),
+            rateSnapshot: { name: option.name },
+          },
+          updatedAt: new Date(),
+        })
+        .where(
+          and(eq(checkouts.companyId, companyId), eq(checkouts.id, checkoutId)),
+        )
+        .execute();
+
+      await this.cache.bumpCompanyVersion(companyId);
+
+      if (user && ip) {
+        await this.audit.logAction({
+          action: 'update',
+          entity: 'checkout',
+          entityId: checkoutId,
+          userId: user.id,
+          ipAddress: ip,
+          details: 'Set checkout delivery method to shipping (option)',
+          changes: {
+            companyId,
+            checkoutId,
+            shippingOptionId: option.id,
+            shippingTotal,
+            total,
+          },
+        });
+      }
+
       return this.getCheckout(companyId, checkoutId);
     }
 
-    // pick a rate: explicit shippingRateId, else best rate (carrierId optional)
-    let rate: any = null;
-
-    if (dto.shippingRateId) {
-      rate = await this.db.query.shippingRates.findFirst({
-        where: and(
-          eq(shippingRates.companyId, companyId),
-          eq(shippingRates.id, dto.shippingRateId),
-          eq(shippingRates.zoneId, zone.id),
-          eq(shippingRates.isActive, true),
-        ),
-      });
-      if (!rate)
-        throw new BadRequestException('Shipping rate not found for zone');
-    } else {
-      // reuse your service behavior (best rate)
-      const quoted = await this.rates.quote(companyId, {
-        storeId: checkout.storeId,
-        countryCode: dto.countryCode,
-        state: dto.state,
-        area: dto.area,
-        carrierId: dto.carrierId ?? null,
-        totalWeightGrams,
-      } as any);
-      rate = quoted.rate;
-      if (!rate) throw new BadRequestException('No shipping rate available');
-    }
-    // compute amount (reuse your private method logic here so we can also capture tier id)
-    const calc = (rate.calc as string) ?? 'flat';
-    let tierId: string | null = null;
-    let amount: Money = '0';
-
-    if (calc === 'flat') {
-      amount = (rate.flatAmount as Money) ?? '0';
-    } else if (calc === 'weight') {
-      const tiers = await this.db
-        .select()
-        .from(shippingRateTiers)
-        .where(
-          and(
-            eq(shippingRateTiers.companyId, companyId),
-            eq(shippingRateTiers.rateId, rate.id),
-          ),
-        )
-        .orderBy(desc(shippingRateTiers.priority))
-        .execute();
-
-      const tier = tiers.find((t) => {
-        const min = t.minWeightGrams ?? null;
-        const max = t.maxWeightGrams ?? null;
-        if (min === null || max === null) return false;
-        return totalWeightGrams >= min && totalWeightGrams <= max;
-      });
-
-      tierId = tier?.id ?? null;
-      amount = (tier?.amount as Money) ?? '0';
-    }
-
-    // recompute totals based on checkout subtotal/discount/tax (discount/tax currently 0)
-    const subtotal = this.toMoney(checkout.subtotal);
-    const discountTotal = this.toMoney(checkout.discountTotal);
-    const taxTotal = this.toMoney(checkout.taxTotal);
-    const shippingTotal = this.toMoney(amount);
-
-    const total = this.addMoney(
-      this.addMoney(this.addMoney(subtotal, shippingTotal), taxTotal),
-      (-Number(discountTotal)).toFixed(2),
-    );
-
-    await this.db
-      .update(checkouts)
-      .set({
-        deliveryMethodType: 'shipping',
-        pickupLocationId: null,
-
-        shippingAddress: dto.shippingAddress,
-        shippingZoneId: zone.id,
-        selectedShippingRateId: rate.id,
-        shippingMethodLabel: rate.name,
-        shippingTotal,
-        total,
-
-        shippingQuote: {
-          countryCode: dto.countryCode?.toUpperCase?.() ?? dto.countryCode,
-          state: dto.state ?? null,
-          area: dto.area ?? null,
-          totalWeightGrams,
-          calc: calc as any,
-          tierId,
-          carrierId: dto.carrierId ?? null,
-          rateId: rate.id,
-          zoneId: zone.id,
-          computedAt: new Date().toISOString(),
-          rateSnapshot: {
-            name: rate.name,
-            minDeliveryDays: rate.minDeliveryDays ?? null,
-            maxDeliveryDays: rate.maxDeliveryDays ?? null,
-          },
-        },
-
-        updatedAt: new Date(),
-      })
-      .where(
-        and(eq(checkouts.companyId, companyId), eq(checkouts.id, checkoutId)),
-      )
-      .execute();
-
-    await this.cache.bumpCompanyVersion(companyId);
-
-    if (user && ip) {
-      await this.audit.logAction({
-        action: 'update',
-        entity: 'checkout',
-        entityId: checkoutId,
-        userId: user.id,
-        ipAddress: ip,
-        details: 'Set checkout delivery method to shipping',
-        changes: {
-          companyId,
-          checkoutId,
-          shippingZoneId: zone.id,
-          selectedShippingRateId: rate.id,
-          shippingTotal,
-          total,
-        },
-      });
-    }
-
-    return this.getCheckout(companyId, checkoutId);
+    throw new BadRequestException('No shipping option selected');
   }
 
   // -----------------------
@@ -906,10 +813,11 @@ export class CheckoutService {
     if (checkout.deliveryMethodType === 'shipping') {
       if (!checkout.shippingAddress)
         throw new BadRequestException('Shipping address is required');
-      if (!checkout.selectedShippingRateId)
+      const hasShippingOption = !!checkout.shippingQuote?.shippingOptionId;
+      const hasShippingRate = !!checkout.selectedShippingRateId;
+      const hasShippingLabel = !!checkout.shippingMethodLabel;
+      if (!hasShippingOption && !hasShippingRate && !hasShippingLabel)
         throw new BadRequestException('Shipping rate is required');
-      if (!checkout.shippingZoneId)
-        throw new BadRequestException('Shipping zone is required');
     }
     if (checkout.deliveryMethodType === 'pickup') {
       if (!checkout.pickupLocationId)
@@ -1068,7 +976,10 @@ export class CheckoutService {
       if (co.deliveryMethodType === 'shipping') {
         if (!co.shippingAddress)
           throw new BadRequestException('Shipping address is required');
-        if (!co.selectedShippingRateId)
+        const hasShippingOption = !!co.shippingQuote?.shippingOptionId;
+        const hasShippingRate = !!co.selectedShippingRateId;
+        const hasShippingLabel = !!co.shippingMethodLabel;
+        if (!hasShippingOption && !hasShippingRate && !hasShippingLabel)
           throw new BadRequestException('Shipping rate is required');
       } else if (co.deliveryMethodType === 'pickup') {
         if (!co.pickupLocationId)

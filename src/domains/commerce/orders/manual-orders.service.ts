@@ -11,6 +11,7 @@ import { CacheService } from 'src/infrastructure/cache/cache.service';
 import { AuditService } from 'src/domains/audit/audit.service';
 import { User } from 'src/channels/admin/common/types/user.type';
 import {
+  companySubscriptions,
   inventoryItems,
   inventoryReservations,
   invoices,
@@ -20,6 +21,7 @@ import {
   orders,
   products,
   productVariants,
+  subscriptionPlans,
 } from 'src/infrastructure/drizzle/schema';
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
@@ -134,6 +136,22 @@ export class ManualOrdersService {
 
       const isFromQuote = !!input.quoteRequestId;
 
+      // Only Custom plan may use payment_first; everyone else is always stock_first
+      const [sub] = await tx
+        .select({ planName: subscriptionPlans.name })
+        .from(companySubscriptions)
+        .innerJoin(
+          subscriptionPlans,
+          eq(companySubscriptions.planId, subscriptionPlans.id),
+        )
+        .where(eq(companySubscriptions.companyId, companyId))
+        .limit(1)
+        .execute();
+      const effectiveFulfillmentModel =
+        sub?.planName === 'Custom'
+          ? (input.fulfillmentModel ?? 'stock_first')
+          : 'stock_first';
+
       const [created] = await tx
         .insert(orders)
         .values({
@@ -148,7 +166,7 @@ export class ManualOrdersService {
           shippingAddress: input.shippingAddress ?? null,
           billingAddress: input.billingAddress ?? null,
           originInventoryLocationId: input.originInventoryLocationId,
-          fulfillmentModel: input.fulfillmentModel ?? 'stock_first',
+          fulfillmentModel: effectiveFulfillmentModel,
           ...(isFromQuote
             ? {
                 quoteRequestId: input.quoteRequestId ?? null,
@@ -1323,9 +1341,9 @@ export class ManualOrdersService {
       }
 
       // 2) Ensure manual/POS order
-      if (!['manual', 'pos'].includes(order.channel as any)) {
+      if (order.channel === 'online') {
         throw new BadRequestException(
-          'Only manual or POS orders can be deleted',
+          'Online store orders cannot be deleted',
         );
       }
 

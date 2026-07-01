@@ -28,6 +28,10 @@ export class SetCheckoutShippingDto {
 
   @IsOptional()
   @IsUUID()
+  shippingOptionId?: string;
+
+  @IsOptional()
+  @IsUUID()
   shippingRateId?: string;
 
   @IsOptional()

@@ -21,12 +21,12 @@ import {
   customers,
   customerAddresses,
   orderDispatches,
+  companySubscriptions,
+  subscriptionPlans,
 } from 'src/infrastructure/drizzle/schema';
 import { ListOrdersDto } from './dto/list-orders.dto';
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
 import { ZohoBooksService } from 'src/domains/integration/zoho/zoho-books.service';
-import { ShippingZonesService } from 'src/domains/fulfillment/shipping/services/shipping-zones.service';
-import { ShippingRatesService } from 'src/domains/fulfillment/shipping/services/shipping-rates.service';
 import { NotificationsService } from 'src/domains/notification/services/notifications.service';
 
 @Injectable()
@@ -36,8 +36,6 @@ export class OrdersService {
     private readonly cache: CacheService,
     private readonly stock: InventoryStockService,
     private readonly zohoBooks: ZohoBooksService,
-    private readonly shippingZonesService: ShippingZonesService,
-    private readonly shippingRatesService: ShippingRatesService,
     private readonly notifications: NotificationsService,
   ) {}
 
@@ -380,6 +378,121 @@ export class OrdersService {
           orderId,
           orderNumber: (result as any).orderNumber ?? null,
         },
+        channel: 'in_app',
+      })
+      .catch(console.error);
+
+    return result;
+  }
+
+  // ─────────────────────────────────────────────
+  // Direct fulfillment (Free / Starter / Growth / Pro plans only)
+  // Custom plan must use the two-step dispatch workflow.
+  // ─────────────────────────────────────────────
+  async fulfillOrder(companyId: string, orderId: string, user?: User, ip?: string) {
+    // Plan guard — Custom plan must go through dispatch
+    const [sub] = await this.db
+      .select({ planName: subscriptionPlans.name })
+      .from(companySubscriptions)
+      .innerJoin(
+        subscriptionPlans,
+        eq(companySubscriptions.planId, subscriptionPlans.id),
+      )
+      .where(eq(companySubscriptions.companyId, companyId))
+      .limit(1)
+      .execute();
+
+    if (sub?.planName === 'Custom') {
+      throw new BadRequestException(
+        'Custom plan accounts use the dispatch workflow. Ask your warehouse team to confirm the dispatch.',
+      );
+    }
+
+    const result = await this.db.transaction(async (tx) => {
+      const [order] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .for('update')
+        .execute();
+
+      if (!order) throw new NotFoundException('Order not found');
+
+      if (order.status !== 'paid' && order.status !== 'lay_buy') {
+        throw new BadRequestException(
+          'Only paid or lay-buy orders can be fulfilled',
+        );
+      }
+
+      const origin = (order as any).originInventoryLocationId as string | null;
+      if (!origin) {
+        throw new BadRequestException(
+          'Order is missing an inventory location — cannot deduct stock',
+        );
+      }
+
+      // Reserve stock for every variant line item, then immediately fulfill.
+      // reserveForOrderInTx is idempotent, so this works for both
+      // payment_first and stock_first fulfillment models.
+      const items = await tx
+        .select()
+        .from(orderItems)
+        .where(
+          and(
+            eq(orderItems.companyId, companyId),
+            eq(orderItems.orderId, orderId),
+          ),
+        )
+        .execute();
+
+      for (const it of items) {
+        if (!it.variantId) continue;
+        const qty = Number(it.quantity ?? 0);
+        if (qty <= 0) continue;
+
+        await this.stock.reserveForOrderInTx(
+          tx,
+          companyId,
+          orderId,
+          origin,
+          it.variantId,
+          qty,
+          `Reserved for direct fulfillment of order ${(order as any).orderNumber ?? orderId}`,
+        );
+      }
+
+      await this.stock.fulfillOrderReservationsInTx(tx, companyId, orderId);
+
+      const [updated] = await tx
+        .update(orders)
+        .set({ status: 'fulfilled', updatedAt: new Date() })
+        .where(and(eq(orders.companyId, companyId), eq(orders.id, orderId)))
+        .returning()
+        .execute();
+
+      await tx.insert(orderEvents).values({
+        companyId,
+        orderId,
+        type: 'dispatched',
+        fromStatus: order.status,
+        toStatus: 'fulfilled',
+        actorUserId: user?.id ?? null,
+        ipAddress: ip ?? null,
+        message: 'Order fulfilled directly — stock deducted',
+      });
+
+      return updated;
+    });
+
+    await this.cache.bumpCompanyVersion(companyId);
+
+    this.notifications
+      .create({
+        companyId,
+        type: 'order_fulfilled',
+        title: 'Order fulfilled',
+        body: `Order #${(result as any).orderNumber ?? orderId} has been fulfilled`,
+        data: { orderId, orderNumber: (result as any).orderNumber ?? null },
         channel: 'in_app',
       })
       .catch(console.error);
@@ -837,37 +950,18 @@ export class OrdersService {
       };
 
       const shippingQuoteSnapshot = shippingQuote
-        ? {
-            zone: shippingQuote.zone
-              ? {
-                  id: shippingQuote.zone.id,
-                  name: shippingQuote.zone.name,
-                  priority: shippingQuote.zone.priority ?? null,
-                }
-              : null,
-            rate: shippingQuote.rate
-              ? {
-                  id: shippingQuote.rate.id,
-                  name: shippingQuote.rate.name,
-                  calc: shippingQuote.rate.calc ?? null,
-                  isDefault: shippingQuote.rate.isDefault ?? false,
-                  type: shippingQuote.rate.type ?? null,
-                }
-              : null,
-            amount: shippingQuote.amount ?? 0,
-            totalWeightGrams,
-          }
+        ? { zone: null, rate: null, amount: shippingQuote.amount ?? 0, totalWeightGrams }
         : null;
 
       const [updated] = await tx
         .update(orders)
         .set({
           customerId,
-          shippingZoneId: shippingQuote.zone?.id ?? null,
-          selectedShippingRateId: shippingQuote.rate?.id ?? null,
+          shippingZoneId: null,
+          selectedShippingRateId: null,
           shippingAddress: shippingSnapshot as any,
           billingAddress: billingSnapshot as any,
-          shippingMethodLabel: shippingQuote.rate?.name ?? null,
+          shippingMethodLabel: null,
           deliveryMethodType: 'shipping',
           shippingQuote: shippingQuoteSnapshot as any,
           shippingTotal: String(shippingTotal) as any,
@@ -965,8 +1059,8 @@ export class OrdersService {
   }
 
   private async getShippingQuoteForOrder(
-    companyId: string,
-    args: {
+    _companyId: string,
+    _args: {
       storeId: string;
       shippingAddress: {
         country?: string | null;
@@ -977,62 +1071,6 @@ export class OrdersService {
       shippingRateId?: string | null;
     },
   ) {
-    const normalizeCountryCode = (value?: string | null) => {
-      const v = (value ?? '').trim().toUpperCase();
-
-      if (v === 'UNITED KINGDOM' || v === 'UK' || v === 'GB') return 'GB';
-      if (v === 'NIGERIA' || v === 'NG') return 'NG';
-      if (v === 'UNITED STATES' || v === 'USA' || v === 'US') return 'US';
-
-      return v;
-    };
-
-    const zone = await this.shippingZonesService.resolveZone(
-      companyId,
-      args.storeId,
-      normalizeCountryCode(args.shippingAddress.country ?? 'NG'),
-      args.shippingAddress.state ?? undefined,
-      args.shippingAddress.city ?? undefined,
-    );
-
-    if (!zone) {
-      return {
-        zone: null,
-        rate: null,
-        amount: 0,
-      };
-    }
-
-    const allRates = await this.shippingRatesService.listRates(companyId, {
-      zoneId: zone.id,
-      storeId: args.storeId,
-    });
-
-    const activeRates = allRates.filter((r: any) => r.isActive);
-
-    const selectedRate = args.shippingRateId
-      ? activeRates.find((r: any) => r.id === args.shippingRateId)
-      : (activeRates.find((r: any) => r.isDefault) ?? activeRates[0]);
-
-    if (!selectedRate) {
-      return {
-        zone,
-        rate: null,
-        amount: 0,
-      };
-    }
-
-    const amount = await this.shippingRatesService.computeRateAmount(
-      companyId,
-      selectedRate.id,
-      selectedRate.calc,
-      args.totalWeightGrams,
-    );
-
-    return {
-      zone,
-      rate: selectedRate,
-      amount: Number(amount ?? 0),
-    };
+    return { zone: null, rate: null, amount: 0 };
   }
 }

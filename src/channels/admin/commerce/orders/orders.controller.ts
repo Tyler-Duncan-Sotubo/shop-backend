@@ -104,6 +104,16 @@ export class OrdersController extends BaseController {
   pay(@CurrentUser() user: User, @Param('id') id: string) {
     return this.orders.markPaid(user.companyId, id, user, undefined);
   }
+  @Post(':id/fulfill')
+  @SetMetadata('permissions', ['orders.update'])
+  fulfill(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Ip() ip: string,
+  ) {
+    return this.orders.fulfillOrder(user.companyId, id, user, ip);
+  }
+
   @Post(':id/cancel')
   @SetMetadata('permissions', ['orders.update'])
   cancel(

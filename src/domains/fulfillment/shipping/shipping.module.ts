@@ -1,18 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ShippingCarriersService } from './services/shipping-carriers.service';
-import { ShippingRatesService } from './services/shipping-rates.service';
-import { ShippingZonesService } from './services/shipping-zones.service';
+import { ShippingOptionsService } from './services/shipping-options.service';
 
 @Module({
-  providers: [
-    ShippingCarriersService,
-    ShippingRatesService,
-    ShippingZonesService,
-  ],
-  exports: [
-    ShippingCarriersService,
-    ShippingRatesService,
-    ShippingZonesService,
-  ],
+  providers: [ShippingOptionsService],
+  exports: [ShippingOptionsService],
 })
 export class ShippingModule {}

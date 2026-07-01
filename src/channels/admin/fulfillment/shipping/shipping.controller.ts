@@ -3,258 +3,76 @@ import {
   Controller,
   Delete,
   Get,
-  Ip,
   Param,
   Patch,
   Post,
+  Put,
   Query,
   SetMetadata,
   UseGuards,
 } from '@nestjs/common';
 import { User } from 'src/channels/admin/common/types/user.type';
 import { BaseController } from 'src/infrastructure/interceptor/base.controller';
-import {
-  CreateCarrierDto,
-  CreateRateDto,
-  CreateZoneDto,
-  QuoteShippingDto,
-  UpdateRateDto,
-  UpsertRateTierDto,
-  UpsertZoneLocationDto,
-} from './dto';
 import { CurrentUser } from '../../common/decorator/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { ShippingZonesService } from 'src/domains/fulfillment/shipping/services/shipping-zones.service';
-import { ShippingCarriersService } from 'src/domains/fulfillment/shipping/services/shipping-carriers.service';
-import { ShippingRatesService } from 'src/domains/fulfillment/shipping/services/shipping-rates.service';
+import { ShippingOptionsService } from 'src/domains/fulfillment/shipping/services/shipping-options.service';
 
 @Controller('shipping')
 @UseGuards(JwtAuthGuard)
 export class ShippingController extends BaseController {
-  constructor(
-    private readonly zones: ShippingZonesService,
-    private readonly carriers: ShippingCarriersService,
-    private readonly rates: ShippingRatesService,
-  ) {
+  constructor(private readonly options: ShippingOptionsService) {
     super();
   }
 
-  // ----------------- Zones -----------------
-  @Get('zones')
+  @Get('options')
   @SetMetadata('permissions', ['shipping.zones.read'])
-  listZones(@CurrentUser() user: User, @Query('storeId') storeId: string) {
-    return this.zones.listZones(user.companyId, storeId);
+  listOptions(@CurrentUser() user: User, @Query('storeId') storeId: string) {
+    return this.options.list(user.companyId, storeId);
   }
 
-  @Post('zones')
-  @UseGuards(JwtAuthGuard)
+  @Post('options')
   @SetMetadata('permissions', ['shipping.zones.create'])
-  createZone(
+  createOption(
     @CurrentUser() user: User,
-    @Body() dto: CreateZoneDto,
-    @Ip() ip: string,
+    @Body()
+    body: {
+      storeId: string;
+      name: string;
+      states?: string[];
+      price?: number;
+      isActive?: boolean;
+      sortOrder?: number;
+    },
   ) {
-    return this.zones.createZone(user.companyId, dto, user, ip);
+    return this.options.create(user.companyId, body.storeId, body);
   }
 
-  @Patch('zones/:zoneId')
+  @Put('options/:id')
   @SetMetadata('permissions', ['shipping.zones.update'])
-  updateZone(
+  updateOption(
     @CurrentUser() user: User,
-    @Param('zoneId') zoneId: string,
-    @Body() dto: Partial<CreateZoneDto>,
-    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      states?: string[];
+      price?: number;
+      isActive?: boolean;
+      sortOrder?: number;
+    },
   ) {
-    return this.zones.updateZone(user.companyId, zoneId, dto, user, ip);
+    return this.options.update(id, user.companyId, body);
   }
 
-  @Delete('zones/:zoneId')
+  @Delete('options/:id')
   @SetMetadata('permissions', ['shipping.zones.delete'])
-  deleteZone(
-    @CurrentUser() user: User,
-    @Param('zoneId') zoneId: string,
-    @Ip() ip: string,
-  ) {
-    return this.zones.deleteZone(user.companyId, zoneId, user, ip);
+  removeOption(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.options.remove(id, user.companyId);
   }
 
-  // Zone locations
-  @Get('zones/:zoneId/locations')
-  @SetMetadata('permissions', ['shipping.zones.read'])
-  listZoneLocations(
-    @CurrentUser() user: User,
-    @Param('zoneId') zoneId: string,
-  ) {
-    return this.zones.listZoneLocations(user.companyId, zoneId);
-  }
-
-  @Post('zones/locations')
+  @Patch('options/:id/toggle')
   @SetMetadata('permissions', ['shipping.zones.update'])
-  upsertZoneLocation(
-    @CurrentUser() user: User,
-    @Body() dto: UpsertZoneLocationDto,
-    @Ip() ip: string,
-  ) {
-    return this.zones.upsertZoneLocation(user.companyId, dto, user, ip);
-  }
-
-  @Patch('zones/locations/:locationId')
-  @SetMetadata('permissions', ['shipping.zones.update'])
-  updateZoneLocation(
-    @CurrentUser() user: User,
-    @Param('locationId') locationId: string,
-    @Body() dto: UpsertZoneLocationDto,
-    @Ip() ip: string,
-  ) {
-    return this.zones.updateZoneLocation(
-      user.companyId,
-      locationId,
-      dto,
-      user,
-      ip,
-    );
-  }
-
-  @Delete('zones/locations/:locationId')
-  @SetMetadata('permissions', ['shipping.zones.update'])
-  removeZoneLocation(
-    @CurrentUser() user: User,
-    @Param('locationId') locationId: string,
-    @Ip() ip: string,
-  ) {
-    return this.zones.removeZoneLocation(user.companyId, locationId, user, ip);
-  }
-
-  // ----------------- Carriers -----------------
-  @Get('carriers')
-  @SetMetadata('permissions', ['shipping.carriers.read'])
-  listCarriers(@CurrentUser() user: User) {
-    return this.carriers.listCarriers(user.companyId);
-  }
-
-  @Post('carriers')
-  @SetMetadata('permissions', ['shipping.carriers.create'])
-  createCarrier(
-    @CurrentUser() user: User,
-    @Body() dto: CreateCarrierDto,
-    @Ip() ip: string,
-  ) {
-    return this.carriers.createCarrier(user.companyId, dto, user, ip);
-  }
-
-  @Patch('carriers/:carrierId')
-  @SetMetadata('permissions', ['shipping.carriers.update'])
-  updateCarrier(
-    @CurrentUser() user: User,
-    @Param('carrierId') carrierId: string,
-    @Body() dto: Partial<CreateCarrierDto>,
-    @Ip() ip: string,
-  ) {
-    return this.carriers.updateCarrier(
-      user.companyId,
-      carrierId,
-      dto,
-      user,
-      ip,
-    );
-  }
-
-  @Delete('carriers/:carrierId')
-  @SetMetadata('permissions', ['shipping.carriers.delete'])
-  deleteCarrier(
-    @CurrentUser() user: User,
-    @Param('carrierId') carrierId: string,
-    @Ip() ip: string,
-  ) {
-    return this.carriers.deleteCarrier(user.companyId, carrierId, user, ip);
-  }
-
-  // ----------------- Rates -----------------
-  @Get('rates')
-  @SetMetadata('permissions', ['shipping.rates.read'])
-  listRates(
-    @CurrentUser() user: User,
-    @Query('zoneId') zoneId?: string,
-    @Query('storeId') storeId?: string,
-  ) {
-    return this.rates.listRates(user.companyId, { zoneId, storeId });
-  }
-
-  @Post('rates')
-  @SetMetadata('permissions', ['shipping.rates.create'])
-  createRate(
-    @CurrentUser() user: User,
-    @Body() dto: CreateRateDto,
-    @Ip() ip: string,
-  ) {
-    return this.rates.createRate(user.companyId, dto, user, ip);
-  }
-
-  @Patch('rates/:rateId')
-  @SetMetadata('permissions', ['shipping.rates.update'])
-  updateRate(
-    @CurrentUser() user: User,
-    @Param('rateId') rateId: string,
-    @Body() dto: UpdateRateDto,
-    @Ip() ip: string,
-  ) {
-    return this.rates.updateRate(user.companyId, rateId, dto, user, ip);
-  }
-
-  @Delete('rates/:rateId')
-  @SetMetadata('permissions', ['shipping.rates.delete'])
-  deleteRate(
-    @CurrentUser() user: User,
-    @Param('rateId') rateId: string,
-    @Ip() ip: string,
-  ) {
-    return this.rates.deleteRate(user.companyId, rateId, user, ip);
-  }
-
-  // ----------------- Rate tiers -----------------
-  @Get('rates/:rateId/tiers')
-  @SetMetadata('permissions', ['shipping.rates.read'])
-  listTiers(@CurrentUser() user: User, @Param('rateId') rateId: string) {
-    return this.rates.listRateTiers(user.companyId, rateId);
-  }
-
-  @Post('rates/tiers')
-  @SetMetadata('permissions', ['shipping.rates.update'])
-  createTier(
-    @CurrentUser() user: User,
-    @Body() dto: UpsertRateTierDto,
-    @Ip() ip: string,
-  ) {
-    return this.rates.upsertRateTier(user.companyId, dto, user, ip);
-  }
-
-  // ----------------- Rate tiers -----------------
-
-  @Patch('rates/tiers/:tierId')
-  @SetMetadata('permissions', ['shipping.rates.update'])
-  updateTier(
-    @CurrentUser() user: User,
-    @Param('tierId') tierId: string,
-    @Body() dto: Partial<UpsertRateTierDto>,
-    @Ip() ip: string,
-  ) {
-    return this.rates.updateRateTier(user.companyId, tierId, dto, user, ip);
-  }
-
-  @Delete('rates/tiers/:tierId')
-  @SetMetadata('permissions', ['shipping.rates.update'])
-  deleteTier(
-    @CurrentUser() user: User,
-    @Param('tierId') tierId: string,
-    @Ip() ip: string,
-  ) {
-    return this.rates.deleteRateTier(user.companyId, tierId, user, ip);
-  }
-
-  // ----------------- Quote (for checkout UI / cart totals) -----------------
-  @Post('quote')
-  @SetMetadata('permissions', ['shipping.quote'])
-  quote(@CurrentUser() user: User, @Body() dto: QuoteShippingDto) {
-    return this.rates.quote(user.companyId, dto);
+  toggleOption(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.options.toggle(id, user.companyId);
   }
 }

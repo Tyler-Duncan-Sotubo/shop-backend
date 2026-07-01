@@ -421,6 +421,13 @@
       "when": 1782296253227,
       "tag": "0059_foamy_jamie_braddock",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1782939320166,
+      "tag": "0060_smart_hobgoblin",
+      "breakpoints": true
     }
   ]
 }

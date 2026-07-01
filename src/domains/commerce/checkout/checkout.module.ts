@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CheckoutService } from './checkout.service';
 import { InventoryStockService } from '../inventory/services/inventory-stock.service';
-import { ShippingRatesService } from '../../fulfillment/shipping/services/shipping-rates.service';
-import { ShippingZonesService } from '../../fulfillment/shipping/services/shipping-zones.service';
+import { ShippingOptionsService } from '../../fulfillment/shipping/services/shipping-options.service';
 import { InventoryLocationsService } from '../inventory/services/inventory-locations.service';
 import { ApiKeysService } from '../../iam/api-keys/api-keys.service';
 import { InventoryLedgerService } from '../inventory/services/inventory-ledger.service';
@@ -18,8 +17,7 @@ import { CartModule } from '../cart/cart.module';
   providers: [
     CheckoutService,
     InventoryStockService,
-    ShippingRatesService,
-    ShippingZonesService,
+    ShippingOptionsService,
     InventoryLocationsService,
     ApiKeysService,
     InventoryLedgerService,

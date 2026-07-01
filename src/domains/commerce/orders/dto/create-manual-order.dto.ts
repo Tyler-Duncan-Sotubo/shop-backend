@@ -30,8 +30,8 @@ export class CreateManualOrderDto {
    * - pos (in-store)
    */
   @IsOptional()
-  @IsIn(['manual', 'pos'])
-  channel?: 'manual' | 'pos';
+  @IsIn(['manual', 'pos', 'whatsapp', 'instagram', 'facebook', 'tiktok', 'chowdeck', 'glovo', 'jumia', 'konga', 'amazon'])
+  channel?: 'manual' | 'pos' | 'whatsapp' | 'instagram' | 'facebook' | 'tiktok' | 'chowdeck' | 'glovo' | 'jumia' | 'konga' | 'amazon';
 
   @IsOptional()
   @IsBoolean()

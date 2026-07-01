@@ -44,7 +44,7 @@ export class PasswordResetService {
       .where(eq(users.email, email));
 
     if (!user || user.length === 0) {
-      throw new BadRequestException('User does not exist.');
+      return;
     }
 
     const inviteLink = `${this.configService.get(

@@ -87,6 +87,7 @@ export const checkouts = pgTable(
       carrierId?: string | null;
       rateId?: string | null;
       zoneId?: string | null;
+      shippingOptionId?: string | null;
       computedAt?: string;
       rateSnapshot?: {
         name?: string;

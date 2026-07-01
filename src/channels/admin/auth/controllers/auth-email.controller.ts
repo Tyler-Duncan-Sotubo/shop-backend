@@ -46,8 +46,8 @@ export class AuthEmailController {
   @Post('password-reset')
   @Audit({ action: 'Password Reset Request', entity: 'User' })
   @UseInterceptors(ResponseInterceptor)
-  async passwordReset(@Body() dto: RequestPasswordResetDto): Promise<string> {
-    return this.password.generatePasswordResetToken(dto.email);
+  async passwordReset(@Body() dto: RequestPasswordResetDto): Promise<void> {
+    await this.password.generatePasswordResetToken(dto.email);
   }
 
   @HttpCode(HttpStatus.OK)

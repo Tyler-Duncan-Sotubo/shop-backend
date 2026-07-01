@@ -833,7 +833,16 @@ export class DashboardCommerceAnalyticsService {
         const labelFor = (c: string) => {
           if (c === 'online') return 'Online';
           if (c === 'pos') return 'POS';
-          if (c === 'manual') return 'Manual';
+          if (c === 'manual') return 'Walk-in';
+          if (c === 'whatsapp') return 'WhatsApp';
+          if (c === 'instagram') return 'Instagram';
+          if (c === 'facebook') return 'Facebook';
+          if (c === 'tiktok') return 'TikTok';
+          if (c === 'chowdeck') return 'Chowdeck';
+          if (c === 'glovo') return 'Glovo';
+          if (c === 'jumia') return 'Jumia';
+          if (c === 'konga') return 'Konga';
+          if (c === 'amazon') return 'Amazon';
           return 'Unknown';
         };
 

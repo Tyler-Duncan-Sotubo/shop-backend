@@ -215,7 +215,7 @@ export class AdminCustomersService {
       );
     }
 
-    // ─── 2) DB duplicate check — all chunks in parallel ───────────────────────
+    // ─── 2) DB duplicate check — store-scoped ────────────────────────────────
     const loginEmails = derived
       .filter((d) => d.loginEmail)
       .map((d) => d.loginEmail!);
@@ -224,15 +224,17 @@ export class AdminCustomersService {
       const EMAIL_CHUNK = 5000;
       const chunks = this.chunk(loginEmails, EMAIL_CHUNK);
 
-      // Run all chunks in parallel instead of sequentially
-      const results = await Promise.all(
+      // 2a) Check for duplicates within THIS store — throw so the user can fix
+      const storeResults = await Promise.all(
         chunks.map((part) =>
           this.db
             .select({ email: customerCredentials.email })
             .from(customerCredentials)
+            .innerJoin(customers, eq(customerCredentials.customerId, customers.id))
             .where(
               and(
                 eq(customerCredentials.companyId, companyId),
+                storeId ? eq(customers.storeId, storeId) : undefined,
                 inArray(customerCredentials.email, part),
               ),
             )
@@ -240,10 +242,10 @@ export class AdminCustomersService {
         ),
       );
 
-      const existing = results.flat();
-      if (existing.length) {
+      const existingInStore = storeResults.flat().map((r) => r.email);
+      if (existingInStore.length) {
         throw new BadRequestException(
-          `Already exist: ${existing.map((r) => r.email).join(', ')}`,
+          `Already exist: ${[...new Set(existingInStore)].join(', ')}`,
         );
       }
     }
@@ -285,10 +287,14 @@ export class AdminCustomersService {
             lastName: d.lastName ?? null,
             billingEmail: derived[i].rawEmail ?? null,
             phone: d.phone ?? null,
-            marketingOptIn: false,
+            marketingOptIn: !!(derived[i].rawEmail),
             isActive: true,
           })),
         )
+        .onConflictDoUpdate({
+          target: [customers.companyId, customers.billingEmail],
+          set: { storeId: sql`excluded.store_id`, updatedAt: sql`now()` },
+        })
         .returning({
           id: customers.id,
           displayName: customers.displayName,
@@ -314,6 +320,7 @@ export class AdminCustomersService {
         await trx
           .insert(customerCredentials)
           .values(credentialValues)
+          .onConflictDoNothing()
           .execute();
       }
 
@@ -373,7 +380,10 @@ export class AdminCustomersService {
 
     await this.cache.bumpCompanyVersion(companyId);
 
-    return { insertedCount: inserted.length, items: inserted };
+    return {
+      insertedCount: inserted.length,
+      items: inserted,
+    };
   }
 
   /**

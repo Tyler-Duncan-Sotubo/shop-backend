@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ResendProvider } from '../resend.provider';
 import { subscriptionTrialEndingHtml } from '../templates/subscription-trial-ending.html';
 import { subscriptionPastDueHtml } from '../templates/subscription-past-due.html';
+import { subscriptionInvoiceHtml } from '../templates/subscription-invoice.html';
 import { format } from 'date-fns';
 
 const FROM = 'MyCenta <billing@mycenta.com>';
@@ -54,6 +55,35 @@ export class SubscriptionNotificationService {
     } catch (error: any) {
       this.logger.error(
         `[SubscriptionNotification] Failed to send trial ending to ${input.email}`,
+        error,
+      );
+    }
+  }
+
+  // ── Subscription invoice with direct payment link ─────────
+  async sendSubscriptionInvoice(input: {
+    email: string;
+    ownerName: string;
+    companyName: string;
+    planName: string;
+    amountNGN: number;
+    period: string;
+    daysUntilExpiry: number;
+  }): Promise<void> {
+    try {
+      await this.resend.client.emails.send({
+        to: input.email,
+        from: FROM,
+        subject: `Invoice: ${input.planName} subscription — ${input.period}`,
+        html: subscriptionInvoiceHtml(input),
+      });
+
+      this.logger.log(
+        `[SubscriptionNotification] Invoice sent to ${input.email} — ${input.planName} ${input.period}`,
+      );
+    } catch (error: any) {
+      this.logger.error(
+        `[SubscriptionNotification] Failed to send invoice to ${input.email}`,
         error,
       );
     }

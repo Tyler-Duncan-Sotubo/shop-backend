@@ -389,7 +389,12 @@ export class OrdersService {
   // Direct fulfillment (Free / Starter / Growth / Pro plans only)
   // Custom plan must use the two-step dispatch workflow.
   // ─────────────────────────────────────────────
-  async fulfillOrder(companyId: string, orderId: string, user?: User, ip?: string) {
+  async fulfillOrder(
+    companyId: string,
+    orderId: string,
+    user?: User,
+    ip?: string,
+  ) {
     // Plan guard — Custom plan must go through dispatch
     const [sub] = await this.db
       .select({ planName: subscriptionPlans.name })
@@ -950,7 +955,12 @@ export class OrdersService {
       };
 
       const shippingQuoteSnapshot = shippingQuote
-        ? { zone: null, rate: null, amount: shippingQuote.amount ?? 0, totalWeightGrams }
+        ? {
+            zone: null,
+            rate: null,
+            amount: shippingQuote.amount ?? 0,
+            totalWeightGrams,
+          }
         : null;
 
       const [updated] = await tx

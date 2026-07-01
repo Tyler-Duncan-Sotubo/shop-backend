@@ -1342,9 +1342,7 @@ export class ManualOrdersService {
 
       // 2) Ensure manual/POS order
       if (order.channel === 'online') {
-        throw new BadRequestException(
-          'Online store orders cannot be deleted',
-        );
+        throw new BadRequestException('Online store orders cannot be deleted');
       }
 
       // 3) Enforce status rules

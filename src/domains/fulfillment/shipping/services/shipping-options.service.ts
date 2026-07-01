@@ -1,8 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { DRIZZLE } from 'src/infrastructure/drizzle/drizzle.module';
 import { db } from 'src/infrastructure/drizzle/types/drizzle';
@@ -18,7 +14,9 @@ export interface CreateShippingOptionDto {
   sortOrder?: number;
 }
 
-export type UpdateShippingOptionDto = Partial<Omit<CreateShippingOptionDto, 'storeId'>>;
+export type UpdateShippingOptionDto = Partial<
+  Omit<CreateShippingOptionDto, 'storeId'>
+>;
 
 @Injectable()
 export class ShippingOptionsService {
@@ -41,7 +39,10 @@ export class ShippingOptionsService {
               eq(shippingOptions.storeId, storeId),
             ),
           )
-          .orderBy(asc(shippingOptions.sortOrder), asc(shippingOptions.createdAt))
+          .orderBy(
+            asc(shippingOptions.sortOrder),
+            asc(shippingOptions.createdAt),
+          )
           .execute();
       },
     );
@@ -98,7 +99,11 @@ export class ShippingOptionsService {
     return option;
   }
 
-  async create(companyId: string, storeId: string, dto: CreateShippingOptionDto) {
+  async create(
+    companyId: string,
+    storeId: string,
+    dto: CreateShippingOptionDto,
+  ) {
     const [option] = await this.db
       .insert(shippingOptions)
       .values({
@@ -118,7 +123,7 @@ export class ShippingOptionsService {
   }
 
   async update(id: string, companyId: string, dto: UpdateShippingOptionDto) {
-    const existing = await this.getById(id, companyId);
+    await this.getById(id, companyId);
 
     const patch: Record<string, any> = { updatedAt: new Date() };
     if (dto.name !== undefined) patch.name = dto.name;
